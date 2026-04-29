@@ -1,16 +1,10 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import type { RootStackParamList } from "../../../navigation/types";
+import { EmptyView, ErrorView, LoadingView } from "../../../shared/components";
 import { useClientMeasurementHistory } from "../hooks/useClientMeasurementHistory";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MeasurementHistory">;
@@ -26,33 +20,15 @@ export default function MeasurementHistoryScreen({ route }: Props) {
   );
 
   if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.message}>Cargando historial...</Text>
-      </View>
-    );
+    return <LoadingView message="Cargando historial..." />;
   }
 
   if (error) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
-        <Pressable style={styles.secondaryButton} onPress={() => void reload()}>
-          <Text style={styles.secondaryButtonText}>Reintentar</Text>
-        </Pressable>
-      </View>
-    );
+    return <ErrorView message={error} onRetry={() => void reload()} />;
   }
 
   if (measurements.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.message}>
-          Este cliente no tiene medidas registradas.
-        </Text>
-      </View>
-    );
+    return <EmptyView message="Este cliente no tiene medidas registradas." />;
   }
 
   return (
@@ -86,24 +62,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
   },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 12,
-    backgroundColor: "#f8fafc",
-  },
-  message: {
-    fontSize: 16,
-    color: "#334155",
-    textAlign: "center",
-  },
-  errorText: {
-    fontSize: 16,
-    color: "#b91c1c",
-    textAlign: "center",
-  },
   listContent: {
     padding: 16,
     gap: 12,
@@ -135,16 +93,5 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     color: "#334155",
-  },
-  secondaryButton: {
-    borderColor: "#0f766e",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  secondaryButtonText: {
-    color: "#0f766e",
-    fontWeight: "700",
   },
 });
