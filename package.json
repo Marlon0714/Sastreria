@@ -4,6 +4,10 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "dev": "ANDROID_HOME=/home/developer/Android/Sdk ANDROID_SDK_ROOT=/home/developer/Android/Sdk PATH=$PATH:/home/developer/Android/Sdk/platform-tools:/home/developer/Android/Sdk/emulator expo start",
+    "dev:android": "ANDROID_HOME=/home/developer/Android/Sdk ANDROID_SDK_ROOT=/home/developer/Android/Sdk PATH=$PATH:/home/developer/Android/Sdk/platform-tools:/home/developer/Android/Sdk/emulator expo start --android",
+    "dev:web": "expo start --web",
+    "emulator": "bash scripts/start-emulator.sh",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
