@@ -25,6 +25,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c3d9f967-baf8-456c-942e-92ab873c248e"
+      }
+    },
+    "owner": "marlon0714"
   }
 }
