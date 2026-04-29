@@ -25,6 +25,10 @@
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)"
     ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "src/__tests__/factories/"
+    ],
     "collectCoverageFrom": [
       "src/features/**/*.{ts,tsx}",
       "src/data/**/*.{ts,tsx}",
