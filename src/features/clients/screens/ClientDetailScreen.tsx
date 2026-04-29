@@ -1,16 +1,11 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ClientRepositoryImpl } from "../../../data/local/ClientRepositoryImpl";
 import type { RootStackParamList } from "../../../navigation/types";
+import { ErrorView, LoadingView } from "../../../shared/components";
 import type { Client } from "../domain/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ClientDetail">;
@@ -51,27 +46,15 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
   );
 
   if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.message}>Cargando detalle...</Text>
-      </View>
-    );
+    return <LoadingView message="Cargando detalle..." />;
   }
 
   if (error || !client) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>
-          {error ?? "No se encontró el cliente."}
-        </Text>
-        <Pressable
-          style={styles.secondaryButton}
-          onPress={() => void loadClient()}
-        >
-          <Text style={styles.secondaryButtonText}>Reintentar</Text>
-        </Pressable>
-      </View>
+      <ErrorView
+        message={error ?? "No se encontró el cliente."}
+        onRetry={() => void loadClient()}
+      />
     );
   }
 
@@ -118,23 +101,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 12,
-    backgroundColor: "#f8fafc",
-  },
-  message: {
-    fontSize: 16,
-    color: "#334155",
-  },
-  errorText: {
-    fontSize: 16,
-    color: "#b91c1c",
-    textAlign: "center",
-  },
   card: {
     backgroundColor: "#ffffff",
     borderRadius: 12,
@@ -169,13 +135,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontWeight: "700",
-  },
-  secondaryButton: {
-    borderColor: "#0f766e",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
   secondaryButtonBlock: {
     borderColor: "#0f766e",
