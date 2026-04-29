@@ -30,8 +30,19 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files — NUNCA commitear secretos o credenciales
+.env
 .env*.local
+.env.local
+
+# Coverage
+coverage/
+
+# VS Code workspace
+*.code-workspace
+
+# Testing cache
+.jest-cache/
 
 # typescript
 *.tsbuildinfo

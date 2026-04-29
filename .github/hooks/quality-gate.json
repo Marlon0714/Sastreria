@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "node -e \"const input = require('fs').readFileSync('/dev/stdin', 'utf8'); const data = JSON.parse(input); const tool = data.tool_name || ''; const params = JSON.stringify(data.tool_input || {}); const forbidden = ['rm -rf', 'DROP TABLE', 'DELETE FROM', '--no-verify', 'git push --force', 'git reset --hard']; const found = forbidden.find(f => params.includes(f)); if (found) { console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: 'Comando potencialmente destructivo detectado: ' + found + '. Requiere confirmación explícita.' } })); } else { process.exit(0); }\"",
+        "timeout": 10,
+        "linux": "node -e \"const input = require('fs').readFileSync('/dev/stdin', 'utf8'); const data = JSON.parse(input); const params = JSON.stringify(data.tool_input || {}); const forbidden = ['rm -rf', 'DROP TABLE', 'DELETE FROM', '--no-verify', 'git push --force', 'git reset --hard']; const found = forbidden.find(f => params.includes(f)); if (found) { console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: 'Comando potencialmente destructivo detectado: ' + found + '. Requiere confirmación explícita.' } })); } else { process.exit(0); }\""
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "node -e \"const input = require('fs').readFileSync('/dev/stdin', 'utf8'); const data = JSON.parse(input); const file = (data.tool_input || {}).path || (data.tool_input || {}).filePath || ''; const isTS = file.endsWith('.ts') || file.endsWith('.tsx'); if (isTS && file.includes('src/')) { const secrets = ['password', 'secret', 'apikey', 'api_key', 'token', 'private_key']; const content = JSON.stringify(data.tool_result || '').toLowerCase(); const found = secrets.find(s => content.includes(s + '=')); if (found) { console.log(JSON.stringify({ decision: 'block', reason: '[security] Posible secreto detectado en ' + file + '. Mover a variables de entorno.' })); } } process.exit(0);\"",
+        "timeout": 10,
+        "linux": "node -e \"const input = require('fs').readFileSync('/dev/stdin', 'utf8'); const data = JSON.parse(input); const file = (data.tool_input || {}).path || (data.tool_input || {}).filePath || ''; const isTS = file.endsWith('.ts') || file.endsWith('.tsx'); if (isTS && file.includes('src/')) { const secrets = ['password', 'secret', 'apikey', 'api_key', 'token', 'private_key']; const content = JSON.stringify(data.tool_result || '').toLowerCase(); const found = secrets.find(s => content.includes(s + '=')); if (found) { console.log(JSON.stringify({ decision: 'block', reason: '[security] Posible secreto detectado en ' + file + '. Mover a variables de entorno.' })); } } process.exit(0);\""
+      }
+    ]
+  }
+}
