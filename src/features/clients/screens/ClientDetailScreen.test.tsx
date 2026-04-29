@@ -79,7 +79,7 @@ describe("ClientDetailScreen", () => {
   });
 
   it("treats missing client as UI error", async () => {
-    mockFindById.mockResolvedValueOnce(null);
+    mockFindById.mockResolvedValue(null);
 
     const { getByText } = render(
       <ClientDetailScreen {...buildProps(jest.fn())} />,
@@ -90,6 +90,11 @@ describe("ClientDetailScreen", () => {
     });
 
     fireEvent.press(getByText("Reintentar"));
+
+    await waitFor(() => {
+      expect(mockFindById).toHaveBeenCalledTimes(2);
+    });
+
     expect(mockFindById).toHaveBeenCalledWith(
       "11111111-1111-4111-8111-111111111111",
     );
