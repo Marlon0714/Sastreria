@@ -13,7 +13,9 @@
     "test:ci": "jest --passWithNoTests --watchAll=false",
     "lint": "expo lint",
     "validate": "npm run typecheck && npm run test:ci",
-    "validate:full": "npm run typecheck && npm run lint && npm run test:ci"
+    "validate:full": "npm run typecheck && npm run lint && npm run test:ci",
+    "commit": "bash scripts/smart-commit.sh",
+    "branch": "bash scripts/smart-branch.sh"
   },
   "jest": {
     "preset": "jest-expo",
@@ -58,7 +60,7 @@
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/react": "~19.1.0",
-    "eslint": "^9.0.0",
+    "eslint": "^9.39.4",
     "eslint-config-expo": "~10.0.0",
     "jest-expo": "^55.0.16",
     "react-test-renderer": "^19.1.0",
