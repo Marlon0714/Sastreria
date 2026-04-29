@@ -154,7 +154,10 @@ const webDatabase: WebDatabase = {
       return rows as T[];
     }
 
-    if (normalized.includes("from measurements") && normalized.includes("where client_id = ?")) {
+    if (
+      normalized.includes("from measurements") &&
+      normalized.includes("where client_id = ?")
+    ) {
       const [clientId] = params as [string];
       const rows = state.measurements
         .filter((row) => row.client_id === clientId)
@@ -173,7 +176,10 @@ const webDatabase: WebDatabase = {
       return row as T;
     }
 
-    if (normalized.includes("from clients") && normalized.includes("where id = ?")) {
+    if (
+      normalized.includes("from clients") &&
+      normalized.includes("where id = ?")
+    ) {
       const [id] = params as [string];
       const row = state.clients.find((client) => client.id === id) ?? null;
       return row as T | null;
