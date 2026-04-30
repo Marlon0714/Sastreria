@@ -1,48 +1,23 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { ClientRepositoryImpl } from "../../../data/local/ClientRepositoryImpl";
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
-import type { Client } from "../domain/types";
+import { useClientDetail } from "../hooks/useClientDetail";
 
 type Props = NativeStackScreenProps<ClientsStackParamList, "ClientDetail">;
 
-const clientRepository = new ClientRepositoryImpl();
-
 export default function ClientDetailScreen({ navigation, route }: Props) {
-  const [client, setClient] = useState<Client | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadClient = useCallback(async (): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const currentClient = await clientRepository.findById(
-        route.params.clientId,
-      );
-      if (!currentClient) {
-        setError("El cliente no existe o fue eliminado.");
-        setClient(null);
-        return;
-      }
-
-      setClient(currentClient);
-    } catch {
-      setError("No se pudo cargar el detalle del cliente.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [route.params.clientId]);
+  const { client, isLoading, error, reload } = useClientDetail(
+    route.params.clientId,
+  );
 
   useFocusEffect(
     useCallback(() => {
-      void loadClient();
-    }, [loadClient]),
+      void reload();
+    }, [reload]),
   );
 
   if (isLoading) {
@@ -53,7 +28,7 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
     return (
       <ErrorView
         message={error ?? "No se encontró el cliente."}
-        onRetry={() => void loadClient()}
+        onRetry={() => void reload()}
       />
     );
   }
@@ -65,7 +40,6 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
           {client.firstName} {client.lastName}
         </Text>
         <Text style={styles.phone}>{client.phone}</Text>
-        <Text style={styles.syncText}>syncStatus: {client.syncStatus}</Text>
         {client.notes ? (
           <Text style={styles.notes}>Notas: {client.notes}</Text>
         ) : null}
@@ -117,10 +91,6 @@ const styles = StyleSheet.create({
   phone: {
     fontSize: 15,
     color: "#334155",
-  },
-  syncText: {
-    fontSize: 13,
-    color: "#64748b",
   },
   notes: {
     fontSize: 14,

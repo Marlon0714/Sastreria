@@ -2,10 +2,18 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import type React from "react";
 
+import { clientFactory } from "../../../__tests__/factories";
 import type { Client } from "../domain/types";
 import ClientDetailScreen from "./ClientDetailScreen";
 
-const mockFindById = jest.fn<(id: string) => Promise<Client | null>>();
+interface UseClientDetailResult {
+  client: Client | null;
+  isLoading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+}
+
+const mockUseClientDetail = jest.fn<() => UseClientDetailResult>();
 
 jest.mock("@react-navigation/native", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
@@ -20,11 +28,9 @@ jest.mock("@react-navigation/native", () => {
   };
 });
 
-jest.mock("../../../data/local/ClientRepositoryImpl", () => {
+jest.mock("../hooks/useClientDetail", () => {
   return {
-    ClientRepositoryImpl: jest.fn().mockImplementation(() => ({
-      findById: (id: string) => mockFindById(id),
-    })),
+    useClientDetail: () => mockUseClientDetail(),
   };
 });
 
@@ -47,13 +53,17 @@ function buildProps(navigate: jest.Mock): ScreenProps {
 
 describe("ClientDetailScreen", () => {
   beforeEach(() => {
-    mockFindById.mockReset();
+    mockUseClientDetail.mockReset();
   });
 
-  it("renders loading state while repository request is pending", () => {
-    mockFindById.mockImplementation(
-      () => new Promise<Client | null>(() => undefined),
-    );
+  it("renders loading state", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientDetail.mockReturnValue({
+      client: null,
+      isLoading: true,
+      error: null,
+      reload,
+    });
 
     const { getByText } = render(
       <ClientDetailScreen {...buildProps(jest.fn())} />,
@@ -62,41 +72,82 @@ describe("ClientDetailScreen", () => {
     expect(getByText("Cargando detalle...")).toBeTruthy();
   });
 
-  it("renders error state when repository fails", async () => {
-    mockFindById.mockRejectedValueOnce(new Error("db failure"));
+  it("renders error state and retries", async () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientDetail.mockReturnValue({
+      client: null,
+      isLoading: false,
+      error: "No se pudo cargar el detalle del cliente.",
+      reload,
+    });
 
     const { getByText } = render(
       <ClientDetailScreen {...buildProps(jest.fn())} />,
     );
 
-    await waitFor(() => {
-      expect(
-        getByText("No se pudo cargar el detalle del cliente."),
-      ).toBeTruthy();
-    });
+    expect(getByText("No se pudo cargar el detalle del cliente.")).toBeTruthy();
 
-    expect(getByText("Reintentar")).toBeTruthy();
-  });
-
-  it("treats missing client as UI error", async () => {
-    mockFindById.mockResolvedValue(null);
-
-    const { getByText } = render(
-      <ClientDetailScreen {...buildProps(jest.fn())} />,
-    );
-
-    await waitFor(() => {
-      expect(getByText("El cliente no existe o fue eliminado.")).toBeTruthy();
-    });
-
+    const callsBefore = reload.mock.calls.length;
     fireEvent.press(getByText("Reintentar"));
 
     await waitFor(() => {
-      expect(mockFindById).toHaveBeenCalledTimes(2);
+      expect(reload.mock.calls.length).toBe(callsBefore + 1);
+    });
+  });
+
+  it("renders client data without exposing syncStatus to the user", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      firstName: "Ana",
+      lastName: "Torres",
+      phone: "3001234567",
+      notes: "Cliente frecuente",
+      syncStatus: "pending",
+    });
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
     });
 
-    expect(mockFindById).toHaveBeenCalledWith(
-      "11111111-1111-4111-8111-111111111111",
+    const { getByText, queryByText } = render(
+      <ClientDetailScreen {...buildProps(jest.fn())} />,
     );
+
+    expect(getByText("Ana Torres")).toBeTruthy();
+    expect(getByText("3001234567")).toBeTruthy();
+    expect(getByText("Notas: Cliente frecuente")).toBeTruthy();
+    // Bug fix N-026: syncStatus is internal metadata, must not be visible.
+    expect(queryByText(/syncStatus/i)).toBeNull();
+    expect(queryByText(/pending/i)).toBeNull();
+  });
+
+  it("navigates to MeasurementCreate and MeasurementHistory", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+    });
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const navigate = jest.fn();
+    const { getByText } = render(
+      <ClientDetailScreen {...buildProps(navigate)} />,
+    );
+
+    fireEvent.press(getByText("Nueva medida"));
+    expect(navigate).toHaveBeenCalledWith("MeasurementCreate", {
+      clientId: client.id,
+    });
+
+    fireEvent.press(getByText("Ver historial"));
+    expect(navigate).toHaveBeenCalledWith("MeasurementHistory", {
+      clientId: client.id,
+    });
   });
 });
