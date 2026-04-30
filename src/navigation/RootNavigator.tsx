@@ -1,11 +1,11 @@
 import { NavigationContainer } from "@react-navigation/native";
 
-import ClientsStackNavigator from "./ClientsStackNavigator";
+import FeatureTabsNavigator from "./FeatureTabsNavigator";
 
 export default function RootNavigator() {
   return (
     <NavigationContainer>
-      <ClientsStackNavigator />
+      <FeatureTabsNavigator />
     </NavigationContainer>
   );
 }

@@ -3,11 +3,11 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { RootStackParamList } from "../../../navigation/types";
+import type { ClientsStackParamList } from "../../../navigation/types";
 import { EmptyView, ErrorView, LoadingView } from "../../../shared/components";
 import { useClientList } from "../hooks/useClientList";
 
-type Props = NativeStackScreenProps<RootStackParamList, "ClientList">;
+type Props = NativeStackScreenProps<ClientsStackParamList, "ClientList">;
 
 export default function ClientListScreen({ navigation }: Props) {
   const { clients, isLoading, error, reload } = useClientList();

@@ -11,11 +11,11 @@ import {
   View,
 } from "react-native";
 
-import type { RootStackParamList } from "../../../navigation/types";
+import type { ClientsStackParamList } from "../../../navigation/types";
 import type { AddMeasurementSchemaInput } from "../domain/schemas";
 import { useAddMeasurement } from "../hooks/useAddMeasurement";
 
-type Props = NativeStackScreenProps<RootStackParamList, "MeasurementCreate">;
+type Props = NativeStackScreenProps<ClientsStackParamList, "MeasurementCreate">;
 
 type MeasurementFormValues = {
   clientId: string;
