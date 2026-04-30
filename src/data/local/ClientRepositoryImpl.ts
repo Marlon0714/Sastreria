@@ -7,6 +7,12 @@ import {
   type CreateClientDTO,
 } from "../../features/clients/domain/types";
 
+type WriteCommittedCallback = () => void | Promise<void>;
+
+interface ClientRepositoryImplOptions {
+  onWriteCommitted?: WriteCommittedCallback;
+}
+
 interface ClientRow {
   id: string;
   first_name: string;
@@ -33,6 +39,8 @@ function mapClientRow(row: ClientRow): Client {
 }
 
 export class ClientRepositoryImpl implements ClientRepository {
+  constructor(private readonly options: ClientRepositoryImplOptions = {}) {}
+
   async create(input: CreateClientDTO): Promise<Client> {
     const db = getDatabase();
     const nowIso = new Date().toISOString();
@@ -71,6 +79,8 @@ export class ClientRepositoryImpl implements ClientRepository {
       client.updatedAt,
       client.syncStatus,
     );
+
+    this.notifyWriteCommitted();
 
     return client;
   }
@@ -121,5 +131,16 @@ export class ClientRepositoryImpl implements ClientRepository {
     }
 
     return mapClientRow(row);
+  }
+
+  private notifyWriteCommitted(): void {
+    if (!this.options.onWriteCommitted) {
+      return;
+    }
+
+    // Sync trigger must never block or fail local writes.
+    void Promise.resolve(this.options.onWriteCommitted()).catch(
+      () => undefined,
+    );
   }
 }

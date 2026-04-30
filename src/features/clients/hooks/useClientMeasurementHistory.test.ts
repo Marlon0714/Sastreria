@@ -1,25 +1,66 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { createElement, type ReactNode } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 
 import { measurementFactory } from "../../../__tests__/factories";
+import type {
+  ClientRepository,
+  ClientsDependencies,
+  MeasurementRepository,
+} from "../domain/repository";
 import type { Measurement } from "../domain/types";
+import { ClientsDependenciesProvider } from "./ClientsDependenciesProvider";
 import { useClientMeasurementHistory } from "./useClientMeasurementHistory";
 
 const mockFindMeasurementsByClientId =
   jest.fn<(clientId: string) => Promise<Measurement[]>>();
 
-jest.mock("../../../data/local/MeasurementRepositoryImpl", () => {
-  return {
-    MeasurementRepositoryImpl: jest.fn().mockImplementation(() => ({
-      findMeasurementsByClientId: (clientId: string) =>
-        mockFindMeasurementsByClientId(clientId),
-    })),
+const mockMeasurementRepository: MeasurementRepository = {
+  addMeasurement: jest.fn(async () => Promise.reject(new Error("unused"))),
+  findMeasurementsByClientId: (clientId: string) =>
+    mockFindMeasurementsByClientId(clientId),
+};
+
+const noopClientRepository: ClientRepository = {
+  create: jest.fn(async () => Promise.reject(new Error("unused"))),
+  findAll: jest.fn(async () => Promise.resolve([])),
+  findById: jest.fn(async () => Promise.resolve(null)),
+};
+
+function createWrapper(dependencies: ClientsDependencies) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return createElement(
+      ClientsDependenciesProvider,
+      { dependencies },
+      children,
+    );
   };
-});
+}
 
 describe("useClientMeasurementHistory", () => {
   beforeEach(() => {
     mockFindMeasurementsByClientId.mockReset();
+  });
+
+  it("uses provider default repository when no dependency override is provided", async () => {
+    const measurements = [measurementFactory()];
+    mockFindMeasurementsByClientId.mockResolvedValueOnce(measurements);
+
+    const { result } = renderHook(
+      () => useClientMeasurementHistory("11111111-1111-4111-8111-111111111111"),
+      {
+        wrapper: createWrapper({
+          clientRepository: noopClientRepository,
+          measurementRepository: mockMeasurementRepository,
+        }),
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.measurements).toEqual(measurements);
   });
 
   it("loads measurement history for the provided client id", async () => {
@@ -37,6 +78,10 @@ describe("useClientMeasurementHistory", () => {
         useClientMeasurementHistory(clientId),
       {
         initialProps: { clientId: "11111111-1111-4111-8111-111111111111" },
+        wrapper: createWrapper({
+          clientRepository: noopClientRepository,
+          measurementRepository: mockMeasurementRepository,
+        }),
       },
     );
 
@@ -60,8 +105,14 @@ describe("useClientMeasurementHistory", () => {
       .mockRejectedValueOnce(new Error("temporary failure"))
       .mockResolvedValueOnce(measurements);
 
-    const { result } = renderHook(() =>
-      useClientMeasurementHistory("11111111-1111-4111-8111-111111111111"),
+    const { result } = renderHook(
+      () => useClientMeasurementHistory("11111111-1111-4111-8111-111111111111"),
+      {
+        wrapper: createWrapper({
+          clientRepository: noopClientRepository,
+          measurementRepository: mockMeasurementRepository,
+        }),
+      },
     );
 
     await waitFor(() => {

@@ -1,19 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
+import {
+  getClientsDependencies,
+  getClientsSyncOrchestrator,
+} from "./src/data/local/clientsDependencies";
 import { getDatabase } from "./src/data/local/database";
 import { runMigrations } from "./src/data/local/migrations";
+import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
 
 export default function App() {
   const [isReady, setIsReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const clientsDependencies = useMemo(
+    () => (isReady ? getClientsDependencies() : null),
+    [isReady],
+  );
 
   useEffect(() => {
     const bootstrap = async (): Promise<void> => {
       try {
         const db = getDatabase();
         await runMigrations(db);
+        void getClientsSyncOrchestrator()
+          .requestRun()
+          .catch((err: unknown) => {
+            // TODO: replace with Crashlytics when telemetry is integrated
+            console.error(
+              JSON.stringify({
+                level: "error",
+                service: "App",
+                message: "Initial sync run failed",
+                error: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          });
         setIsReady(true);
       } catch {
         setError("No se pudo inicializar la base de datos local.");
@@ -31,7 +53,7 @@ export default function App() {
     );
   }
 
-  if (!isReady) {
+  if (!isReady || !clientsDependencies) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
@@ -40,7 +62,11 @@ export default function App() {
     );
   }
 
-  return <RootNavigator />;
+  return (
+    <ClientsDependenciesProvider dependencies={clientsDependencies}>
+      <RootNavigator />
+    </ClientsDependenciesProvider>
+  );
 }
 
 const styles = StyleSheet.create({

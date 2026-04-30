@@ -7,6 +7,12 @@ import {
   type Measurement,
 } from "../../features/clients/domain/types";
 
+type WriteCommittedCallback = () => void | Promise<void>;
+
+interface MeasurementRepositoryImplOptions {
+  onWriteCommitted?: WriteCommittedCallback;
+}
+
 interface MeasurementRow {
   id: string;
   client_id: string;
@@ -38,6 +44,10 @@ function mapMeasurementRow(row: MeasurementRow): Measurement {
 }
 
 export class MeasurementRepositoryImpl implements MeasurementRepository {
+  constructor(
+    private readonly options: MeasurementRepositoryImplOptions = {},
+  ) {}
+
   async addMeasurement(input: AddMeasurementDTO): Promise<Measurement> {
     const db = getDatabase();
     const nowIso = new Date().toISOString();
@@ -85,6 +95,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       measurement.syncStatus,
     );
 
+    this.notifyWriteCommitted();
+
     return measurement;
   }
 
@@ -112,5 +124,16 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     );
 
     return rows.map(mapMeasurementRow);
+  }
+
+  private notifyWriteCommitted(): void {
+    if (!this.options.onWriteCommitted) {
+      return;
+    }
+
+    // Sync trigger must never block or fail local writes.
+    void Promise.resolve(this.options.onWriteCommitted()).catch(
+      () => undefined,
+    );
   }
 }

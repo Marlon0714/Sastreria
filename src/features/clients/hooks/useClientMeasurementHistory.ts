@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { MeasurementRepositoryImpl } from "../../../data/local/MeasurementRepositoryImpl";
+import type { ClientsDependenciesOverrides } from "../domain/repository";
 import type { Measurement } from "../domain/types";
-
-const measurementRepository = new MeasurementRepositoryImpl();
+import { useMeasurementRepository } from "./ClientsDependenciesProvider";
 
 interface UseClientMeasurementHistoryResult {
   measurements: Measurement[];
@@ -14,7 +13,16 @@ interface UseClientMeasurementHistoryResult {
 
 export function useClientMeasurementHistory(
   clientId: string,
+  dependencies: Pick<
+    ClientsDependenciesOverrides,
+    "measurementRepository"
+  > = {},
 ): UseClientMeasurementHistoryResult {
+  const defaultMeasurementRepository = useMeasurementRepository();
+  const measurementRepository = useMemo(
+    () => dependencies.measurementRepository ?? defaultMeasurementRepository,
+    [defaultMeasurementRepository, dependencies.measurementRepository],
+  );
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +40,7 @@ export function useClientMeasurementHistory(
     } finally {
       setIsLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, measurementRepository]);
 
   useEffect(() => {
     void loadHistory();

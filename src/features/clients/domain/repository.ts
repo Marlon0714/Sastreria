@@ -15,3 +15,10 @@ export interface MeasurementRepository {
   addMeasurement(input: AddMeasurementDTO): Promise<Measurement>;
   findMeasurementsByClientId(clientId: string): Promise<Measurement[]>;
 }
+
+export interface ClientsDependencies {
+  clientRepository: ClientRepository;
+  measurementRepository: MeasurementRepository;
+}
+
+export type ClientsDependenciesOverrides = Partial<ClientsDependencies>;
