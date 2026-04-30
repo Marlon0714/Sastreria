@@ -3,11 +3,14 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 
-import type { RootStackParamList } from "../../../navigation/types";
+import type { ClientsStackParamList } from "../../../navigation/types";
 import { EmptyView, ErrorView, LoadingView } from "../../../shared/components";
 import { useClientMeasurementHistory } from "../hooks/useClientMeasurementHistory";
 
-type Props = NativeStackScreenProps<RootStackParamList, "MeasurementHistory">;
+type Props = NativeStackScreenProps<
+  ClientsStackParamList,
+  "MeasurementHistory"
+>;
 
 export default function MeasurementHistoryScreen({ route }: Props) {
   const { measurements, isLoading, error, reload } =

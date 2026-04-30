@@ -5,9 +5,9 @@ import ClientDetailScreen from "../features/clients/screens/ClientDetailScreen";
 import ClientListScreen from "../features/clients/screens/ClientListScreen";
 import MeasurementCreateScreen from "../features/clients/screens/MeasurementCreateScreen";
 import MeasurementHistoryScreen from "../features/clients/screens/MeasurementHistoryScreen";
-import type { RootStackParamList } from "./types";
+import type { ClientsStackParamList } from "./types";
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<ClientsStackParamList>();
 
 export default function ClientsStackNavigator() {
   return (

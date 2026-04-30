@@ -4,11 +4,11 @@ import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ClientRepositoryImpl } from "../../../data/local/ClientRepositoryImpl";
-import type { RootStackParamList } from "../../../navigation/types";
+import type { ClientsStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
 import type { Client } from "../domain/types";
 
-type Props = NativeStackScreenProps<RootStackParamList, "ClientDetail">;
+type Props = NativeStackScreenProps<ClientsStackParamList, "ClientDetail">;
 
 const clientRepository = new ClientRepositoryImpl();
 

@@ -11,11 +11,11 @@ import {
   View,
 } from "react-native";
 
-import type { RootStackParamList } from "../../../navigation/types";
+import type { ClientsStackParamList } from "../../../navigation/types";
 import type { CreateClientSchemaInput } from "../domain/schemas";
 import { useCreateClient } from "../hooks/useCreateClient";
 
-type Props = NativeStackScreenProps<RootStackParamList, "ClientCreate">;
+type Props = NativeStackScreenProps<ClientsStackParamList, "ClientCreate">;
 
 export default function ClientCreateScreen({ navigation }: Props) {
   const { isSubmitting, error, createClient, validate } = useCreateClient();
