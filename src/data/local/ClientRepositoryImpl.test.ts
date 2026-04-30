@@ -108,6 +108,43 @@ describe("ClientRepositoryImpl", () => {
     ]);
   });
 
+  it("triggers onWriteCommitted after successful create", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGenerateDomainUuid.mockReturnValueOnce(
+      "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    );
+    const onWriteCommitted = jest.fn<() => void>();
+    const repository = new ClientRepositoryImpl({ onWriteCommitted });
+
+    await repository.create({
+      firstName: "Ana",
+      lastName: "Suarez",
+      phone: "3001230000",
+      notes: "",
+    });
+
+    expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fail create when onWriteCommitted rejects", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGenerateDomainUuid.mockReturnValueOnce(
+      "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    );
+    const onWriteCommitted = jest
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error("sync failure"));
+    const repository = new ClientRepositoryImpl({ onWriteCommitted });
+
+    await expect(
+      repository.create({
+        firstName: "Ana",
+        lastName: "Perez",
+        phone: "3000000000",
+      }),
+    ).resolves.toBeDefined();
+  });
+
   it("findAll maps snake_case columns to camelCase", async () => {
     mockGetAllAsync.mockResolvedValueOnce([
       {

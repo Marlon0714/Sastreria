@@ -1,15 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { FieldErrors, UseFormReset } from "react-hook-form";
 
-import { ClientRepositoryImpl } from "../../../data/local/ClientRepositoryImpl";
+import type { ClientsDependenciesOverrides } from "../domain/repository";
 import {
   createClientSchema,
   type CreateClientSchemaInput,
   type CreateClientSchemaOutput,
 } from "../domain/schemas";
 import type { Client } from "../domain/types";
-
-const clientRepository = new ClientRepositoryImpl();
+import { useClientRepository } from "./ClientsDependenciesProvider";
 
 interface UseCreateClientResult {
   isSubmitting: boolean;
@@ -50,7 +49,19 @@ function mapValidationErrors(
   };
 }
 
-export function useCreateClient(): UseCreateClientResult {
+type UseCreateClientDependencies = Pick<
+  ClientsDependenciesOverrides,
+  "clientRepository"
+>;
+
+export function useCreateClient(
+  dependencies: UseCreateClientDependencies = {},
+): UseCreateClientResult {
+  const defaultClientRepository = useClientRepository();
+  const clientRepository = useMemo(
+    () => dependencies.clientRepository ?? defaultClientRepository,
+    [defaultClientRepository, dependencies.clientRepository],
+  );
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 

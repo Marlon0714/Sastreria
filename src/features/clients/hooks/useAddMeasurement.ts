@@ -1,15 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { FieldErrors } from "react-hook-form";
 
-import { MeasurementRepositoryImpl } from "../../../data/local/MeasurementRepositoryImpl";
+import type { ClientsDependenciesOverrides } from "../domain/repository";
 import {
   addMeasurementSchema,
   type AddMeasurementSchemaInput,
   type AddMeasurementSchemaOutput,
 } from "../domain/schemas";
 import type { Measurement } from "../domain/types";
-
-const measurementRepository = new MeasurementRepositoryImpl();
+import { useMeasurementRepository } from "./ClientsDependenciesProvider";
 
 interface UseAddMeasurementResult {
   isSubmitting: boolean;
@@ -58,7 +57,19 @@ function mapValidationErrors(
   };
 }
 
-export function useAddMeasurement(): UseAddMeasurementResult {
+type UseAddMeasurementDependencies = Pick<
+  ClientsDependenciesOverrides,
+  "measurementRepository"
+>;
+
+export function useAddMeasurement(
+  dependencies: UseAddMeasurementDependencies = {},
+): UseAddMeasurementResult {
+  const defaultMeasurementRepository = useMeasurementRepository();
+  const measurementRepository = useMemo(
+    () => dependencies.measurementRepository ?? defaultMeasurementRepository,
+    [defaultMeasurementRepository, dependencies.measurementRepository],
+  );
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 

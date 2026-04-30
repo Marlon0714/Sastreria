@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ClientRepositoryImpl } from "../../../data/local/ClientRepositoryImpl";
+import type { ClientsDependenciesOverrides } from "../domain/repository";
 import type { Client } from "../domain/types";
-
-const clientRepository = new ClientRepositoryImpl();
+import { useClientRepository } from "./ClientsDependenciesProvider";
 
 interface UseClientListResult {
   clients: Client[];
@@ -12,7 +11,19 @@ interface UseClientListResult {
   reload: () => Promise<void>;
 }
 
-export function useClientList(): UseClientListResult {
+type UseClientListDependencies = Pick<
+  ClientsDependenciesOverrides,
+  "clientRepository"
+>;
+
+export function useClientList(
+  dependencies: UseClientListDependencies = {},
+): UseClientListResult {
+  const defaultClientRepository = useClientRepository();
+  const clientRepository = useMemo(
+    () => dependencies.clientRepository ?? defaultClientRepository,
+    [defaultClientRepository, dependencies.clientRepository],
+  );
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +40,7 @@ export function useClientList(): UseClientListResult {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [clientRepository]);
 
   useEffect(() => {
     void loadClients();

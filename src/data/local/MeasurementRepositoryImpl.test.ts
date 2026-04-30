@@ -131,6 +131,47 @@ describe("MeasurementRepositoryImpl", () => {
     expect(created.syncStatus).toBe("pending");
   });
 
+  it("triggers onWriteCommitted after successful addMeasurement", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGenerateDomainUuid.mockReturnValueOnce(
+      "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    );
+    const onWriteCommitted = jest.fn<() => void>();
+    const repository = new MeasurementRepositoryImpl({ onWriteCommitted });
+
+    await repository.addMeasurement({
+      clientId: "11111111-1111-4111-8111-111111111111",
+      pechoCm: 90,
+      cinturaCm: 70,
+      caderaCm: 95,
+      largoCm: 108,
+      notes: "",
+    });
+
+    expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fail addMeasurement when onWriteCommitted rejects", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGenerateDomainUuid.mockReturnValueOnce(
+      "abababab-abab-4bab-8bab-abababababab",
+    );
+    const onWriteCommitted = jest
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error("sync failure"));
+    const repository = new MeasurementRepositoryImpl({ onWriteCommitted });
+
+    await expect(
+      repository.addMeasurement({
+        clientId: "11111111-1111-4111-8111-111111111111",
+        pechoCm: 90,
+        cinturaCm: 70,
+        caderaCm: 95,
+        largoCm: 108,
+      }),
+    ).resolves.toBeDefined();
+  });
+
   it("findMeasurementsByClientId maps snake_case and keeps DESC order", async () => {
     mockGetAllAsync.mockResolvedValueOnce([
       {
