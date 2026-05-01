@@ -33,9 +33,7 @@ export default function MeasurementTypeSelectScreen({
         }
         style={styles.primaryButton}
         onPress={() =>
-          isCreateMode
-            ? navigation.navigate("CamisaMeasurementCreate", { clientId })
-            : navigation.navigate("CamisaMeasurementDetail", { clientId })
+          navigation.navigate("CamisaMeasurementDetail", { clientId, mode })
         }
       >
         <Text style={styles.primaryButtonText}>Camisa</Text>
@@ -49,23 +47,11 @@ export default function MeasurementTypeSelectScreen({
         }
         style={styles.primaryButton}
         onPress={() =>
-          isCreateMode
-            ? navigation.navigate("PantalonMeasurementCreate", { clientId })
-            : navigation.navigate("PantalonMeasurementDetail", { clientId })
+          navigation.navigate("PantalonMeasurementDetail", { clientId, mode })
         }
       >
         <Text style={styles.primaryButtonText}>Pantalón</Text>
       </Pressable>
-
-      {isCreateMode ? (
-        <Pressable
-          accessibilityLabel="Continuar sin medidas"
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate("ClientDetail", { clientId })}
-        >
-          <Text style={styles.secondaryButtonText}>Continuar sin medidas</Text>
-        </Pressable>
-      ) : null}
     </ScrollView>
   );
 }

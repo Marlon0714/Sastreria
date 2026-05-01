@@ -41,7 +41,12 @@ describe("PantalonMeasurementDetailScreen", () => {
   });
 
   it("renders loading state", () => {
-    mockUsePantalon.mockReturnValue({ measurement: null, isLoading: true, error: null, reload: mockReload });
+    mockUsePantalon.mockReturnValue({
+      measurement: null,
+      isLoading: true,
+      error: null,
+      reload: mockReload,
+    });
     const { getByText } = render(
       <ClientsDependenciesProvider dependencies={noopDependencies}>
         <PantalonMeasurementDetailScreen {...buildProps()} />
@@ -50,16 +55,19 @@ describe("PantalonMeasurementDetailScreen", () => {
     expect(getByText("Cargando medidas...")).toBeTruthy();
   });
 
-  it("renders empty state with add button when no measurement exists", () => {
-    mockUsePantalon.mockReturnValue({ measurement: null, isLoading: false, error: null, reload: mockReload });
-    const { getByLabelText, getByText } = render(
+  it("starts in editing mode when no measurement exists", () => {
+    mockUsePantalon.mockReturnValue({
+      measurement: null,
+      isLoading: false,
+      error: null,
+      reload: mockReload,
+    });
+    const { getByLabelText } = render(
       <ClientsDependenciesProvider dependencies={noopDependencies}>
         <PantalonMeasurementDetailScreen {...buildProps("c-2")} />
       </ClientsDependenciesProvider>,
     );
-    expect(getByText(/no hay medidas de pantalón/i)).toBeTruthy();
-    fireEvent.press(getByLabelText("Agregar medidas de pantalón"));
-    expect(mockReplace).toHaveBeenCalledWith("PantalonMeasurementCreate", { clientId: "c-2" });
+    expect(getByLabelText("Guardar medidas de pantalón")).toBeTruthy();
   });
 
   it("renders view mode with edit button when measurement exists", () => {
@@ -91,13 +99,18 @@ describe("PantalonMeasurementDetailScreen", () => {
     );
     fireEvent.press(getByLabelText("Editar medidas de pantalón"));
     await waitFor(() => {
-      expect(getByLabelText("Guardar cambios de pantalón")).toBeTruthy();
+      expect(getByLabelText("Guardar medidas de pantalón")).toBeTruthy();
       expect(getByLabelText("Cancelar edición de pantalón")).toBeTruthy();
     });
   });
 
   it("renders error state with retry button", () => {
-    mockUsePantalon.mockReturnValue({ measurement: null, isLoading: false, error: "Sin conexión", reload: mockReload });
+    mockUsePantalon.mockReturnValue({
+      measurement: null,
+      isLoading: false,
+      error: "Sin conexión",
+      reload: mockReload,
+    });
     const { getByText } = render(
       <ClientsDependenciesProvider dependencies={noopDependencies}>
         <PantalonMeasurementDetailScreen {...buildProps()} />

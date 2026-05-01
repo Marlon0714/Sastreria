@@ -17,13 +17,13 @@ describe("MeasurementTypeSelectScreen", () => {
     mockNavigate.mockReset();
   });
 
-  it("renders camisa and pantalon buttons in create mode with skip option", () => {
+  it("renders camisa and pantalon buttons in create mode", () => {
     const { getByLabelText, queryByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("create")} />,
     );
     expect(getByLabelText("Registrar medidas de camisa")).toBeTruthy();
     expect(getByLabelText("Registrar medidas de pantalón")).toBeTruthy();
-    expect(getByLabelText("Continuar sin medidas")).toBeTruthy();
+    expect(queryByLabelText("Continuar sin medidas")).toBeNull();
     expect(queryByLabelText("Ver medidas de camisa")).toBeNull();
   });
 
@@ -36,13 +36,14 @@ describe("MeasurementTypeSelectScreen", () => {
     expect(queryByLabelText("Continuar sin medidas")).toBeNull();
   });
 
-  it("navigates to CamisaMeasurementCreate on camisa press in create mode", () => {
+  it("navigates to CamisaMeasurementDetail on camisa press in create mode", () => {
     const { getByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("create", "abc-123")} />,
     );
     fireEvent.press(getByLabelText("Registrar medidas de camisa"));
-    expect(mockNavigate).toHaveBeenCalledWith("CamisaMeasurementCreate", {
+    expect(mockNavigate).toHaveBeenCalledWith("CamisaMeasurementDetail", {
       clientId: "abc-123",
+      mode: "create",
     });
   });
 
@@ -53,16 +54,7 @@ describe("MeasurementTypeSelectScreen", () => {
     fireEvent.press(getByLabelText("Ver medidas de pantalón"));
     expect(mockNavigate).toHaveBeenCalledWith("PantalonMeasurementDetail", {
       clientId: "xyz-456",
-    });
-  });
-
-  it("navigates to ClientDetail when pressing skip button in create mode", () => {
-    const { getByLabelText } = render(
-      <MeasurementTypeSelectScreen {...buildProps("create", "abc-123")} />,
-    );
-    fireEvent.press(getByLabelText("Continuar sin medidas"));
-    expect(mockNavigate).toHaveBeenCalledWith("ClientDetail", {
-      clientId: "abc-123",
+      mode: "view",
     });
   });
 });
