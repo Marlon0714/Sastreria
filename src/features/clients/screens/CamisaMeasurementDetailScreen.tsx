@@ -12,7 +12,10 @@ import CamisaMeasurementForm, {
 import { useCamisaMeasurement } from "../hooks/useCamisaMeasurement";
 import { useUpsertCamisa } from "../hooks/useUpsertCamisa";
 
-type Props = NativeStackScreenProps<ClientsStackParamList, "CamisaMeasurementDetail">;
+type Props = NativeStackScreenProps<
+  ClientsStackParamList,
+  "CamisaMeasurementDetail"
+>;
 
 function toFormValues(
   measurement: Record<string, unknown> | null,
@@ -60,8 +63,12 @@ export default function CamisaMeasurementDetailScreen({
   // true después de que el usuario guardó al menos una vez en esta sesión
   const [savedOnce, setSavedOnce] = useState(false);
 
-  const { control, handleSubmit, reset, formState: { errors } } =
-    useForm<CamisaFormValues>({ defaultValues: CAMISA_FORM_DEFAULTS });
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CamisaFormValues>({ defaultValues: CAMISA_FORM_DEFAULTS });
 
   // Una vez que carguen los datos, decidir el estado inicial
   useEffect(() => {
@@ -199,5 +206,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
   },
-  skipButtonText: { color: "#64748b", fontSize: 14, textDecorationLine: "underline" },
+  skipButtonText: {
+    color: "#64748b",
+    fontSize: 14,
+    textDecorationLine: "underline",
+  },
 });

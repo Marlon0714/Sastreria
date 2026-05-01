@@ -12,7 +12,10 @@ import PantalonMeasurementForm, {
 import { usePantalonMeasurement } from "../hooks/usePantalonMeasurement";
 import { useUpsertPantalon } from "../hooks/useUpsertPantalon";
 
-type Props = NativeStackScreenProps<ClientsStackParamList, "PantalonMeasurementDetail">;
+type Props = NativeStackScreenProps<
+  ClientsStackParamList,
+  "PantalonMeasurementDetail"
+>;
 
 function toFormValues(
   measurement: Record<string, unknown> | null,
@@ -39,13 +42,21 @@ export default function PantalonMeasurementDetailScreen({
 
   const { measurement, isLoading, error, reload } =
     usePantalonMeasurement(clientId);
-  const { upsertPantalon, isSubmitting, error: saveError } = useUpsertPantalon();
+  const {
+    upsertPantalon,
+    isSubmitting,
+    error: saveError,
+  } = useUpsertPantalon();
 
   const [isEditing, setIsEditing] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
 
-  const { control, handleSubmit, reset, formState: { errors } } =
-    useForm<PantalonFormValues>({ defaultValues: PANTALON_FORM_DEFAULTS });
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<PantalonFormValues>({ defaultValues: PANTALON_FORM_DEFAULTS });
 
   useEffect(() => {
     if (!isLoading) {

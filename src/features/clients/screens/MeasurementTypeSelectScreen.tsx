@@ -52,16 +52,6 @@ export default function MeasurementTypeSelectScreen({
       >
         <Text style={styles.primaryButtonText}>Pantalón</Text>
       </Pressable>
-
-      {isCreateMode ? (
-        <Pressable
-          accessibilityLabel="Continuar sin medidas"
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate("ClientDetail", { clientId })}
-        >
-          <Text style={styles.secondaryButtonText}>Continuar sin medidas</Text>
-        </Pressable>
-      ) : null}
     </ScrollView>
   );
 }

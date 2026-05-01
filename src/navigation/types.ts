@@ -20,12 +20,18 @@ export type ClientsStackParamList = {
    * Pantalla unificada de camisa: crea si no hay medidas, muestra/edita si ya existen.
    * `mode: "create"` muestra "Continuar sin medidas" la primera vez.
    */
-  CamisaMeasurementDetail: { clientId: string; mode?: MeasurementTypeSelectMode };
+  CamisaMeasurementDetail: {
+    clientId: string;
+    mode?: MeasurementTypeSelectMode;
+  };
   /**
    * Pantalla unificada de pantalón: crea si no hay medidas, muestra/edita si ya existen.
    * `mode: "create"` muestra "Continuar sin medidas" la primera vez.
    */
-  PantalonMeasurementDetail: { clientId: string; mode?: MeasurementTypeSelectMode };
+  PantalonMeasurementDetail: {
+    clientId: string;
+    mode?: MeasurementTypeSelectMode;
+  };
 };
 
 export type ScheduleStackParamList = {

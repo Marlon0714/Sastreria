@@ -41,7 +41,12 @@ describe("CamisaMeasurementDetailScreen", () => {
   });
 
   it("renders loading state", () => {
-    mockUseCamisa.mockReturnValue({ measurement: null, isLoading: true, error: null, reload: mockReload });
+    mockUseCamisa.mockReturnValue({
+      measurement: null,
+      isLoading: true,
+      error: null,
+      reload: mockReload,
+    });
     const { getByText } = render(
       <ClientsDependenciesProvider dependencies={noopDependencies}>
         <CamisaMeasurementDetailScreen {...buildProps()} />
@@ -51,7 +56,12 @@ describe("CamisaMeasurementDetailScreen", () => {
   });
 
   it("starts in editing mode when no measurement exists", () => {
-    mockUseCamisa.mockReturnValue({ measurement: null, isLoading: false, error: null, reload: mockReload });
+    mockUseCamisa.mockReturnValue({
+      measurement: null,
+      isLoading: false,
+      error: null,
+      reload: mockReload,
+    });
     const { getByLabelText } = render(
       <ClientsDependenciesProvider dependencies={noopDependencies}>
         <CamisaMeasurementDetailScreen {...buildProps("c-1")} />
@@ -95,7 +105,12 @@ describe("CamisaMeasurementDetailScreen", () => {
   });
 
   it("renders error state with retry button", () => {
-    mockUseCamisa.mockReturnValue({ measurement: null, isLoading: false, error: "Error de red", reload: mockReload });
+    mockUseCamisa.mockReturnValue({
+      measurement: null,
+      isLoading: false,
+      error: "Error de red",
+      reload: mockReload,
+    });
     const { getByText } = render(
       <ClientsDependenciesProvider dependencies={noopDependencies}>
         <CamisaMeasurementDetailScreen {...buildProps()} />
