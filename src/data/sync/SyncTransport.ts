@@ -1,11 +1,13 @@
-import type { Client } from "../../features/clients/domain/types";
-import type { SyncMeasurementQueueItem } from "./types";
+import type {
+  CamisaMeasurement,
+  Client,
+  PantalonMeasurement,
+} from "../../features/clients/domain/types";
 
 export interface SyncTransport {
   syncClient(client: Client): Promise<void>;
-  syncMeasurement(
-    measurement: SyncMeasurementQueueItem["payload"],
-  ): Promise<void>;
+  syncCamisaMeasurement(measurement: CamisaMeasurement): Promise<void>;
+  syncPantalonMeasurement(measurement: PantalonMeasurement): Promise<void>;
 }
 
 export class NoopSyncTransport implements SyncTransport {
@@ -13,8 +15,12 @@ export class NoopSyncTransport implements SyncTransport {
     return Promise.resolve();
   }
 
-  async syncMeasurement(
-    _measurement: SyncMeasurementQueueItem["payload"],
+  async syncCamisaMeasurement(_measurement: CamisaMeasurement): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async syncPantalonMeasurement(
+    _measurement: PantalonMeasurement,
   ): Promise<void> {
     return Promise.resolve();
   }
