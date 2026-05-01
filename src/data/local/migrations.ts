@@ -140,7 +140,10 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         new Date().toISOString(),
       );
 
-      await db.execAsync(`PRAGMA user_version = ${migration.version};`);
+      // PRAGMA user_version does not support ? binding in expo-sqlite;
+      // migration.version is a compile-time const integer — safe to interpolate.
+      const safeVersion = Number(migration.version);
+      await db.execAsync(`PRAGMA user_version = ${safeVersion};`);
     });
   }
 }
