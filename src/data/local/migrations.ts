@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 1;
+const TARGET_SCHEMA_VERSION = 2;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -54,6 +54,56 @@ const MIGRATIONS: readonly Migration[] = [
       `,
     ],
   },
+  {
+    version: 2,
+    name: "v2_measurements_by_garment",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS camisa_measurements (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        espalda REAL,
+        hombro REAL,
+        talle_delantero REAL,
+        talle_trasero REAL,
+        distancia REAL,
+        separacion REAL,
+        pecho REAL,
+        cintura REAL,
+        base REAL,
+        largo REAL,
+        largo_manga REAL,
+        ancho_manga REAL,
+        escote REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        UNIQUE(client_id),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS pantalon_measurements (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        largo REAL,
+        cintura REAL,
+        base REAL,
+        tiro REAL,
+        pierna REAL,
+        rodilla REAL,
+        bota REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        UNIQUE(client_id),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+    ],
+  },
 ];
 
 interface UserVersionRow {
@@ -90,7 +140,10 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         new Date().toISOString(),
       );
 
-      await db.execAsync(`PRAGMA user_version = ${migration.version};`);
+      // PRAGMA user_version does not support ? binding in expo-sqlite;
+      // migration.version is a compile-time const integer — safe to interpolate.
+      const safeVersion = Number(migration.version);
+      await db.execAsync(`PRAGMA user_version = ${safeVersion};`);
     });
   }
 }

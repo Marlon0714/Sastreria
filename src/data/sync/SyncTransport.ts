@@ -1,8 +1,11 @@
-import type { Client, Measurement } from "../../features/clients/domain/types";
+import type { Client } from "../../features/clients/domain/types";
+import type { SyncMeasurementQueueItem } from "./types";
 
 export interface SyncTransport {
   syncClient(client: Client): Promise<void>;
-  syncMeasurement(measurement: Measurement): Promise<void>;
+  syncMeasurement(
+    measurement: SyncMeasurementQueueItem["payload"],
+  ): Promise<void>;
 }
 
 export class NoopSyncTransport implements SyncTransport {
@@ -10,7 +13,9 @@ export class NoopSyncTransport implements SyncTransport {
     return Promise.resolve();
   }
 
-  async syncMeasurement(_measurement: Measurement): Promise<void> {
+  async syncMeasurement(
+    _measurement: SyncMeasurementQueueItem["payload"],
+  ): Promise<void> {
     return Promise.resolve();
   }
 }

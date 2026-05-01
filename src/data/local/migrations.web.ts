@@ -3,6 +3,7 @@ type WebDatabaseLike = {
 };
 
 export async function runMigrations(_db: WebDatabaseLike): Promise<void> {
-  // Web dev mode uses in-memory adapter; schema migrations are no-op here.
+  // Web dev mode uses an in-memory adapter that simulates schema v2 tables,
+  // so SQL migrations are intentionally a no-op in this environment.
   return;
 }
