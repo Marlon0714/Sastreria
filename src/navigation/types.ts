@@ -12,10 +12,20 @@ export type ClientsStackParamList = {
    * - `mode: "view"` redirige a la pantalla de detalle del tipo seleccionado.
    */
   MeasurementTypeSelect: { clientId: string; mode: MeasurementTypeSelectMode };
+  /** @deprecated — navegación a Create separada eliminada; flujo unificado en Detail */
   CamisaMeasurementCreate: { clientId: string };
+  /** @deprecated — navegación a Create separada eliminada; flujo unificado en Detail */
   PantalonMeasurementCreate: { clientId: string };
-  CamisaMeasurementDetail: { clientId: string };
-  PantalonMeasurementDetail: { clientId: string };
+  /**
+   * Pantalla unificada de camisa: crea si no hay medidas, muestra/edita si ya existen.
+   * `mode: "create"` muestra "Continuar sin medidas" la primera vez.
+   */
+  CamisaMeasurementDetail: { clientId: string; mode?: MeasurementTypeSelectMode };
+  /**
+   * Pantalla unificada de pantalón: crea si no hay medidas, muestra/edita si ya existen.
+   * `mode: "create"` muestra "Continuar sin medidas" la primera vez.
+   */
+  PantalonMeasurementDetail: { clientId: string; mode?: MeasurementTypeSelectMode };
 };
 
 export type ScheduleStackParamList = {

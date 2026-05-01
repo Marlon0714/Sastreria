@@ -50,16 +50,14 @@ describe("CamisaMeasurementDetailScreen", () => {
     expect(getByText("Cargando medidas...")).toBeTruthy();
   });
 
-  it("renders empty state with add button when no measurement exists", () => {
+  it("starts in editing mode when no measurement exists", () => {
     mockUseCamisa.mockReturnValue({ measurement: null, isLoading: false, error: null, reload: mockReload });
-    const { getByLabelText, getByText } = render(
+    const { getByLabelText } = render(
       <ClientsDependenciesProvider dependencies={noopDependencies}>
         <CamisaMeasurementDetailScreen {...buildProps("c-1")} />
       </ClientsDependenciesProvider>,
     );
-    expect(getByText(/no hay medidas de camisa/i)).toBeTruthy();
-    fireEvent.press(getByLabelText("Agregar medidas de camisa"));
-    expect(mockReplace).toHaveBeenCalledWith("CamisaMeasurementCreate", { clientId: "c-1" });
+    expect(getByLabelText("Guardar medidas de camisa")).toBeTruthy();
   });
 
   it("renders view mode with edit button when measurement exists", () => {
@@ -91,7 +89,7 @@ describe("CamisaMeasurementDetailScreen", () => {
     );
     fireEvent.press(getByLabelText("Editar medidas de camisa"));
     await waitFor(() => {
-      expect(getByLabelText("Guardar cambios de camisa")).toBeTruthy();
+      expect(getByLabelText("Guardar medidas de camisa")).toBeTruthy();
       expect(getByLabelText("Cancelar edición de camisa")).toBeTruthy();
     });
   });

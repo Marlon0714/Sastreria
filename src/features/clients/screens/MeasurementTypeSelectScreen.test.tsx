@@ -36,13 +36,14 @@ describe("MeasurementTypeSelectScreen", () => {
     expect(queryByLabelText("Continuar sin medidas")).toBeNull();
   });
 
-  it("navigates to CamisaMeasurementCreate on camisa press in create mode", () => {
+  it("navigates to CamisaMeasurementDetail on camisa press in create mode", () => {
     const { getByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("create", "abc-123")} />,
     );
     fireEvent.press(getByLabelText("Registrar medidas de camisa"));
-    expect(mockNavigate).toHaveBeenCalledWith("CamisaMeasurementCreate", {
+    expect(mockNavigate).toHaveBeenCalledWith("CamisaMeasurementDetail", {
       clientId: "abc-123",
+      mode: "create",
     });
   });
 
@@ -53,6 +54,7 @@ describe("MeasurementTypeSelectScreen", () => {
     fireEvent.press(getByLabelText("Ver medidas de pantalón"));
     expect(mockNavigate).toHaveBeenCalledWith("PantalonMeasurementDetail", {
       clientId: "xyz-456",
+      mode: "view",
     });
   });
 

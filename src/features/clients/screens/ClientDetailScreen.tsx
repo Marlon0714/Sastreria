@@ -46,7 +46,7 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
       </View>
 
       <Pressable
-        accessibilityLabel="Crear nueva medida"
+        accessibilityLabel="Ver medidas del cliente"
         style={styles.primaryButton}
         onPress={() =>
           navigation.navigate("MeasurementTypeSelect", {
@@ -55,20 +55,7 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
           })
         }
       >
-        <Text style={styles.primaryButtonText}>Nueva medida</Text>
-      </Pressable>
-
-      <Pressable
-        accessibilityLabel="Ver historial de medidas"
-        style={styles.secondaryButtonBlock}
-        onPress={() =>
-          navigation.navigate("MeasurementTypeSelect", {
-            clientId: client.id,
-            mode: "view",
-          })
-        }
-      >
-        <Text style={styles.secondaryButtonText}>Ver historial</Text>
+        <Text style={styles.primaryButtonText}>Medidas</Text>
       </Pressable>
     </View>
   );

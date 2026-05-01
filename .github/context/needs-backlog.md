@@ -24,12 +24,12 @@
 | N-019 | Hooks de medidas: useUpsertCamisa, useUpsertPantalon, useCamisaMeasurement, usePantalon | High | Done | Builder | Commits `22711ae` + `134cb30`; hooks nuevos con DI vía ClientsDependenciesProvider; eliminados legacy hooks/screens; MeasurementTypeSelectScreen nuevo; PlaceholderScreen en navigator; 25 suites / 88 tests verde |
 | N-020 | Navigation types + ClientsStackNavigator: nuevas rutas (MeasurementTypeSelect, Camisa/Pantalon Create/Detail) | High | Done | Builder | Pushed `feature/clients/n020-n028-nav-and-forms` commit `c43f76a`; rutas nuevas con `mode: create\|view` en `MeasurementTypeSelect`; rutas legacy `@deprecated` (eliminar en N-019) |
 | N-028 | Shared form components: CamisaMeasurementForm + PantalonMeasurementForm reutilizables | High | Done | Builder | Mismo commit que N-020; genéricos `MeasurementNumberField`/`MeasurementNotesField` + forms con prop `disabled`; 6 tests con patrón Harness verdes |
-| N-021 | MeasurementTypeSelectScreen: selección camisa/pantalón con mode=create o mode=view | High | Open | Builder | N-019 cerrado; **desbloqueado completamente**. PlaceholderScreen ya en navigator; implementar lógica real + botón "Continuar sin medidas" en mode=create; cerrar deuda post-create de N-026 aquí |
-| N-022 | CamisaMeasurementCreateScreen: 13 campos + notas, todos opcionales, upsert al guardar | High | Open | Builder | **Desbloqueado** (N-019 done). PlaceholderScreen ya en navigator. Campos vacíos → null; hook `useUpsertCamisa` disponible; navegación a CamisaMeasurementDetail en éxito |
-| N-023 | PantalonMeasurementCreateScreen: 7 campos + notas, todos opcionales, upsert al guardar | High | Open | Builder | **Desbloqueado** (N-019 done). PlaceholderScreen ya en navigator. Hook `useUpsertPantalon` disponible; mismo patrón que N-022 |
-| N-024 | CamisaMeasurementDetailScreen: vista + modo edición (lápiz) + guardar cambios inline | High | Open | Builder | **Desbloqueado** (N-019 done). PlaceholderScreen ya en navigator. Hook `useCamisaMeasurement` disponible; sin historial de cambios |
-| N-025 | PantalonMeasurementDetailScreen: vista + modo edición (lápiz) + guardar cambios inline | High | Open | Builder | **Desbloqueado** (N-019 done). PlaceholderScreen ya en navigator. Hook `usePantalonMeasurement` disponible; mismo patrón que N-024 |
-| N-026 | Refactor ClientDetailScreen + flujo post-create: navegar a MeasurementTypeSelect | High | Done (parcial) | Builder | Pushed `fix/clients/n026-detail-screen-bugs` commit `b90ee95`; bugs P0 resueltos (DI vía `useClientDetail` + hide `syncStatus`); migración a `MeasurementTypeSelect` queda diferida hasta N-021..N-025 |
+| N-021 | MeasurementTypeSelectScreen: selección camisa/pantalón con mode=create o mode=view | High | Done | Builder | Implementado en `feature/clients/n021-n025-screens` commit `6470125`; modo create navega a Create + botón "Continuar sin medidas", modo view navega a Detail; 5 tests verdes |
+| N-022 | CamisaMeasurementCreateScreen: 13 campos + notas, todos opcionales, upsert al guardar | High | Done | Builder | Implementado en commit `6470125` con `CamisaMeasurementForm` + `useUpsertCamisa`; navegación a detail en éxito; 3 tests verdes |
+| N-023 | PantalonMeasurementCreateScreen: 7 campos + notas, todos opcionales, upsert al guardar | High | Done | Builder | Implementado en commit `6470125` con `PantalonMeasurementForm` + `useUpsertPantalon`; patrón equivalente a N-022; 3 tests verdes |
+| N-024 | CamisaMeasurementDetailScreen: vista + modo edición (lápiz) + guardar cambios inline | High | Done | Builder | Implementado en commit `6470125`; estados loading/error/empty/view/edit con retry y acciones Agregar/Editar/Guardar/Cancelar; 5 tests verdes |
+| N-025 | PantalonMeasurementDetailScreen: vista + modo edición (lápiz) + guardar cambios inline | High | Done | Builder | Implementado en commit `6470125`; estados loading/error/empty/view/edit con retry y acciones Agregar/Editar/Guardar/Cancelar; 5 tests verdes |
+| N-026 | Refactor ClientDetailScreen + flujo post-create: navegar a MeasurementTypeSelect | High | Done | Builder | Cierre funcional completado con N-021 en commit `6470125`; queda resuelta la deuda de navegación post-create |
 | N-027 | Tests de integración E2E: flujos completos multi-módulo | High | Open | Tester | Reducido a integración únicamente; tests unitarios se escriben dentro del PR correspondiente (N-016..N-026) como criterio de salida |
 
 ## Sprint Actual — Tracks Paralelos
@@ -50,8 +50,7 @@
 
 **Track D — Screens (paralelo entre sí, dependen de N-019 + N-020 + N-028):**
 
-- N-026 (P0: fix bugs activos en ClientDetailScreen)
-- N-021, N-022, N-023, N-024, N-025
+- CERRADO: N-026 ✓, N-021 ✓, N-022 ✓, N-023 ✓, N-024 ✓, N-025 ✓
 
 **Track E — Tests distribuidos por PR + integración final:**
 
@@ -60,8 +59,12 @@
 
 ## Open Blockers (Prioritized)
 
-- High: Push de `feature/clients/n017-n019-data-layer` a remote bloqueado por DNS; merge a develop pendiente de reintento manual.
+- High: Push de `feature/clients/n021-n025-screens` a remote bloqueado por DNS; merge a develop pendiente de reintento manual.
 - Medium: verificacion de post-rotacion pendiente (evidencia y checklist de secretos actualizados).
 - Medium: senal de cobertura no confiable (0/0), puede bloquear decision de release.
 - Low: deuda técnica `isSubmitting` durante operación async en hooks de upsert; registrada para sprint futuro.
-- Low: deuda parcial N-026 (navegación post-create a `MeasurementTypeSelect`) se cierra en N-021.
+
+## Proximas Prioridades Recomendadas
+
+- N-008 y N-009: baseline de `schedule` y `pricing`.
+- N-006 y N-011: quality gates de PR + cobertura confiable en CI.
