@@ -1,8 +1,9 @@
 import { getDatabase } from "../local/database";
 
 import type {
+  SyncCamisaQueueItem,
   SyncClientQueueItem,
-  SyncMeasurementQueueItem,
+  SyncPantalonQueueItem,
   SyncQueueItem,
 } from "./types";
 
@@ -17,14 +18,38 @@ interface ClientQueueRow {
   sync_status: "pending" | "synced" | "error";
 }
 
-interface MeasurementQueueRow {
+interface CamisaQueueRow {
   id: string;
   client_id: string;
-  measured_at: string;
-  pecho_cm: number;
-  cintura_cm: number;
-  cadera_cm: number;
-  largo_cm: number;
+  espalda: number | null;
+  hombro: number | null;
+  talle_delantero: number | null;
+  talle_trasero: number | null;
+  distancia: number | null;
+  separacion: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  largo: number | null;
+  largo_manga: number | null;
+  ancho_manga: number | null;
+  escote: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: "pending" | "synced" | "error";
+}
+
+interface PantalonQueueRow {
+  id: string;
+  client_id: string;
+  largo: number | null;
+  cintura: number | null;
+  base: number | null;
+  tiro: number | null;
+  pierna: number | null;
+  rodilla: number | null;
+  bota: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -51,22 +76,52 @@ function toClientQueueItem(row: ClientQueueRow): SyncClientQueueItem {
   };
 }
 
-function toMeasurementQueueItem(
-  row: MeasurementQueueRow,
-): SyncMeasurementQueueItem {
+function toCamisaQueueItem(row: CamisaQueueRow): SyncCamisaQueueItem {
   return {
-    entityType: "measurement",
+    entityType: "camisa_measurement",
     id: row.id,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
     payload: {
       id: row.id,
       clientId: row.client_id,
-      measuredAt: row.measured_at,
-      pechoCm: row.pecho_cm,
-      cinturaCm: row.cintura_cm,
-      caderaCm: row.cadera_cm,
-      largoCm: row.largo_cm,
+      espalda: row.espalda,
+      hombro: row.hombro,
+      talleDelantero: row.talle_delantero,
+      talleTrasero: row.talle_trasero,
+      distancia: row.distancia,
+      separacion: row.separacion,
+      pecho: row.pecho,
+      cintura: row.cintura,
+      base: row.base,
+      largo: row.largo,
+      largoManga: row.largo_manga,
+      anchoManga: row.ancho_manga,
+      escote: row.escote,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      syncStatus: row.sync_status,
+    },
+  };
+}
+
+function toPantalonQueueItem(row: PantalonQueueRow): SyncPantalonQueueItem {
+  return {
+    entityType: "pantalon_measurement",
+    id: row.id,
+    updatedAt: row.updated_at,
+    syncStatus: row.sync_status,
+    payload: {
+      id: row.id,
+      clientId: row.client_id,
+      largo: row.largo,
+      cintura: row.cintura,
+      base: row.base,
+      tiro: row.tiro,
+      pierna: row.pierna,
+      rodilla: row.rodilla,
+      bota: row.bota,
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -113,21 +168,55 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       limit,
     );
 
-    const measurementRows = await db.getAllAsync<MeasurementQueueRow>(
+    const camisaRows = await db.getAllAsync<CamisaQueueRow>(
       `
       SELECT
         id,
         client_id,
-        measured_at,
-        pecho_cm,
-        cintura_cm,
-        cadera_cm,
-        largo_cm,
+        espalda,
+        hombro,
+        talle_delantero,
+        talle_trasero,
+        distancia,
+        separacion,
+        pecho,
+        cintura,
+        base,
+        largo,
+        largo_manga,
+        ancho_manga,
+        escote,
         notes,
         created_at,
         updated_at,
         sync_status
-      FROM measurements
+      FROM camisa_measurements
+      WHERE sync_status IN (?, ?)
+      ORDER BY updated_at ASC
+      LIMIT ?;
+      `,
+      statuses[0],
+      statuses[1],
+      limit,
+    );
+
+    const pantalonRows = await db.getAllAsync<PantalonQueueRow>(
+      `
+      SELECT
+        id,
+        client_id,
+        largo,
+        cintura,
+        base,
+        tiro,
+        pierna,
+        rodilla,
+        bota,
+        notes,
+        created_at,
+        updated_at,
+        sync_status
+      FROM pantalon_measurements
       WHERE sync_status IN (?, ?)
       ORDER BY updated_at ASC
       LIMIT ?;
@@ -139,7 +228,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
 
     return [
       ...clientRows.map(toClientQueueItem),
-      ...measurementRows.map(toMeasurementQueueItem),
+      ...camisaRows.map(toCamisaQueueItem),
+      ...pantalonRows.map(toPantalonQueueItem),
     ]
       .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))
       .slice(0, limit);
@@ -165,7 +255,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
     syncStatus: "synced" | "error",
   ): Promise<void> {
     const db = getDatabase();
-    const table = entityType === "client" ? "clients" : "measurements";
+    const tableMap: Record<SyncQueueItem["entityType"], string> = {
+      client: "clients",
+      camisa_measurement: "camisa_measurements",
+      pantalon_measurement: "pantalon_measurements",
+    };
+    const table = tableMap[entityType];
 
     await db.runAsync(
       `

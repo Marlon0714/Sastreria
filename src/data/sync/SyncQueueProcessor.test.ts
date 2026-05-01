@@ -29,25 +29,63 @@ const clientItem: SyncQueueItem = {
   },
 };
 
-const measurementItem: SyncQueueItem = {
-  entityType: "measurement",
-  id: "m-1",
+const camisaItem: SyncQueueItem = {
+  entityType: "camisa_measurement",
+  id: "cam-1",
   updatedAt: "2026-04-30T09:30:00.000Z",
   syncStatus: "error",
   payload: {
-    id: "m-1",
+    id: "cam-1",
     clientId: "c-1",
-    measuredAt: "2026-04-30T09:00:00.000Z",
-    pechoCm: 90,
-    cinturaCm: 70,
-    caderaCm: 95,
-    largoCm: 110,
+    espalda: 42,
+    hombro: 14,
+    talleDelantero: 43,
+    talleTrasero: 41,
+    distancia: 22,
+    separacion: 10,
+    pecho: 98,
+    cintura: 80,
+    base: 100,
+    largo: 70,
+    largoManga: 62,
+    anchoManga: 32,
+    escote: 18,
     notes: null,
     createdAt: "2026-04-30T09:00:00.000Z",
     updatedAt: "2026-04-30T09:30:00.000Z",
     syncStatus: "error",
   },
 };
+
+const pantalonItem: SyncQueueItem = {
+  entityType: "pantalon_measurement",
+  id: "pan-1",
+  updatedAt: "2026-04-30T09:45:00.000Z",
+  syncStatus: "pending",
+  payload: {
+    id: "pan-1",
+    clientId: "c-1",
+    largo: 102,
+    cintura: 88,
+    base: 110,
+    tiro: 28,
+    pierna: 54,
+    rodilla: 44,
+    bota: 38,
+    notes: null,
+    createdAt: "2026-04-30T09:00:00.000Z",
+    updatedAt: "2026-04-30T09:45:00.000Z",
+    syncStatus: "pending",
+  },
+};
+
+function makeMockTransport(): jest.Mocked<SyncTransport> {
+  return {
+    syncClient: jest.fn(async () => Promise.resolve()),
+    syncCamisaMeasurement: jest.fn(async () => Promise.resolve()),
+    syncPantalonMeasurement: jest.fn(async () => Promise.resolve()),
+  };
+}
 
 describe("SyncQueueProcessor", () => {
   beforeEach(() => {
@@ -65,12 +103,7 @@ describe("SyncQueueProcessor", () => {
       markAsSynced: jest.fn(async () => Promise.resolve()),
       markAsError: jest.fn(async () => Promise.resolve()),
     };
-
-    const transport: SyncTransport = {
-      syncClient: jest.fn(async () => Promise.resolve()),
-      syncMeasurement: jest.fn(async () => Promise.resolve()),
-    };
-
+    const transport = makeMockTransport();
     const processor = new SyncQueueProcessor(queueRepository, transport);
 
     // Act
@@ -83,19 +116,14 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsError).not.toHaveBeenCalled();
   });
 
-  it("syncs measurement items through measurement transport", async () => {
+  it("syncs camisa measurement items through camisa transport method", async () => {
     // Arrange
     const queueRepository = {
-      getPendingItems: jest.fn(async () => [measurementItem]),
+      getPendingItems: jest.fn(async () => [camisaItem]),
       markAsSynced: jest.fn(async () => Promise.resolve()),
       markAsError: jest.fn(async () => Promise.resolve()),
     };
-
-    const transport: SyncTransport = {
-      syncClient: jest.fn(async () => Promise.resolve()),
-      syncMeasurement: jest.fn(async () => Promise.resolve()),
-    };
-
+    const transport = makeMockTransport();
     const processor = new SyncQueueProcessor(queueRepository, transport);
 
     // Act
@@ -104,10 +132,36 @@ describe("SyncQueueProcessor", () => {
     // Assert
     expect(result).toEqual({ processed: 1, synced: 1, failed: 0 });
     expect(transport.syncClient).not.toHaveBeenCalled();
-    expect(transport.syncMeasurement).toHaveBeenCalledTimes(1);
+    expect(transport.syncCamisaMeasurement).toHaveBeenCalledTimes(1);
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
-      "measurement",
-      "m-1",
+      "camisa_measurement",
+      "cam-1",
+    );
+    expect(queueRepository.markAsError).not.toHaveBeenCalled();
+  });
+
+  it("syncs pantalon measurement items through pantalon transport method", async () => {
+    // Arrange
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [pantalonItem]),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+
+    // Act
+    const result = await processor.runOnce();
+
+    // Assert
+    expect(result).toEqual({ processed: 1, synced: 1, failed: 0 });
+    expect(transport.syncClient).not.toHaveBeenCalled();
+    expect(transport.syncCamisaMeasurement).not.toHaveBeenCalled();
+    expect(transport.syncPantalonMeasurement).toHaveBeenCalledTimes(1);
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
+      "pantalon_measurement",
+      "pan-1",
     );
     expect(queueRepository.markAsError).not.toHaveBeenCalled();
   });
@@ -119,11 +173,8 @@ describe("SyncQueueProcessor", () => {
       markAsSynced: jest.fn(async () => Promise.resolve()),
       markAsError: jest.fn(async () => Promise.resolve()),
     };
-
-    const transport: SyncTransport = {
-      syncClient: jest.fn(async () => Promise.reject(new Error("network"))),
-      syncMeasurement: jest.fn(async () => Promise.resolve()),
-    };
+    const transport = makeMockTransport();
+    transport.syncClient.mockRejectedValue(new Error("network"));
 
     const processor = new SyncQueueProcessor(queueRepository, transport, {
       maxRetries: 3,
@@ -150,15 +201,11 @@ describe("SyncQueueProcessor", () => {
       markAsSynced: jest.fn(async () => Promise.resolve()),
       markAsError: jest.fn(async () => Promise.resolve()),
     };
-
-    const transport: SyncTransport = {
-      syncClient: jest
-        .fn<() => Promise<void>>()
-        .mockRejectedValueOnce(new Error("network"))
-        .mockRejectedValueOnce(new Error("network"))
-        .mockResolvedValueOnce(),
-      syncMeasurement: jest.fn(async () => Promise.resolve()),
-    };
+    const transport = makeMockTransport();
+    transport.syncClient
+      .mockRejectedValueOnce(new Error("network"))
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce();
 
     const processor = new SyncQueueProcessor(queueRepository, transport, {
       maxRetries: 3,
@@ -185,12 +232,7 @@ describe("SyncQueueProcessor", () => {
       markAsSynced: jest.fn(async () => Promise.resolve()),
       markAsError: jest.fn(async () => Promise.resolve()),
     };
-
-    const transport: SyncTransport = {
-      syncClient: jest.fn(async () => Promise.resolve()),
-      syncMeasurement: jest.fn(async () => Promise.resolve()),
-    };
-
+    const transport = makeMockTransport();
     const processor = new SyncQueueProcessor(queueRepository, transport);
 
     // Act
@@ -198,9 +240,8 @@ describe("SyncQueueProcessor", () => {
 
     // Assert
     expect(result).toEqual({ processed: 0, synced: 0, failed: 0 });
-    expect(queueRepository.markAsSynced).not.toHaveBeenCalled();
-    expect(queueRepository.markAsError).not.toHaveBeenCalled();
     expect(transport.syncClient).not.toHaveBeenCalled();
-    expect(transport.syncMeasurement).not.toHaveBeenCalled();
+    expect(transport.syncCamisaMeasurement).not.toHaveBeenCalled();
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
   });
 });

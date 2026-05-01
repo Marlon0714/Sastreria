@@ -96,6 +96,11 @@ export class SyncQueueProcessor {
       return;
     }
 
-    await this.transport.syncMeasurement(item.payload);
+    if (item.entityType === "camisa_measurement") {
+      await this.transport.syncCamisaMeasurement(item.payload);
+      return;
+    }
+
+    await this.transport.syncPantalonMeasurement(item.payload);
   }
 }

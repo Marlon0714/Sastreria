@@ -8,3 +8,4 @@ export type {
   SyncQueueItem,
   SyncRunResult,
 } from "./types";
+export type { SyncCamisaQueueItem, SyncPantalonQueueItem } from "./types";
