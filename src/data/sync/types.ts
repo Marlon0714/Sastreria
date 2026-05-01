@@ -1,4 +1,4 @@
-import type { Client, Measurement } from "../../features/clients/domain/types";
+import type { Client } from "../../features/clients/domain/types";
 import type { SyncStatus } from "../../shared/domain/baseEntity";
 
 export type SyncEntityType = "client" | "measurement";
@@ -17,7 +17,19 @@ export interface SyncClientQueueItem extends SyncQueueItemBase {
 
 export interface SyncMeasurementQueueItem extends SyncQueueItemBase {
   entityType: "measurement";
-  payload: Measurement;
+  payload: {
+    id: string;
+    clientId: string;
+    measuredAt: string;
+    pechoCm: number;
+    cinturaCm: number;
+    caderaCm: number;
+    largoCm: number;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+    syncStatus: SyncStatus;
+  };
 }
 
 export type SyncQueueItem = SyncClientQueueItem | SyncMeasurementQueueItem;

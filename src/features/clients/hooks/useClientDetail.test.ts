@@ -21,8 +21,10 @@ const mockClientRepository: ClientRepository = {
 };
 
 const noopMeasurementRepository: MeasurementRepository = {
-  addMeasurement: jest.fn(async () => Promise.reject(new Error("unused"))),
-  findMeasurementsByClientId: jest.fn(async () => Promise.resolve([])),
+  upsertCamisa: jest.fn(async () => Promise.reject(new Error("unused"))),
+  upsertPantalon: jest.fn(async () => Promise.reject(new Error("unused"))),
+  findCamisaByClientId: jest.fn(async () => Promise.resolve(null)),
+  findPantalonByClientId: jest.fn(async () => Promise.resolve(null)),
 };
 
 function createWrapper(dependencies: ClientsDependencies) {
@@ -97,7 +99,9 @@ describe("useClientDetail", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.error).toBe("No se pudo cargar el detalle del cliente.");
+    expect(result.current.error).toBe(
+      "No se pudo cargar el detalle del cliente.",
+    );
 
     await act(async () => {
       await result.current.reload();

@@ -3,8 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ClientCreateScreen from "../features/clients/screens/ClientCreateScreen";
 import ClientDetailScreen from "../features/clients/screens/ClientDetailScreen";
 import ClientListScreen from "../features/clients/screens/ClientListScreen";
-import MeasurementCreateScreen from "../features/clients/screens/MeasurementCreateScreen";
-import MeasurementHistoryScreen from "../features/clients/screens/MeasurementHistoryScreen";
+import MeasurementTypeSelectScreen from "../features/clients/screens/MeasurementTypeSelectScreen";
 import type { ClientsStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<ClientsStackParamList>();
@@ -28,14 +27,9 @@ export default function ClientsStackNavigator() {
         options={{ title: "Detalle del cliente" }}
       />
       <Stack.Screen
-        name="MeasurementCreate"
-        component={MeasurementCreateScreen}
-        options={{ title: "Nueva medida" }}
-      />
-      <Stack.Screen
-        name="MeasurementHistory"
-        component={MeasurementHistoryScreen}
-        options={{ title: "Historial de medidas" }}
+        name="MeasurementTypeSelect"
+        component={MeasurementTypeSelectScreen}
+        options={{ title: "Tipo de medida" }}
       />
     </Stack.Navigator>
   );

@@ -49,7 +49,10 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
         accessibilityLabel="Crear nueva medida"
         style={styles.primaryButton}
         onPress={() =>
-          navigation.navigate("MeasurementCreate", { clientId: client.id })
+          navigation.navigate("MeasurementTypeSelect", {
+            clientId: client.id,
+            mode: "create",
+          })
         }
       >
         <Text style={styles.primaryButtonText}>Nueva medida</Text>
@@ -59,7 +62,10 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
         accessibilityLabel="Ver historial de medidas"
         style={styles.secondaryButtonBlock}
         onPress={() =>
-          navigation.navigate("MeasurementHistory", { clientId: client.id })
+          navigation.navigate("MeasurementTypeSelect", {
+            clientId: client.id,
+            mode: "view",
+          })
         }
       >
         <Text style={styles.secondaryButtonText}>Ver historial</Text>

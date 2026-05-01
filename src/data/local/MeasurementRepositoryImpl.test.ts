@@ -11,18 +11,18 @@ import { MeasurementRepositoryImpl } from "./MeasurementRepositoryImpl";
 
 interface MockDatabase {
   runAsync: (sql: string, ...params: unknown[]) => Promise<unknown>;
-  getAllAsync: <T>(sql: string, ...params: unknown[]) => Promise<T[]>;
+  getFirstAsync: <T>(sql: string, ...params: unknown[]) => Promise<T | null>;
 }
 
 const mockRunAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown>>();
-const mockGetAllAsync =
-  jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown[]>>();
+const mockGetFirstAsync =
+  jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown | null>>();
 
 const mockDatabase: MockDatabase = {
   runAsync: (sql: string, ...params: unknown[]) => mockRunAsync(sql, ...params),
-  getAllAsync: <T>(sql: string, ...params: unknown[]) =>
-    mockGetAllAsync(sql, ...params) as Promise<T[]>,
+  getFirstAsync: <T>(sql: string, ...params: unknown[]) =>
+    mockGetFirstAsync(sql, ...params) as Promise<T | null>,
 };
 
 const mockGenerateDomainUuid = jest.fn<() => string>();
@@ -47,7 +47,7 @@ jest.mock("../../features/clients/domain/types", () => {
 describe("MeasurementRepositoryImpl", () => {
   beforeEach(() => {
     mockRunAsync.mockReset();
-    mockGetAllAsync.mockReset();
+    mockGetFirstAsync.mockReset();
     mockGenerateDomainUuid.mockReset();
 
     jest.useFakeTimers();
@@ -58,32 +58,62 @@ describe("MeasurementRepositoryImpl", () => {
     jest.useRealTimers();
   });
 
-  it("adds measurement with pending sync status and parameterized query", async () => {
+  it("upserts camisa (insert) with pending sync status and parameterized query", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null);
     mockRunAsync.mockResolvedValueOnce({});
+    mockGetFirstAsync.mockResolvedValueOnce({
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      client_id: "11111111-1111-4111-8111-111111111111",
+      espalda: 44,
+      hombro: 13,
+      talle_delantero: null,
+      talle_trasero: null,
+      distancia: null,
+      separacion: null,
+      pecho: 92.5,
+      cintura: 70.5,
+      base: null,
+      largo: 68,
+      largo_manga: null,
+      ancho_manga: null,
+      escote: null,
+      notes: "Ajustar molde",
+      created_at: "2026-04-29T13:00:00.000Z",
+      updated_at: "2026-04-29T13:00:00.000Z",
+      sync_status: "pending",
+    });
     mockGenerateDomainUuid.mockReturnValueOnce(
       "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     );
 
     const repository = new MeasurementRepositoryImpl();
 
-    const created = await repository.addMeasurement({
+    const created = await repository.upsertCamisa({
       clientId: "11111111-1111-4111-8111-111111111111",
-      measuredAt: "2026-04-28T10:00:00.000Z",
-      pechoCm: 92.5,
-      cinturaCm: 70.5,
-      caderaCm: 95,
-      largoCm: 110,
+      espalda: 44,
+      hombro: 13,
+      pecho: 92.5,
+      cintura: 70.5,
+      largo: 68,
       notes: "  Ajustar molde  ",
     });
 
     expect(created).toEqual({
       id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       clientId: "11111111-1111-4111-8111-111111111111",
-      measuredAt: "2026-04-28T10:00:00.000Z",
-      pechoCm: 92.5,
-      cinturaCm: 70.5,
-      caderaCm: 95,
-      largoCm: 110,
+      espalda: 44,
+      hombro: 13,
+      talleDelantero: null,
+      talleTrasero: null,
+      distancia: null,
+      separacion: null,
+      pecho: 92.5,
+      cintura: 70.5,
+      base: null,
+      largo: 68,
+      largoManga: null,
+      anchoManga: null,
+      escote: null,
       notes: "Ajustar molde",
       createdAt: "2026-04-29T13:00:00.000Z",
       updatedAt: "2026-04-29T13:00:00.000Z",
@@ -93,16 +123,24 @@ describe("MeasurementRepositoryImpl", () => {
     expect(mockRunAsync).toHaveBeenCalledTimes(1);
     const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
 
-    expect(sql).toContain("VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    expect(sql).not.toContain("92.5");
+    expect(sql).toContain("INSERT INTO camisa_measurements");
+    expect(sql).toContain("ON CONFLICT(client_id) DO UPDATE");
     expect(params).toEqual([
       "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       "11111111-1111-4111-8111-111111111111",
-      "2026-04-28T10:00:00.000Z",
+      44,
+      13,
+      null,
+      null,
+      null,
+      null,
       92.5,
       70.5,
-      95,
-      110,
+      null,
+      68,
+      null,
+      null,
+      null,
       "Ajustar molde",
       "2026-04-29T13:00:00.000Z",
       "2026-04-29T13:00:00.000Z",
@@ -110,49 +148,168 @@ describe("MeasurementRepositoryImpl", () => {
     ]);
   });
 
-  it("uses current date as measuredAt when omitted", async () => {
+  it("upserts camisa preserving id and createdAt on conflict", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce({
+      id: "existing-camisa",
+      client_id: "11111111-1111-4111-8111-111111111111",
+      espalda: 40,
+      hombro: 12,
+      talle_delantero: null,
+      talle_trasero: null,
+      distancia: null,
+      separacion: null,
+      pecho: null,
+      cintura: null,
+      base: null,
+      largo: null,
+      largo_manga: null,
+      ancho_manga: null,
+      escote: null,
+      notes: null,
+      created_at: "2026-04-01T10:00:00.000Z",
+      updated_at: "2026-04-01T10:00:00.000Z",
+      sync_status: "synced",
+    });
     mockRunAsync.mockResolvedValueOnce({});
-    mockGenerateDomainUuid.mockReturnValueOnce(
-      "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-    );
+    mockGetFirstAsync.mockResolvedValueOnce({
+      id: "existing-camisa",
+      client_id: "11111111-1111-4111-8111-111111111111",
+      espalda: 41,
+      hombro: null,
+      talle_delantero: null,
+      talle_trasero: null,
+      distancia: null,
+      separacion: null,
+      pecho: null,
+      cintura: null,
+      base: null,
+      largo: null,
+      largo_manga: null,
+      ancho_manga: null,
+      escote: null,
+      notes: null,
+      created_at: "2026-04-01T10:00:00.000Z",
+      updated_at: "2026-04-29T13:00:00.000Z",
+      sync_status: "pending",
+    });
 
     const repository = new MeasurementRepositoryImpl();
-
-    const created = await repository.addMeasurement({
+    const created = await repository.upsertCamisa({
       clientId: "11111111-1111-4111-8111-111111111111",
-      pechoCm: 90,
-      cinturaCm: 70,
-      caderaCm: 95,
-      largoCm: 108,
+      espalda: 41,
       notes: "",
     });
 
-    expect(created.measuredAt).toBe("2026-04-29T13:00:00.000Z");
+    expect(created.id).toBe("existing-camisa");
+    expect(created.createdAt).toBe("2026-04-01T10:00:00.000Z");
+    expect(created.updatedAt).toBe("2026-04-29T13:00:00.000Z");
     expect(created.syncStatus).toBe("pending");
   });
 
-  it("triggers onWriteCommitted after successful addMeasurement", async () => {
+  it("upserts pantalon and trims notes", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null);
     mockRunAsync.mockResolvedValueOnce({});
+    mockGetFirstAsync.mockResolvedValueOnce({
+      id: "pantalon-1",
+      client_id: "11111111-1111-4111-8111-111111111111",
+      largo: 104,
+      cintura: 80,
+      base: null,
+      tiro: null,
+      pierna: null,
+      rodilla: null,
+      bota: 22,
+      notes: "Ajuste bota",
+      created_at: "2026-04-29T13:00:00.000Z",
+      updated_at: "2026-04-29T13:00:00.000Z",
+      sync_status: "pending",
+    });
+    mockGenerateDomainUuid.mockReturnValueOnce("pantalon-1");
+
+    const repository = new MeasurementRepositoryImpl();
+    const created = await repository.upsertPantalon({
+      clientId: "11111111-1111-4111-8111-111111111111",
+      largo: 104,
+      cintura: 80,
+      bota: 22,
+      notes: "  Ajuste bota  ",
+    });
+
+    expect(created.notes).toBe("Ajuste bota");
+    const [sql] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("INSERT INTO pantalon_measurements");
+  });
+
+  it("findCamisaByClientId and findPantalonByClientId return null when missing", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+
+    const repository = new MeasurementRepositoryImpl();
+
+    await expect(repository.findCamisaByClientId("client-1")).resolves.toBeNull();
+    await expect(repository.findPantalonByClientId("client-1")).resolves.toBeNull();
+
+    const [camisaSql, camisaClientId] = mockGetFirstAsync.mock.calls[0] ?? [];
+    expect(camisaSql).toContain("FROM camisa_measurements");
+    expect(camisaSql).toContain("WHERE client_id = ?");
+    expect(camisaClientId).toBe("client-1");
+  });
+
+  it("triggers onWriteCommitted after successful upsert", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null);
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGetFirstAsync.mockResolvedValueOnce({
+      id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      client_id: "11111111-1111-4111-8111-111111111111",
+      espalda: null,
+      hombro: null,
+      talle_delantero: null,
+      talle_trasero: null,
+      distancia: null,
+      separacion: null,
+      pecho: null,
+      cintura: null,
+      base: null,
+      largo: null,
+      largo_manga: null,
+      ancho_manga: null,
+      escote: null,
+      notes: null,
+      created_at: "2026-04-29T13:00:00.000Z",
+      updated_at: "2026-04-29T13:00:00.000Z",
+      sync_status: "pending",
+    });
     mockGenerateDomainUuid.mockReturnValueOnce(
       "ffffffff-ffff-4fff-8fff-ffffffffffff",
     );
+
     const onWriteCommitted = jest.fn<() => void>();
     const repository = new MeasurementRepositoryImpl({ onWriteCommitted });
 
-    await repository.addMeasurement({
+    await repository.upsertCamisa({
       clientId: "11111111-1111-4111-8111-111111111111",
-      pechoCm: 90,
-      cinturaCm: 70,
-      caderaCm: 95,
-      largoCm: 108,
-      notes: "",
     });
 
     expect(onWriteCommitted).toHaveBeenCalledTimes(1);
   });
 
-  it("does not fail addMeasurement when onWriteCommitted rejects", async () => {
+  it("does not fail upsert when onWriteCommitted rejects", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null);
     mockRunAsync.mockResolvedValueOnce({});
+    mockGetFirstAsync.mockResolvedValueOnce({
+      id: "abababab-abab-4bab-8bab-abababababab",
+      client_id: "11111111-1111-4111-8111-111111111111",
+      largo: null,
+      cintura: null,
+      base: null,
+      tiro: null,
+      pierna: null,
+      rodilla: null,
+      bota: null,
+      notes: null,
+      created_at: "2026-04-29T13:00:00.000Z",
+      updated_at: "2026-04-29T13:00:00.000Z",
+      sync_status: "pending",
+    });
     mockGenerateDomainUuid.mockReturnValueOnce(
       "abababab-abab-4bab-8bab-abababababab",
     );
@@ -162,81 +319,9 @@ describe("MeasurementRepositoryImpl", () => {
     const repository = new MeasurementRepositoryImpl({ onWriteCommitted });
 
     await expect(
-      repository.addMeasurement({
+      repository.upsertPantalon({
         clientId: "11111111-1111-4111-8111-111111111111",
-        pechoCm: 90,
-        cinturaCm: 70,
-        caderaCm: 95,
-        largoCm: 108,
       }),
     ).resolves.toBeDefined();
-  });
-
-  it("findMeasurementsByClientId maps snake_case and keeps DESC order", async () => {
-    mockGetAllAsync.mockResolvedValueOnce([
-      {
-        id: "m2",
-        client_id: "client-1",
-        measured_at: "2026-04-29T12:00:00.000Z",
-        pecho_cm: 93,
-        cintura_cm: 71,
-        cadera_cm: 96,
-        largo_cm: 111,
-        notes: null,
-        created_at: "2026-04-29T12:00:00.000Z",
-        updated_at: "2026-04-29T12:00:00.000Z",
-        sync_status: "pending",
-      },
-      {
-        id: "m1",
-        client_id: "client-1",
-        measured_at: "2026-04-28T12:00:00.000Z",
-        pecho_cm: 92,
-        cintura_cm: 70,
-        cadera_cm: 95,
-        largo_cm: 110,
-        notes: "Anterior",
-        created_at: "2026-04-28T12:00:00.000Z",
-        updated_at: "2026-04-28T12:00:00.000Z",
-        sync_status: "synced",
-      },
-    ]);
-
-    const repository = new MeasurementRepositoryImpl();
-    const result = await repository.findMeasurementsByClientId("client-1");
-
-    expect(result).toEqual([
-      {
-        id: "m2",
-        clientId: "client-1",
-        measuredAt: "2026-04-29T12:00:00.000Z",
-        pechoCm: 93,
-        cinturaCm: 71,
-        caderaCm: 96,
-        largoCm: 111,
-        notes: null,
-        createdAt: "2026-04-29T12:00:00.000Z",
-        updatedAt: "2026-04-29T12:00:00.000Z",
-        syncStatus: "pending",
-      },
-      {
-        id: "m1",
-        clientId: "client-1",
-        measuredAt: "2026-04-28T12:00:00.000Z",
-        pechoCm: 92,
-        cinturaCm: 70,
-        caderaCm: 95,
-        largoCm: 110,
-        notes: "Anterior",
-        createdAt: "2026-04-28T12:00:00.000Z",
-        updatedAt: "2026-04-28T12:00:00.000Z",
-        syncStatus: "synced",
-      },
-    ]);
-
-    const [sql, clientId] = mockGetAllAsync.mock.calls[0] ?? [];
-    expect(sql).toContain("WHERE client_id = ?");
-    expect(sql).toContain("ORDER BY measured_at DESC");
-    expect(clientId).toBe("client-1");
   });
 });

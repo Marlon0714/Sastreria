@@ -16,16 +16,6 @@ export type ClientsStackParamList = {
   PantalonMeasurementCreate: { clientId: string };
   CamisaMeasurementDetail: { clientId: string };
   PantalonMeasurementDetail: { clientId: string };
-  /**
-   * @deprecated Reemplazada por `CamisaMeasurementCreate` / `PantalonMeasurementCreate`.
-   * Eliminada en N-019 junto con `MeasurementCreateScreen`.
-   */
-  MeasurementCreate: { clientId: string };
-  /**
-   * @deprecated Reemplazada por `CamisaMeasurementDetail` / `PantalonMeasurementDetail`.
-   * Eliminada en N-019 junto con `MeasurementHistoryScreen`.
-   */
-  MeasurementHistory: { clientId: string };
 };
 
 export type ScheduleStackParamList = {

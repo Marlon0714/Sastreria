@@ -2,26 +2,12 @@ import * as Crypto from "expo-crypto";
 
 import type { BaseEntity } from "../../../shared/domain/baseEntity";
 
-/**
- * @deprecated Use `CamisaMeasurement` or `PantalonMeasurement` instead.
- * Removed in N-019 once obsolete hooks/screens are deleted.
- */
-export interface Measurement extends BaseEntity {
-  clientId: string;
-  measuredAt: string;
-  pechoCm: number;
-  cinturaCm: number;
-  caderaCm: number;
-  largoCm: number;
-  notes: string | null;
-}
-
 export interface Client extends BaseEntity {
   firstName: string;
   lastName: string;
   phone: string;
   notes: string | null;
-  measurements: Measurement[];
+  measurements: Array<CamisaMeasurement | PantalonMeasurement>;
 }
 
 export interface CreateClientDTO {
@@ -31,24 +17,6 @@ export interface CreateClientDTO {
   notes?: string;
 }
 
-/**
- * @deprecated Use `UpsertCamisaDTO` or `UpsertPantalonDTO` instead.
- * Removed in N-019 once obsolete hooks/screens are deleted.
- */
-export interface AddMeasurementDTO {
-  clientId: string;
-  measuredAt?: string;
-  pechoCm: number;
-  cinturaCm: number;
-  caderaCm: number;
-  largoCm: number;
-  notes?: string;
-}
-
-/**
- * Medidas de camisa por cliente. Todas opcionales: el usuario puede registrar
- * una medida parcial o ninguna. Upsert por `clientId` (UNIQUE en SQLite v2).
- */
 export interface CamisaMeasurement extends BaseEntity {
   clientId: string;
   espalda: number | null;
@@ -67,9 +35,6 @@ export interface CamisaMeasurement extends BaseEntity {
   notes: string | null;
 }
 
-/**
- * Medidas de pantalón por cliente. Todas opcionales. Upsert por `clientId`.
- */
 export interface PantalonMeasurement extends BaseEntity {
   clientId: string;
   largo: number | null;

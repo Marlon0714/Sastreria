@@ -1,55 +1,59 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { ClientsDependenciesOverrides } from "../domain/repository";
-import type { Measurement } from "../domain/types";
+import type { PantalonMeasurement } from "../domain/types";
 import { useMeasurementRepository } from "./ClientsDependenciesProvider";
 
-interface UseClientMeasurementHistoryResult {
-  measurements: Measurement[];
+interface UsePantalonMeasurementResult {
+  measurement: PantalonMeasurement | null;
   isLoading: boolean;
   error: string | null;
   reload: () => Promise<void>;
 }
 
-export function useClientMeasurementHistory(
+type UsePantalonMeasurementDependencies = Pick<
+  ClientsDependenciesOverrides,
+  "measurementRepository"
+>;
+
+export function usePantalonMeasurement(
   clientId: string,
-  dependencies: Pick<
-    ClientsDependenciesOverrides,
-    "measurementRepository"
-  > = {},
-): UseClientMeasurementHistoryResult {
+  dependencies: UsePantalonMeasurementDependencies = {},
+): UsePantalonMeasurementResult {
   const defaultMeasurementRepository = useMeasurementRepository();
   const measurementRepository = useMemo(
     () => dependencies.measurementRepository ?? defaultMeasurementRepository,
     [defaultMeasurementRepository, dependencies.measurementRepository],
   );
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+
+  const [measurement, setMeasurement] = useState<PantalonMeasurement | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadHistory = useCallback(async (): Promise<void> => {
+  const loadMeasurement = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const items =
-        await measurementRepository.findMeasurementsByClientId(clientId);
-      setMeasurements(items);
+      const item = await measurementRepository.findPantalonByClientId(clientId);
+      setMeasurement(item);
     } catch {
-      setError("No se pudo cargar el historial de medidas.");
+      setError("No se pudo cargar la medida de pantalón.");
     } finally {
       setIsLoading(false);
     }
   }, [clientId, measurementRepository]);
 
   useEffect(() => {
-    void loadHistory();
-  }, [loadHistory]);
+    void loadMeasurement();
+  }, [loadMeasurement]);
 
   return {
-    measurements,
+    measurement,
     isLoading,
     error,
-    reload: loadHistory,
+    reload: loadMeasurement,
   };
 }

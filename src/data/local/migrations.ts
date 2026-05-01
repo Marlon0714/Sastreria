@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 1;
+const TARGET_SCHEMA_VERSION = 2;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -51,6 +51,56 @@ const MIGRATIONS: readonly Migration[] = [
       `
       CREATE INDEX IF NOT EXISTS idx_measurements_client_id_measured_at
       ON measurements (client_id, measured_at DESC);
+      `,
+    ],
+  },
+  {
+    version: 2,
+    name: "v2_measurements_by_garment",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS camisa_measurements (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        espalda REAL,
+        hombro REAL,
+        talle_delantero REAL,
+        talle_trasero REAL,
+        distancia REAL,
+        separacion REAL,
+        pecho REAL,
+        cintura REAL,
+        base REAL,
+        largo REAL,
+        largo_manga REAL,
+        ancho_manga REAL,
+        escote REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        UNIQUE(client_id),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS pantalon_measurements (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        largo REAL,
+        cintura REAL,
+        base REAL,
+        tiro REAL,
+        pierna REAL,
+        rodilla REAL,
+        bota REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        UNIQUE(client_id),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
       `,
     ],
   },

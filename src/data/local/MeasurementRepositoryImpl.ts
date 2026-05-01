@@ -2,9 +2,11 @@ import { getDatabase } from "./database";
 
 import type { MeasurementRepository } from "../../features/clients/domain/repository";
 import {
+  type CamisaMeasurement,
   generateDomainUuid,
-  type AddMeasurementDTO,
-  type Measurement,
+  type PantalonMeasurement,
+  type UpsertCamisaDTO,
+  type UpsertPantalonDTO,
 } from "../../features/clients/domain/types";
 
 type WriteCommittedCallback = () => void | Promise<void>;
@@ -13,29 +15,98 @@ interface MeasurementRepositoryImplOptions {
   onWriteCommitted?: WriteCommittedCallback;
 }
 
-interface MeasurementRow {
+type SyncStatus = "pending" | "synced" | "error";
+
+interface CamisaMeasurementRow {
   id: string;
   client_id: string;
-  measured_at: string;
-  pecho_cm: number;
-  cintura_cm: number;
-  cadera_cm: number;
-  largo_cm: number;
+  espalda: number | null;
+  hombro: number | null;
+  talle_delantero: number | null;
+  talle_trasero: number | null;
+  distancia: number | null;
+  separacion: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  largo: number | null;
+  largo_manga: number | null;
+  ancho_manga: number | null;
+  escote: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
-  sync_status: "pending" | "synced" | "error";
+  sync_status: SyncStatus;
 }
 
-function mapMeasurementRow(row: MeasurementRow): Measurement {
+interface PantalonMeasurementRow {
+  id: string;
+  client_id: string;
+  largo: number | null;
+  cintura: number | null;
+  base: number | null;
+  tiro: number | null;
+  pierna: number | null;
+  rodilla: number | null;
+  bota: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: SyncStatus;
+}
+
+function normalizeNullableNumber(
+  value: number | null | undefined,
+): number | null {
+  return value ?? null;
+}
+
+function normalizeNullableNotes(
+  value: string | null | undefined,
+): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function mapCamisaRow(row: CamisaMeasurementRow): CamisaMeasurement {
   return {
     id: row.id,
     clientId: row.client_id,
-    measuredAt: row.measured_at,
-    pechoCm: row.pecho_cm,
-    cinturaCm: row.cintura_cm,
-    caderaCm: row.cadera_cm,
-    largoCm: row.largo_cm,
+    espalda: row.espalda,
+    hombro: row.hombro,
+    talleDelantero: row.talle_delantero,
+    talleTrasero: row.talle_trasero,
+    distancia: row.distancia,
+    separacion: row.separacion,
+    pecho: row.pecho,
+    cintura: row.cintura,
+    base: row.base,
+    largo: row.largo,
+    largoManga: row.largo_manga,
+    anchoManga: row.ancho_manga,
+    escote: row.escote,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    syncStatus: row.sync_status,
+  };
+}
+
+function mapPantalonRow(row: PantalonMeasurementRow): PantalonMeasurement {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    largo: row.largo,
+    cintura: row.cintura,
+    base: row.base,
+    tiro: row.tiro,
+    pierna: row.pierna,
+    rodilla: row.rodilla,
+    bota: row.bota,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -48,82 +119,260 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     private readonly options: MeasurementRepositoryImplOptions = {},
   ) {}
 
-  async addMeasurement(input: AddMeasurementDTO): Promise<Measurement> {
+  async upsertCamisa(input: UpsertCamisaDTO): Promise<CamisaMeasurement> {
     const db = getDatabase();
     const nowIso = new Date().toISOString();
+    const existing = await this.findCamisaRowByClientId(input.clientId);
+    const id = existing?.id ?? generateDomainUuid();
+    const createdAt = existing?.created_at ?? nowIso;
+    const syncStatus: SyncStatus = "pending";
+    const notes = normalizeNullableNotes(input.notes);
 
-    const measurement: Measurement = {
-      id: generateDomainUuid(),
+    const camisaMeasurement: CamisaMeasurement = {
+      id,
       clientId: input.clientId,
-      measuredAt: input.measuredAt ?? nowIso,
-      pechoCm: input.pechoCm,
-      cinturaCm: input.cinturaCm,
-      caderaCm: input.caderaCm,
-      largoCm: input.largoCm,
-      notes: input.notes?.trim() ?? null,
-      createdAt: nowIso,
+      espalda: normalizeNullableNumber(input.espalda),
+      hombro: normalizeNullableNumber(input.hombro),
+      talleDelantero: normalizeNullableNumber(input.talleDelantero),
+      talleTrasero: normalizeNullableNumber(input.talleTrasero),
+      distancia: normalizeNullableNumber(input.distancia),
+      separacion: normalizeNullableNumber(input.separacion),
+      pecho: normalizeNullableNumber(input.pecho),
+      cintura: normalizeNullableNumber(input.cintura),
+      base: normalizeNullableNumber(input.base),
+      largo: normalizeNullableNumber(input.largo),
+      largoManga: normalizeNullableNumber(input.largoManga),
+      anchoManga: normalizeNullableNumber(input.anchoManga),
+      escote: normalizeNullableNumber(input.escote),
+      notes,
+      createdAt,
       updatedAt: nowIso,
-      syncStatus: "pending",
+      syncStatus,
     };
 
     await db.runAsync(
       `
-      INSERT INTO measurements (
+      INSERT INTO camisa_measurements (
         id,
         client_id,
-        measured_at,
-        pecho_cm,
-        cintura_cm,
-        cadera_cm,
-        largo_cm,
+        espalda,
+        hombro,
+        talle_delantero,
+        talle_trasero,
+        distancia,
+        separacion,
+        pecho,
+        cintura,
+        base,
+        largo,
+        largo_manga,
+        ancho_manga,
+        escote,
         notes,
         created_at,
         updated_at,
         sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(client_id) DO UPDATE SET
+        espalda = excluded.espalda,
+        hombro = excluded.hombro,
+        talle_delantero = excluded.talle_delantero,
+        talle_trasero = excluded.talle_trasero,
+        distancia = excluded.distancia,
+        separacion = excluded.separacion,
+        pecho = excluded.pecho,
+        cintura = excluded.cintura,
+        base = excluded.base,
+        largo = excluded.largo,
+        largo_manga = excluded.largo_manga,
+        ancho_manga = excluded.ancho_manga,
+        escote = excluded.escote,
+        notes = excluded.notes,
+        updated_at = excluded.updated_at,
+        sync_status = excluded.sync_status;
       `,
-      measurement.id,
-      measurement.clientId,
-      measurement.measuredAt,
-      measurement.pechoCm,
-      measurement.cinturaCm,
-      measurement.caderaCm,
-      measurement.largoCm,
-      measurement.notes,
-      measurement.createdAt,
-      measurement.updatedAt,
-      measurement.syncStatus,
+      camisaMeasurement.id,
+      camisaMeasurement.clientId,
+      camisaMeasurement.espalda,
+      camisaMeasurement.hombro,
+      camisaMeasurement.talleDelantero,
+      camisaMeasurement.talleTrasero,
+      camisaMeasurement.distancia,
+      camisaMeasurement.separacion,
+      camisaMeasurement.pecho,
+      camisaMeasurement.cintura,
+      camisaMeasurement.base,
+      camisaMeasurement.largo,
+      camisaMeasurement.largoManga,
+      camisaMeasurement.anchoManga,
+      camisaMeasurement.escote,
+      camisaMeasurement.notes,
+      camisaMeasurement.createdAt,
+      camisaMeasurement.updatedAt,
+      camisaMeasurement.syncStatus,
     );
 
     this.notifyWriteCommitted();
 
-    return measurement;
+    return camisaMeasurement;
   }
 
-  async findMeasurementsByClientId(clientId: string): Promise<Measurement[]> {
+  async upsertPantalon(input: UpsertPantalonDTO): Promise<PantalonMeasurement> {
     const db = getDatabase();
-    const rows = await db.getAllAsync<MeasurementRow>(
+    const nowIso = new Date().toISOString();
+    const existing = await this.findPantalonRowByClientId(input.clientId);
+    const id = existing?.id ?? generateDomainUuid();
+    const createdAt = existing?.created_at ?? nowIso;
+    const syncStatus: SyncStatus = "pending";
+    const notes = normalizeNullableNotes(input.notes);
+
+    const pantalonMeasurement: PantalonMeasurement = {
+      id,
+      clientId: input.clientId,
+      largo: normalizeNullableNumber(input.largo),
+      cintura: normalizeNullableNumber(input.cintura),
+      base: normalizeNullableNumber(input.base),
+      tiro: normalizeNullableNumber(input.tiro),
+      pierna: normalizeNullableNumber(input.pierna),
+      rodilla: normalizeNullableNumber(input.rodilla),
+      bota: normalizeNullableNumber(input.bota),
+      notes,
+      createdAt,
+      updatedAt: nowIso,
+      syncStatus,
+    };
+
+    await db.runAsync(
       `
-      SELECT
+      INSERT INTO pantalon_measurements (
         id,
         client_id,
-        measured_at,
-        pecho_cm,
-        cintura_cm,
-        cadera_cm,
-        largo_cm,
+        largo,
+        cintura,
+        base,
+        tiro,
+        pierna,
+        rodilla,
+        bota,
         notes,
         created_at,
         updated_at,
         sync_status
-      FROM measurements
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(client_id) DO UPDATE SET
+        largo = excluded.largo,
+        cintura = excluded.cintura,
+        base = excluded.base,
+        tiro = excluded.tiro,
+        pierna = excluded.pierna,
+        rodilla = excluded.rodilla,
+        bota = excluded.bota,
+        notes = excluded.notes,
+        updated_at = excluded.updated_at,
+        sync_status = excluded.sync_status;
+      `,
+      pantalonMeasurement.id,
+      pantalonMeasurement.clientId,
+      pantalonMeasurement.largo,
+      pantalonMeasurement.cintura,
+      pantalonMeasurement.base,
+      pantalonMeasurement.tiro,
+      pantalonMeasurement.pierna,
+      pantalonMeasurement.rodilla,
+      pantalonMeasurement.bota,
+      pantalonMeasurement.notes,
+      pantalonMeasurement.createdAt,
+      pantalonMeasurement.updatedAt,
+      pantalonMeasurement.syncStatus,
+    );
+
+    this.notifyWriteCommitted();
+
+    return pantalonMeasurement;
+  }
+
+  async findCamisaByClientId(
+    clientId: string,
+  ): Promise<CamisaMeasurement | null> {
+    const row = await this.findCamisaRowByClientId(clientId);
+    if (!row) {
+      return null;
+    }
+
+    return mapCamisaRow(row);
+  }
+
+  async findPantalonByClientId(
+    clientId: string,
+  ): Promise<PantalonMeasurement | null> {
+    const row = await this.findPantalonRowByClientId(clientId);
+    if (!row) {
+      return null;
+    }
+
+    return mapPantalonRow(row);
+  }
+
+  private async findCamisaRowByClientId(
+    clientId: string,
+  ): Promise<CamisaMeasurementRow | null> {
+    const db = getDatabase();
+    return db.getFirstAsync<CamisaMeasurementRow>(
+      `
+      SELECT
+        id,
+        client_id,
+        espalda,
+        hombro,
+        talle_delantero,
+        talle_trasero,
+        distancia,
+        separacion,
+        pecho,
+        cintura,
+        base,
+        largo,
+        largo_manga,
+        ancho_manga,
+        escote,
+        notes,
+        created_at,
+        updated_at,
+        sync_status
+      FROM camisa_measurements
       WHERE client_id = ?
-      ORDER BY measured_at DESC;
+      LIMIT 1;
       `,
       clientId,
     );
+  }
 
-    return rows.map(mapMeasurementRow);
+  private async findPantalonRowByClientId(
+    clientId: string,
+  ): Promise<PantalonMeasurementRow | null> {
+    const db = getDatabase();
+    return db.getFirstAsync<PantalonMeasurementRow>(
+      `
+      SELECT
+        id,
+        client_id,
+        largo,
+        cintura,
+        base,
+        tiro,
+        pierna,
+        rodilla,
+        bota,
+        notes,
+        created_at,
+        updated_at,
+        sync_status
+      FROM pantalon_measurements
+      WHERE client_id = ?
+      LIMIT 1;
+      `,
+      clientId,
+    );
   }
 
   private notifyWriteCommitted(): void {

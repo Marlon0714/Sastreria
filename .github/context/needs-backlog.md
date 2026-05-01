@@ -18,18 +18,18 @@
 | N-014 | Introduce repository composition layer for hook dependency decoupling                  | High     | Done        | Architect / Builder | Corrective subcycle cerrado y mergeado en develop; hooks desacoplados de implementaciones concretas |
 | N-015 | Rotar y verificar secretos de CI (EXPO_TOKEN)                                          | High     | Done        | Release / Security  | Rotacion realizada por el equipo; mantener evidencia y checklist de verificacion post-rotacion      |
 
-| N-016 | Refactor domain model: CamisaMeasurement + PantalonMeasurement types, schemas, DTOs | High | Open | Architect / Builder | Bloquea N-017..N-027; tipos actuales (Measurement genérico) no reflejan campos de negocio reales; decidir no eliminar tipo antiguo hasta cleanup post N-018 |
+| N-016 | Refactor domain model: CamisaMeasurement + PantalonMeasurement types, schemas, DTOs | High | Done | Architect / Builder | Pushed `feature/clients/n016-measurement-domain-model` commit `75ee0dd`; types/schemas/DTOs nuevos + tipo legado `@deprecated`; 8 tests nuevos verdes |
 | N-017 | SQLite migration v2: tablas camisa_measurements y pantalon_measurements (UNIQUE per client) | High | Open | Builder | Depende de N-016; patrón upsert por client_id con UNIQUE constraint; tabla measurements existente se mantiene sin tocar |
 | N-018 | MeasurementRepository interface + impl: upsertCamisa, upsertPantalon, find por clientId | High | Open | Builder | Depende de N-017; patrón INSERT ... ON CONFLICT DO UPDATE; interface reemplaza addMeasurement/findMeasurementsByClientId |
 | N-019 | Hooks de medidas: useUpsertCamisa, useUpsertPantalon, useCamisaMeasurement, usePantalon | High | Open | Builder | Depende de N-018; **eliminar** (no deprecar) useAddMeasurement, useClientMeasurementHistory, MeasurementCreateScreen y MeasurementHistoryScreen en este mismo PR |
-| N-020 | Navigation types + ClientsStackNavigator: nuevas rutas (MeasurementTypeSelect, Camisa/Pantalon Create/Detail) | High | Open | Builder | Depende de N-016; rutas obsoletas (MeasurementCreate, MeasurementHistory) se eliminan junto con N-019 |
-| N-028 | Shared form components: CamisaMeasurementForm + PantalonMeasurementForm reutilizables | High | Open | Builder | Depende de N-016; paralelo a N-017/N-018; prop `disabled` cubre modo vista y edición; evita duplicar 13+7 campos en Create y Detail |
-| N-021 | MeasurementTypeSelectScreen: selección camisa/pantalón con mode=create o mode=view | High | Open | Builder | Depende de N-019 y N-020; incluir botón "Continuar sin medidas" solo en mode=create |
-| N-022 | CamisaMeasurementCreateScreen: 13 campos + notas, todos opcionales, upsert al guardar | High | Open | Builder | Depende de N-019 y N-020; campos vacíos → null (no error); navegación a CamisaMeasurementDetail en éxito |
-| N-023 | PantalonMeasurementCreateScreen: 7 campos + notas, todos opcionales, upsert al guardar | High | Open | Builder | Depende de N-019 y N-020; mismo patrón que N-022 |
-| N-024 | CamisaMeasurementDetailScreen: vista + modo edición (lápiz) + guardar cambios inline | High | Open | Builder | Depende de N-019 y N-020; estado vacío si no hay medidas; sin historial de cambios |
-| N-025 | PantalonMeasurementDetailScreen: vista + modo edición (lápiz) + guardar cambios inline | High | Open | Builder | Depende de N-019 y N-020; mismo patrón que N-024 |
-| N-026 | Refactor ClientDetailScreen + flujo post-create: navegar a MeasurementTypeSelect | High | Open | Builder | **P0 elevado por Architect**: 2 bugs activos visibles al usuario (DI violado + syncStatus en UI); depende de N-020 |
+| N-020 | Navigation types + ClientsStackNavigator: nuevas rutas (MeasurementTypeSelect, Camisa/Pantalon Create/Detail) | High | Done | Builder | Pushed `feature/clients/n020-n028-nav-and-forms` commit `c43f76a`; rutas nuevas con `mode: create\|view` en `MeasurementTypeSelect`; rutas legacy `@deprecated` (eliminar en N-019) |
+| N-028 | Shared form components: CamisaMeasurementForm + PantalonMeasurementForm reutilizables | High | Done | Builder | Mismo commit que N-020; genéricos `MeasurementNumberField`/`MeasurementNotesField` + forms con prop `disabled`; 6 tests con patrón Harness verdes |
+| N-021 | MeasurementTypeSelectScreen: selección camisa/pantalón con mode=create o mode=view | High | Open | Builder | N-020 ya integrado; queda dependiente de N-019 para cerrar flujo sin legado. Incluir botón "Continuar sin medidas" solo en mode=create |
+| N-022 | CamisaMeasurementCreateScreen: 13 campos + notas, todos opcionales, upsert al guardar | High | Open | Builder | N-020/N-028 ya integrados; depende de N-019 para datos/hook final. Campos vacíos → null (no error); navegación a CamisaMeasurementDetail en éxito |
+| N-023 | PantalonMeasurementCreateScreen: 7 campos + notas, todos opcionales, upsert al guardar | High | Open | Builder | N-020/N-028 ya integrados; depende de N-019 para datos/hook final. Mismo patrón que N-022 |
+| N-024 | CamisaMeasurementDetailScreen: vista + modo edición (lápiz) + guardar cambios inline | High | Open | Builder | N-020/N-028 ya integrados; depende de N-019 para lectura/edición final. Estado vacío si no hay medidas; sin historial de cambios |
+| N-025 | PantalonMeasurementDetailScreen: vista + modo edición (lápiz) + guardar cambios inline | High | Open | Builder | N-020/N-028 ya integrados; depende de N-019 para lectura/edición final. Mismo patrón que N-024 |
+| N-026 | Refactor ClientDetailScreen + flujo post-create: navegar a MeasurementTypeSelect | High | Done (parcial) | Builder | Pushed `fix/clients/n026-detail-screen-bugs` commit `b90ee95`; bugs P0 resueltos (DI vía `useClientDetail` + hide `syncStatus`); migración a `MeasurementTypeSelect` queda diferida hasta N-021..N-025 |
 | N-027 | Tests de integración E2E: flujos completos multi-módulo | High | Open | Tester | Reducido a integración únicamente; tests unitarios se escriben dentro del PR correspondiente (N-016..N-026) como criterio de salida |
 
 ## Sprint Actual — Tracks Paralelos
@@ -60,6 +60,7 @@
 
 ## Open Blockers (Prioritized)
 
+- High: N-019 pendiente mantiene conviviencia de legado (`useAddMeasurement`, `useClientMeasurementHistory`, `MeasurementCreateScreen`, `MeasurementHistoryScreen`) y bloquea el cierre de Track D.
 - Medium: verificacion de post-rotacion pendiente (evidencia y checklist de secretos actualizados).
 - Medium: senal de cobertura no confiable (0/0), puede bloquear decision de release.
-- High: ClientDetailScreen tiene 2 bugs activos visibles (DI violado + syncStatus en UI) → resolución en N-026 (P0).
+- Low: deuda parcial N-026: migración de navegación post-create a `MeasurementTypeSelect` debe cerrarse junto con N-021.

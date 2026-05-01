@@ -1,4 +1,9 @@
-import { Controller, type Control, type FieldValues, type Path } from "react-hook-form";
+import {
+  Controller,
+  type Control,
+  type FieldValues,
+  type Path,
+} from "react-hook-form";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
 interface MeasurementNumberFieldProps<TFormValues extends FieldValues> {

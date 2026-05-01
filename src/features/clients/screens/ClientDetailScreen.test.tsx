@@ -123,7 +123,7 @@ describe("ClientDetailScreen", () => {
     expect(queryByText(/pending/i)).toBeNull();
   });
 
-  it("navigates to MeasurementCreate and MeasurementHistory", () => {
+  it("navigates to MeasurementTypeSelect in create and view modes", () => {
     const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
     const client = clientFactory({
       id: "11111111-1111-4111-8111-111111111111",
@@ -141,13 +141,15 @@ describe("ClientDetailScreen", () => {
     );
 
     fireEvent.press(getByText("Nueva medida"));
-    expect(navigate).toHaveBeenCalledWith("MeasurementCreate", {
+    expect(navigate).toHaveBeenCalledWith("MeasurementTypeSelect", {
       clientId: client.id,
+      mode: "create",
     });
 
     fireEvent.press(getByText("Ver historial"));
-    expect(navigate).toHaveBeenCalledWith("MeasurementHistory", {
+    expect(navigate).toHaveBeenCalledWith("MeasurementTypeSelect", {
       clientId: client.id,
+      mode: "view",
     });
   });
 });

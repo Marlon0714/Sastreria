@@ -1,2 +1,3 @@
 export { clientFactory } from "./clientFactory";
-export { measurementFactory } from "./measurementFactory";
+export { camisaMeasurementFactory } from "./camisaMeasurementFactory";
+export { pantalonMeasurementFactory } from "./pantalonMeasurementFactory";
