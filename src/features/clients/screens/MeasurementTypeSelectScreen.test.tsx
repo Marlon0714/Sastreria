@@ -17,23 +17,46 @@ describe("MeasurementTypeSelectScreen", () => {
     mockNavigate.mockReset();
   });
 
-  it("renders 'Continuar sin medidas' button in create mode", () => {
+  it("renders camisa and pantalon buttons in create mode with skip option", () => {
     const { getByLabelText, queryByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("create")} />,
     );
+    expect(getByLabelText("Registrar medidas de camisa")).toBeTruthy();
+    expect(getByLabelText("Registrar medidas de pantalón")).toBeTruthy();
     expect(getByLabelText("Continuar sin medidas")).toBeTruthy();
-    expect(queryByLabelText("Volver al detalle del cliente")).toBeNull();
+    expect(queryByLabelText("Ver medidas de camisa")).toBeNull();
   });
 
-  it("renders 'Volver al detalle' button in view mode", () => {
+  it("renders view buttons in view mode without skip option", () => {
     const { getByLabelText, queryByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("view")} />,
     );
-    expect(getByLabelText("Volver al detalle del cliente")).toBeTruthy();
+    expect(getByLabelText("Ver medidas de camisa")).toBeTruthy();
+    expect(getByLabelText("Ver medidas de pantalón")).toBeTruthy();
     expect(queryByLabelText("Continuar sin medidas")).toBeNull();
   });
 
-  it("navigates to ClientDetail when pressing create-mode button", () => {
+  it("navigates to CamisaMeasurementCreate on camisa press in create mode", () => {
+    const { getByLabelText } = render(
+      <MeasurementTypeSelectScreen {...buildProps("create", "abc-123")} />,
+    );
+    fireEvent.press(getByLabelText("Registrar medidas de camisa"));
+    expect(mockNavigate).toHaveBeenCalledWith("CamisaMeasurementCreate", {
+      clientId: "abc-123",
+    });
+  });
+
+  it("navigates to PantalonMeasurementDetail on pantalon press in view mode", () => {
+    const { getByLabelText } = render(
+      <MeasurementTypeSelectScreen {...buildProps("view", "xyz-456")} />,
+    );
+    fireEvent.press(getByLabelText("Ver medidas de pantalón"));
+    expect(mockNavigate).toHaveBeenCalledWith("PantalonMeasurementDetail", {
+      clientId: "xyz-456",
+    });
+  });
+
+  it("navigates to ClientDetail when pressing skip button in create mode", () => {
     const { getByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("create", "abc-123")} />,
     );

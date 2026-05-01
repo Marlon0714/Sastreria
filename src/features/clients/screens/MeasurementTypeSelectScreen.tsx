@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 
@@ -12,42 +12,61 @@ export default function MeasurementTypeSelectScreen({
   navigation,
   route,
 }: Props) {
-  const isCreateMode = route.params.mode === "create";
+  const { clientId, mode } = route.params;
+  const isCreateMode = mode === "create";
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Selecciona tipo de medida</Text>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.title}>Tipo de medida</Text>
       <Text style={styles.description}>
-        El flujo de captura y detalle por prenda se habilitará en la siguiente
-        iteración.
+        {isCreateMode
+          ? "Selecciona el tipo de prenda para registrar las medidas."
+          : "Selecciona el tipo de prenda para ver las medidas guardadas."}
       </Text>
+
+      <Pressable
+        accessibilityLabel={
+          isCreateMode ? "Registrar medidas de camisa" : "Ver medidas de camisa"
+        }
+        style={styles.primaryButton}
+        onPress={() =>
+          isCreateMode
+            ? navigation.navigate("CamisaMeasurementCreate", { clientId })
+            : navigation.navigate("CamisaMeasurementDetail", { clientId })
+        }
+      >
+        <Text style={styles.primaryButtonText}>Camisa</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityLabel={
+          isCreateMode
+            ? "Registrar medidas de pantalón"
+            : "Ver medidas de pantalón"
+        }
+        style={styles.primaryButton}
+        onPress={() =>
+          isCreateMode
+            ? navigation.navigate("PantalonMeasurementCreate", { clientId })
+            : navigation.navigate("PantalonMeasurementDetail", { clientId })
+        }
+      >
+        <Text style={styles.primaryButtonText}>Pantalón</Text>
+      </Pressable>
 
       {isCreateMode ? (
         <Pressable
           accessibilityLabel="Continuar sin medidas"
-          style={styles.primaryButton}
-          onPress={() =>
-            navigation.navigate("ClientDetail", {
-              clientId: route.params.clientId,
-            })
-          }
-        >
-          <Text style={styles.primaryButtonText}>Continuar sin medidas</Text>
-        </Pressable>
-      ) : (
-        <Pressable
-          accessibilityLabel="Volver al detalle del cliente"
           style={styles.secondaryButton}
-          onPress={() =>
-            navigation.navigate("ClientDetail", {
-              clientId: route.params.clientId,
-            })
-          }
+          onPress={() => navigation.navigate("ClientDetail", { clientId })}
         >
-          <Text style={styles.secondaryButtonText}>Volver al detalle</Text>
+          <Text style={styles.secondaryButtonText}>Continuar sin medidas</Text>
         </Pressable>
-      )}
-    </View>
+      ) : null}
+    </ScrollView>
   );
 }
 
