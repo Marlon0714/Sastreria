@@ -154,7 +154,7 @@ export default function PantalonMeasurementDetailScreen({
         <Pressable
           accessibilityLabel="Continuar sin medidas"
           style={styles.skipButton}
-          onPress={() => navigation.navigate("ClientDetail", { clientId })}
+          onPress={() => navigation.popTo("ClientDetail", { clientId })}
         >
           <Text style={styles.skipButtonText}>Continuar sin medidas</Text>
         </Pressable>
