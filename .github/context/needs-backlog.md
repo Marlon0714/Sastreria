@@ -57,7 +57,8 @@
 - Tests unitarios: incluidos en cada PR de N-016..N-026 como criterio de salida
 - N-027: solo integración E2E flujos completos
 
-## Open Blockers (Prioritized)
+| N-029 | Búsqueda y filtro de clientes por nombre y teléfono en ClientListScreen | High | Done | Builder | Filtro local (all/nombre/teléfono) + normalización de acentos; sin cambios en repo/hook; 4 tests nuevos |
+| N-030 | Estrategia de persistencia multi-dispositivo (backend + sync cloud) | High | Open | Architect | Pendiente decisión arquitectural: opciones incluyen Firebase/Supabase/REST propio; impacta N-010 sync queue |
 
 - High: Push de `feature/clients/n021-n025-screens` a remote bloqueado por DNS; merge a develop pendiente de reintento manual.
 - Medium: verificacion de post-rotacion pendiente (evidencia y checklist de secretos actualizados).
