@@ -13,7 +13,9 @@ function buildProps(mode: "create" | "view", clientId = "client-uuid-1") {
 }
 
 describe("MeasurementTypeSelectScreen", () => {
-  beforeEach(() => { mockNavigate.mockReset(); });
+  beforeEach(() => {
+    mockNavigate.mockReset();
+  });
 
   it("renders 'Continuar sin medidas' button in create mode", () => {
     const { getByLabelText, queryByLabelText } = render(

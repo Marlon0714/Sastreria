@@ -13,7 +13,11 @@ import type { ClientsStackParamList } from "./types";
 // TypeScript keeps route param types fully enforced. Remove when real screens
 // are added in N-022..N-025.
 function PlaceholderScreen() {
-  return <View><Text>Próximamente</Text></View>;
+  return (
+    <View>
+      <Text>Próximamente</Text>
+    </View>
+  );
 }
 
 const Stack = createNativeStackNavigator<ClientsStackParamList>();
