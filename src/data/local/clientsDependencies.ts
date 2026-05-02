@@ -31,18 +31,30 @@ function getClientsSyncOrchestrator(): SyncOrchestrator {
     return defaultSyncOrchestrator;
   }
 
-  const {
-    NoopSyncTransport,
-    SyncQueueProcessor,
-    SyncQueueRepository,
-    SyncOrchestrator,
-  } =
+  const { SyncQueueProcessor, SyncQueueRepository, SyncOrchestrator } =
     // Lazy load avoids pulling SQLite/Expo internals in unit tests.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require("../sync") as typeof import("../sync");
 
+  const { isSupabaseConfigured } =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("../supabase/config") as typeof import("../supabase/config");
+
+  let transport: import("../sync").SyncTransport;
+
+  if (isSupabaseConfigured()) {
+    const { SupabaseSyncTransport } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("../sync/SupabaseSyncTransport") as typeof import("../sync/SupabaseSyncTransport");
+    transport = new SupabaseSyncTransport();
+  } else {
+    const { NoopSyncTransport } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("../sync") as typeof import("../sync");
+    transport = new NoopSyncTransport();
+  }
+
   const queueRepository = new SyncQueueRepository();
-  const transport = new NoopSyncTransport();
   const processor = new SyncQueueProcessor(queueRepository, transport);
 
   defaultSyncOrchestrator = new SyncOrchestrator(processor);
