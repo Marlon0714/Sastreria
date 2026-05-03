@@ -14,6 +14,17 @@ jest.mock("./ClientsStackNavigator", () => {
   };
 });
 
+// Mock useAuth so RootNavigator renders tabs directly (authenticated state)
+jest.mock("../features/auth/hooks/useAuth", () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    signIn: jest.fn(),
+    signOut: jest.fn(),
+  }),
+}));
+
 describe("RootNavigator tabs composition", () => {
   beforeEach(() => {
     jest.clearAllMocks();
