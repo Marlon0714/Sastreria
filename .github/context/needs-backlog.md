@@ -32,7 +32,7 @@
 | N-026 | Refactor ClientDetailScreen + flujo post-create: navegar a MeasurementTypeSelect | High | Done | Builder | Cierre funcional completado con N-021 en commit `6470125`; queda resuelta la deuda de navegación post-create |
 | N-027 | Tests de integración E2E: flujos completos multi-módulo | High | Open | Tester | Reducido a integración únicamente; tests unitarios se escriben dentro del PR correspondiente (N-016..N-026) como criterio de salida |
 
-## Sprint Actual — Tracks Paralelos
+| N-032 | Supabase Auth + offline sync multi-dispositivo | High | **Done** | Builder / Reviewer | Cerrado 2026-05-02. Login, SecureStore, web-compat, push/pull sync v2. Pendiente: test useAuth + LoginScreen, Crashlytics shim |
 
 **Track A — Arquitectura CI (independiente, arrancar ya):**
 

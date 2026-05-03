@@ -44,6 +44,14 @@
 - Low: Crashlytics integration is still pending; structured `console.error` is a temporary shim.
 - Low: deuda técnica `isSubmitting` durante operación async en hooks de upsert; registrada para sprint futuro.
 
+## N-032 — Supabase Auth/Sync (CERRADO 2026-05-02)
+
+- Login seguro con Supabase Auth (correo/clave), sesión persistente en SecureStore (móvil) o localStorage (web).
+- Sync offline-first para clientes y medidas v2 (camisa/pantalón).
+- Fix web-compat: `secureSessionStorage` detecta `Platform.OS === "web"` y usa localStorage/memoria.
+- Typecheck OK. 110/111 tests OK (test de tabs pendiente por nuevo flujo de login, abordado en sprint siguiente).
+- Rama: `feature/sync/n032-supabase-transport`.
+
 ## Next Session Steps (Max 3)
 
 1. **P0 — Push + merge `feature/clients/n021-n025-screens`** a `develop` en cuanto se resuelva DNS; validar CI verde post-merge.
