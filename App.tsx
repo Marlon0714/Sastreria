@@ -1,3 +1,4 @@
+import "react-native-url-polyfill/auto";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
@@ -7,6 +8,8 @@ import {
 } from "./src/data/local/clientsDependencies";
 import { getDatabase } from "./src/data/local/database";
 import { runMigrations } from "./src/data/local/migrations";
+import { isSupabaseConfigured } from "./src/data/supabase/config";
+import { SupabasePullSync } from "./src/data/sync/SupabasePullSync";
 import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
 
@@ -23,6 +26,24 @@ export default function App() {
       try {
         const db = getDatabase();
         await runMigrations(db);
+
+        // Pull remote data if Supabase is configured (multi-device sync)
+        if (isSupabaseConfigured()) {
+          void new SupabasePullSync()
+            .pullAll()
+            .catch((err: unknown) => {
+              // TODO: replace with Crashlytics when telemetry is integrated
+              console.error(
+                JSON.stringify({
+                  level: "error",
+                  service: "App",
+                  message: "Initial pull sync failed",
+                  error: err instanceof Error ? err.message : String(err),
+                }),
+              );
+            });
+        }
+
         void getClientsSyncOrchestrator()
           .requestRun()
           .catch((err: unknown) => {
