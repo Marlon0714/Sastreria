@@ -109,4 +109,137 @@ describe("ClientListScreen", () => {
     fireEvent.press(getByText("Crear nuevo cliente"));
     expect(navigationNavigate).toHaveBeenCalledWith("ClientCreate");
   });
+
+  it("renders client list and shows search input with filter buttons", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({
+          id: "aaaa-1",
+          firstName: "María",
+          lastName: "García",
+          phone: "3001112233",
+        }),
+        clientFactory({
+          id: "aaaa-2",
+          firstName: "Juan",
+          lastName: "Pérez",
+          phone: "3009998877",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByLabelText("Buscar cliente por nombre o telefono")).toBeTruthy();
+    expect(getByLabelText("Filtro todos")).toBeTruthy();
+    expect(getByLabelText("Filtro nombre")).toBeTruthy();
+    expect(getByLabelText("Filtro telefono")).toBeTruthy();
+  });
+
+  it("filters clients by name when searching", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({
+          id: "aaaa-1",
+          firstName: "María",
+          lastName: "García",
+          phone: "3001112233",
+        }),
+        clientFactory({
+          id: "aaaa-2",
+          firstName: "Juan",
+          lastName: "Pérez",
+          phone: "3009998877",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, getByText, queryByText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "maria",
+    );
+
+    expect(getByText("María García")).toBeTruthy();
+    expect(queryByText("Juan Pérez")).toBeNull();
+  });
+
+  it("filters clients by phone when selecting phone filter", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({
+          id: "aaaa-1",
+          firstName: "María",
+          lastName: "García",
+          phone: "3001112233",
+        }),
+        clientFactory({
+          id: "aaaa-2",
+          firstName: "Juan",
+          lastName: "Pérez",
+          phone: "3009998877",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, getByText, queryByText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Filtro telefono"));
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "300999",
+    );
+
+    expect(getByText("Juan Pérez")).toBeTruthy();
+    expect(queryByText("María García")).toBeNull();
+  });
+
+  it("shows no results message when search finds nothing", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({
+          id: "aaaa-1",
+          firstName: "María",
+          lastName: "García",
+          phone: "3001112233",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, getByText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "zzz no existe",
+    );
+
+    expect(
+      getByText("No hay clientes que coincidan con la busqueda."),
+    ).toBeTruthy();
+  });
 });

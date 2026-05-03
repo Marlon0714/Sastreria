@@ -1,7 +1,14 @@
-import type { Client } from "../../features/clients/domain/types";
+import type {
+  CamisaMeasurement,
+  Client,
+  PantalonMeasurement,
+} from "../../features/clients/domain/types";
 import type { SyncStatus } from "../../shared/domain/baseEntity";
 
-export type SyncEntityType = "client" | "measurement";
+export type SyncEntityType =
+  | "client"
+  | "camisa_measurement"
+  | "pantalon_measurement";
 
 interface SyncQueueItemBase {
   entityType: SyncEntityType;
@@ -15,24 +22,20 @@ export interface SyncClientQueueItem extends SyncQueueItemBase {
   payload: Client;
 }
 
-export interface SyncMeasurementQueueItem extends SyncQueueItemBase {
-  entityType: "measurement";
-  payload: {
-    id: string;
-    clientId: string;
-    measuredAt: string;
-    pechoCm: number;
-    cinturaCm: number;
-    caderaCm: number;
-    largoCm: number;
-    notes: string | null;
-    createdAt: string;
-    updatedAt: string;
-    syncStatus: SyncStatus;
-  };
+export interface SyncCamisaQueueItem extends SyncQueueItemBase {
+  entityType: "camisa_measurement";
+  payload: CamisaMeasurement;
 }
 
-export type SyncQueueItem = SyncClientQueueItem | SyncMeasurementQueueItem;
+export interface SyncPantalonQueueItem extends SyncQueueItemBase {
+  entityType: "pantalon_measurement";
+  payload: PantalonMeasurement;
+}
+
+export type SyncQueueItem =
+  | SyncClientQueueItem
+  | SyncCamisaQueueItem
+  | SyncPantalonQueueItem;
 
 export interface RetryPolicy {
   maxRetries: number;
