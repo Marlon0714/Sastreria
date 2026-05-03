@@ -2,22 +2,17 @@
 
 ## Snapshot
 
-- Date: 2026-05-01
+- Date: 2026-05-02
 - Project: sastreria (React Native + Expo)
-- Stage: MVP funcional en clients; iniciando sync cloud + schedule/pricing
-- Branch activa: `develop` (base estable); `fix/clients/measurement-ux-flow` pendiente de PR+merge
-- Estado de tests: 29 suites / 105 tests verde (post-fix UX flow)
+- Stage: MVP funcional con Auth + Sync cloud activo
+- Branch activa: develop (N-031 + N-032 mergeados)
+- Session Close: N-032 cerrado y mergeado (PR #19). Supabase Auth + sync v2 funcional en web y Android. 111/111 tests verdes.
 
 ## Current Focus
 
-**Sprint activo — Dos tracks en paralelo:**
-
-- **Track F — Sync Cloud (nueva prioridad alta):** N-031 → N-032 → N-033 → N-034
-  - Prerequisito: arreglar `SyncQueueRepository` para tablas v2 (N-031)
-  - Backend: Supabase (decisión tomada); instalar `@supabase/supabase-js` + `expo-secure-store`
-  - Entregable mínimo: datos de un dispositivo visibles en otro tras sync
-- **Track G — Features pendientes:** N-008 (schedule) + N-009 (pricing) baseline
-- **Track A — Calidad CI:** N-006 + N-011 (sin bloquear F y G)
+- N-032 ✓ mergeado en develop: Login, SecureStore (móvil) + localStorage (web), sync push/pull para clientes y medidas v2.
+- Prioridad siguiente: baseline funcional de schedule/pricing (N-008, N-009) + tests de useAuth/LoginScreen pendientes.
+- Todo el flujo de clients está completo: domain, data, navigation, forms, screens, sync cloud.
 
 ## Tech Stack
 
@@ -25,29 +20,29 @@
 - React Native 0.81.x
 - TypeScript strict
 - Zustand, React Hook Form, Zod
-- Expo SQLite (offline-first local)
-- **Supabase** (PostgreSQL cloud — decidido 2026-05-01 para N-030)
+- Expo SQLite (offline-first)
 - EAS Build + GitHub Actions
 
 ## Delivery Status
 
-- N-010: Merged. `src/data/sync`: orchestrator, processor, queue repository, transport contract (`NoopSyncTransport`) y tests.
-- N-013: Merged. Root navigation tabs+stacks por feature.
-- N-014: Merged. Hooks desacoplados de implementaciones concretas vía DI.
-- N-016..N-019: Merged. Dominio v2 (Camisa/Pantalón), SQLite v2, repositorios, hooks de medidas.
-- N-020 + N-028: Merged. Navigation types v2 + form components compartidos.
-- N-021..N-026: Merged (incluidos en `fix/clients/measurement-ux-flow`). Screens de medidas unificadas.
-- N-029: Done (en `develop` local). Búsqueda/filtro por nombre y teléfono en `ClientListScreen`.
-- fix/clients/measurement-ux-flow: 3 commits listos, branch en GitHub, **PR pendiente de crear** por el usuario.
+- N-010: Merged in develop. `src/data/sync` contains orchestrator, processor, repository, transport contract and tests.
+- N-013: Merged in develop. Root navigation uses feature tabs + dedicated stacks with placeholders for schedule/pricing.
+- N-014: Merged in develop. Hooks no longer couple directly to data/local repositories.
+- N-016: Integrado en develop (refactor de dominio de medidas). `CamisaMeasurement`/`PantalonMeasurement` + DTOs/schemas activos; modelo legado sigue deprecado hasta cleanup N-019.
+- N-020: Integrado en develop (navigation types + rutas nuevas). `MeasurementTypeSelect` y rutas de camisa/pantalon ya tipadas; rutas legacy aun presentes como `@deprecated`.
+- N-026: Integrado en develop (fixes P0 en detalle cliente). `ClientDetailScreen` usa `useClientDetail` + `ClientsDependenciesProvider`; deuda de migracion post-create a `MeasurementTypeSelect` cerrada en N-021.
+- N-028: Integrado en develop (forms compartidos). `CamisaMeasurementForm`/`PantalonMeasurementForm` y fields genericos disponibles con soporte `disabled`.
+- N-021..N-025: Implementados en `feature/clients/n021-n025-screens` (commit `6470125`): selector de tipo por modo, create/detail de camisa y pantalón con tests por pantalla; `ClientsStackNavigator` reemplaza placeholders por pantallas reales.
+- Validación: `npm run typecheck` OK; `npm run test:ci` 29 suites / 106 tests verde; hook pre-commit OK.
 
 ## Risks / Blockers
 
-- High: `SyncQueueRepository` aún lee tabla `measurements` (legacy v1) — medidas camisa/pantalón **nunca entran a la cola de sync**. Bloqueante para N-032.
-- High: `SyncMeasurementQueueItem.payload` tiene campos del modelo v1; tipo desalineado con `CamisaMeasurement`/`PantalonMeasurement`. Requiere N-031 antes de cualquier transport real.
-- Medium: Sin autenticación implementada — multi-dispositivo sin auth es inviable en producción. N-032 incluye auth básica Supabase.
-- Medium: Coverage signal no confiable (`0/0`); N-011 pendiente.
-- Low: `console.error` como shim de Crashlytics; reemplazar cuando se integre Firebase Analytics (deuda conocida).
-- Low: `isSubmitting` async en hooks de upsert; deuda técnica registrada.
+- High: Push de `feature/clients/n021-n025-screens` pendiente por fallo de DNS; merge a develop bloqueado hasta que se resuelva conectividad.
+- Medium: Confirm no stale local/CI references to token previo y completar evidencia de rotacion.
+- Medium: Pricing and schedule features still lack implementation files; placeholders prevent crashes but not product completeness.
+- Medium: Coverage signal remains weak (`Unknown% (0/0)`), so release confidence is limited.
+- Low: Crashlytics integration is still pending; structured `console.error` is a temporary shim.
+- Low: deuda técnica `isSubmitting` durante operación async en hooks de upsert; registrada para sprint futuro.
 
 ## N-032 — Supabase Auth/Sync (CERRADO 2026-05-02)
 
@@ -59,6 +54,6 @@
 
 ## Next Session Steps (Max 3)
 
-1. **P0 — N-031**: Corregir `SyncQueueRepository` + tipos sync para tablas v2 (`camisa_measurements`, `pantalon_measurements`). Sin esto el sync cloud no puede funcionar.
-2. **P1 — N-032**: Crear proyecto Supabase, replicar schema, implementar `SupabaseSyncTransport` + auth básica email/password.
-3. **P1 — PR fix/clients/measurement-ux-flow**: El usuario crea el PR en GitHub y hace merge a `develop`.
+1. **P0 — Push + merge `feature/clients/n021-n025-screens`** a `develop` en cuanto se resuelva DNS; validar CI verde post-merge.
+2. **P1 — Iniciar baseline funcional de `schedule` y `pricing`** (N-008 y N-009) con dominio + repositorio + screens mínimas y tests base.
+3. **P1 paralelo de calidad**: avanzar N-006 (quality gate PR) y N-011 (coverage confiable) para no acumular riesgo de release al final.

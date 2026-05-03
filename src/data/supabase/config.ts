@@ -14,13 +14,17 @@ export function getSupabaseConfig(): SupabaseConfig {
 
   if (!url || url === "https://your-project-id.supabase.co") {
     throw new Error(
-      "[config] EXPO_PUBLIC_SUPABASE_URL is not set. Add it to your .env file.",
+      "[config] EXPO_PUBLIC_SUPABASE_URL is not configured. " +
+        "Local: set it in .env. " +
+        "Mobile build: set it in eas.json env or via EAS Environment Variables.",
     );
   }
 
   if (!publishableKey || publishableKey === "your-publishable-key-here") {
     throw new Error(
-      "[config] EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set. Add it to your .env file.",
+      "[config] EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not configured. " +
+        "Local: set it in .env. " +
+        "Mobile build: set it in eas.json env or via EAS Environment Variables.",
     );
   }
 
