@@ -32,7 +32,7 @@
 | N-026 | Refactor ClientDetailScreen + flujo post-create: navegar a MeasurementTypeSelect | High | Done | Builder | Cierre funcional completado con N-021 en commit `6470125`; queda resuelta la deuda de navegación post-create |
 | N-027 | Tests de integración E2E: flujos completos multi-módulo | High | Open | Tester | Reducido a integración únicamente; tests unitarios se escriben dentro del PR correspondiente (N-016..N-026) como criterio de salida |
 
-| N-032 | Supabase Auth + offline sync multi-dispositivo | High | **Done** | Builder / Reviewer | Cerrado 2026-05-02. Login, SecureStore, web-compat, push/pull sync v2. Pendiente: test useAuth + LoginScreen, Crashlytics shim |
+| N-032 | Supabase Auth + offline sync multi-dispositivo | High | **Done** | Builder / Reviewer | Cerrado 2026-05-03 sin deuda. Login, SecureStore, web-compat, push/pull sync v2. Tests: `useAuth.test.ts` (8 casos) + `LoginScreen.test.tsx` (7 casos). Typecheck OK. Pendiente: merge PR a develop. |
 
 **Track A — Arquitectura CI (independiente, arrancar ya):**
 
@@ -57,14 +57,19 @@
 - Tests unitarios: incluidos en cada PR de N-016..N-026 como criterio de salida
 - N-027: solo integración E2E flujos completos
 
+| N-033 | Tests unitarios para `useAuth` y `LoginScreen` | High | **Done** | Builder / Tester | Cerrado 2026-05-03. `useAuth.test.ts` (8 casos) + `LoginScreen.test.tsx` (7 casos). Typecheck OK. |
+| N-034 | Crashlytics real (Firebase SDK) reemplazando shim `console.error` | Low | Open | Builder | Shim funcional en todos los módulos; integrar al abordar N-telemetría |
+
 ## Open Blockers (Prioritized)
 
-- High: Push de `feature/clients/n021-n025-screens` a remote bloqueado por DNS; merge a develop pendiente de reintento manual.
-- Medium: verificacion de post-rotacion pendiente (evidencia y checklist de secretos actualizados).
-- Medium: senal de cobertura no confiable (0/0), puede bloquear decision de release.
-- Low: deuda técnica `isSubmitting` durante operación async en hooks de upsert; registrada para sprint futuro.
+- **High**: PR de N-032 pendiente de apertura — rama `feature/sync/n032-supabase-transport` lista con tests; merge a develop bloqueado hasta CI verde.
+- **Medium**: `schedule` y `pricing` sin implementación — el producto no es MVP sin ellos.
+- **Medium**: Señal de cobertura puede distorsionarse con features vacíos; N-011 aún sin resolver.
+- **Low**: deuda técnica `isSubmitting` en hooks de upsert durante operación async.
 
-## Proximas Prioridades Recomendadas
+## Proximas Prioridades Recomendadas (2026-05-03)
 
-- N-008 y N-009: baseline de `schedule` y `pricing`.
-- N-006 y N-011: quality gates de PR + cobertura confiable en CI.
+1. **P0** — Abrir PR y mergear N-032 a develop.
+2. **P1** — N-008: baseline `schedule` (domain + repository + screen + tests).
+3. **P1** — N-009: baseline `pricing` (domain + repository + screen + tests) — puede ejecutarse en paralelo con N-008.
+4. **P2** — N-006 + N-011: quality gates y cobertura confiable antes de la siguiente release candidate.
