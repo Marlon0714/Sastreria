@@ -1,6 +1,14 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import type React from "react";
+import { Alert } from "react-native";
 
 import { clientFactory } from "../../../__tests__/factories";
 import type { Client } from "../domain/types";
@@ -14,6 +22,7 @@ interface UseClientDetailResult {
 }
 
 const mockUseClientDetail = jest.fn<() => UseClientDetailResult>();
+const mockDeleteClient = jest.fn<(id: string) => Promise<boolean>>();
 
 jest.mock("@react-navigation/native", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
@@ -34,12 +43,23 @@ jest.mock("../hooks/useClientDetail", () => {
   };
 });
 
+jest.mock("../hooks/useDeleteClient", () => {
+  return {
+    useDeleteClient: () => ({
+      deleteClient: (id: string) => mockDeleteClient(id),
+      isDeleting: false,
+      error: null,
+    }),
+  };
+});
+
 type ScreenProps = React.ComponentProps<typeof ClientDetailScreen>;
 
-function buildProps(navigate: jest.Mock): ScreenProps {
+function buildProps(navigate: jest.Mock, popToTop: jest.Mock): ScreenProps {
   return {
     navigation: {
       navigate,
+      popToTop,
     } as unknown as ScreenProps["navigation"],
     route: {
       key: "ClientDetail-test",
@@ -54,6 +74,12 @@ function buildProps(navigate: jest.Mock): ScreenProps {
 describe("ClientDetailScreen", () => {
   beforeEach(() => {
     mockUseClientDetail.mockReset();
+    mockDeleteClient.mockReset();
+    jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("renders loading state", () => {
@@ -66,7 +92,7 @@ describe("ClientDetailScreen", () => {
     });
 
     const { getByText } = render(
-      <ClientDetailScreen {...buildProps(jest.fn())} />,
+      <ClientDetailScreen {...buildProps(jest.fn(), jest.fn())} />,
     );
 
     expect(getByText("Cargando detalle...")).toBeTruthy();
@@ -82,7 +108,7 @@ describe("ClientDetailScreen", () => {
     });
 
     const { getByText } = render(
-      <ClientDetailScreen {...buildProps(jest.fn())} />,
+      <ClientDetailScreen {...buildProps(jest.fn(), jest.fn())} />,
     );
 
     expect(getByText("No se pudo cargar el detalle del cliente.")).toBeTruthy();
@@ -112,7 +138,7 @@ describe("ClientDetailScreen", () => {
     });
 
     const { getByText, queryByText } = render(
-      <ClientDetailScreen {...buildProps(jest.fn())} />,
+      <ClientDetailScreen {...buildProps(jest.fn(), jest.fn())} />,
     );
 
     expect(getByText("Ana Torres")).toBeTruthy();
@@ -136,14 +162,87 @@ describe("ClientDetailScreen", () => {
     });
 
     const navigate = jest.fn();
+    const popToTop = jest.fn();
     const { getByText } = render(
-      <ClientDetailScreen {...buildProps(navigate)} />,
+      <ClientDetailScreen {...buildProps(navigate, popToTop)} />,
     );
 
     fireEvent.press(getByText("Medidas"));
     expect(navigate).toHaveBeenCalledWith("MeasurementTypeSelect", {
       clientId: client.id,
       mode: "create",
+    });
+  });
+
+  it("navega a editar cuando se presiona Editar datos", () => {
+    // Arrange
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+    });
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const navigate = jest.fn();
+    const popToTop = jest.fn();
+    const { getByText } = render(
+      <ClientDetailScreen {...buildProps(navigate, popToTop)} />,
+    );
+
+    // Act
+    fireEvent.press(getByText("Editar datos"));
+
+    // Assert
+    expect(navigate).toHaveBeenCalledWith("ClientEdit", {
+      clientId: client.id,
+    });
+  });
+
+  it("muestra confirmación y elimina cliente al confirmar", async () => {
+    // Arrange
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+    });
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
+    });
+    mockDeleteClient.mockResolvedValueOnce(true);
+
+    const navigate = jest.fn();
+    const popToTop = jest.fn();
+    const { getByText } = render(
+      <ClientDetailScreen {...buildProps(navigate, popToTop)} />,
+    );
+
+    // Act
+    fireEvent.press(getByText("Eliminar"));
+
+    // Assert
+    const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+    expect(alertCall?.[0]).toBe("Eliminar cliente");
+
+    const buttons = (alertCall?.[2] ?? []) as Array<{
+      text?: string;
+      onPress?: () => void;
+    }>;
+    const confirmButton = buttons.find((button) => button.text === "Eliminar");
+    expect(confirmButton).toBeDefined();
+
+    if (confirmButton?.onPress) {
+      confirmButton.onPress();
+    }
+
+    await waitFor(() => {
+      expect(mockDeleteClient).toHaveBeenCalledWith(client.id);
+      expect(popToTop).toHaveBeenCalledTimes(1);
     });
   });
 });

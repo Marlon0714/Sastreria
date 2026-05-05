@@ -16,6 +16,7 @@ const clientItem: SyncQueueItem = {
   id: "c-1",
   updatedAt: "2026-04-30T09:00:00.000Z",
   syncStatus: "pending",
+  operationType: "upsert",
   payload: {
     id: "c-1",
     firstName: "Ana",
@@ -34,6 +35,7 @@ const camisaItem: SyncQueueItem = {
   id: "cam-1",
   updatedAt: "2026-04-30T09:30:00.000Z",
   syncStatus: "error",
+  operationType: "upsert",
   payload: {
     id: "cam-1",
     clientId: "c-1",
@@ -64,6 +66,7 @@ const pantalonItem: SyncQueueItem = {
   entityType: "pantalon_measurement",
   id: "pan-1",
   updatedAt: "2026-04-30T09:45:00.000Z",
+  operationType: "upsert",
   syncStatus: "pending",
   payload: {
     id: "pan-1",

@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CamisaMeasurementDetailScreen from "../features/clients/screens/CamisaMeasurementDetailScreen";
 import ClientCreateScreen from "../features/clients/screens/ClientCreateScreen";
 import ClientDetailScreen from "../features/clients/screens/ClientDetailScreen";
+import ClientEditScreen from "../features/clients/screens/ClientEditScreen";
 import ClientListScreen from "../features/clients/screens/ClientListScreen";
 import MeasurementTypeSelectScreen from "../features/clients/screens/MeasurementTypeSelectScreen";
 import PantalonMeasurementDetailScreen from "../features/clients/screens/PantalonMeasurementDetailScreen";
@@ -26,6 +27,11 @@ export default function ClientsStackNavigator() {
         name="ClientDetail"
         component={ClientDetailScreen}
         options={{ title: "Detalle del cliente" }}
+      />
+      <Stack.Screen
+        name="ClientEdit"
+        component={ClientEditScreen}
+        options={{ title: "Editar cliente" }}
       />
       <Stack.Screen
         name="MeasurementTypeSelect"

@@ -65,6 +65,7 @@ function toClientQueueItem(row: ClientQueueRow): SyncClientQueueItem {
     id: row.id,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
+    operationType: "upsert",
     payload: {
       id: row.id,
       firstName: row.first_name,
@@ -85,6 +86,7 @@ function toCamisaQueueItem(row: CamisaQueueRow): SyncCamisaQueueItem {
     id: row.id,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
+    operationType: "upsert",
     payload: {
       id: row.id,
       clientId: row.client_id,
@@ -118,6 +120,7 @@ function toPantalonQueueItem(row: PantalonQueueRow): SyncPantalonQueueItem {
     id: row.id,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
+    operationType: "upsert",
     payload: {
       id: row.id,
       clientId: row.client_id,

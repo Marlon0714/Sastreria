@@ -146,10 +146,10 @@ describe("MeasurementRepositoryImpl", () => {
       68,
       null,
       null,
-      null,    // escote
-      null,    // cuello
-      null,    // brazo
-      null,    // puno
+      null, // escote
+      null, // cuello
+      null, // brazo
+      null, // puno
       "Ajustar molde",
       "2026-04-29T13:00:00.000Z",
       "2026-04-29T13:00:00.000Z",
@@ -260,8 +260,12 @@ describe("MeasurementRepositoryImpl", () => {
 
     const repository = new MeasurementRepositoryImpl();
 
-    await expect(repository.findCamisaByClientId("client-1")).resolves.toBeNull();
-    await expect(repository.findPantalonByClientId("client-1")).resolves.toBeNull();
+    await expect(
+      repository.findCamisaByClientId("client-1"),
+    ).resolves.toBeNull();
+    await expect(
+      repository.findPantalonByClientId("client-1"),
+    ).resolves.toBeNull();
 
     const [camisaSql, camisaClientId] = mockGetFirstAsync.mock.calls[0] ?? [];
     expect(camisaSql).toContain("FROM camisa_measurements");

@@ -129,9 +129,9 @@ describe("SupabaseSyncTransport", () => {
       mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
       const transport = new SupabaseSyncTransport();
 
-      await expect(
-        transport.syncCamisaMeasurement(baseCamisa),
-      ).rejects.toThrow("[sync] camisa push failed: 42501");
+      await expect(transport.syncCamisaMeasurement(baseCamisa)).rejects.toThrow(
+        "[sync] camisa push failed: 42501",
+      );
     });
   });
 

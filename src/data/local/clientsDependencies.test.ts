@@ -9,6 +9,7 @@ import type {
   Client,
   CreateClientDTO,
   PantalonMeasurement,
+  UpdateClientDTO,
   UpsertCamisaDTO,
   UpsertPantalonDTO,
 } from "../../features/clients/domain/types";
@@ -23,6 +24,11 @@ function buildClientRepositoryContract(): ClientRepository {
     findById: jest.fn(
       async (_id: string): Promise<Client | null> => Promise.resolve(null),
     ),
+    update: jest.fn(
+      async (_input: UpdateClientDTO): Promise<Client> =>
+        Promise.reject(new Error("not implemented")),
+    ),
+    delete: jest.fn(async (_id: string): Promise<void> => Promise.resolve()),
   };
 }
 

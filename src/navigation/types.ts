@@ -6,6 +6,7 @@ export type ClientsStackParamList = {
   ClientList: undefined;
   ClientCreate: undefined;
   ClientDetail: { clientId: string };
+  ClientEdit: { clientId: string };
   /**
    * Permite al usuario elegir entre registrar/ver medidas de camisa o pantalón.
    * - `mode: "create"` despliega botón "Continuar sin medidas".

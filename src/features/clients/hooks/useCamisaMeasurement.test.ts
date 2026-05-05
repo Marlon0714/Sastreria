@@ -17,7 +17,8 @@ const mockFindCamisaByClientId =
 const mockMeasurementRepository: MeasurementRepository = {
   upsertCamisa: jest.fn(async () => Promise.reject(new Error("unused"))),
   upsertPantalon: jest.fn(async () => Promise.reject(new Error("unused"))),
-  findCamisaByClientId: (clientId: string) => mockFindCamisaByClientId(clientId),
+  findCamisaByClientId: (clientId: string) =>
+    mockFindCamisaByClientId(clientId),
   findPantalonByClientId: jest.fn(async () => Promise.resolve(null)),
 };
 
@@ -25,6 +26,8 @@ const noopClientRepository: ClientRepository = {
   create: jest.fn(async () => Promise.reject(new Error("unused"))),
   findAll: jest.fn(async () => Promise.resolve([])),
   findById: jest.fn(async () => Promise.resolve(null)),
+  update: jest.fn(async () => Promise.reject(new Error("unused"))),
+  delete: jest.fn(async () => Promise.reject(new Error("unused"))),
 };
 
 function createWrapper(dependencies: ClientsDependencies) {

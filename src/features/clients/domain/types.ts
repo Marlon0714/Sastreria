@@ -17,6 +17,14 @@ export interface CreateClientDTO {
   notes?: string;
 }
 
+export interface UpdateClientDTO {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  notes?: string;
+}
+
 export interface CamisaMeasurement extends BaseEntity {
   clientId: string;
   espalda: number | null;

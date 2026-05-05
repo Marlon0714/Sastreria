@@ -3,6 +3,7 @@ import type {
   Client,
   CreateClientDTO,
   PantalonMeasurement,
+  UpdateClientDTO,
   UpsertCamisaDTO,
   UpsertPantalonDTO,
 } from "./types";
@@ -11,6 +12,8 @@ export interface ClientRepository {
   create(input: CreateClientDTO): Promise<Client>;
   findAll(): Promise<Client[]>;
   findById(id: string): Promise<Client | null>;
+  update(input: UpdateClientDTO): Promise<Client>;
+  delete(id: string): Promise<void>;
 }
 
 export interface MeasurementRepository {

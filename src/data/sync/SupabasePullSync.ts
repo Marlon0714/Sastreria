@@ -42,7 +42,12 @@ export class SupabasePullSync {
       updated_at: string;
     };
     for (const rowUntyped of data) {
-      if (!rowUntyped || typeof rowUntyped !== "object" || !("id" in rowUntyped)) continue;
+      if (
+        !rowUntyped ||
+        typeof rowUntyped !== "object" ||
+        !("id" in rowUntyped)
+      )
+        continue;
       const row = rowUntyped as ClientRow;
       await db.runAsync(
         `
@@ -109,7 +114,12 @@ export class SupabasePullSync {
       updated_at: string;
     };
     for (const rowUntyped of data) {
-      if (!rowUntyped || typeof rowUntyped !== "object" || !("id" in rowUntyped)) continue;
+      if (
+        !rowUntyped ||
+        typeof rowUntyped !== "object" ||
+        !("id" in rowUntyped)
+      )
+        continue;
       const row = rowUntyped as CamisaRow;
       await db.runAsync(
         `
@@ -195,7 +205,12 @@ export class SupabasePullSync {
       updated_at: string;
     };
     for (const rowUntyped of data) {
-      if (!rowUntyped || typeof rowUntyped !== "object" || !("id" in rowUntyped)) continue;
+      if (
+        !rowUntyped ||
+        typeof rowUntyped !== "object" ||
+        !("id" in rowUntyped)
+      )
+        continue;
       const row = rowUntyped as PantalonRow;
       await db.runAsync(
         `

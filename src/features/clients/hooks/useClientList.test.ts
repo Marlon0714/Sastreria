@@ -23,6 +23,8 @@ const mockClientRepository: ClientRepository = {
   findById: jest.fn(
     async (_id: string): Promise<Client | null> => Promise.resolve(null),
   ),
+  update: jest.fn(async () => Promise.reject(new Error("unused"))),
+  delete: jest.fn(async () => Promise.reject(new Error("unused"))),
 };
 
 const noopMeasurementRepository: MeasurementRepository = {

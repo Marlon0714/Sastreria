@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 3;
+const TARGET_SCHEMA_VERSION = 4;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -111,6 +111,21 @@ const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE camisa_measurements ADD COLUMN cuello REAL;`,
       `ALTER TABLE camisa_measurements ADD COLUMN brazo REAL;`,
       `ALTER TABLE camisa_measurements ADD COLUMN puno REAL;`,
+    ],
+  },
+  {
+    version: 4,
+    name: "v4_sync_delete_log",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS sync_delete_log (
+        id TEXT PRIMARY KEY NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        deleted_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'pending'
+      );
+      `,
     ],
   },
 ];

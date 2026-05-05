@@ -15,6 +15,7 @@ interface SyncQueueItemBase {
   id: string;
   updatedAt: string;
   syncStatus: SyncStatus;
+  operationType: "upsert" | "delete";
 }
 
 export interface SyncClientQueueItem extends SyncQueueItemBase {
