@@ -59,22 +59,22 @@
 
 | N-033 | Tests unitarios para `useAuth` y `LoginScreen` | High | **Done** | Builder / Tester | Cerrado 2026-05-03. `useAuth.test.ts` (8 casos) + `LoginScreen.test.tsx` (7 casos). Typecheck OK. |
 | N-034 | Crashlytics real (Firebase SDK) reemplazando shim `console.error` | Low | Open | Builder | Shim funcional en todos los módulos; integrar al abordar N-telemetría |
-| N-035 | Agregar medidas de cuello, brazo y puño a `CamisaMeasurement` | High | Open | Builder / Tester | 3 campos nuevos opcionales en tipo, schema Zod, DTO, migración SQLite v3 (ALTER TABLE ADD COLUMN), form, repo, sync Supabase |
-| N-036 | CRUD completo de clientes: editar datos personales + eliminar cliente | High | Open | Builder / Tester | `ClientRepository` necesita `update(id, dto)` + `delete(id)`; nueva pantalla `ClientEditScreen` + confirmación de borrado en `ClientDetailScreen`; nav types actualizados |
-| N-037 | Iconos en barra de tabs (Clientes, Agenda, Precios) | Medium | Open | Builder | `FeatureTabsNavigator` sin `tabBarIcon`; usar `@expo/vector-icons` (Ionicons) — ya instalado en el proyecto |
+| N-035 | Agregar medidas de cuello, brazo y puño a `CamisaMeasurement` | High | **Done** | Builder / Tester | Cerrado 2026-05-05. Migración v3, ALTER TABLE ADD COLUMN, dominio, form, repo, sync. Commit `57c1937` en `feature/sync/n032-supabase-transport`. |
+| N-036 | CRUD completo de clientes: editar datos personales + eliminar cliente | High | **Done** | Builder / Tester | Cerrado 2026-05-05. `UpdateClientDTO` + `updateClientSchema`; `update`/`delete` en `ClientRepository` + `ClientRepositoryImpl` (referential integrity); migration v4 (`sync_delete_log`); `operationType` en sync queue; `useUpdateClient`/`useDeleteClient`; `ClientEditScreen`; botones en `ClientDetailScreen`. **Deuda conocida**: operaciones delete en `sync_delete_log` aún no procesadas por `SyncQueueProcessor`. |
+| N-037 | Iconos en barra de tabs (Clientes, Agenda, Precios) | Medium | **Done** | Builder | Cerrado 2026-05-05. Ionicons en `FeatureTabsNavigator` (`people`, `calendar`, `pricetag`). `@expo/vector-icons` instalado como dependencia directa. Mock en `__mocks__/@expo/vector-icons.js` para Jest. |
 
 ## Open Blockers (Prioritized)
 
+- **High**: PR `feature/sync/n032-supabase-transport` → `develop` pendiente — N-035/N-036/N-037 no en develop todavía.
 - **High**: `schedule` y `pricing` sin implementación — bloquean MVP entregable (N-008, N-009).
-- **High**: Medidas de camisa incompletas (cuello, brazo, puño) — reporte de negocio activo (N-035).
-- **High**: Editar/eliminar cliente no disponibles — CRUD incompleto (N-036).
+- **Medium**: `sync_delete_log` no conectado a `SyncQueueProcessor` — deletes no se sincronizan al cloud (deuda de N-036).
 - **Medium**: Señal de cobertura puede distorsionarse con features vacíos; N-011 aún sin resolver.
 - **Low**: deuda técnica `isSubmitting` en hooks de upsert durante operación async.
 
-## Proximas Prioridades Recomendadas (2026-05-03)
+## Proximas Prioridades Recomendadas (2026-05-05)
 
-1. **P0** — N-035: 3 campos nuevos en camisa (cuello, brazo, puño) — migración + dominio + form + repo.
-2. **P0** — N-036: editar y eliminar cliente — `ClientEditScreen` + `delete` en repo + confirmación.
-3. **P1** — N-037: iconos en tabs — cambio puntual en `FeatureTabsNavigator`.
-4. **P1** — N-008 + N-009: baseline `schedule` y `pricing`.
+1. **P0** — PR merge: `feature/sync/n032-supabase-transport` → `develop` (N-035 + N-036 + N-037). 35 suites, 149 tests, typecheck limpio.
+2. **P1** — N-008: baseline `schedule` — domain, repository, screens, tests.
+3. **P1** — N-009: baseline `pricing` — domain, repository, screens, tests.
+4. **P2** — Conectar `sync_delete_log` con `SyncQueueProcessor` (deuda N-036).
 5. **P2** — N-006 + N-011: quality gates y cobertura confiable.

@@ -2,20 +2,19 @@
 
 ## Snapshot
 
-- Date: 2026-05-03
-- Project: sastreria (React Native + Expo)
-- Stage: MVP con Auth + Sync cloud completo mergeado en develop
-- Branch activa: `develop`
-- Último merge: `feature/sync/n032-supabase-transport` → `develop` (N-032 + N-033, 134/134 tests)
+- Date: 2026-05-05
+- Project: sastrería (React Native + Expo)
+- Stage: MVP con Auth + Sync cloud + CRUD completo de clientes; ciclo N-035/N-036/N-037 completo
+- Branch activa: `feature/sync/n032-supabase-transport` (pendiente PR → develop)
+- Último ciclo cerrado: N-035 + N-036 + N-037 en `feature/sync/n032-supabase-transport` (35 suites, 149 tests ✅)
 
 ## Current Focus
 
-- **N-032 + N-033 mergeados en develop** (2026-05-03). Auth + sync v2 completos.
-- **Nuevas necesidades de negocio reportadas** (2026-05-03) — toman prioridad sobre N-008/N-009:
-  - **N-035**: 3 medidas nuevas en camisa (cuello, brazo, puño) — migró a SQLite v3 + dominio + form + repo + sync.
-  - **N-036**: CRUD completo de clientes (editar datos + eliminar) — falta `update`/`delete` en repositorio + pantalla de edición.
-  - **N-037**: Iconos en barra de tabs (Clientes, Agenda, Precios) — cambio puntual en `FeatureTabsNavigator`.
-- `schedule` y `pricing` siguen con solo `PlaceholderScreen` (N-008, N-009) — pasan a P1 tras cerrar N-035/N-036.
+- **N-035 cerrado** (2026-05-05): cuello, brazo, puño en camisa — migración v3, dominio, form, repo, sync. Commit `57c1937`.
+- **N-036 cerrado** (2026-05-05): CRUD completo de clientes — `UpdateClientDTO`, `updateClientSchema`, `update`/`delete` en repo + impl, migration v4 (`sync_delete_log`), `operationType` en sync queue, hooks `useUpdateClient`/`useDeleteClient`, `ClientEditScreen`, botones en `ClientDetailScreen`. Deuda conocida: operaciones `delete` en `sync_delete_log` aún no son procesadas por `SyncQueueProcessor`.
+- **N-037 cerrado** (2026-05-05): Iconos Ionicons en barra de tabs (`people`, `calendar`, `pricetag`). `@expo/vector-icons` como dependencia directa; mock en `__mocks__/@expo/vector-icons.js`.
+- **Próximo P0**: PR `feature/sync/n032-supabase-transport` → `develop` con N-035 + N-036 + N-037.
+- `schedule` y `pricing` siguen con solo `PlaceholderScreen` (N-008, N-009) — son la siguiente prioridad tras el merge.
 
 ## Tech Stack
 
@@ -28,29 +27,29 @@
 
 ## Delivery Status — módulos activos confirmados en disco
 
-| Módulo                  | Estado                                                                                    |
-| ----------------------- | ----------------------------------------------------------------------------------------- |
-| `src/features/clients`  | Completo: domain, hooks, components, screens (list/create/detail/measurements), forms, DI |
-| `src/features/auth`     | Completo: `useAuth.ts` + `LoginScreen.tsx` + tests (8+7 casos). Mergeado en develop.      |
-| `src/features/schedule` | Solo `SchedulePlaceholderScreen` + test                                                   |
-| `src/features/pricing`  | Solo `PricingPlaceholderScreen` + test                                                    |
-| `src/data/local`        | Completo: migrations v1+v2, ClientRepositoryImpl, MeasurementRepositoryImpl + tests       |
-| `src/data/supabase`     | Completo: `SupabaseAuthRepository`, `secureSessionStorage`, `client`, `config`            |
-| `src/data/sync`         | Completo: SyncOrchestrator, Processor, QueueRepository, Transport + `SupabasePullSync`    |
-| `src/navigation`        | Completo: RootNavigator (auth-guard), FeatureTabsNavigator, ClientsStackNavigator         |
-| `src/shared`            | Completo: EmptyView, LoadingView, ErrorView                                               |
+| Módulo                  | Estado                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `src/features/clients`  | Completo: domain, hooks, components, screens (list/create/detail/measurements), forms, DI                           |
+| `src/features/auth`     | Completo: `useAuth.ts` + `LoginScreen.tsx` + tests (8+7 casos). Mergeado en develop.                                |
+| `src/features/schedule` | Solo `SchedulePlaceholderScreen` + test                                                                             |
+| `src/features/pricing`  | Solo `PricingPlaceholderScreen` + test                                                                              |
+| `src/data/local`        | Completo: migrations v1–v4, ClientRepositoryImpl (update/delete), MeasurementRepositoryImpl + tests                 |
+| `src/data/supabase`     | Completo: `SupabaseAuthRepository`, `secureSessionStorage`, `client`, `config`                                      |
+| `src/data/sync`         | Completo: SyncOrchestrator, Processor, QueueRepository, Transport + `SupabasePullSync`                              |
+| `src/navigation`        | Completo: RootNavigator (auth-guard), FeatureTabsNavigator (con Ionicons), ClientsStackNavigator (ClientEdit route) |
+| `src/shared`            | Completo: EmptyView, LoadingView, ErrorView                                                                         |
 
 ## Risks / Blockers
 
-- **High**: Medidas de camisa incompletas (cuello, brazo, puño) — reporte activo de negocio (N-035). Impacta migró SQLite, dominio, form, repo y sync Supabase.
-- **High**: CRUD de clientes incompleto — editar y eliminar no disponibles (N-036).
-- **Medium**: `schedule` y `pricing` sin implementación real — MVP incompleto (N-008, N-009).
+- **High**: PR `feature/sync/n032-supabase-transport` → `develop` pendiente — N-035/N-036/N-037 no están en develop todavía.
+- **High**: `schedule` y `pricing` sin implementación real — MVP incompleto (N-008, N-009).
+- **Medium**: `sync_delete_log` no está conectado a `SyncQueueProcessor` — operaciones delete no se sincronizan al cloud (deuda conocida de N-036).
 - **Medium**: Coverage signal puede distorsionarse con features vacíos (N-011).
 - **Low**: Crashlytics no integrado; shim `console.error` temporal (N-034).
 - **Low**: deuda técnica `isSubmitting` en hooks de upsert async.
 
 ## Next Session Steps (Max 3)
 
-1. **P0 — N-035**: Agregar cuello, brazo y puño a `CamisaMeasurement` — migró v3 + dominio + form + repo + sync.
-2. **P0 — N-036**: Editar y eliminar cliente — `ClientEditScreen` + `update`/`delete` en `ClientRepository` + confirmación de borrado.
-3. **P1 — N-037**: Iconos en barra de tabs (Ionicons ya instalado).
+1. **P0 — PR merge**: Abrir y mergear PR `feature/sync/n032-supabase-transport` → `develop` con N-035 + N-036 + N-037 (35 suites, 149 tests, typecheck limpio).
+2. **P1 — N-008**: Implementar baseline de `schedule` — domain, repository, screens, tests.
+3. **P1 — N-009**: Implementar baseline de `pricing` — domain, repository, screens, tests.

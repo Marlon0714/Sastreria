@@ -5,7 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
-import PantalonMeasurementForm, {
+import PantalonMeasurementGrid from "../components/PantalonMeasurementGrid";
+import {
   PANTALON_FORM_DEFAULTS,
   type PantalonFormValues,
 } from "../components/PantalonMeasurementForm";
@@ -110,7 +111,7 @@ export default function PantalonMeasurementDetailScreen({
         </View>
       ) : null}
 
-      <PantalonMeasurementForm
+      <PantalonMeasurementGrid
         control={control}
         errors={errors}
         disabled={!isEditing}

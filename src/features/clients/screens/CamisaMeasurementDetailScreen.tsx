@@ -5,7 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
-import CamisaMeasurementForm, {
+import CamisaMeasurementGrid from "../components/CamisaMeasurementGrid";
+import {
   CAMISA_FORM_DEFAULTS,
   type CamisaFormValues,
 } from "../components/CamisaMeasurementForm";
@@ -131,7 +132,7 @@ export default function CamisaMeasurementDetailScreen({
         </View>
       ) : null}
 
-      <CamisaMeasurementForm
+      <CamisaMeasurementGrid
         control={control}
         errors={errors}
         disabled={!isEditing}

@@ -4,8 +4,9 @@ import { useForm } from "react-hook-form";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
-import { ErrorView, LoadingView } from "../../../shared/components";
-import CamisaMeasurementForm, {
+import { LoadingView } from "../../../shared/components";
+import CamisaMeasurementGrid from "../components/CamisaMeasurementGrid";
+import {
   CAMISA_FORM_DEFAULTS,
   type CamisaFormValues,
 } from "../components/CamisaMeasurementForm";
@@ -43,7 +44,7 @@ export default function CamisaMeasurementCreateScreen({ navigation, route }: Pro
         </View>
       ) : null}
 
-      <CamisaMeasurementForm control={control} errors={errors} disabled={false} />
+      <CamisaMeasurementGrid control={control} errors={errors} disabled={false} />
 
       <Pressable
         accessibilityLabel="Guardar medidas de camisa"
