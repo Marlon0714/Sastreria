@@ -1,4 +1,4 @@
-import type { SyncRunResult } from "./types";
+import type { SyncRunResult, SyncTriggerSource } from "./types";
 
 export interface SyncQueueProcessorPort {
   runOnce(): Promise<SyncRunResult>;
@@ -7,10 +7,13 @@ export interface SyncQueueProcessorPort {
 export class SyncOrchestrator {
   private activeRunPromise: Promise<void> | null = null;
   private rerunRequested = false;
+  private lastTriggerSource: SyncTriggerSource = "manual";
 
   constructor(private readonly processor: SyncQueueProcessorPort) {}
 
-  async requestRun(): Promise<void> {
+  async requestRun(source: SyncTriggerSource = "manual"): Promise<void> {
+    this.lastTriggerSource = source;
+
     if (this.activeRunPromise) {
       this.rerunRequested = true;
       return this.activeRunPromise;
@@ -22,6 +25,10 @@ export class SyncOrchestrator {
 
   async runNow(): Promise<SyncRunResult> {
     return this.processor.runOnce();
+  }
+
+  getLastTriggerSource(): SyncTriggerSource {
+    return this.lastTriggerSource;
   }
 
   private async consumeRunRequests(): Promise<void> {

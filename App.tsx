@@ -10,6 +10,9 @@ import { getDatabase } from "./src/data/local/database";
 import { runMigrations } from "./src/data/local/migrations";
 import { isSupabaseConfigured } from "./src/data/supabase/config";
 import { SupabasePullSync } from "./src/data/sync/SupabasePullSync";
+import { SupabaseRealtimeInvalidationSubscriber } from "./src/data/sync/SupabaseRealtimeInvalidationSubscriber";
+import { SyncLifecycleController } from "./src/data/sync/SyncLifecycleController";
+import type { SyncTriggerSource } from "./src/data/sync/types";
 import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
 
@@ -22,48 +25,77 @@ export default function App() {
   );
 
   useEffect(() => {
+    let isMounted = true;
+    let realtimeSubscriber: SupabaseRealtimeInvalidationSubscriber | null =
+      null;
+    let lifecycleController: SyncLifecycleController | null = null;
+
+    const logSyncError = (message: string, err: unknown): void => {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "App",
+          message,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    };
+
     const bootstrap = async (): Promise<void> => {
       try {
         const db = getDatabase();
         await runMigrations(db);
 
-        // Pull remote data if Supabase is configured (multi-device sync)
-        if (isSupabaseConfigured()) {
-          void new SupabasePullSync()
-            .pullAll()
-            .catch((err: unknown) => {
-              // TODO: replace with Crashlytics when telemetry is integrated
-              console.error(
-                JSON.stringify({
-                  level: "error",
-                  service: "App",
-                  message: "Initial pull sync failed",
-                  error: err instanceof Error ? err.message : String(err),
-                }),
-              );
-            });
+        const syncOrchestrator = getClientsSyncOrchestrator();
+        const pullSync = isSupabaseConfigured() ? new SupabasePullSync() : null;
+
+        const triggerSync = (source: SyncTriggerSource): void => {
+          void syncOrchestrator.requestRun(source).catch((err: unknown) => {
+            logSyncError("Sync run failed", err);
+          });
+
+          if (!pullSync) {
+            return;
+          }
+
+          void pullSync.pullIncremental().catch((err: unknown) => {
+            logSyncError("Incremental pull sync failed", err);
+          });
+        };
+
+        if (pullSync) {
+          realtimeSubscriber = new SupabaseRealtimeInvalidationSubscriber(
+            () => {
+              triggerSync("realtime");
+            },
+          );
+          realtimeSubscriber.start();
         }
 
-        void getClientsSyncOrchestrator()
-          .requestRun()
-          .catch((err: unknown) => {
-            // TODO: replace with Crashlytics when telemetry is integrated
-            console.error(
-              JSON.stringify({
-                level: "error",
-                service: "App",
-                message: "Initial sync run failed",
-                error: err instanceof Error ? err.message : String(err),
-              }),
-            );
-          });
-        setIsReady(true);
+        lifecycleController = new SyncLifecycleController(() => {
+          triggerSync("foreground");
+        });
+        lifecycleController.start();
+
+        triggerSync("bootstrap");
+
+        if (isMounted) {
+          setIsReady(true);
+        }
       } catch {
-        setError("No se pudo inicializar la base de datos local.");
+        if (isMounted) {
+          setError("No se pudo inicializar la base de datos local.");
+        }
       }
     };
 
     void bootstrap();
+
+    return () => {
+      isMounted = false;
+      lifecycleController?.stop();
+      void realtimeSubscriber?.stop();
+    };
   }, []);
 
   if (error) {

@@ -62,19 +62,20 @@
 | N-035 | Agregar medidas de cuello, brazo y puño a `CamisaMeasurement` | High | **Done** | Builder / Tester | Cerrado 2026-05-05. Migración v3, ALTER TABLE ADD COLUMN, dominio, form, repo, sync. Commit `57c1937` en `feature/sync/n032-supabase-transport`. |
 | N-036 | CRUD completo de clientes: editar datos personales + eliminar cliente | High | **Done** | Builder / Tester | Cerrado 2026-05-05. `UpdateClientDTO` + `updateClientSchema`; `update`/`delete` en `ClientRepository` + `ClientRepositoryImpl` (referential integrity); migration v4 (`sync_delete_log`); `operationType` en sync queue; `useUpdateClient`/`useDeleteClient`; `ClientEditScreen`; botones en `ClientDetailScreen`. **Deuda conocida**: operaciones delete en `sync_delete_log` aún no procesadas por `SyncQueueProcessor`. |
 | N-037 | Iconos en barra de tabs (Clientes, Agenda, Precios) | Medium | **Done** | Builder | Cerrado 2026-05-05. Ionicons en `FeatureTabsNavigator` (`people`, `calendar`, `pricetag`). `@expo/vector-icons` instalado como dependencia directa. Mock en `__mocks__/@expo/vector-icons.js` para Jest. |
+| N-038 | Grid adaptable de medidas (camisa + pantalón): vista en tarjetas, edición inline, sin nueva ruta | High | **Done** | Builder / Tester | Cerrado 2026-05-05. `MeasurementCard`, `MeasurementGridSection`, `CamisaMeasurementGrid`, `PantalonMeasurementGrid`. Grid 2-4 columnas vía `useWindowDimensions`. Edición inline en la misma pantalla. 4 screens actualizadas. 15 tests nuevos (165 total, 39 suites). Mergeado en `develop`. |
+| N-039 | Completar sync multi-dispositivo para deletes (`sync_delete_log` -> cloud) | High | **Open (Active)** | Builder / Tester | Implementar procesamiento de `sync_delete_log` en cola sync, transporte delete en Supabase y pruebas de reintento/idempotencia para evitar drift entre dispositivos. |
 
 ## Open Blockers (Prioritized)
 
-- **High**: PR `feature/sync/n032-supabase-transport` → `develop` pendiente — N-035/N-036/N-037 no en develop todavía.
 - **High**: `schedule` y `pricing` sin implementación — bloquean MVP entregable (N-008, N-009).
 - **Medium**: `sync_delete_log` no conectado a `SyncQueueProcessor` — deletes no se sincronizan al cloud (deuda de N-036).
 - **Medium**: Señal de cobertura puede distorsionarse con features vacíos; N-011 aún sin resolver.
 - **Low**: deuda técnica `isSubmitting` en hooks de upsert durante operación async.
+- **Low**: acoplamiento frágil `child.type === MeasurementCard` en `MeasurementGridSection` (N-038) — a revisar si se introduce HOC o lazy.
 
 ## Proximas Prioridades Recomendadas (2026-05-05)
 
-1. **P0** — PR merge: `feature/sync/n032-supabase-transport` → `develop` (N-035 + N-036 + N-037). 35 suites, 149 tests, typecheck limpio.
-2. **P1** — N-008: baseline `schedule` — domain, repository, screens, tests.
-3. **P1** — N-009: baseline `pricing` — domain, repository, screens, tests.
-4. **P2** — Conectar `sync_delete_log` con `SyncQueueProcessor` (deuda N-036).
-5. **P2** — N-006 + N-011: quality gates y cobertura confiable.
+1. **P0** — N-039: completar sync multi-dispositivo de deletes (`sync_delete_log` -> cloud).
+2. **P0** — N-008: baseline `schedule` — domain, repository, screens, tests.
+3. **P0** — N-009: baseline `pricing` — domain, repository, screens, tests.
+4. **P1** — N-006 + N-011: quality gates y cobertura confiable.

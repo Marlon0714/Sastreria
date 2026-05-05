@@ -8,6 +8,12 @@ const mockGetDatabase = jest.fn<() => object>();
 const mockRunMigrations = jest.fn<(db: object) => Promise<void>>();
 const mockGetClientsDependencies = jest.fn<() => ClientsDependencies>();
 const mockRequestRun = jest.fn<() => Promise<void>>();
+const mockPullIncremental = jest.fn<() => Promise<void>>();
+const mockRealtimeStart = jest.fn<() => void>();
+const mockRealtimeStop = jest.fn<() => Promise<void>>();
+const mockLifecycleStart = jest.fn<() => void>();
+const mockLifecycleStop = jest.fn<() => void>();
+const mockIsSupabaseConfigured = jest.fn<() => boolean>();
 
 jest.mock("./src/data/local/database", () => ({
   getDatabase: (): object => mockGetDatabase(),
@@ -17,12 +23,36 @@ jest.mock("./src/data/local/migrations", () => ({
   runMigrations: (db: object): Promise<void> => mockRunMigrations(db),
 }));
 
+jest.mock("./src/data/supabase/config", () => ({
+  isSupabaseConfigured: (): boolean => mockIsSupabaseConfigured(),
+}));
+
 jest.mock("./src/data/local/clientsDependencies", () => ({
   getClientsDependencies: (): ClientsDependencies =>
     mockGetClientsDependencies(),
   getClientsSyncOrchestrator: () => ({
     requestRun: (): Promise<void> => mockRequestRun(),
   }),
+}));
+
+jest.mock("./src/data/sync/SupabasePullSync", () => ({
+  SupabasePullSync: jest.fn().mockImplementation(() => ({
+    pullIncremental: (): Promise<void> => mockPullIncremental(),
+  })),
+}));
+
+jest.mock("./src/data/sync/SupabaseRealtimeInvalidationSubscriber", () => ({
+  SupabaseRealtimeInvalidationSubscriber: jest.fn().mockImplementation(() => ({
+    start: (): void => mockRealtimeStart(),
+    stop: (): Promise<void> => mockRealtimeStop(),
+  })),
+}));
+
+jest.mock("./src/data/sync/SyncLifecycleController", () => ({
+  SyncLifecycleController: jest.fn().mockImplementation(() => ({
+    start: (): void => mockLifecycleStart(),
+    stop: (): void => mockLifecycleStop(),
+  })),
 }));
 
 jest.mock("./src/navigation/RootNavigator", () => {
@@ -60,11 +90,20 @@ describe("App bootstrap sync trigger", () => {
     mockRunMigrations.mockReset();
     mockGetClientsDependencies.mockReset();
     mockRequestRun.mockReset();
+    mockPullIncremental.mockReset();
+    mockRealtimeStart.mockReset();
+    mockRealtimeStop.mockReset();
+    mockLifecycleStart.mockReset();
+    mockLifecycleStop.mockReset();
+    mockIsSupabaseConfigured.mockReset();
 
     mockGetDatabase.mockReturnValue({});
     mockGetClientsDependencies.mockReturnValue(buildDependencies());
     mockRunMigrations.mockResolvedValue(undefined);
     mockRequestRun.mockResolvedValue(undefined);
+    mockPullIncremental.mockResolvedValue(undefined);
+    mockRealtimeStop.mockResolvedValue(undefined);
+    mockIsSupabaseConfigured.mockReturnValue(true);
   });
 
   it("runs migrations, triggers sync request and renders navigator", async () => {
@@ -110,5 +149,23 @@ describe("App bootstrap sync trigger", () => {
       expect(screen.getByText("RootNavigator")).toBeTruthy();
     });
     expect(mockRequestRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts realtime/lifecycle on bootstrap and stops them on unmount", async () => {
+    // Arrange
+    const rendered = render(<App />);
+
+    // Act
+    await waitFor(() => {
+      expect(screen.getByText("RootNavigator")).toBeTruthy();
+    });
+    rendered.unmount();
+
+    // Assert
+    expect(mockRealtimeStart).toHaveBeenCalledTimes(1);
+    expect(mockLifecycleStart).toHaveBeenCalledTimes(1);
+    expect(mockPullIncremental).toHaveBeenCalledTimes(1);
+    expect(mockRealtimeStop).toHaveBeenCalledTimes(1);
+    expect(mockLifecycleStop).toHaveBeenCalledTimes(1);
   });
 });

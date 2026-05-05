@@ -85,11 +85,27 @@ const pantalonItem: SyncQueueItem = {
   },
 };
 
+const deleteItem: SyncQueueItem = {
+  entityType: "delete_log",
+  id: "del-1",
+  updatedAt: "2026-04-30T09:50:00.000Z",
+  operationType: "delete",
+  syncStatus: "pending",
+  payload: {
+    id: "del-1",
+    entityType: "client",
+    entityId: "c-1",
+    deletedAt: "2026-04-30T09:50:00.000Z",
+    syncStatus: "pending",
+  },
+};
+
 function makeMockTransport(): jest.Mocked<SyncTransport> {
   return {
     syncClient: jest.fn(async () => Promise.resolve()),
     syncCamisaMeasurement: jest.fn(async () => Promise.resolve()),
     syncPantalonMeasurement: jest.fn(async () => Promise.resolve()),
+    syncDeleteLogEntry: jest.fn(async () => Promise.resolve()),
   };
 }
 
@@ -172,6 +188,29 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsError).not.toHaveBeenCalled();
   });
 
+  it("syncs delete log items through delete transport method", async () => {
+    // Arrange
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [deleteItem]),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+
+    // Act
+    const result = await processor.runOnce();
+
+    // Assert
+    expect(result).toEqual({ processed: 1, synced: 1, failed: 0 });
+    expect(transport.syncDeleteLogEntry).toHaveBeenCalledTimes(1);
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
+      "delete_log",
+      "del-1",
+    );
+    expect(queueRepository.markAsError).not.toHaveBeenCalled();
+  });
+
   it("marks item as error after exhausting retries", async () => {
     // Arrange
     const queueRepository = {
@@ -249,5 +288,36 @@ describe("SyncQueueProcessor", () => {
     expect(transport.syncClient).not.toHaveBeenCalled();
     expect(transport.syncCamisaMeasurement).not.toHaveBeenCalled();
     expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
+    expect(transport.syncDeleteLogEntry).not.toHaveBeenCalled();
+  });
+
+  it("marks delete log item as error when delete transport fails repeatedly", async () => {
+    // Arrange
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [deleteItem]),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    transport.syncDeleteLogEntry.mockRejectedValue(new Error("network"));
+
+    const processor = new SyncQueueProcessor(queueRepository, transport, {
+      maxRetries: 2,
+      baseDelayMs: 100,
+    });
+
+    // Act
+    const runPromise = processor.runOnce();
+    await jest.advanceTimersByTimeAsync(100);
+    const result = await runPromise;
+
+    // Assert
+    expect(result).toEqual({ processed: 1, synced: 0, failed: 1 });
+    expect(transport.syncDeleteLogEntry).toHaveBeenCalledTimes(2);
+    expect(queueRepository.markAsSynced).not.toHaveBeenCalled();
+    expect(queueRepository.markAsError).toHaveBeenCalledWith(
+      "delete_log",
+      "del-1",
+    );
   });
 });

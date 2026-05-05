@@ -91,6 +91,11 @@ export class SyncQueueProcessor {
   }
 
   private async syncItem(item: SyncQueueItem): Promise<void> {
+    if (item.entityType === "delete_log") {
+      await this.transport.syncDeleteLogEntry(item.payload);
+      return;
+    }
+
     if (item.entityType === "client") {
       await this.transport.syncClient(item.payload);
       return;

@@ -17,14 +17,20 @@ export function MeasurementGridSection({
   const CARD_MIN = 148;
   const GAP = 8;
   const PADDING = 32;
-  const cols = Math.max(2, Math.min(4, Math.floor((width - PADDING) / (CARD_MIN + GAP))));
+  const cols = Math.max(
+    2,
+    Math.min(4, Math.floor((width - PADDING) / (CARD_MIN + GAP))),
+  );
   const cardWidth = (width - PADDING - GAP * (cols - 1)) / cols;
 
   const clonedChildren = React.Children.map(children, (child) => {
     if (React.isValidElement(child) && child.type === MeasurementCard) {
-      return React.cloneElement(child as React.ReactElement<{ cardWidth?: number }>, {
-        cardWidth,
-      });
+      return React.cloneElement(
+        child as React.ReactElement<{ cardWidth?: number }>,
+        {
+          cardWidth,
+        },
+      );
     }
     return child;
   });

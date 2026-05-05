@@ -56,6 +56,38 @@ describe("SyncOrchestrator", () => {
     expect(processor.runOnce).toHaveBeenCalledTimes(3);
   });
 
+  it("deduplicates concurrent requests across multiple trigger sources", async () => {
+    // Arrange
+    const firstRun = createDeferredPromise();
+    const secondRun = createDeferredPromise();
+    const processor = {
+      runOnce: jest
+        .fn<() => Promise<SyncRunResult>>()
+        .mockImplementationOnce(async () => {
+          await firstRun.promise;
+          return { processed: 1, synced: 1, failed: 0 };
+        })
+        .mockImplementationOnce(async () => {
+          await secondRun.promise;
+          return { processed: 0, synced: 0, failed: 0 };
+        }),
+    };
+    const orchestrator = new SyncOrchestrator(processor);
+
+    // Act
+    const byRealtime = orchestrator.requestRun("realtime");
+    const byForeground = orchestrator.requestRun("foreground");
+    const byManual = orchestrator.requestRun("manual");
+
+    firstRun.resolve();
+    secondRun.resolve();
+    await Promise.all([byRealtime, byForeground, byManual]);
+
+    // Assert
+    expect(processor.runOnce).toHaveBeenCalledTimes(2);
+    expect(orchestrator.getLastTriggerSource()).toBe("manual");
+  });
+
   it("runNow delegates directly to processor", async () => {
     const expected: SyncRunResult = { processed: 2, synced: 2, failed: 0 };
     const processor = {

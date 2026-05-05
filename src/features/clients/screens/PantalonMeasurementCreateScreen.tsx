@@ -12,13 +12,23 @@ import {
 } from "../components/PantalonMeasurementForm";
 import { useUpsertPantalon } from "../hooks/useUpsertPantalon";
 
-type Props = NativeStackScreenProps<ClientsStackParamList, "PantalonMeasurementCreate">;
+type Props = NativeStackScreenProps<
+  ClientsStackParamList,
+  "PantalonMeasurementCreate"
+>;
 
-export default function PantalonMeasurementCreateScreen({ navigation, route }: Props) {
+export default function PantalonMeasurementCreateScreen({
+  navigation,
+  route,
+}: Props) {
   const { clientId } = route.params;
   const { upsertPantalon, isSubmitting, error } = useUpsertPantalon();
 
-  const { control, handleSubmit, formState: { errors } } = useForm<PantalonFormValues>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<PantalonFormValues>({
     defaultValues: PANTALON_FORM_DEFAULTS,
   });
 
@@ -37,14 +47,21 @@ export default function PantalonMeasurementCreateScreen({ navigation, route }: P
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{error}</Text>
         </View>
       ) : null}
 
-      <PantalonMeasurementGrid control={control} errors={errors} disabled={false} />
+      <PantalonMeasurementGrid
+        control={control}
+        errors={errors}
+        disabled={false}
+      />
 
       <Pressable
         accessibilityLabel="Guardar medidas de pantalón"
