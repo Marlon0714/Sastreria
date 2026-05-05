@@ -25,6 +25,8 @@ const noopClientRepository: ClientRepository = {
   create: jest.fn(async () => Promise.reject(new Error("unused"))),
   findAll: jest.fn(async () => Promise.resolve([])),
   findById: jest.fn(async () => Promise.resolve(null)),
+  update: jest.fn(async () => Promise.reject(new Error("unused"))),
+  delete: jest.fn(async () => Promise.reject(new Error("unused"))),
 };
 
 function createWrapper(dependencies: ClientsDependencies) {
@@ -59,6 +61,9 @@ describe("useUpsertCamisa", () => {
       largoManga: null,
       anchoManga: null,
       escote: null,
+      cuello: null,
+      brazo: null,
+      puno: null,
       notes: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -118,6 +123,9 @@ describe("useUpsertCamisa", () => {
       largoManga: null,
       anchoManga: null,
       escote: null,
+      cuello: null,
+      brazo: null,
+      puno: null,
       notes: "Ajustar",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",

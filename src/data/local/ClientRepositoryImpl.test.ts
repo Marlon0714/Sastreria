@@ -13,6 +13,7 @@ interface MockDatabase {
   runAsync: (sql: string, ...params: unknown[]) => Promise<unknown>;
   getAllAsync: <T>(sql: string, ...params: unknown[]) => Promise<T[]>;
   getFirstAsync: <T>(sql: string, ...params: unknown[]) => Promise<T | null>;
+  withTransactionAsync: (callback: () => Promise<void>) => Promise<void>;
 }
 
 const mockRunAsync =
@@ -21,6 +22,8 @@ const mockGetAllAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown[]>>();
 const mockGetFirstAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown | null>>();
+const mockWithTransactionAsync =
+  jest.fn<(callback: () => Promise<void>) => Promise<void>>();
 
 const mockDatabase: MockDatabase = {
   runAsync: (sql: string, ...params: unknown[]) => mockRunAsync(sql, ...params),
@@ -28,6 +31,8 @@ const mockDatabase: MockDatabase = {
     mockGetAllAsync(sql, ...params) as Promise<T[]>,
   getFirstAsync: <T>(sql: string, ...params: unknown[]) =>
     mockGetFirstAsync(sql, ...params) as Promise<T | null>,
+  withTransactionAsync: (callback: () => Promise<void>) =>
+    mockWithTransactionAsync(callback),
 };
 
 const mockGenerateDomainUuid = jest.fn<() => string>();
@@ -54,7 +59,12 @@ describe("ClientRepositoryImpl", () => {
     mockRunAsync.mockReset();
     mockGetAllAsync.mockReset();
     mockGetFirstAsync.mockReset();
+    mockWithTransactionAsync.mockReset();
     mockGenerateDomainUuid.mockReset();
+
+    mockWithTransactionAsync.mockImplementation(async (callback) => {
+      await callback();
+    });
 
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-04-29T12:30:00.000Z"));
@@ -212,5 +222,124 @@ describe("ClientRepositoryImpl", () => {
     const [sql, clientId] = mockGetFirstAsync.mock.calls[0] ?? [];
     expect(sql).toContain("WHERE id = ?");
     expect(clientId).toBe("22222222-2222-4222-8222-222222222222");
+  });
+
+  it("updates client with pending sync status and mapped response", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGetFirstAsync.mockResolvedValueOnce({
+      id: "11111111-1111-4111-8111-111111111111",
+      first_name: "Ana",
+      last_name: "Torres",
+      phone: "3001234567",
+      notes: "VIP",
+      created_at: "2026-01-01T10:00:00.000Z",
+      updated_at: "2026-04-29T12:30:00.000Z",
+      sync_status: "pending",
+    });
+
+    const onWriteCommitted = jest.fn<() => void>();
+    const repository = new ClientRepositoryImpl({ onWriteCommitted });
+
+    const result = await repository.update({
+      id: "11111111-1111-4111-8111-111111111111",
+      firstName: "  Ana ",
+      lastName: " Torres  ",
+      phone: " 3001234567 ",
+      notes: " VIP ",
+    });
+
+    expect(mockRunAsync).toHaveBeenCalledTimes(1);
+    const [updateSql, ...updateParams] = mockRunAsync.mock.calls[0] ?? [];
+    expect(updateSql).toContain("UPDATE clients");
+    expect(updateSql).toContain("sync_status = 'pending'");
+    expect(updateParams).toEqual([
+      "Ana",
+      "Torres",
+      "3001234567",
+      "VIP",
+      "2026-04-29T12:30:00.000Z",
+      "11111111-1111-4111-8111-111111111111",
+    ]);
+
+    expect(result).toEqual({
+      id: "11111111-1111-4111-8111-111111111111",
+      firstName: "Ana",
+      lastName: "Torres",
+      phone: "3001234567",
+      notes: "VIP",
+      createdAt: "2026-01-01T10:00:00.000Z",
+      updatedAt: "2026-04-29T12:30:00.000Z",
+      syncStatus: "pending",
+      measurements: [],
+    });
+    expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns constructed client when update id does not exist", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGetFirstAsync.mockResolvedValueOnce(null);
+
+    const onWriteCommitted = jest.fn<() => void>();
+    const repository = new ClientRepositoryImpl({ onWriteCommitted });
+
+    const result = await repository.update({
+      id: "99999999-9999-4999-8999-999999999999",
+      firstName: "  Laura ",
+      lastName: " Mora ",
+      phone: " 3110001111 ",
+      notes: "  ",
+    });
+
+    expect(result).toEqual({
+      id: "99999999-9999-4999-8999-999999999999",
+      firstName: "Laura",
+      lastName: "Mora",
+      phone: "3110001111",
+      notes: "",
+      createdAt: "2026-04-29T12:30:00.000Z",
+      updatedAt: "2026-04-29T12:30:00.000Z",
+      syncStatus: "pending",
+      measurements: [],
+    });
+    expect(onWriteCommitted).not.toHaveBeenCalled();
+  });
+
+  it("deletes client and logs pending delete within one transaction", async () => {
+    mockGenerateDomainUuid.mockReturnValueOnce(
+      "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    );
+    mockRunAsync.mockResolvedValue({});
+
+    const onWriteCommitted = jest.fn<() => void>();
+    const repository = new ClientRepositoryImpl({ onWriteCommitted });
+
+    await repository.delete("11111111-1111-4111-8111-111111111111");
+
+    expect(mockWithTransactionAsync).toHaveBeenCalledTimes(1);
+    expect(mockRunAsync).toHaveBeenCalledTimes(4);
+
+    const [deleteCamisaSql, deleteCamisaId] = mockRunAsync.mock.calls[0] ?? [];
+    const [deletePantalonSql, deletePantalonId] =
+      mockRunAsync.mock.calls[1] ?? [];
+    const [deleteClientSql, deleteClientId] = mockRunAsync.mock.calls[2] ?? [];
+    const [insertLogSql, ...insertLogParams] = mockRunAsync.mock.calls[3] ?? [];
+
+    expect(deleteCamisaSql).toContain("DELETE FROM camisa_measurements");
+    expect(deleteCamisaId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(deletePantalonSql).toContain("DELETE FROM pantalon_measurements");
+    expect(deletePantalonId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(deleteClientSql).toContain("DELETE FROM clients");
+    expect(deleteClientId).toBe("11111111-1111-4111-8111-111111111111");
+
+    expect(insertLogSql).toContain("INSERT INTO sync_delete_log");
+    expect(insertLogParams).toEqual([
+      "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "client",
+      "11111111-1111-4111-8111-111111111111",
+      "2026-04-29T12:30:00.000Z",
+      "pending",
+    ]);
+
+    expect(onWriteCommitted).toHaveBeenCalledTimes(1);
   });
 });

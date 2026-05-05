@@ -12,6 +12,8 @@ export const noopDependencies: ClientsDependencies = {
     create: async () => Promise.reject(new Error("noop")),
     findAll: async () => Promise.resolve([]),
     findById: async () => Promise.resolve(null),
+    update: async () => Promise.reject(new Error("noop")),
+    delete: async () => Promise.reject(new Error("noop")),
   },
   measurementRepository: {
     upsertCamisa: async () => Promise.reject(new Error("noop")),

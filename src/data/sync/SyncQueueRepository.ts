@@ -34,6 +34,9 @@ interface CamisaQueueRow {
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -62,6 +65,7 @@ function toClientQueueItem(row: ClientQueueRow): SyncClientQueueItem {
     id: row.id,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
+    operationType: "upsert",
     payload: {
       id: row.id,
       firstName: row.first_name,
@@ -82,6 +86,7 @@ function toCamisaQueueItem(row: CamisaQueueRow): SyncCamisaQueueItem {
     id: row.id,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
+    operationType: "upsert",
     payload: {
       id: row.id,
       clientId: row.client_id,
@@ -98,6 +103,9 @@ function toCamisaQueueItem(row: CamisaQueueRow): SyncCamisaQueueItem {
       largoManga: row.largo_manga,
       anchoManga: row.ancho_manga,
       escote: row.escote,
+      cuello: row.cuello,
+      brazo: row.brazo,
+      puno: row.puno,
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -112,6 +120,7 @@ function toPantalonQueueItem(row: PantalonQueueRow): SyncPantalonQueueItem {
     id: row.id,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
+    operationType: "upsert",
     payload: {
       id: row.id,
       clientId: row.client_id,

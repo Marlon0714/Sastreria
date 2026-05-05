@@ -55,6 +55,9 @@ export class SupabaseSyncTransport implements SyncTransport {
         largo_manga: measurement.largoManga,
         ancho_manga: measurement.anchoManga,
         escote: measurement.escote,
+        cuello: measurement.cuello,
+        brazo: measurement.brazo,
+        puno: measurement.puno,
         notes: measurement.notes,
         created_at: measurement.createdAt,
         updated_at: measurement.updatedAt,
@@ -97,21 +100,19 @@ export class SupabaseSyncTransport implements SyncTransport {
   /**
    * Implementación genérica para SyncTransport: decide el tipo de medición y despacha.
    */
-  async syncMeasurement(
-    measurement: {
-      id: string;
-      clientId: string;
-      measuredAt: string;
-      pechoCm: number;
-      cinturaCm: number;
-      caderaCm: number;
-      largoCm: number;
-      notes: string | null;
-      createdAt: string;
-      updatedAt: string;
-      syncStatus: any;
-    },
-  ): Promise<void> {
+  async syncMeasurement(measurement: {
+    id: string;
+    clientId: string;
+    measuredAt: string;
+    pechoCm: number;
+    cinturaCm: number;
+    caderaCm: number;
+    largoCm: number;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+    syncStatus: "pending" | "synced" | "error";
+  }): Promise<void> {
     // Por ahora, solo soporta push de camisa como ejemplo. Adaptar si hay más tipos.
     // Si tiene pechoCm, cinturaCm, caderaCm, largoCm => es una medición genérica (v2)
     // Si quieres distinguir camisa/pantalón, deberías agregar un campo type en payload.

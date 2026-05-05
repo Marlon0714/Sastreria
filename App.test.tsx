@@ -42,6 +42,8 @@ function buildDependencies(): ClientsDependencies {
       create: jest.fn(async () => Promise.reject(new Error("unused"))),
       findAll: jest.fn(async () => Promise.resolve([])),
       findById: jest.fn(async () => Promise.resolve(null)),
+      update: jest.fn(async () => Promise.reject(new Error("unused"))),
+      delete: jest.fn(async () => Promise.resolve()),
     },
     measurementRepository: {
       upsertCamisa: jest.fn(async () => Promise.reject(new Error("unused"))),

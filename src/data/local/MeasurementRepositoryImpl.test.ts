@@ -77,6 +77,9 @@ describe("MeasurementRepositoryImpl", () => {
       largo_manga: null,
       ancho_manga: null,
       escote: null,
+      cuello: null,
+      brazo: null,
+      puno: null,
       notes: "Ajustar molde",
       created_at: "2026-04-29T13:00:00.000Z",
       updated_at: "2026-04-29T13:00:00.000Z",
@@ -114,6 +117,9 @@ describe("MeasurementRepositoryImpl", () => {
       largoManga: null,
       anchoManga: null,
       escote: null,
+      cuello: null,
+      brazo: null,
+      puno: null,
       notes: "Ajustar molde",
       createdAt: "2026-04-29T13:00:00.000Z",
       updatedAt: "2026-04-29T13:00:00.000Z",
@@ -140,7 +146,10 @@ describe("MeasurementRepositoryImpl", () => {
       68,
       null,
       null,
-      null,
+      null, // escote
+      null, // cuello
+      null, // brazo
+      null, // puno
       "Ajustar molde",
       "2026-04-29T13:00:00.000Z",
       "2026-04-29T13:00:00.000Z",
@@ -165,6 +174,9 @@ describe("MeasurementRepositoryImpl", () => {
       largo_manga: null,
       ancho_manga: null,
       escote: null,
+      cuello: null,
+      brazo: null,
+      puno: null,
       notes: null,
       created_at: "2026-04-01T10:00:00.000Z",
       updated_at: "2026-04-01T10:00:00.000Z",
@@ -187,6 +199,9 @@ describe("MeasurementRepositoryImpl", () => {
       largo_manga: null,
       ancho_manga: null,
       escote: null,
+      cuello: null,
+      brazo: null,
+      puno: null,
       notes: null,
       created_at: "2026-04-01T10:00:00.000Z",
       updated_at: "2026-04-29T13:00:00.000Z",
@@ -245,8 +260,12 @@ describe("MeasurementRepositoryImpl", () => {
 
     const repository = new MeasurementRepositoryImpl();
 
-    await expect(repository.findCamisaByClientId("client-1")).resolves.toBeNull();
-    await expect(repository.findPantalonByClientId("client-1")).resolves.toBeNull();
+    await expect(
+      repository.findCamisaByClientId("client-1"),
+    ).resolves.toBeNull();
+    await expect(
+      repository.findPantalonByClientId("client-1"),
+    ).resolves.toBeNull();
 
     const [camisaSql, camisaClientId] = mockGetFirstAsync.mock.calls[0] ?? [];
     expect(camisaSql).toContain("FROM camisa_measurements");
@@ -273,6 +292,9 @@ describe("MeasurementRepositoryImpl", () => {
       largo_manga: null,
       ancho_manga: null,
       escote: null,
+      cuello: null,
+      brazo: null,
+      puno: null,
       notes: null,
       created_at: "2026-04-29T13:00:00.000Z",
       updated_at: "2026-04-29T13:00:00.000Z",

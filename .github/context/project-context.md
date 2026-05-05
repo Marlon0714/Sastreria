@@ -4,19 +4,18 @@
 
 - Date: 2026-05-03
 - Project: sastreria (React Native + Expo)
-- Stage: MVP con Auth + Sync cloud activo; rama N-032 en proceso de PR/merge a develop
-- Branch activa: `feature/sync/n032-supabase-transport`
-- Branch default: `develop`
+- Stage: MVP con Auth + Sync cloud completo mergeado en develop
+- Branch activa: `develop`
+- Último merge: `feature/sync/n032-supabase-transport` → `develop` (N-032 + N-033, 134/134 tests)
 
 ## Current Focus
 
-- **N-032 CERRADO** (2026-05-03): Supabase Auth + sync v2 completamente cerrado sin deuda.
-  - Login con Supabase Auth, sesión en SecureStore (móvil) / localStorage (web).
-  - Sync push/pull v2 para clientes, camisa_measurements y pantalon_measurements.
-  - `RootNavigator` auth-guard via `useAuth`; `SupabasePullSync` al login.
-  - **Tests escritos**: `useAuth.test.ts` (8 casos) + `LoginScreen.test.tsx` (7 casos). Typecheck OK.
-- Todo el flujo de clients está completo: domain, data, navigation, forms, screens, sync cloud.
-- `schedule` y `pricing` siguen con solo `PlaceholderScreen` — sin domain, repository ni screens reales.
+- **N-032 + N-033 mergeados en develop** (2026-05-03). Auth + sync v2 completos.
+- **Nuevas necesidades de negocio reportadas** (2026-05-03) — toman prioridad sobre N-008/N-009:
+  - **N-035**: 3 medidas nuevas en camisa (cuello, brazo, puño) — migró a SQLite v3 + dominio + form + repo + sync.
+  - **N-036**: CRUD completo de clientes (editar datos + eliminar) — falta `update`/`delete` en repositorio + pantalla de edición.
+  - **N-037**: Iconos en barra de tabs (Clientes, Agenda, Precios) — cambio puntual en `FeatureTabsNavigator`.
+- `schedule` y `pricing` siguen con solo `PlaceholderScreen` (N-008, N-009) — pasan a P1 tras cerrar N-035/N-036.
 
 ## Tech Stack
 
@@ -32,7 +31,7 @@
 | Módulo                  | Estado                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------- |
 | `src/features/clients`  | Completo: domain, hooks, components, screens (list/create/detail/measurements), forms, DI |
-| `src/features/auth`     | Funcional: `useAuth.ts` + `LoginScreen.tsx` — sin tests unitarios                         |
+| `src/features/auth`     | Completo: `useAuth.ts` + `LoginScreen.tsx` + tests (8+7 casos). Mergeado en develop.      |
 | `src/features/schedule` | Solo `SchedulePlaceholderScreen` + test                                                   |
 | `src/features/pricing`  | Solo `PricingPlaceholderScreen` + test                                                    |
 | `src/data/local`        | Completo: migrations v1+v2, ClientRepositoryImpl, MeasurementRepositoryImpl + tests       |
@@ -43,15 +42,15 @@
 
 ## Risks / Blockers
 
-- **High**: N-032 aún no mergeado a develop (branch `feature/sync/n032-supabase-transport` activa). Completar PR y merge es la P0.
-- **Medium**: `useAuth` y `LoginScreen` sin tests — cobertura de auth = 0%.
-- **Medium**: `schedule` y `pricing` sin implementación real — el MVP no es entregable sin ellos.
-- **Medium**: Coverage signal débil (umbral 70% activo pero `schedule`/`pricing` sin código, lo que puede distorsionar).
-- **Low**: Crashlytics no integrado; `console.error` JSON es shim temporal.
-- **Low**: deuda técnica `isSubmitting` en hooks de upsert durante operación async.
+- **High**: Medidas de camisa incompletas (cuello, brazo, puño) — reporte activo de negocio (N-035). Impacta migró SQLite, dominio, form, repo y sync Supabase.
+- **High**: CRUD de clientes incompleto — editar y eliminar no disponibles (N-036).
+- **Medium**: `schedule` y `pricing` sin implementación real — MVP incompleto (N-008, N-009).
+- **Medium**: Coverage signal puede distorsionarse con features vacíos (N-011).
+- **Low**: Crashlytics no integrado; shim `console.error` temporal (N-034).
+- **Low**: deuda técnica `isSubmitting` en hooks de upsert async.
 
 ## Next Session Steps (Max 3)
 
-1. **P0 — Mergear N-032 a develop**: crear PR de `feature/sync/n032-supabase-transport` → `develop`, resolver los tests de `useAuth` + `LoginScreen` antes del merge.
-2. **P1 — Baseline de `schedule`** (N-008): domain + repository interface + screen mínima + tests base.
-3. **P1 paralelo — Baseline de `pricing`** (N-009): misma estructura que N-008, puede ejecutarse en paralelo.
+1. **P0 — N-035**: Agregar cuello, brazo y puño a `CamisaMeasurement` — migró v3 + dominio + form + repo + sync.
+2. **P0 — N-036**: Editar y eliminar cliente — `ClientEditScreen` + `update`/`delete` en `ClientRepository` + confirmación de borrado.
+3. **P1 — N-037**: Iconos en barra de tabs (Ionicons ya instalado).

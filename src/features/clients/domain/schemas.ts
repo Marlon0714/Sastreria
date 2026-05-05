@@ -60,6 +60,9 @@ export const upsertCamisaSchema = z.object({
   largoManga: optionalMeasurementField.optional(),
   anchoManga: optionalMeasurementField.optional(),
   escote: optionalMeasurementField.optional(),
+  cuello: optionalMeasurementField.optional(),
+  brazo: optionalMeasurementField.optional(),
+  puno: optionalMeasurementField.optional(),
   notes: optionalNotesField,
 });
 
@@ -77,6 +80,17 @@ export const upsertPantalonSchema = z.object({
 
 export type CreateClientSchemaInput = z.input<typeof createClientSchema>;
 export type CreateClientSchemaOutput = z.output<typeof createClientSchema>;
+
+export const updateClientSchema = z.object({
+  id: z.string().uuid("El id de cliente es inválido"),
+  firstName: z.string().trim().min(1, "El nombre es obligatorio").max(80),
+  lastName: z.string().trim().min(1, "El apellido es obligatorio").max(80),
+  phone: z.string().trim().min(7, "El teléfono no es válido").max(30),
+  notes: z.string().trim().max(500).optional(),
+});
+
+export type UpdateClientSchemaInput = z.input<typeof updateClientSchema>;
+export type UpdateClientSchemaOutput = z.output<typeof updateClientSchema>;
 
 export type UpsertCamisaSchemaInput = z.input<typeof upsertCamisaSchema>;
 export type UpsertCamisaSchemaOutput = z.output<typeof upsertCamisaSchema>;

@@ -1,11 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
 import { useClientDetail } from "../hooks/useClientDetail";
+import { useDeleteClient } from "../hooks/useDeleteClient";
 
 type Props = NativeStackScreenProps<ClientsStackParamList, "ClientDetail">;
 
@@ -13,12 +14,36 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
   const { client, isLoading, error, reload } = useClientDetail(
     route.params.clientId,
   );
+  const { deleteClient } = useDeleteClient();
 
   useFocusEffect(
     useCallback(() => {
       void reload();
     }, [reload]),
   );
+
+  const handleDelete = useCallback(async () => {
+    if (!client) return;
+    const success = await deleteClient(client.id);
+    if (success) {
+      navigation.popToTop();
+    }
+  }, [client, deleteClient, navigation]);
+
+  const confirmDelete = useCallback(() => {
+    Alert.alert(
+      "Eliminar cliente",
+      "¿Seguro que deseas eliminar este cliente? Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => void handleDelete(),
+        },
+      ],
+    );
+  }, [handleDelete]);
 
   if (isLoading) {
     return <LoadingView message="Cargando detalle..." />;
@@ -56,6 +81,24 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
         }
       >
         <Text style={styles.primaryButtonText}>Medidas</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityLabel="Editar datos del cliente"
+        style={styles.secondaryButtonBlock}
+        onPress={() =>
+          navigation.navigate("ClientEdit", { clientId: client.id })
+        }
+      >
+        <Text style={styles.secondaryButtonText}>Editar datos</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityLabel="Eliminar cliente"
+        style={styles.deleteButton}
+        onPress={confirmDelete}
+      >
+        <Text style={styles.deleteButtonText}>Eliminar</Text>
       </Pressable>
     </View>
   );
@@ -108,6 +151,17 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: "#0f766e",
+    fontWeight: "700",
+  },
+  deleteButton: {
+    borderColor: "#b91c1c",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    color: "#b91c1c",
     fontWeight: "700",
   },
 });
