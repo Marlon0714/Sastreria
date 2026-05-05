@@ -5,7 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { LoadingView } from "../../../shared/components";
-import PantalonMeasurementForm, {
+import PantalonMeasurementGrid from "../components/PantalonMeasurementGrid";
+import {
   PANTALON_FORM_DEFAULTS,
   type PantalonFormValues,
 } from "../components/PantalonMeasurementForm";
@@ -43,7 +44,7 @@ export default function PantalonMeasurementCreateScreen({ navigation, route }: P
         </View>
       ) : null}
 
-      <PantalonMeasurementForm control={control} errors={errors} disabled={false} />
+      <PantalonMeasurementGrid control={control} errors={errors} disabled={false} />
 
       <Pressable
         accessibilityLabel="Guardar medidas de pantalón"
