@@ -3,6 +3,7 @@ import { getDatabase } from "../local/database";
 import type {
   SyncCamisaQueueItem,
   SyncClientQueueItem,
+  SyncDeleteQueueItem,
   SyncPantalonQueueItem,
   SyncQueueItem,
 } from "./types";
@@ -56,6 +57,14 @@ interface PantalonQueueRow {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  sync_status: "pending" | "synced" | "error";
+}
+
+interface DeleteQueueRow {
+  id: string;
+  entity_type: "client" | "camisa_measurement" | "pantalon_measurement";
+  entity_id: string;
+  deleted_at: string;
   sync_status: "pending" | "synced" | "error";
 }
 
@@ -139,6 +148,23 @@ function toPantalonQueueItem(row: PantalonQueueRow): SyncPantalonQueueItem {
   };
 }
 
+function toDeleteQueueItem(row: DeleteQueueRow): SyncDeleteQueueItem {
+  return {
+    entityType: "delete_log",
+    id: row.id,
+    updatedAt: row.deleted_at,
+    syncStatus: row.sync_status,
+    operationType: "delete",
+    payload: {
+      id: row.id,
+      entityType: row.entity_type,
+      entityId: row.entity_id,
+      deletedAt: row.deleted_at,
+      syncStatus: row.sync_status,
+    },
+  };
+}
+
 export interface SyncQueueRepositoryPort {
   getPendingItems(limit: number): Promise<SyncQueueItem[]>;
   markAsSynced(
@@ -195,6 +221,9 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         largo_manga,
         ancho_manga,
         escote,
+        cuello,
+        brazo,
+        puno,
         notes,
         created_at,
         updated_at,
@@ -235,10 +264,29 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       limit,
     );
 
+    const deleteRows = await db.getAllAsync<DeleteQueueRow>(
+      `
+      SELECT
+        id,
+        entity_type,
+        entity_id,
+        deleted_at,
+        sync_status
+      FROM sync_delete_log
+      WHERE sync_status IN (?, ?)
+      ORDER BY deleted_at ASC
+      LIMIT ?;
+      `,
+      statuses[0],
+      statuses[1],
+      limit,
+    );
+
     return [
       ...clientRows.map(toClientQueueItem),
       ...camisaRows.map(toCamisaQueueItem),
       ...pantalonRows.map(toPantalonQueueItem),
+      ...deleteRows.map(toDeleteQueueItem),
     ]
       .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))
       .slice(0, limit);
@@ -268,8 +316,22 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       client: "clients",
       camisa_measurement: "camisa_measurements",
       pantalon_measurement: "pantalon_measurements",
+      delete_log: "sync_delete_log",
     };
     const table = tableMap[entityType];
+
+    if (entityType === "delete_log") {
+      await db.runAsync(
+        `
+        UPDATE ${table}
+        SET sync_status = ?
+        WHERE id = ?;
+        `,
+        syncStatus,
+        id,
+      );
+      return;
+    }
 
     await db.runAsync(
       `

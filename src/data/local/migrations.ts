@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 4;
+const TARGET_SCHEMA_VERSION = 5;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -124,6 +124,25 @@ const MIGRATIONS: readonly Migration[] = [
         entity_id TEXT NOT NULL,
         deleted_at TEXT NOT NULL,
         sync_status TEXT NOT NULL DEFAULT 'pending'
+          CHECK (sync_status IN ('pending', 'synced', 'error'))
+      );
+      `,
+      `
+      CREATE INDEX IF NOT EXISTS idx_sync_delete_log_status_deleted_at
+      ON sync_delete_log (sync_status, deleted_at ASC);
+      `,
+    ],
+  },
+  {
+    version: 5,
+    name: "v5_sync_checkpoints",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS sync_checkpoints (
+        scope TEXT PRIMARY KEY NOT NULL,
+        cursor_updated_at TEXT,
+        cursor_id TEXT,
+        updated_at TEXT NOT NULL
       );
       `,
     ],

@@ -12,7 +12,7 @@ let defaultSyncOrchestrator: SyncOrchestrator | null = null;
 
 function scheduleSyncRun(): void {
   void getClientsSyncOrchestrator()
-    .requestRun()
+    .requestRun("write")
     .catch((err: unknown) => {
       // TODO: replace with Crashlytics when telemetry is integrated
       console.error(

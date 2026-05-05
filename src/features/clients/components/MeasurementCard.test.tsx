@@ -58,9 +58,7 @@ describe("MeasurementCard", () => {
 
   it("muestra el texto del error cuando errorMessage está presente", () => {
     // Arrange & Act
-    const { getByText } = render(
-      <Harness errorMessage="Campo requerido" />,
-    );
+    const { getByText } = render(<Harness errorMessage="Campo requerido" />);
 
     // Assert
     expect(getByText("Campo requerido")).toBeTruthy();

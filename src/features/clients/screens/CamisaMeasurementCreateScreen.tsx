@@ -12,13 +12,23 @@ import {
 } from "../components/CamisaMeasurementForm";
 import { useUpsertCamisa } from "../hooks/useUpsertCamisa";
 
-type Props = NativeStackScreenProps<ClientsStackParamList, "CamisaMeasurementCreate">;
+type Props = NativeStackScreenProps<
+  ClientsStackParamList,
+  "CamisaMeasurementCreate"
+>;
 
-export default function CamisaMeasurementCreateScreen({ navigation, route }: Props) {
+export default function CamisaMeasurementCreateScreen({
+  navigation,
+  route,
+}: Props) {
   const { clientId } = route.params;
   const { upsertCamisa, isSubmitting, error } = useUpsertCamisa();
 
-  const { control, handleSubmit, formState: { errors } } = useForm<CamisaFormValues>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CamisaFormValues>({
     defaultValues: CAMISA_FORM_DEFAULTS,
   });
 
@@ -37,14 +47,21 @@ export default function CamisaMeasurementCreateScreen({ navigation, route }: Pro
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{error}</Text>
         </View>
       ) : null}
 
-      <CamisaMeasurementGrid control={control} errors={errors} disabled={false} />
+      <CamisaMeasurementGrid
+        control={control}
+        errors={errors}
+        disabled={false}
+      />
 
       <Pressable
         accessibilityLabel="Guardar medidas de camisa"

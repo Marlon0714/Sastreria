@@ -4,6 +4,7 @@ import type {
   PantalonMeasurement,
 } from "../../features/clients/domain/types";
 import type { SyncTransport } from "./SyncTransport";
+import type { SyncDeleteLogEntry } from "./types";
 import { getSupabaseClient } from "../supabase/client";
 
 /**
@@ -97,43 +98,24 @@ export class SupabaseSyncTransport implements SyncTransport {
       throw new Error(`[sync] pantalon push failed: ${error.code}`);
     }
   }
-  /**
-   * Implementación genérica para SyncTransport: decide el tipo de medición y despacha.
-   */
-  async syncMeasurement(measurement: {
-    id: string;
-    clientId: string;
-    measuredAt: string;
-    pechoCm: number;
-    cinturaCm: number;
-    caderaCm: number;
-    largoCm: number;
-    notes: string | null;
-    createdAt: string;
-    updatedAt: string;
-    syncStatus: "pending" | "synced" | "error";
-  }): Promise<void> {
-    // Por ahora, solo soporta push de camisa como ejemplo. Adaptar si hay más tipos.
-    // Si tiene pechoCm, cinturaCm, caderaCm, largoCm => es una medición genérica (v2)
-    // Si quieres distinguir camisa/pantalón, deberías agregar un campo type en payload.
+
+  async syncDeleteLogEntry(entry: SyncDeleteLogEntry): Promise<void> {
     const supabase = getSupabaseClient();
-    const { error } = await supabase.from("measurements").upsert(
+
+    const { error } = await supabase.from("sync_delete_log").upsert(
       {
-        id: measurement.id,
-        client_id: measurement.clientId,
-        measured_at: measurement.measuredAt,
-        pecho_cm: measurement.pechoCm,
-        cintura_cm: measurement.cinturaCm,
-        cadera_cm: measurement.caderaCm,
-        largo_cm: measurement.largoCm,
-        notes: measurement.notes,
-        created_at: measurement.createdAt,
-        updated_at: measurement.updatedAt,
+        id: entry.id,
+        entity_type: entry.entityType,
+        entity_id: entry.entityId,
+        deleted_at: entry.deletedAt,
       },
       { onConflict: "id" },
     );
+
     if (error) {
-      throw new Error(`[sync] measurement push failed: ${error.code}`);
+      throw new Error(`[sync] delete log push failed: ${error.code}`);
     }
   }
+
 }
+

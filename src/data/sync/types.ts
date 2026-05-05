@@ -8,14 +8,49 @@ import type { SyncStatus } from "../../shared/domain/baseEntity";
 export type SyncEntityType =
   | "client"
   | "camisa_measurement"
-  | "pantalon_measurement";
+  | "pantalon_measurement"
+  | "delete_log";
+
+export type SyncOperationType = "upsert" | "delete";
+
+export type SyncCheckpointScope =
+  | "clients"
+  | "camisa_measurements"
+  | "pantalon_measurements"
+  | "sync_delete_log";
+
+export interface SyncCursor {
+  updatedAt: string;
+  id: string;
+}
+
+export interface SyncDeleteLogEntry {
+  id: string;
+  entityType: Exclude<SyncEntityType, "delete_log">;
+  entityId: string;
+  deletedAt: string;
+  syncStatus: SyncStatus;
+}
+
+export interface SyncCheckpoint {
+  scope: SyncCheckpointScope;
+  cursor: SyncCursor | null;
+  updatedAt: string;
+}
+
+export type SyncTriggerSource =
+  | "write"
+  | "realtime"
+  | "foreground"
+  | "bootstrap"
+  | "manual";
 
 interface SyncQueueItemBase {
   entityType: SyncEntityType;
   id: string;
   updatedAt: string;
   syncStatus: SyncStatus;
-  operationType: "upsert" | "delete";
+  operationType: SyncOperationType;
 }
 
 export interface SyncClientQueueItem extends SyncQueueItemBase {
@@ -33,10 +68,17 @@ export interface SyncPantalonQueueItem extends SyncQueueItemBase {
   payload: PantalonMeasurement;
 }
 
+export interface SyncDeleteQueueItem extends SyncQueueItemBase {
+  entityType: "delete_log";
+  operationType: "delete";
+  payload: SyncDeleteLogEntry;
+}
+
 export type SyncQueueItem =
   | SyncClientQueueItem
   | SyncCamisaQueueItem
-  | SyncPantalonQueueItem;
+  | SyncPantalonQueueItem
+  | SyncDeleteQueueItem;
 
 export interface RetryPolicy {
   maxRetries: number;

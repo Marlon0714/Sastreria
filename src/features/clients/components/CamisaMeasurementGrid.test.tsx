@@ -79,7 +79,10 @@ describe("CamisaMeasurementGrid", () => {
   it("en disabled=true, los campos con valor no muestran TextInput editable", () => {
     // Arrange & Act
     const { getByLabelText } = render(
-      <Harness disabled={true} defaultValues={{ espalda: "42", pecho: "96" }} />,
+      <Harness
+        disabled={true}
+        defaultValues={{ espalda: "42", pecho: "96" }}
+      />,
     );
 
     // Assert — el elemento accesible es el View contenedor, sin onChangeText ni editable

@@ -63,6 +63,14 @@ const basePantalon = {
   syncStatus: "pending" as const,
 };
 
+const baseDeleteLog = {
+  id: "del-1",
+  entityType: "client" as const,
+  entityId: "c-1",
+  deletedAt: "2026-05-01T10:05:00.000Z",
+  syncStatus: "pending" as const,
+};
+
 describe("SupabaseSyncTransport", () => {
   beforeEach(() => {
     mockFrom.mockClear();
@@ -161,6 +169,35 @@ describe("SupabaseSyncTransport", () => {
       await expect(
         transport.syncPantalonMeasurement(basePantalon),
       ).rejects.toThrow("[sync] pantalon push failed: 42501");
+    });
+  });
+
+  describe("syncDeleteLogEntry", () => {
+    it("upserts to 'sync_delete_log' table on success", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncDeleteLogEntry(baseDeleteLog);
+
+      expect(mockFrom).toHaveBeenCalledWith("sync_delete_log");
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "del-1",
+          entity_type: "client",
+          entity_id: "c-1",
+          deleted_at: "2026-05-01T10:05:00.000Z",
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("throws sanitized error on delete push failure", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+
+      await expect(transport.syncDeleteLogEntry(baseDeleteLog)).rejects.toThrow(
+        "[sync] delete log push failed: 42501",
+      );
     });
   });
 });

@@ -1,4 +1,9 @@
-import { Controller, type Control, type FieldValues, type Path } from "react-hook-form";
+import {
+  Controller,
+  type Control,
+  type FieldValues,
+  type Path,
+} from "react-hook-form";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
 interface MeasurementCardProps<TFormValues extends FieldValues> {
@@ -41,7 +46,12 @@ export function MeasurementCard<TFormValues extends FieldValues>({
                 cardWidth !== undefined ? { width: cardWidth } : undefined,
               ]}
             >
-              <Text style={[styles.label, !hasValue ? styles.labelEmpty : undefined]}>
+              <Text
+                style={[
+                  styles.label,
+                  !hasValue ? styles.labelEmpty : undefined,
+                ]}
+              >
                 {label}
               </Text>
               {hasValue ? (
