@@ -32,6 +32,9 @@ export interface CamisaMeasurement extends BaseEntity {
   largoManga: number | null;
   anchoManga: number | null;
   escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
   notes: string | null;
 }
 
@@ -62,6 +65,9 @@ export interface UpsertCamisaDTO {
   largoManga?: number | null;
   anchoManga?: number | null;
   escote?: number | null;
+  cuello?: number | null;
+  brazo?: number | null;
+  puno?: number | null;
   notes?: string | null;
 }
 

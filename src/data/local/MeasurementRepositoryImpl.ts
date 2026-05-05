@@ -33,6 +33,9 @@ interface CamisaMeasurementRow {
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -89,6 +92,9 @@ function mapCamisaRow(row: CamisaMeasurementRow): CamisaMeasurement {
     largoManga: row.largo_manga,
     anchoManga: row.ancho_manga,
     escote: row.escote,
+    cuello: row.cuello,
+    brazo: row.brazo,
+    puno: row.puno,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -144,6 +150,9 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       largoManga: normalizeNullableNumber(input.largoManga),
       anchoManga: normalizeNullableNumber(input.anchoManga),
       escote: normalizeNullableNumber(input.escote),
+      cuello: normalizeNullableNumber(input.cuello),
+      brazo: normalizeNullableNumber(input.brazo),
+      puno: normalizeNullableNumber(input.puno),
       notes,
       createdAt,
       updatedAt: nowIso,
@@ -168,11 +177,14 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         largo_manga,
         ancho_manga,
         escote,
+        cuello,
+        brazo,
+        puno,
         notes,
         created_at,
         updated_at,
         sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(client_id) DO UPDATE SET
         espalda = excluded.espalda,
         hombro = excluded.hombro,
@@ -187,6 +199,9 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         largo_manga = excluded.largo_manga,
         ancho_manga = excluded.ancho_manga,
         escote = excluded.escote,
+        cuello = excluded.cuello,
+        brazo = excluded.brazo,
+        puno = excluded.puno,
         notes = excluded.notes,
         updated_at = excluded.updated_at,
         sync_status = excluded.sync_status;
@@ -206,6 +221,9 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       camisaMeasurement.largoManga,
       camisaMeasurement.anchoManga,
       camisaMeasurement.escote,
+      camisaMeasurement.cuello,
+      camisaMeasurement.brazo,
+      camisaMeasurement.puno,
       camisaMeasurement.notes,
       camisaMeasurement.createdAt,
       camisaMeasurement.updatedAt,

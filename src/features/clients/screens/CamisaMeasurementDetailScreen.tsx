@@ -43,6 +43,9 @@ function toFormValues(
     anchoManga:
       measurement.anchoManga != null ? String(measurement.anchoManga) : "",
     escote: measurement.escote != null ? String(measurement.escote) : "",
+    cuello: measurement.cuello != null ? String(measurement.cuello) : "",
+    brazo: measurement.brazo != null ? String(measurement.brazo) : "",
+    puno: measurement.puno != null ? String(measurement.puno) : "",
     notes: typeof measurement.notes === "string" ? measurement.notes : "",
   };
 }

@@ -32,7 +32,7 @@
 | N-026 | Refactor ClientDetailScreen + flujo post-create: navegar a MeasurementTypeSelect | High | Done | Builder | Cierre funcional completado con N-021 en commit `6470125`; queda resuelta la deuda de navegación post-create |
 | N-027 | Tests de integración E2E: flujos completos multi-módulo | High | Open | Tester | Reducido a integración únicamente; tests unitarios se escriben dentro del PR correspondiente (N-016..N-026) como criterio de salida |
 
-| N-032 | Supabase Auth + offline sync multi-dispositivo | High | **Done** | Builder / Reviewer | Cerrado 2026-05-03 sin deuda. Login, SecureStore, web-compat, push/pull sync v2. Tests: `useAuth.test.ts` (8 casos) + `LoginScreen.test.tsx` (7 casos). Typecheck OK. Pendiente: merge PR a develop. |
+| N-032 | Supabase Auth + offline sync multi-dispositivo | High | **Done** | Builder / Reviewer | Mergeado en develop 2026-05-03. Login, SecureStore, web-compat, push/pull sync v2. Tests: `useAuth.test.ts` (8) + `LoginScreen.test.tsx` (7). 134/134 verdes. |
 
 **Track A — Arquitectura CI (independiente, arrancar ya):**
 
@@ -59,17 +59,22 @@
 
 | N-033 | Tests unitarios para `useAuth` y `LoginScreen` | High | **Done** | Builder / Tester | Cerrado 2026-05-03. `useAuth.test.ts` (8 casos) + `LoginScreen.test.tsx` (7 casos). Typecheck OK. |
 | N-034 | Crashlytics real (Firebase SDK) reemplazando shim `console.error` | Low | Open | Builder | Shim funcional en todos los módulos; integrar al abordar N-telemetría |
+| N-035 | Agregar medidas de cuello, brazo y puño a `CamisaMeasurement` | High | Open | Builder / Tester | 3 campos nuevos opcionales en tipo, schema Zod, DTO, migración SQLite v3 (ALTER TABLE ADD COLUMN), form, repo, sync Supabase |
+| N-036 | CRUD completo de clientes: editar datos personales + eliminar cliente | High | Open | Builder / Tester | `ClientRepository` necesita `update(id, dto)` + `delete(id)`; nueva pantalla `ClientEditScreen` + confirmación de borrado en `ClientDetailScreen`; nav types actualizados |
+| N-037 | Iconos en barra de tabs (Clientes, Agenda, Precios) | Medium | Open | Builder | `FeatureTabsNavigator` sin `tabBarIcon`; usar `@expo/vector-icons` (Ionicons) — ya instalado en el proyecto |
 
 ## Open Blockers (Prioritized)
 
-- **High**: PR de N-032 pendiente de apertura — rama `feature/sync/n032-supabase-transport` lista con tests; merge a develop bloqueado hasta CI verde.
-- **Medium**: `schedule` y `pricing` sin implementación — el producto no es MVP sin ellos.
+- **High**: `schedule` y `pricing` sin implementación — bloquean MVP entregable (N-008, N-009).
+- **High**: Medidas de camisa incompletas (cuello, brazo, puño) — reporte de negocio activo (N-035).
+- **High**: Editar/eliminar cliente no disponibles — CRUD incompleto (N-036).
 - **Medium**: Señal de cobertura puede distorsionarse con features vacíos; N-011 aún sin resolver.
 - **Low**: deuda técnica `isSubmitting` en hooks de upsert durante operación async.
 
 ## Proximas Prioridades Recomendadas (2026-05-03)
 
-1. **P0** — Abrir PR y mergear N-032 a develop.
-2. **P1** — N-008: baseline `schedule` (domain + repository + screen + tests).
-3. **P1** — N-009: baseline `pricing` (domain + repository + screen + tests) — puede ejecutarse en paralelo con N-008.
-4. **P2** — N-006 + N-011: quality gates y cobertura confiable antes de la siguiente release candidate.
+1. **P0** — N-035: 3 campos nuevos en camisa (cuello, brazo, puño) — migración + dominio + form + repo.
+2. **P0** — N-036: editar y eliminar cliente — `ClientEditScreen` + `delete` en repo + confirmación.
+3. **P1** — N-037: iconos en tabs — cambio puntual en `FeatureTabsNavigator`.
+4. **P1** — N-008 + N-009: baseline `schedule` y `pricing`.
+5. **P2** — N-006 + N-011: quality gates y cobertura confiable.

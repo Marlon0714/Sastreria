@@ -60,6 +60,9 @@ export const upsertCamisaSchema = z.object({
   largoManga: optionalMeasurementField.optional(),
   anchoManga: optionalMeasurementField.optional(),
   escote: optionalMeasurementField.optional(),
+  cuello: optionalMeasurementField.optional(),
+  brazo: optionalMeasurementField.optional(),
+  puno: optionalMeasurementField.optional(),
   notes: optionalNotesField,
 });
 

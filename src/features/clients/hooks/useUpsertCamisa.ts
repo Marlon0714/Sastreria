@@ -75,6 +75,15 @@ function mapValidationErrors(
     escote: fieldErrors.escote?.[0]
       ? { type: "zod", message: fieldErrors.escote[0] }
       : undefined,
+    cuello: fieldErrors.cuello?.[0]
+      ? { type: "zod", message: fieldErrors.cuello[0] }
+      : undefined,
+    brazo: fieldErrors.brazo?.[0]
+      ? { type: "zod", message: fieldErrors.brazo[0] }
+      : undefined,
+    puno: fieldErrors.puno?.[0]
+      ? { type: "zod", message: fieldErrors.puno[0] }
+      : undefined,
     notes: fieldErrors.notes?.[0]
       ? { type: "zod", message: fieldErrors.notes[0] }
       : undefined,

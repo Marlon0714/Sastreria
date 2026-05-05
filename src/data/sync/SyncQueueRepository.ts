@@ -34,6 +34,9 @@ interface CamisaQueueRow {
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -98,6 +101,9 @@ function toCamisaQueueItem(row: CamisaQueueRow): SyncCamisaQueueItem {
       largoManga: row.largo_manga,
       anchoManga: row.ancho_manga,
       escote: row.escote,
+      cuello: row.cuello,
+      brazo: row.brazo,
+      puno: row.puno,
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

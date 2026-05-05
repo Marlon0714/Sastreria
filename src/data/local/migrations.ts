@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 2;
+const TARGET_SCHEMA_VERSION = 3;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -102,6 +102,15 @@ const MIGRATIONS: readonly Migration[] = [
         FOREIGN KEY (client_id) REFERENCES clients (id)
       );
       `,
+    ],
+  },
+  {
+    version: 3,
+    name: "v3_camisa_extra_measurements",
+    statements: [
+      `ALTER TABLE camisa_measurements ADD COLUMN cuello REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN brazo REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN puno REAL;`,
     ],
   },
 ];

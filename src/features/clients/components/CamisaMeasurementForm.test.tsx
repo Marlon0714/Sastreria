@@ -30,7 +30,7 @@ function Harness({ disabled = false, defaultValues = {} }: HarnessProps) {
 }
 
 describe("CamisaMeasurementForm", () => {
-  it("renders all 13 measurement fields plus notes when enabled", () => {
+  it("renders all 16 measurement fields plus notes when enabled", () => {
     const { getByLabelText } = render(<Harness />);
 
     expect(getByLabelText("Espalda (cm)").props.editable).not.toBe(false);
@@ -46,6 +46,9 @@ describe("CamisaMeasurementForm", () => {
     expect(getByLabelText("Largo manga (cm)")).toBeTruthy();
     expect(getByLabelText("Ancho manga (cm)")).toBeTruthy();
     expect(getByLabelText("Escote (cm)")).toBeTruthy();
+    expect(getByLabelText("Cuello (cm)")).toBeTruthy();
+    expect(getByLabelText("Brazo (cm)")).toBeTruthy();
+    expect(getByLabelText("Puño (cm)")).toBeTruthy();
     expect(getByLabelText("Notas")).toBeTruthy();
   });
 
@@ -54,6 +57,9 @@ describe("CamisaMeasurementForm", () => {
 
     expect(getByLabelText("Espalda (cm)").props.editable).toBe(false);
     expect(getByLabelText("Pecho (cm)").props.editable).toBe(false);
+    expect(getByLabelText("Cuello (cm)").props.editable).toBe(false);
+    expect(getByLabelText("Brazo (cm)").props.editable).toBe(false);
+    expect(getByLabelText("Puño (cm)").props.editable).toBe(false);
     expect(getByLabelText("Notas").props.editable).toBe(false);
   });
 

@@ -55,6 +55,9 @@ export class SupabaseSyncTransport implements SyncTransport {
         largo_manga: measurement.largoManga,
         ancho_manga: measurement.anchoManga,
         escote: measurement.escote,
+        cuello: measurement.cuello,
+        brazo: measurement.brazo,
+        puno: measurement.puno,
         notes: measurement.notes,
         created_at: measurement.createdAt,
         updated_at: measurement.updatedAt,
@@ -109,7 +112,7 @@ export class SupabaseSyncTransport implements SyncTransport {
       notes: string | null;
       createdAt: string;
       updatedAt: string;
-      syncStatus: any;
+      syncStatus: "pending" | "synced" | "error";
     },
   ): Promise<void> {
     // Por ahora, solo soporta push de camisa como ejemplo. Adaptar si hay más tipos.

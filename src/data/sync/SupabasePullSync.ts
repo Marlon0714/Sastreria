@@ -78,7 +78,7 @@ export class SupabasePullSync {
       .select(
         "id, client_id, espalda, hombro, talle_delantero, talle_trasero, " +
           "distancia, separacion, pecho, cintura, base, largo, largo_manga, " +
-          "ancho_manga, escote, notes, created_at, updated_at",
+          "ancho_manga, escote, cuello, brazo, puno, notes, created_at, updated_at",
       );
 
     if (error) {
@@ -101,6 +101,9 @@ export class SupabasePullSync {
       largo_manga: number | null;
       ancho_manga: number | null;
       escote: number | null;
+      cuello: number | null;
+      brazo: number | null;
+      puno: number | null;
       notes: string | null;
       created_at: string;
       updated_at: string;
@@ -113,8 +116,8 @@ export class SupabasePullSync {
         INSERT INTO camisa_measurements
           (id, client_id, espalda, hombro, talle_delantero, talle_trasero,
            distancia, separacion, pecho, cintura, base, largo, largo_manga,
-           ancho_manga, escote, notes, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+           ancho_manga, escote, cuello, brazo, puno, notes, created_at, updated_at, sync_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
         ON CONFLICT(id) DO UPDATE SET
           espalda         = excluded.espalda,
           hombro          = excluded.hombro,
@@ -129,6 +132,9 @@ export class SupabasePullSync {
           largo_manga     = excluded.largo_manga,
           ancho_manga     = excluded.ancho_manga,
           escote          = excluded.escote,
+          cuello          = excluded.cuello,
+          brazo           = excluded.brazo,
+          puno            = excluded.puno,
           notes           = excluded.notes,
           updated_at      = excluded.updated_at,
           sync_status     = 'synced'
@@ -149,6 +155,9 @@ export class SupabasePullSync {
         row.largo_manga ?? null,
         row.ancho_manga ?? null,
         row.escote ?? null,
+        row.cuello ?? null,
+        row.brazo ?? null,
+        row.puno ?? null,
         row.notes ?? null,
         row.created_at,
         row.updated_at,
