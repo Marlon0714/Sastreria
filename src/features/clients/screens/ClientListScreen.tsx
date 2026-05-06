@@ -17,6 +17,36 @@ import { useClientList } from "../hooks/useClientList";
 type Props = NativeStackScreenProps<ClientsStackParamList, "ClientList">;
 type ClientFilter = "all" | "name" | "phone";
 
+function renderSyncBadge(syncStatus: "pending" | "synced" | "error") {
+  if (syncStatus === "synced") {
+    return null;
+  }
+
+  const isError = syncStatus === "error";
+  return (
+    <View
+      accessibilityLabel={
+        isError
+          ? "Badge sincronizacion con error"
+          : "Badge pendiente de sincronizacion"
+      }
+      style={[
+        styles.syncBadge,
+        isError ? styles.syncBadgeError : styles.syncBadgePending,
+      ]}
+    >
+      <Text
+        style={[
+          styles.syncBadgeText,
+          isError ? styles.syncBadgeTextError : styles.syncBadgeTextPending,
+        ]}
+      >
+        {isError ? "Error sync" : "Pendiente sync"}
+      </Text>
+    </View>
+  );
+}
+
 function normalizeText(value: string): string {
   return value
     .toLowerCase()
@@ -178,7 +208,7 @@ export default function ClientListScreen({ navigation }: Props) {
               {item.firstName} {item.lastName}
             </Text>
             <Text style={styles.cardSubtitle}>{item.phone}</Text>
-            <Text style={styles.syncText}>syncStatus: {item.syncStatus}</Text>
+            {renderSyncBadge(item.syncStatus)}
           </Pressable>
         )}
       />
@@ -265,9 +295,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#334155",
   },
-  syncText: {
-    fontSize: 12,
-    color: "#64748b",
+  syncBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  syncBadgePending: {
+    backgroundColor: "#ecfeff",
+    borderColor: "#67e8f9",
+  },
+  syncBadgeError: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#fca5a5",
+  },
+  syncBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  syncBadgeTextPending: {
+    color: "#0e7490",
+  },
+  syncBadgeTextError: {
+    color: "#b91c1c",
   },
   fabButton: {
     position: "absolute",

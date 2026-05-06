@@ -21,8 +21,15 @@ interface UseClientDetailResult {
   reload: () => Promise<void>;
 }
 
+interface UseDeleteClientResult {
+  deleteClient: (id: string) => Promise<boolean>;
+  isDeleting: boolean;
+  error: string | null;
+}
+
 const mockUseClientDetail = jest.fn<() => UseClientDetailResult>();
 const mockDeleteClient = jest.fn<(id: string) => Promise<boolean>>();
+const mockUseDeleteClient = jest.fn<() => UseDeleteClientResult>();
 
 jest.mock("@react-navigation/native", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
@@ -45,11 +52,7 @@ jest.mock("../hooks/useClientDetail", () => {
 
 jest.mock("../hooks/useDeleteClient", () => {
   return {
-    useDeleteClient: () => ({
-      deleteClient: (id: string) => mockDeleteClient(id),
-      isDeleting: false,
-      error: null,
-    }),
+    useDeleteClient: () => mockUseDeleteClient(),
   };
 });
 
@@ -75,6 +78,12 @@ describe("ClientDetailScreen", () => {
   beforeEach(() => {
     mockUseClientDetail.mockReset();
     mockDeleteClient.mockReset();
+    mockUseDeleteClient.mockReset();
+    mockUseDeleteClient.mockReturnValue({
+      deleteClient: (id: string) => mockDeleteClient(id),
+      isDeleting: false,
+      error: null,
+    });
     jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
   });
 
@@ -244,5 +253,58 @@ describe("ClientDetailScreen", () => {
       expect(mockDeleteClient).toHaveBeenCalledWith(client.id);
       expect(popToTop).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("deshabilita botón eliminar y muestra texto de progreso mientras elimina", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+    });
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
+    });
+    mockUseDeleteClient.mockReturnValue({
+      deleteClient: (id: string) => mockDeleteClient(id),
+      isDeleting: true,
+      error: null,
+    });
+
+    const { getByText } = render(
+      <ClientDetailScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    expect(getByText("Eliminando...")).toBeTruthy();
+
+    fireEvent.press(getByText("Eliminando..."));
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  it("muestra error visible cuando falla la eliminación", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+    });
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
+    });
+    mockUseDeleteClient.mockReturnValue({
+      deleteClient: (id: string) => mockDeleteClient(id),
+      isDeleting: false,
+      error: "No se pudo eliminar el cliente. Intenta nuevamente.",
+    });
+
+    const { getByText } = render(
+      <ClientDetailScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    expect(
+      getByText("No se pudo eliminar el cliente. Intenta nuevamente."),
+    ).toBeTruthy();
   });
 });

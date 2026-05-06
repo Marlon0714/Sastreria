@@ -242,4 +242,78 @@ describe("ClientListScreen", () => {
       getByText("No hay clientes que coincidan con la busqueda."),
     ).toBeTruthy();
   });
+
+  it("shows sync badges for pending/error without exposing raw syncStatus text", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({
+          id: "aaaa-1",
+          firstName: "María",
+          lastName: "García",
+          phone: "3001112233",
+          syncStatus: "pending",
+        }),
+        clientFactory({
+          id: "aaaa-2",
+          firstName: "Juan",
+          lastName: "Pérez",
+          phone: "3009998877",
+          syncStatus: "error",
+        }),
+        clientFactory({
+          id: "aaaa-3",
+          firstName: "Luisa",
+          lastName: "Rojas",
+          phone: "3005551122",
+          syncStatus: "synced",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByText, getByLabelText, queryByText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByLabelText("Badge pendiente de sincronizacion")).toBeTruthy();
+    expect(getByLabelText("Badge sincronizacion con error")).toBeTruthy();
+    expect(getByText("Pendiente sync")).toBeTruthy();
+    expect(getByText("Error sync")).toBeTruthy();
+    expect(queryByText(/syncStatus:/i)).toBeNull();
+    expect(queryByText("syncStatus: pending")).toBeNull();
+    expect(queryByText("syncStatus: error")).toBeNull();
+  });
+
+  it("navega a ClientDetail al presionar una tarjeta de cliente", () => {
+    // Arrange
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      id: "bbbb-1",
+      firstName: "Ana",
+      lastName: "Torres",
+      phone: "3001234567",
+    });
+    mockUseClientList.mockReturnValue({
+      clients: [client],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const navigate = jest.fn();
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(navigate)} />,
+    );
+
+    // Act
+    fireEvent.press(getByLabelText("Ver detalle de Ana Torres"));
+
+    // Assert
+    expect(navigate).toHaveBeenCalledWith("ClientDetail", {
+      clientId: client.id,
+    });
+  });
 });

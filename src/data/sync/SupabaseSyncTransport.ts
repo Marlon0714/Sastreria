@@ -59,6 +59,8 @@ export class SupabaseSyncTransport implements SyncTransport {
         cuello: measurement.cuello,
         brazo: measurement.brazo,
         puno: measurement.puno,
+        changed_by: measurement.changedBy,
+        changed_at: measurement.changedAt,
         notes: measurement.notes,
         created_at: measurement.createdAt,
         updated_at: measurement.updatedAt,
@@ -87,6 +89,8 @@ export class SupabaseSyncTransport implements SyncTransport {
         pierna: measurement.pierna,
         rodilla: measurement.rodilla,
         bota: measurement.bota,
+        changed_by: measurement.changedBy,
+        changed_at: measurement.changedAt,
         notes: measurement.notes,
         created_at: measurement.createdAt,
         updated_at: measurement.updatedAt,
@@ -116,6 +120,4 @@ export class SupabaseSyncTransport implements SyncTransport {
       throw new Error(`[sync] delete log push failed: ${error.code}`);
     }
   }
-
 }
-

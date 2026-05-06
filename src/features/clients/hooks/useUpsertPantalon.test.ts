@@ -59,6 +59,8 @@ describe("useUpsertPantalon", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
       syncStatus: "pending",
+      changedBy: "user-2",
+      changedAt: "2026-01-01T00:00:00.000Z",
     };
     mockUpsertPantalon.mockResolvedValueOnce(created);
 
@@ -112,6 +114,8 @@ describe("useUpsertPantalon", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
       syncStatus: "pending",
+      changedBy: "user-2",
+      changedAt: "2026-01-01T00:00:00.000Z",
     };
     mockUpsertPantalon.mockResolvedValueOnce(created);
 

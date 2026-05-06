@@ -41,6 +41,11 @@ interface CamisaMeasurementRow {
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
+  changed_by: string | null;
+  changed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -57,6 +62,8 @@ interface PantalonMeasurementRow {
   pierna: number | null;
   rodilla: number | null;
   bota: number | null;
+  changed_by: string | null;
+  changed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -200,6 +207,11 @@ const webDatabase: WebDatabase = {
         largoManga,
         anchoManga,
         escote,
+        cuello,
+        brazo,
+        puno,
+        changedBy,
+        changedAt,
         notes,
         createdAt,
         updatedAt,
@@ -220,6 +232,11 @@ const webDatabase: WebDatabase = {
         number | null,
         number | null,
         number | null,
+        number | null,
+        number | null,
+        number | null,
+        string | null,
+        string | null,
         string | null,
         string,
         string,
@@ -247,6 +264,11 @@ const webDatabase: WebDatabase = {
           largo_manga: largoManga,
           ancho_manga: anchoManga,
           escote,
+          cuello,
+          brazo,
+          puno,
+          changed_by: changedBy,
+          changed_at: changedAt,
           notes,
           updated_at: updatedAt,
           sync_status: syncStatus,
@@ -268,6 +290,11 @@ const webDatabase: WebDatabase = {
           largo_manga: largoManga,
           ancho_manga: anchoManga,
           escote,
+          cuello,
+          brazo,
+          puno,
+          changed_by: changedBy,
+          changed_at: changedAt,
           notes,
           created_at: createdAt,
           updated_at: updatedAt,
@@ -289,6 +316,8 @@ const webDatabase: WebDatabase = {
         pierna,
         rodilla,
         bota,
+        changedBy,
+        changedAt,
         notes,
         createdAt,
         updatedAt,
@@ -303,6 +332,8 @@ const webDatabase: WebDatabase = {
         number | null,
         number | null,
         number | null,
+        string | null,
+        string | null,
         string | null,
         string,
         string,
@@ -324,6 +355,8 @@ const webDatabase: WebDatabase = {
           pierna,
           rodilla,
           bota,
+          changed_by: changedBy,
+          changed_at: changedAt,
           notes,
           updated_at: updatedAt,
           sync_status: syncStatus,
@@ -339,6 +372,8 @@ const webDatabase: WebDatabase = {
           pierna,
           rodilla,
           bota,
+          changed_by: changedBy,
+          changed_at: changedAt,
           notes,
           created_at: createdAt,
           updated_at: updatedAt,

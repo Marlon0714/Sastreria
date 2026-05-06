@@ -70,14 +70,14 @@ describe("useAuth", () => {
       expect(result.current.isAuthenticated).toBe(true);
     });
 
-    it("queda no autenticado si Supabase no está configurado", async () => {
+    it("queda autenticado si Supabase no está configurado (modo offline)", async () => {
       mockIsConfigured.mockReturnValue(false);
       const repo = makeRepo();
       const { result } = renderHook(() => useAuth(repo));
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.isAuthenticated).toBe(true);
       expect(repo.hasValidSession).not.toHaveBeenCalled();
     });
 

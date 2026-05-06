@@ -41,6 +41,8 @@ interface CamisaRow {
   cuello: number | null;
   brazo: number | null;
   puno: number | null;
+  changed_by: string | null;
+  changed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -56,6 +58,8 @@ interface PantalonRow {
   pierna: number | null;
   rodilla: number | null;
   bota: number | null;
+  changed_by: string | null;
+  changed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -168,7 +172,7 @@ export class SupabasePullSync {
       .select(
         "id, client_id, espalda, hombro, talle_delantero, talle_trasero, " +
           "distancia, separacion, pecho, cintura, base, largo, largo_manga, " +
-          "ancho_manga, escote, cuello, brazo, puno, notes, created_at, updated_at",
+          "ancho_manga, escote, cuello, brazo, puno, changed_by, changed_at, notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -195,8 +199,8 @@ export class SupabasePullSync {
           INSERT INTO camisa_measurements
             (id, client_id, espalda, hombro, talle_delantero, talle_trasero,
              distancia, separacion, pecho, cintura, base, largo, largo_manga,
-             ancho_manga, escote, cuello, brazo, puno, notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+             ancho_manga, escote, cuello, brazo, puno, changed_by, changed_at, notes, created_at, updated_at, sync_status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             espalda         = excluded.espalda,
             hombro          = excluded.hombro,
@@ -214,6 +218,8 @@ export class SupabasePullSync {
             cuello          = excluded.cuello,
             brazo           = excluded.brazo,
             puno            = excluded.puno,
+            changed_by      = excluded.changed_by,
+            changed_at      = excluded.changed_at,
             notes           = excluded.notes,
             updated_at      = excluded.updated_at,
             sync_status     = 'synced'
@@ -237,6 +243,8 @@ export class SupabasePullSync {
           row.cuello ?? null,
           row.brazo ?? null,
           row.puno ?? null,
+          row.changed_by ?? null,
+          row.changed_at ?? null,
           row.notes ?? null,
           row.created_at,
           row.updated_at,
@@ -262,7 +270,7 @@ export class SupabasePullSync {
       .from("pantalon_measurements")
       .select(
         "id, client_id, largo, cintura, base, tiro, pierna, rodilla, bota, " +
-          "notes, created_at, updated_at",
+          "changed_by, changed_at, notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -290,8 +298,8 @@ export class SupabasePullSync {
           `
           INSERT INTO pantalon_measurements
             (id, client_id, largo, cintura, base, tiro, pierna, rodilla, bota,
-             notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+             changed_by, changed_at, notes, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             largo       = excluded.largo,
             cintura     = excluded.cintura,
@@ -300,6 +308,8 @@ export class SupabasePullSync {
             pierna      = excluded.pierna,
             rodilla     = excluded.rodilla,
             bota        = excluded.bota,
+            changed_by  = excluded.changed_by,
+            changed_at  = excluded.changed_at,
             notes       = excluded.notes,
             updated_at  = excluded.updated_at,
             sync_status = 'synced'
@@ -314,6 +324,8 @@ export class SupabasePullSync {
           row.pierna ?? null,
           row.rodilla ?? null,
           row.bota ?? null,
+          row.changed_by ?? null,
+          row.changed_at ?? null,
           row.notes ?? null,
           row.created_at,
           row.updated_at,
@@ -419,7 +431,8 @@ export class SupabasePullSync {
     // Validate cursor values to prevent PostgREST filter injection from
     // untrusted server-side data stored in sync_checkpoints.
     const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const UUID_RE =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!ISO_TIMESTAMP_RE.test(cursor.updatedAt) || !UUID_RE.test(cursor.id)) {
       throw new Error("[sync] invalid cursor values, aborting pull");
     }

@@ -26,7 +26,7 @@ export function useAuth(
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      setIsAuthenticated(false);
+      setIsAuthenticated(true);
       setIsLoading(false);
       return;
     }
