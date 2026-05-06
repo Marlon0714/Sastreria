@@ -43,6 +43,8 @@ export interface CamisaMeasurement extends BaseEntity {
   cuello: number | null;
   brazo: number | null;
   puno: number | null;
+  changedBy: string | null;
+  changedAt: string | null;
   notes: string | null;
 }
 
@@ -55,6 +57,8 @@ export interface PantalonMeasurement extends BaseEntity {
   pierna: number | null;
   rodilla: number | null;
   bota: number | null;
+  changedBy: string | null;
+  changedAt: string | null;
   notes: string | null;
 }
 
@@ -76,6 +80,7 @@ export interface UpsertCamisaDTO {
   cuello?: number | null;
   brazo?: number | null;
   puno?: number | null;
+  changedBy?: string | null;
   notes?: string | null;
 }
 
@@ -88,6 +93,7 @@ export interface UpsertPantalonDTO {
   pierna?: number | null;
   rodilla?: number | null;
   bota?: number | null;
+  changedBy?: string | null;
   notes?: string | null;
 }
 

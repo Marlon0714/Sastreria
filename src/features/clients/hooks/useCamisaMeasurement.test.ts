@@ -69,6 +69,8 @@ describe("useCamisaMeasurement", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
       syncStatus: "pending",
+      changedBy: "user-1",
+      changedAt: "2026-01-01T00:00:00.000Z",
     };
     mockFindCamisaByClientId.mockResolvedValueOnce(measurement);
 
@@ -113,6 +115,8 @@ describe("useCamisaMeasurement", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
       syncStatus: "pending",
+      changedBy: "user-1",
+      changedAt: "2026-01-01T00:00:00.000Z",
     };
 
     mockFindCamisaByClientId

@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 5;
+const TARGET_SCHEMA_VERSION = 7;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -146,6 +146,23 @@ const MIGRATIONS: readonly Migration[] = [
       );
       `,
     ],
+  },
+  {
+    version: 6,
+    name: "v6_measurements_audit_trail",
+    statements: [
+      `ALTER TABLE camisa_measurements ADD COLUMN changed_by TEXT;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN changed_at TEXT;`,
+      `ALTER TABLE pantalon_measurements ADD COLUMN changed_by TEXT;`,
+      `ALTER TABLE pantalon_measurements ADD COLUMN changed_at TEXT;`,
+    ],
+  },
+  {
+    version: 7,
+    name: "v7_drop_obsolete_measurements_table",
+    // The generic `measurements` table was superseded by `camisa_measurements`
+    // and `pantalon_measurements` in v2. Drop it to remove dead schema.
+    statements: [`DROP TABLE IF EXISTS measurements;`],
   },
 ];
 

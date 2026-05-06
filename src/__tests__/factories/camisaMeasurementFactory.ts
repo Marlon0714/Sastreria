@@ -19,6 +19,8 @@ const DEFAULT_CAMISA_MEASUREMENT: CamisaMeasurement = {
   cuello: null,
   brazo: null,
   puno: null,
+  changedBy: null,
+  changedAt: null,
   notes: "Primera toma",
   createdAt: "2026-01-02T10:00:00.000Z",
   updatedAt: "2026-01-02T10:00:00.000Z",

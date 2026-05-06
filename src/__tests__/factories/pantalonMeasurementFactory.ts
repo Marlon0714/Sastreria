@@ -10,6 +10,8 @@ const DEFAULT_PANTALON_MEASUREMENT: PantalonMeasurement = {
   pierna: 60,
   rodilla: 42,
   bota: 38,
+  changedBy: null,
+  changedAt: null,
   notes: "Ajustar bota",
   createdAt: "2026-01-03T10:00:00.000Z",
   updatedAt: "2026-01-03T10:00:00.000Z",

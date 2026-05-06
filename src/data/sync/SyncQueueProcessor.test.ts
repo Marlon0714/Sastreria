@@ -59,6 +59,8 @@ const camisaItem: SyncQueueItem = {
     createdAt: "2026-04-30T09:00:00.000Z",
     updatedAt: "2026-04-30T09:30:00.000Z",
     syncStatus: "error",
+    changedBy: "user-1",
+    changedAt: "2026-04-30T09:30:00.000Z",
   },
 };
 
@@ -82,6 +84,8 @@ const pantalonItem: SyncQueueItem = {
     createdAt: "2026-04-30T09:00:00.000Z",
     updatedAt: "2026-04-30T09:45:00.000Z",
     syncStatus: "pending",
+    changedBy: "user-2",
+    changedAt: "2026-04-30T09:45:00.000Z",
   },
 };
 

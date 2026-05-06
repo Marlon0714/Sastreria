@@ -36,6 +36,8 @@ interface CamisaMeasurementRow {
   cuello: number | null;
   brazo: number | null;
   puno: number | null;
+  changed_by: string | null;
+  changed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -52,6 +54,8 @@ interface PantalonMeasurementRow {
   pierna: number | null;
   rodilla: number | null;
   bota: number | null;
+  changed_by: string | null;
+  changed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -65,6 +69,17 @@ function normalizeNullableNumber(
 }
 
 function normalizeNullableNotes(
+  value: string | null | undefined,
+): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function normalizeNullableChangedBy(
   value: string | null | undefined,
 ): string | null {
   if (value === undefined || value === null) {
@@ -95,6 +110,8 @@ function mapCamisaRow(row: CamisaMeasurementRow): CamisaMeasurement {
     cuello: row.cuello,
     brazo: row.brazo,
     puno: row.puno,
+    changedBy: row.changed_by,
+    changedAt: row.changed_at,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -113,6 +130,8 @@ function mapPantalonRow(row: PantalonMeasurementRow): PantalonMeasurement {
     pierna: row.pierna,
     rodilla: row.rodilla,
     bota: row.bota,
+    changedBy: row.changed_by,
+    changedAt: row.changed_at,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -132,6 +151,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     const id = existing?.id ?? generateDomainUuid();
     const createdAt = existing?.created_at ?? nowIso;
     const syncStatus: SyncStatus = "pending";
+    const changedBy = normalizeNullableChangedBy(input.changedBy);
     const notes = normalizeNullableNotes(input.notes);
 
     const camisaMeasurement: CamisaMeasurement = {
@@ -153,6 +173,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       cuello: normalizeNullableNumber(input.cuello),
       brazo: normalizeNullableNumber(input.brazo),
       puno: normalizeNullableNumber(input.puno),
+      changedBy,
+      changedAt: nowIso,
       notes,
       createdAt,
       updatedAt: nowIso,
@@ -180,11 +202,13 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         cuello,
         brazo,
         puno,
+        changed_by,
+        changed_at,
         notes,
         created_at,
         updated_at,
         sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(client_id) DO UPDATE SET
         espalda = excluded.espalda,
         hombro = excluded.hombro,
@@ -202,6 +226,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         cuello = excluded.cuello,
         brazo = excluded.brazo,
         puno = excluded.puno,
+        changed_by = excluded.changed_by,
+        changed_at = excluded.changed_at,
         notes = excluded.notes,
         updated_at = excluded.updated_at,
         sync_status = excluded.sync_status;
@@ -224,6 +250,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       camisaMeasurement.cuello,
       camisaMeasurement.brazo,
       camisaMeasurement.puno,
+      camisaMeasurement.changedBy,
+      camisaMeasurement.changedAt,
       camisaMeasurement.notes,
       camisaMeasurement.createdAt,
       camisaMeasurement.updatedAt,
@@ -242,6 +270,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     const id = existing?.id ?? generateDomainUuid();
     const createdAt = existing?.created_at ?? nowIso;
     const syncStatus: SyncStatus = "pending";
+    const changedBy = normalizeNullableChangedBy(input.changedBy);
     const notes = normalizeNullableNotes(input.notes);
 
     const pantalonMeasurement: PantalonMeasurement = {
@@ -254,6 +283,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       pierna: normalizeNullableNumber(input.pierna),
       rodilla: normalizeNullableNumber(input.rodilla),
       bota: normalizeNullableNumber(input.bota),
+      changedBy,
+      changedAt: nowIso,
       notes,
       createdAt,
       updatedAt: nowIso,
@@ -272,11 +303,13 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         pierna,
         rodilla,
         bota,
+        changed_by,
+        changed_at,
         notes,
         created_at,
         updated_at,
         sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(client_id) DO UPDATE SET
         largo = excluded.largo,
         cintura = excluded.cintura,
@@ -285,6 +318,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         pierna = excluded.pierna,
         rodilla = excluded.rodilla,
         bota = excluded.bota,
+        changed_by = excluded.changed_by,
+        changed_at = excluded.changed_at,
         notes = excluded.notes,
         updated_at = excluded.updated_at,
         sync_status = excluded.sync_status;
@@ -298,6 +333,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       pantalonMeasurement.pierna,
       pantalonMeasurement.rodilla,
       pantalonMeasurement.bota,
+      pantalonMeasurement.changedBy,
+      pantalonMeasurement.changedAt,
       pantalonMeasurement.notes,
       pantalonMeasurement.createdAt,
       pantalonMeasurement.updatedAt,
@@ -353,6 +390,11 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         largo_manga,
         ancho_manga,
         escote,
+        cuello,
+        brazo,
+        puno,
+        changed_by,
+        changed_at,
         notes,
         created_at,
         updated_at,
@@ -381,6 +423,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         pierna,
         rodilla,
         bota,
+        changed_by,
+        changed_at,
         notes,
         created_at,
         updated_at,

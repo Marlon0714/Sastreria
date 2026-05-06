@@ -38,6 +38,8 @@ interface CamisaQueueRow {
   cuello: number | null;
   brazo: number | null;
   puno: number | null;
+  changed_by: string | null;
+  changed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -54,6 +56,8 @@ interface PantalonQueueRow {
   pierna: number | null;
   rodilla: number | null;
   bota: number | null;
+  changed_by: string | null;
+  changed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -115,6 +119,8 @@ function toCamisaQueueItem(row: CamisaQueueRow): SyncCamisaQueueItem {
       cuello: row.cuello,
       brazo: row.brazo,
       puno: row.puno,
+      changedBy: row.changed_by,
+      changedAt: row.changed_at,
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -140,6 +146,8 @@ function toPantalonQueueItem(row: PantalonQueueRow): SyncPantalonQueueItem {
       pierna: row.pierna,
       rodilla: row.rodilla,
       bota: row.bota,
+      changedBy: row.changed_by,
+      changedAt: row.changed_at,
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -224,6 +232,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         cuello,
         brazo,
         puno,
+        changed_by,
+        changed_at,
         notes,
         created_at,
         updated_at,
@@ -250,6 +260,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         pierna,
         rodilla,
         bota,
+        changed_by,
+        changed_at,
         notes,
         created_at,
         updated_at,
@@ -333,15 +345,16 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       return;
     }
 
+    // Only update sync_status — never touch updated_at, which is the
+    // conflict-resolution timestamp used by the sync engine. Mutating it
+    // here would cause silent last-write-wins conflicts.
     await db.runAsync(
       `
       UPDATE ${table}
-      SET sync_status = ?,
-          updated_at = ?
+      SET sync_status = ?
       WHERE id = ?;
       `,
       syncStatus,
-      new Date().toISOString(),
       id,
     );
   }

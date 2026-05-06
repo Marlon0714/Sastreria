@@ -14,7 +14,7 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
   const { client, isLoading, error, reload } = useClientDetail(
     route.params.clientId,
   );
-  const { deleteClient } = useDeleteClient();
+  const { deleteClient, isDeleting, error: deleteError } = useDeleteClient();
 
   useFocusEffect(
     useCallback(() => {
@@ -23,14 +23,18 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
   );
 
   const handleDelete = useCallback(async () => {
-    if (!client) return;
+    if (!client || isDeleting) return;
     const success = await deleteClient(client.id);
     if (success) {
       navigation.popToTop();
     }
-  }, [client, deleteClient, navigation]);
+  }, [client, deleteClient, isDeleting, navigation]);
 
   const confirmDelete = useCallback(() => {
+    if (isDeleting) {
+      return;
+    }
+
     Alert.alert(
       "Eliminar cliente",
       "¿Seguro que deseas eliminar este cliente? Esta acción no se puede deshacer.",
@@ -43,7 +47,7 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
         },
       ],
     );
-  }, [handleDelete]);
+  }, [handleDelete, isDeleting]);
 
   if (isLoading) {
     return <LoadingView message="Cargando detalle..." />;
@@ -95,11 +99,21 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
 
       <Pressable
         accessibilityLabel="Eliminar cliente"
-        style={styles.deleteButton}
+        disabled={isDeleting}
+        style={[
+          styles.deleteButton,
+          isDeleting ? styles.deleteButtonDisabled : null,
+        ]}
         onPress={confirmDelete}
       >
-        <Text style={styles.deleteButtonText}>Eliminar</Text>
+        <Text style={styles.deleteButtonText}>
+          {isDeleting ? "Eliminando..." : "Eliminar"}
+        </Text>
       </Pressable>
+
+      {deleteError ? (
+        <Text style={styles.deleteErrorText}>{deleteError}</Text>
+      ) : null}
     </View>
   );
 }
@@ -163,5 +177,12 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: "#b91c1c",
     fontWeight: "700",
+  },
+  deleteButtonDisabled: {
+    opacity: 0.6,
+  },
+  deleteErrorText: {
+    color: "#b91c1c",
+    fontSize: 13,
   },
 });

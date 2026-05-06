@@ -77,6 +77,8 @@ describe("SyncQueueRepository", () => {
           cuello: 38,
           brazo: 58,
           puno: 24,
+          changed_by: "modista-1",
+          changed_at: "2026-04-30T08:59:00.000Z",
           notes: null,
           created_at: "2026-04-30T09:00:00.000Z",
           updated_at: "2026-04-30T09:00:00.000Z",
@@ -101,10 +103,14 @@ describe("SyncQueueRepository", () => {
     expect(items[0]?.entityType).toBe("camisa_measurement");
 
     // Verify payload fidelity — all camisa fields including cuello/brazo/puno
-    const camisaItem = items[0] as unknown as { payload: Record<string, unknown> };
+    const camisaItem = items[0] as unknown as {
+      payload: Record<string, unknown>;
+    };
     expect(camisaItem.payload.cuello).toBe(38);
     expect(camisaItem.payload.brazo).toBe(58);
     expect(camisaItem.payload.puno).toBe(24);
+    expect(camisaItem.payload.changedBy).toBe("modista-1");
+    expect(camisaItem.payload.changedAt).toBe("2026-04-30T08:59:00.000Z");
 
     expect(mockGetAllAsync).toHaveBeenCalledTimes(4);
     const [clientSql, ...clientParams] = mockGetAllAsync.mock.calls[0] ?? [];
@@ -122,6 +128,8 @@ describe("SyncQueueRepository", () => {
     expect(camisaSql).toContain("cuello");
     expect(camisaSql).toContain("brazo");
     expect(camisaSql).toContain("puno");
+    expect(camisaSql).toContain("changed_by");
+    expect(camisaSql).toContain("changed_at");
     expect(camisaParams).toEqual(["pending", "error", 1]);
 
     expect(pantalonSql).toContain("FROM pantalon_measurements");
@@ -133,42 +141,42 @@ describe("SyncQueueRepository", () => {
     expect(deleteParams).toEqual(["pending", "error", 1]);
   });
 
-  it("marks client row as synced", async () => {
+  it("marks client row as synced without mutating updated_at", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
     await repository.markAsSynced("client", "c-1");
 
-    const [sql, status, updatedAt, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE clients");
+    expect(sql).not.toContain("updated_at");
     expect(status).toBe("synced");
-    expect(updatedAt).toBe("2026-04-30T10:00:00.000Z");
     expect(id).toBe("c-1");
   });
 
-  it("marks camisa_measurement row as error", async () => {
+  it("marks camisa_measurement row as error without mutating updated_at", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
     await repository.markAsError("camisa_measurement", "cam-1");
 
-    const [sql, status, updatedAt, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE camisa_measurements");
+    expect(sql).not.toContain("updated_at");
     expect(status).toBe("error");
-    expect(updatedAt).toBe("2026-04-30T10:00:00.000Z");
     expect(id).toBe("cam-1");
   });
 
-  it("marks pantalon_measurement row as synced", async () => {
+  it("marks pantalon_measurement row as synced without mutating updated_at", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
     await repository.markAsSynced("pantalon_measurement", "pan-1");
 
-    const [sql, status, updatedAt, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE pantalon_measurements");
+    expect(sql).not.toContain("updated_at");
     expect(status).toBe("synced");
-    expect(updatedAt).toBe("2026-04-30T10:00:00.000Z");
     expect(id).toBe("pan-1");
   });
 
@@ -183,6 +191,19 @@ describe("SyncQueueRepository", () => {
     expect(sql).not.toContain("updated_at");
     expect(status).toBe("synced");
     expect(id).toBe("del-1");
+  });
+
+  it("marks delete_log row as error without mutating timestamp", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+
+    const repository = new SyncQueueRepository();
+    await repository.markAsError("delete_log", "del-2");
+
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("UPDATE sync_delete_log");
+    expect(sql).not.toContain("updated_at");
+    expect(status).toBe("error");
+    expect(id).toBe("del-2");
   });
 
   it("throws when fetching pending items fails", async () => {

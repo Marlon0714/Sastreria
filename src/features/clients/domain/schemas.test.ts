@@ -121,6 +121,32 @@ describe("clients schemas", () => {
       expect(result.data.pecho).toBe(300);
       expect(result.data.notes ?? null).toBe(null);
     });
+
+    it("accepts changedBy and normalizes empty value to null", () => {
+      const valid = upsertCamisaSchema.safeParse({
+        clientId: validClientId,
+        changedBy: "  empleada-01  ",
+      });
+      expect(valid.success).toBe(true);
+      if (!valid.success) return;
+      expect(valid.data.changedBy).toBe("empleada-01");
+
+      const empty = upsertCamisaSchema.safeParse({
+        clientId: validClientId,
+        changedBy: "   ",
+      });
+      expect(empty.success).toBe(true);
+      if (!empty.success) return;
+      expect(empty.data.changedBy ?? null).toBe(null);
+
+      const nullable = upsertCamisaSchema.safeParse({
+        clientId: validClientId,
+        changedBy: null,
+      });
+      expect(nullable.success).toBe(true);
+      if (!nullable.success) return;
+      expect(nullable.data.changedBy).toBe(null);
+    });
   });
 
   describe("upsertPantalonSchema", () => {
@@ -173,6 +199,32 @@ describe("clients schemas", () => {
 
       expect(result.data.largo).toBe(300);
       expect(result.data.tiro).toBe(30.5);
+    });
+
+    it("accepts changedBy and normalizes empty value to null", () => {
+      const valid = upsertPantalonSchema.safeParse({
+        clientId: validClientId,
+        changedBy: "  empleada-02  ",
+      });
+      expect(valid.success).toBe(true);
+      if (!valid.success) return;
+      expect(valid.data.changedBy).toBe("empleada-02");
+
+      const empty = upsertPantalonSchema.safeParse({
+        clientId: validClientId,
+        changedBy: "",
+      });
+      expect(empty.success).toBe(true);
+      if (!empty.success) return;
+      expect(empty.data.changedBy ?? null).toBe(null);
+
+      const nullable = upsertPantalonSchema.safeParse({
+        clientId: validClientId,
+        changedBy: null,
+      });
+      expect(nullable.success).toBe(true);
+      if (!nullable.success) return;
+      expect(nullable.data.changedBy).toBe(null);
     });
   });
 });

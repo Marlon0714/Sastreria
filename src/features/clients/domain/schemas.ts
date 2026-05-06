@@ -38,6 +38,22 @@ const optionalNotesField = z
   )
   .optional();
 
+const optionalChangedByField = z
+  .preprocess(
+    (value: unknown): unknown => {
+      if (value === undefined || value === null) {
+        return null;
+      }
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        return trimmed === "" ? null : trimmed;
+      }
+      return value;
+    },
+    z.union([z.string().max(120), z.null()]),
+  )
+  .optional();
+
 export const createClientSchema = z.object({
   firstName: z.string().trim().min(1, "El nombre es obligatorio").max(80),
   lastName: z.string().trim().min(1, "El apellido es obligatorio").max(80),
@@ -63,6 +79,7 @@ export const upsertCamisaSchema = z.object({
   cuello: optionalMeasurementField.optional(),
   brazo: optionalMeasurementField.optional(),
   puno: optionalMeasurementField.optional(),
+  changedBy: optionalChangedByField,
   notes: optionalNotesField,
 });
 
@@ -75,6 +92,7 @@ export const upsertPantalonSchema = z.object({
   pierna: optionalMeasurementField.optional(),
   rodilla: optionalMeasurementField.optional(),
   bota: optionalMeasurementField.optional(),
+  changedBy: optionalChangedByField,
   notes: optionalNotesField,
 });
 
