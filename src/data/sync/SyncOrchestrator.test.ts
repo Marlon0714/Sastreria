@@ -21,6 +21,10 @@ function createDeferredPromise(): {
   };
 }
 
+function emptyResult(): SyncRunResult {
+  return { processed: 0, synced: 0, deferred: 0, failed: 0 };
+}
+
 describe("SyncOrchestrator", () => {
   it("deduplicates concurrent requests and runs one extra pass when requested during execution", async () => {
     const firstRun = createDeferredPromise();
@@ -31,13 +35,13 @@ describe("SyncOrchestrator", () => {
         .fn<() => Promise<SyncRunResult>>()
         .mockImplementationOnce(async () => {
           await firstRun.promise;
-          return { processed: 1, synced: 1, failed: 0 };
+          return { processed: 1, synced: 1, deferred: 0, failed: 0 };
         })
         .mockImplementationOnce(async () => {
           await secondRun.promise;
-          return { processed: 0, synced: 0, failed: 0 };
+          return emptyResult();
         })
-        .mockResolvedValue({ processed: 0, synced: 0, failed: 0 }),
+        .mockResolvedValue(emptyResult()),
     };
 
     const orchestrator = new SyncOrchestrator(processor);
@@ -57,7 +61,6 @@ describe("SyncOrchestrator", () => {
   });
 
   it("deduplicates concurrent requests across multiple trigger sources", async () => {
-    // Arrange
     const firstRun = createDeferredPromise();
     const secondRun = createDeferredPromise();
     const processor = {
@@ -65,16 +68,15 @@ describe("SyncOrchestrator", () => {
         .fn<() => Promise<SyncRunResult>>()
         .mockImplementationOnce(async () => {
           await firstRun.promise;
-          return { processed: 1, synced: 1, failed: 0 };
+          return { processed: 1, synced: 1, deferred: 0, failed: 0 };
         })
         .mockImplementationOnce(async () => {
           await secondRun.promise;
-          return { processed: 0, synced: 0, failed: 0 };
+          return emptyResult();
         }),
     };
     const orchestrator = new SyncOrchestrator(processor);
 
-    // Act
     const byRealtime = orchestrator.requestRun("realtime");
     const byForeground = orchestrator.requestRun("foreground");
     const byManual = orchestrator.requestRun("manual");
@@ -83,13 +85,40 @@ describe("SyncOrchestrator", () => {
     secondRun.resolve();
     await Promise.all([byRealtime, byForeground, byManual]);
 
-    // Assert
     expect(processor.runOnce).toHaveBeenCalledTimes(2);
     expect(orchestrator.getLastTriggerSource()).toBe("manual");
   });
 
+  it("throttles network_recovered bursts with cooldown", async () => {
+    const processor = {
+      runOnce: jest.fn<() => Promise<SyncRunResult>>().mockResolvedValue(emptyResult()),
+    };
+
+    let nowValue = 1000;
+    const orchestrator = new SyncOrchestrator(processor, {
+      networkRecoveredCooldownMs: 5000,
+      now: () => nowValue,
+    });
+
+    await orchestrator.requestRun("network_recovered");
+    await orchestrator.requestRun("network_recovered");
+
+    expect(processor.runOnce).toHaveBeenCalledTimes(1);
+
+    nowValue += 6000;
+    await orchestrator.requestRun("network_recovered");
+
+    expect(processor.runOnce).toHaveBeenCalledTimes(2);
+    expect(orchestrator.getLastTriggerSource()).toBe("network_recovered");
+  });
+
   it("runNow delegates directly to processor", async () => {
-    const expected: SyncRunResult = { processed: 2, synced: 2, failed: 0 };
+    const expected: SyncRunResult = {
+      processed: 2,
+      synced: 2,
+      deferred: 0,
+      failed: 0,
+    };
     const processor = {
       runOnce: jest
         .fn<() => Promise<SyncRunResult>>()
@@ -108,7 +137,7 @@ describe("SyncOrchestrator", () => {
       runOnce: jest
         .fn<() => Promise<SyncRunResult>>()
         .mockRejectedValueOnce(new Error("temporary outage"))
-        .mockResolvedValueOnce({ processed: 0, synced: 0, failed: 0 }),
+        .mockResolvedValueOnce(emptyResult()),
     };
 
     const orchestrator = new SyncOrchestrator(processor);

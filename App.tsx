@@ -9,12 +9,14 @@ import {
 import { getDatabase } from "./src/data/local/database";
 import { runMigrations } from "./src/data/local/migrations";
 import { isSupabaseConfigured } from "./src/data/supabase/config";
+import { SyncConnectivityController } from "./src/data/sync/SyncConnectivityController";
 import { SupabasePullSync } from "./src/data/sync/SupabasePullSync";
 import { SupabaseRealtimeInvalidationSubscriber } from "./src/data/sync/SupabaseRealtimeInvalidationSubscriber";
 import { SyncLifecycleController } from "./src/data/sync/SyncLifecycleController";
 import type { SyncTriggerSource } from "./src/data/sync/types";
 import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
+import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
 
 export default function App() {
   const [isReady, setIsReady] = useState<boolean>(false);
@@ -29,8 +31,13 @@ export default function App() {
     let realtimeSubscriber: SupabaseRealtimeInvalidationSubscriber | null =
       null;
     let lifecycleController: SyncLifecycleController | null = null;
+    let connectivityController: SyncConnectivityController | null = null;
 
     const logSyncError = (message: string, err: unknown): void => {
+      useSyncStatusStore.getState().setLastSyncError(
+        err instanceof Error ? err.message : String(err),
+      );
+
       console.error(
         JSON.stringify({
           level: "error",
@@ -46,10 +53,17 @@ export default function App() {
         const db = getDatabase();
         await runMigrations(db);
 
+        const supabaseEnabled = isSupabaseConfigured();
+        useSyncStatusStore
+          .getState()
+          .setMode(supabaseEnabled ? "cloud" : "local-only");
+
         const syncOrchestrator = getClientsSyncOrchestrator();
-        const pullSync = isSupabaseConfigured() ? new SupabasePullSync() : null;
+        const pullSync = supabaseEnabled ? new SupabasePullSync() : null;
 
         const triggerSync = (source: SyncTriggerSource): void => {
+          useSyncStatusStore.getState().setLastSyncAttempt(new Date().toISOString());
+
           void syncOrchestrator.requestRun(source).catch((err: unknown) => {
             logSyncError("Sync run failed", err);
           });
@@ -64,11 +78,9 @@ export default function App() {
         };
 
         if (pullSync) {
-          realtimeSubscriber = new SupabaseRealtimeInvalidationSubscriber(
-            () => {
-              triggerSync("realtime");
-            },
-          );
+          realtimeSubscriber = new SupabaseRealtimeInvalidationSubscriber(() => {
+            triggerSync("realtime");
+          });
           realtimeSubscriber.start();
         }
 
@@ -76,6 +88,21 @@ export default function App() {
           triggerSync("foreground");
         });
         lifecycleController.start();
+
+        connectivityController = new SyncConnectivityController(
+          () => {
+            triggerSync("network_recovered");
+          },
+          {
+            onConnectivityChange: (isOnline) => {
+              useSyncStatusStore
+                .getState()
+                .setConnectivity(isOnline ? "online" : "offline");
+            },
+          },
+        );
+
+        await connectivityController.start();
 
         triggerSync("bootstrap");
 
@@ -94,6 +121,7 @@ export default function App() {
     return () => {
       isMounted = false;
       lifecycleController?.stop();
+      connectivityController?.stop();
       void realtimeSubscriber?.stop();
     };
   }, []);

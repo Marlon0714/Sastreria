@@ -67,10 +67,12 @@
 | N-040 | `changedBy`/`changedAt` en capa de datos + corrección `updated_at` en `markAsSynced` + migración v7 (limpia tabla `measurements` obsoleta) | High | **Done** | Builder / Tester | Cerrado 2026-05-05. Auditoría en capa de datos, no en UI. Migración v7 idempotente. |
 | N-041 | Bypass offline para auth cuando Supabase no configurado + badge visual de sync en lista de clientes | High | **Done** | Builder / Tester | Cerrado 2026-05-05. `isSupabaseConfigured` guard en flujo auth; badge de syncStatus en `ClientListScreen`. |
 | N-042 | Ciclo de calidad: 214 tests passing, typecheck limpio, lint sin errores | High | **Done** | Tester / Reviewer | Cerrado 2026-05-05. 214 tests verdes en branch `feature/ui/n038-measurement-grid`. |
+| N-043 | Robustecer sync cloud-first: evitar falso `synced` en local-only, banner sutil de estado y reintentos al recuperar red | P0 | **Next** | Architect / Builder / Tester | Riesgo activo: `NoopSyncTransport` + `markAsSynced` puede marcar `synced` sin cloud; hoy hay badge por registro pero no banner global ni trigger explícito por reconexión de red |
 
 ## Open Blockers (Prioritized)
 
 - **High**: `schedule` y `pricing` sin implementación — bloquean MVP entregable (N-008, N-009).
+- **High**: Riesgo de consistencia de sync cloud-first: posibilidad de falso `synced` en modo local-only y ausencia de trigger explícito por reconexión de red (N-043).
 - **Medium**: PR pendiente `feature/ui/n038-measurement-grid` -> `develop` (incluye N-038…N-042).
 - **Medium**: Señal de cobertura puede distorsionarse con features vacíos; N-011 aún sin resolver.
 - **Low**: Seguimientos post-merge de N-039: semántica asimétrica de `SyncCursor.updatedAt` para `delete_log`, `Array.shift()` O(n) en `SyncMetrics`, documentación de leading coalesce en `SupabaseRealtimeInvalidationSubscriber`.
@@ -80,7 +82,8 @@
 
 ## Proximas Prioridades Recomendadas (2026-05-05)
 
-1. **P0** — Abrir PR `feature/ui/n038-measurement-grid` -> `develop` (incluye N-038…N-042, 214 tests).
-2. **P0** — N-008: baseline `schedule` — domain, repository, screens, tests.
-3. **P0** — N-009: baseline `pricing` — domain, repository, screens, tests.
-4. **P1** — N-006 + N-011: quality gates y cobertura confiable.
+1. **P0** — N-043: robustecer sync cloud-first (no falso `synced`, banner sutil global, retry al recuperar red).
+2. **P0** — Abrir PR `feature/ui/n038-measurement-grid` -> `develop` (incluye N-038…N-042, 214 tests).
+3. **P0** — N-008: baseline `schedule` — domain, repository, screens, tests.
+4. **P0** — N-009: baseline `pricing` — domain, repository, screens, tests.
+5. **P1** — N-006 + N-011: quality gates y cobertura confiable.

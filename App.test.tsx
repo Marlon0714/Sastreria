@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react-native";
 
 import App from "./App";
 import type { ClientsDependencies } from "./src/features/clients/domain/repository";
+import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
 
 const mockGetDatabase = jest.fn<() => object>();
 const mockRunMigrations = jest.fn<(db: object) => Promise<void>>();
@@ -13,6 +14,8 @@ const mockRealtimeStart = jest.fn<() => void>();
 const mockRealtimeStop = jest.fn<() => Promise<void>>();
 const mockLifecycleStart = jest.fn<() => void>();
 const mockLifecycleStop = jest.fn<() => void>();
+const mockConnectivityStart = jest.fn<() => Promise<void>>();
+const mockConnectivityStop = jest.fn<() => void>();
 const mockIsSupabaseConfigured = jest.fn<() => boolean>();
 
 jest.mock("./src/data/local/database", () => ({
@@ -52,6 +55,13 @@ jest.mock("./src/data/sync/SyncLifecycleController", () => ({
   SyncLifecycleController: jest.fn().mockImplementation(() => ({
     start: (): void => mockLifecycleStart(),
     stop: (): void => mockLifecycleStop(),
+  })),
+}));
+
+jest.mock("./src/data/sync/SyncConnectivityController", () => ({
+  SyncConnectivityController: jest.fn().mockImplementation(() => ({
+    start: (): Promise<void> => mockConnectivityStart(),
+    stop: (): void => mockConnectivityStop(),
   })),
 }));
 
@@ -95,6 +105,8 @@ describe("App bootstrap sync trigger", () => {
     mockRealtimeStop.mockReset();
     mockLifecycleStart.mockReset();
     mockLifecycleStop.mockReset();
+    mockConnectivityStart.mockReset();
+    mockConnectivityStop.mockReset();
     mockIsSupabaseConfigured.mockReset();
 
     mockGetDatabase.mockReturnValue({});
@@ -103,6 +115,7 @@ describe("App bootstrap sync trigger", () => {
     mockRequestRun.mockResolvedValue(undefined);
     mockPullIncremental.mockResolvedValue(undefined);
     mockRealtimeStop.mockResolvedValue(undefined);
+    mockConnectivityStart.mockResolvedValue(undefined);
     mockIsSupabaseConfigured.mockReturnValue(true);
   });
 
@@ -151,7 +164,7 @@ describe("App bootstrap sync trigger", () => {
     expect(mockRequestRun).toHaveBeenCalledTimes(1);
   });
 
-  it("starts realtime/lifecycle on bootstrap and stops them on unmount", async () => {
+  it("starts realtime, lifecycle and connectivity controllers and stops them on unmount", async () => {
     // Arrange
     const rendered = render(<App />);
 
@@ -164,8 +177,31 @@ describe("App bootstrap sync trigger", () => {
     // Assert
     expect(mockRealtimeStart).toHaveBeenCalledTimes(1);
     expect(mockLifecycleStart).toHaveBeenCalledTimes(1);
+    expect(mockConnectivityStart).toHaveBeenCalledTimes(1);
     expect(mockPullIncremental).toHaveBeenCalledTimes(1);
     expect(mockRealtimeStop).toHaveBeenCalledTimes(1);
     expect(mockLifecycleStop).toHaveBeenCalledTimes(1);
+    expect(mockConnectivityStop).toHaveBeenCalledTimes(1);
+  });
+
+  it("en modo local-only no inicia realtime ni pull sync y pone modo local-only en el store", async () => {
+    // Arrange
+    useSyncStatusStore.getState().reset();
+    mockIsSupabaseConfigured.mockReturnValue(false);
+
+    // Act
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText("RootNavigator")).toBeTruthy();
+    });
+
+    // Assert — pull sync no se crea
+    expect(mockPullIncremental).not.toHaveBeenCalled();
+    expect(mockRealtimeStart).not.toHaveBeenCalled();
+    // El store debe reflejar modo local-only
+    expect(useSyncStatusStore.getState().mode).toBe("local-only");
+    // Lifecycle y connectivity controllers sí se inician (son agnósticos al modo)
+    expect(mockLifecycleStart).toHaveBeenCalledTimes(1);
+    expect(mockConnectivityStart).toHaveBeenCalledTimes(1);
   });
 });
