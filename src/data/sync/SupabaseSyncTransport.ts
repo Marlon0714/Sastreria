@@ -125,7 +125,9 @@ export class SupabaseSyncTransport implements SyncTransport {
   ): Promise<SyncTransportAttemptResult> {
     try {
       const supabase = getSupabaseClient();
-      const { error } = await supabase.from("sync_delete_log").upsert(
+
+      // 1. Register the delete in the audit log (idempotent)
+      const { error: logError } = await supabase.from("sync_delete_log").upsert(
         {
           id: entry.id,
           entity_type: entry.entityType,
@@ -135,14 +137,78 @@ export class SupabaseSyncTransport implements SyncTransport {
         { onConflict: "id" },
       );
 
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
+      if (logError) {
+        return this.toAttemptFailure(logError.code, logError.message);
+      }
+
+      // 2. Execute the actual DELETE in cloud tables based on entity type
+      const deleteResult = await this.executeCloudDelete(supabase, entry);
+      if (deleteResult) {
+        return deleteResult;
       }
 
       return { outcome: "synced" };
     } catch {
       return { outcome: "deferred_offline" };
     }
+  }
+
+  private async executeCloudDelete(
+    supabase: ReturnType<typeof getSupabaseClient>,
+    entry: SyncDeleteLogEntry,
+  ): Promise<SyncTransportAttemptResult | null> {
+    if (entry.entityType === "client") {
+      // Delete measurements first (cascade), then the client
+      const { error: camisaError } = await supabase
+        .from("camisa_measurements")
+        .delete()
+        .eq("client_id", entry.entityId);
+      if (camisaError) {
+        return this.toAttemptFailure(camisaError.code, camisaError.message);
+      }
+
+      const { error: pantalonError } = await supabase
+        .from("pantalon_measurements")
+        .delete()
+        .eq("client_id", entry.entityId);
+      if (pantalonError) {
+        return this.toAttemptFailure(pantalonError.code, pantalonError.message);
+      }
+
+      const { error: clientError } = await supabase
+        .from("clients")
+        .delete()
+        .eq("id", entry.entityId);
+      if (clientError) {
+        return this.toAttemptFailure(clientError.code, clientError.message);
+      }
+
+      return null;
+    }
+
+    if (entry.entityType === "camisa_measurement") {
+      const { error } = await supabase
+        .from("camisa_measurements")
+        .delete()
+        .eq("id", entry.entityId);
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+      return null;
+    }
+
+    if (entry.entityType === "pantalon_measurement") {
+      const { error } = await supabase
+        .from("pantalon_measurements")
+        .delete()
+        .eq("id", entry.entityId);
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+      return null;
+    }
+
+    return null;
   }
 
   private toAttemptFailure(

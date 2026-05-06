@@ -2,25 +2,18 @@
 
 ## Snapshot
 
-- Date: 2026-05-05
+- Date: 2026-05-06
 - Project: sastrería (React Native + Expo)
-- Stage: MVP con Auth + Sync cloud + CRUD completo de clientes + Grid de medidas adaptable + sync multi-dispositivo de deletes completado en branch; PR a `develop` pendiente
-- Branch activa: `feature/ui/n038-measurement-grid` (commit `988bc43`, pushed a `origin/feature/ui/n038-measurement-grid`, PR pendiente a `develop`)
-- Último ciclo cerrado: N-040/N-041/N-042 completados (214 tests, typecheck limpio ✅)
+- Stage: MVP con Auth + Sync cloud + CRUD clientes + Grid medidas + pricing domain/repo/migración completos y testeados; PR a develop abierto
+- Branch activa: `feature/ui/n038-measurement-grid` (commit actualizado, PR #26 abierto a `develop`)
+- Último ciclo cerrado: N-009 (pricing domain, repo, migración, tests, revisión)
 
 ## Current Focus
 
-- **N-035 cerrado** (2026-05-05): cuello, brazo, puño en camisa — migración v3, dominio, form, repo, sync. Commit `57c1937`.
-- **N-036 cerrado** (2026-05-05): CRUD completo de clientes — `UpdateClientDTO`, `updateClientSchema`, `update`/`delete` en repo + impl, migration v4 (`sync_delete_log`), `operationType` en sync queue, hooks `useUpdateClient`/`useDeleteClient`, `ClientEditScreen`, botones en `ClientDetailScreen`. La deuda de deletes quedó resuelta en N-039.
-- **N-037 cerrado** (2026-05-05): Iconos Ionicons en barra de tabs (`people`, `calendar`, `pricetag`). `@expo/vector-icons` como dependencia directa; mock en `__mocks__/@expo/vector-icons.js`.
-- **N-038 cerrado** (2026-05-05): Grid adaptable de medidas — `MeasurementCard`, `MeasurementGridSection`, `CamisaMeasurementGrid`, `PantalonMeasurementGrid`. Grid 2-4 columnas vía `useWindowDimensions`. Edición inline en la misma pantalla. 4 screens actualizadas. 15 tests nuevos (165 total, 39 suites). Typecheck OK, pre-push OK. Mergeado en `develop`.
-- **N-039 cerrado** (2026-05-05): sync multi-dispositivo para deletes completado — `SyncCheckpointRepository` (cursor monotónico por scope + migración v5), `SupabaseRealtimeInvalidationSubscriber` (`postgres_changes` en 4 tablas + debounce 400ms), `SyncLifecycleController` (foreground trigger con `AppState`), `SyncMetrics` (p50/p95 + `meetsLatencySlo()`), `SupabasePullSync` incremental con cursor por entidad + `delete_log`, `SyncQueueRepository` conectado a `sync_delete_log`, `SyncQueueProcessor` ruteando `delete_log`, `SupabaseSyncTransport.syncDeleteLogEntry` idempotente, `SyncOrchestrator.requestRun(source)`, wiring en `App.tsx` con cleanup.
-- **Estado de integración**: N-040/N-041/N-042 completados en branch `feature/ui/n038-measurement-grid`; 214 tests passing, typecheck limpio. PR a `develop` pendiente de apertura.
-- `schedule` y `pricing` siguen con solo `PlaceholderScreen` (N-008, N-009) — **son el siguiente P0**.
-- **N-040 cerrado** (2026-05-05): `changedBy`/`changedAt` añadidos en capa de datos (no en UI); corrección de `updated_at` en `markAsSynced`; migración v7 para limpiar tabla `measurements` obsoleta.
-- **N-041 cerrado** (2026-05-05): bypass offline para auth cuando Supabase no está configurado; badge visual de sync en lista de clientes.
-- **N-042 cerrado** (2026-05-05): ciclo de calidad — 214 tests passing, typecheck limpio, lint sin errores.
-- **N-043 identificado** (2026-05-06): robustecer sync cloud-first para evitar falso `synced` en local-only, añadir banner sutil de estado de sync y garantizar reintentos al recuperar red.
+- **N-009 cerrado** (2026-05-06): Dominio, repositorio y migración de pricing implementados, validados y auditados. Tests unitarios y revisión aprobada con observaciones menores. Siguiente: UI y navegación.
+- `schedule` sigue como P0 pendiente.
+
+## Tech Stack
 
 ## Tech Stack
 

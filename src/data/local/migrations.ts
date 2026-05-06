@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 7;
+const TARGET_SCHEMA_VERSION = 8;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -163,6 +163,24 @@ const MIGRATIONS: readonly Migration[] = [
     // The generic `measurements` table was superseded by `camisa_measurements`
     // and `pantalon_measurements` in v2. Drop it to remove dead schema.
     statements: [`DROP TABLE IF EXISTS measurements;`],
+  },
+  {
+    version: 8,
+    name: "v8_pricing_services",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS pricing_services (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        price REAL NOT NULL,
+        notes TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_pricing_services_name ON pricing_services (name);`,
+    ],
   },
 ];
 
