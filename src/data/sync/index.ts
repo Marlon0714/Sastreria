@@ -5,10 +5,14 @@ export { SyncOrchestrator } from "./SyncOrchestrator";
 export { SyncCheckpointRepository } from "./SyncCheckpointRepository";
 export { SupabasePullSync } from "./SupabasePullSync";
 export { SyncLifecycleController } from "./SyncLifecycleController";
+export { SyncConnectivityController } from "./SyncConnectivityController";
 export { SupabaseRealtimeInvalidationSubscriber } from "./SupabaseRealtimeInvalidationSubscriber";
 export { SyncMetrics, meetsLatencySlo } from "./SyncMetrics";
 export type {
+  SyncBannerVariant,
+  SyncConnectivity,
   RetryPolicy,
+  SyncMode,
   SyncCheckpoint,
   SyncCheckpointScope,
   SyncCursor,
@@ -16,6 +20,8 @@ export type {
   SyncEntityType,
   SyncQueueItem,
   SyncRunResult,
+  SyncTransportAttemptOutcome,
+  SyncTransportAttemptResult,
   SyncTriggerSource,
 } from "./types";
 export type {

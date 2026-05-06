@@ -100,18 +100,15 @@ describe("SupabaseSyncTransport", () => {
       );
     });
 
-    it("throws a sanitized error when Supabase returns an error", async () => {
+    it("returns failed outcome (no PII) when Supabase returns an error", async () => {
       mockUpsert.mockResolvedValueOnce({ error: { code: "23505" } });
       const transport = new SupabaseSyncTransport();
 
-      await expect(transport.syncClient(baseClient)).rejects.toThrow(
-        "[sync] client push failed: 23505",
-      );
-      // Error message must NOT contain PII (name, phone)
-      await transport.syncClient(baseClient).catch((err: Error) => {
-        expect(err.message).not.toContain("Ana");
-        expect(err.message).not.toContain("3001234567");
-      });
+      const result = await transport.syncClient(baseClient);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "23505" });
+      // Result must NOT contain PII (name, phone)
+      expect(JSON.stringify(result)).not.toContain("Ana");
+      expect(JSON.stringify(result)).not.toContain("3001234567");
     });
   });
 
@@ -139,13 +136,12 @@ describe("SupabaseSyncTransport", () => {
       );
     });
 
-    it("throws a sanitized error on Supabase failure", async () => {
+    it("returns failed outcome on Supabase failure", async () => {
       mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
       const transport = new SupabaseSyncTransport();
 
-      await expect(transport.syncCamisaMeasurement(baseCamisa)).rejects.toThrow(
-        "[sync] camisa push failed: 42501",
-      );
+      const result = await transport.syncCamisaMeasurement(baseCamisa);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
     });
   });
 
@@ -170,13 +166,12 @@ describe("SupabaseSyncTransport", () => {
       );
     });
 
-    it("throws a sanitized error on Supabase failure", async () => {
+    it("returns failed outcome on Supabase failure", async () => {
       mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
       const transport = new SupabaseSyncTransport();
 
-      await expect(
-        transport.syncPantalonMeasurement(basePantalon),
-      ).rejects.toThrow("[sync] pantalon push failed: 42501");
+      const result = await transport.syncPantalonMeasurement(basePantalon);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
     });
   });
 
@@ -199,13 +194,12 @@ describe("SupabaseSyncTransport", () => {
       );
     });
 
-    it("throws sanitized error on delete push failure", async () => {
+    it("returns failed outcome on delete push failure", async () => {
       mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
       const transport = new SupabaseSyncTransport();
 
-      await expect(transport.syncDeleteLogEntry(baseDeleteLog)).rejects.toThrow(
-        "[sync] delete log push failed: 42501",
-      );
+      const result = await transport.syncDeleteLogEntry(baseDeleteLog);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
     });
   });
 });

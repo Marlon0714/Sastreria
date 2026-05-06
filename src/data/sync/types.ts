@@ -43,7 +43,27 @@ export type SyncTriggerSource =
   | "realtime"
   | "foreground"
   | "bootstrap"
+  | "network_recovered"
   | "manual";
+
+export type SyncTransportAttemptOutcome =
+  | "synced"
+  | "deferred_local_only"
+  | "deferred_offline"
+  | "failed";
+
+export interface SyncTransportAttemptResult {
+  outcome: SyncTransportAttemptOutcome;
+  errorCode?: string;
+}
+
+export type SyncMode = "cloud" | "local-only";
+export type SyncConnectivity = "unknown" | "online" | "offline";
+export type SyncBannerVariant =
+  | "none"
+  | "local_only"
+  | "offline"
+  | "syncing_pending";
 
 interface SyncQueueItemBase {
   entityType: SyncEntityType;
@@ -89,5 +109,6 @@ export interface RetryPolicy {
 export interface SyncRunResult {
   processed: number;
   synced: number;
+  deferred: number;
   failed: number;
 }

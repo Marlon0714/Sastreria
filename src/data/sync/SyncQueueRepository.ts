@@ -72,6 +72,10 @@ interface DeleteQueueRow {
   sync_status: "pending" | "synced" | "error";
 }
 
+interface PendingCountRow {
+  total: number;
+}
+
 function toClientQueueItem(row: ClientQueueRow): SyncClientQueueItem {
   return {
     entityType: "client",
@@ -175,6 +179,7 @@ function toDeleteQueueItem(row: DeleteQueueRow): SyncDeleteQueueItem {
 
 export interface SyncQueueRepositoryPort {
   getPendingItems(limit: number): Promise<SyncQueueItem[]>;
+  hasPendingItems(): Promise<boolean>;
   markAsSynced(
     entityType: SyncQueueItem["entityType"],
     id: string,
@@ -302,6 +307,34 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
     ]
       .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))
       .slice(0, limit);
+  }
+
+  async hasPendingItems(): Promise<boolean> {
+    const db = getDatabase();
+
+    const countQuery = async (tableName: string): Promise<number> => {
+      const result = await db.getFirstAsync<PendingCountRow>(
+        `
+        SELECT COUNT(*) AS total
+        FROM ${tableName}
+        WHERE sync_status IN (?, ?);
+        `,
+        "pending",
+        "error",
+      );
+
+      return result?.total ?? 0;
+    };
+
+    const [clientsCount, camisaCount, pantalonCount, deleteCount] =
+      await Promise.all([
+        countQuery("clients"),
+        countQuery("camisa_measurements"),
+        countQuery("pantalon_measurements"),
+        countQuery("sync_delete_log"),
+      ]);
+
+    return clientsCount + camisaCount + pantalonCount + deleteCount > 0;
   }
 
   async markAsSynced(

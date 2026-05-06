@@ -1,3 +1,4 @@
+import { useSyncStatusStore } from "../../shared/state/syncStatusStore";
 import type { SyncTransport } from "./SyncTransport";
 import type { RetryPolicy, SyncQueueItem, SyncRunResult } from "./types";
 import type { SyncQueueRepositoryPort } from "./SyncQueueRepository";
@@ -29,6 +30,8 @@ export class SyncQueueProcessor {
   }
 
   async runOnce(): Promise<SyncRunResult> {
+    useSyncStatusStore.getState().setLastSyncAttempt(new Date().toISOString());
+
     const items = await this.queueRepository.getPendingItems(
       this.retryPolicy.batchSize,
     );
@@ -36,76 +39,98 @@ export class SyncQueueProcessor {
     const summary: SyncRunResult = {
       processed: 0,
       synced: 0,
+      deferred: 0,
       failed: 0,
     };
 
     for (const item of items) {
       summary.processed += 1;
-      const didSync = await this.processItemWithRetry(item);
+      const outcome = await this.processItemWithRetry(item);
 
-      if (didSync) {
+      if (outcome === "synced") {
         summary.synced += 1;
-      } else {
+      } else if (outcome === "failed") {
         summary.failed += 1;
+      } else {
+        summary.deferred += 1;
       }
     }
+
+    const hasPending = await this.queueRepository.hasPendingItems();
+    useSyncStatusStore.getState().setHasPending(hasPending);
 
     return summary;
   }
 
-  private async processItemWithRetry(item: SyncQueueItem): Promise<boolean> {
+  private async processItemWithRetry(
+    item: SyncQueueItem,
+  ): Promise<"synced" | "deferred" | "failed"> {
     for (
       let attempt = 1;
       attempt <= this.retryPolicy.maxRetries;
       attempt += 1
     ) {
-      try {
-        await this.syncItem(item);
-        await this.queueRepository.markAsSynced(item.entityType, item.id);
-        return true;
-      } catch (syncError: unknown) {
-        if (attempt === this.retryPolicy.maxRetries) {
-          // TODO: replace with Crashlytics when telemetry is integrated
-          console.error(
-            JSON.stringify({
-              level: "error",
-              service: "SyncQueueProcessor",
-              message: "Sync retries exhausted, marking item as error",
-              entityType: item.entityType,
-              itemId: item.id,
-              error:
-                syncError instanceof Error
-                  ? syncError.message
-                  : String(syncError),
-            }),
-          );
-          await this.queueRepository.markAsError(item.entityType, item.id);
-          return false;
-        }
+      let result: Awaited<ReturnType<SyncTransport["syncClient"]>>;
 
-        await waitFor(this.retryPolicy.baseDelayMs * 2 ** (attempt - 1));
+      try {
+        result = await this.syncItem(item);
+      } catch {
+        result = { outcome: "failed", errorCode: "unexpected_error" };
       }
+
+      if (result.outcome === "synced") {
+        await this.queueRepository.markAsSynced(item.entityType, item.id);
+        useSyncStatusStore.getState().setLastSyncError(null);
+        return "synced";
+      }
+
+      if (
+        result.outcome === "deferred_local_only" ||
+        result.outcome === "deferred_offline"
+      ) {
+        return "deferred";
+      }
+
+      if (attempt === this.retryPolicy.maxRetries) {
+        // TODO: replace with Crashlytics when telemetry is integrated
+        console.error(
+          JSON.stringify({
+            level: "error",
+            service: "SyncQueueProcessor",
+            message: "Sync retries exhausted, marking item as error",
+            entityType: item.entityType,
+            itemId: item.id,
+            errorCode: result.errorCode ?? "unknown",
+          }),
+        );
+        await this.queueRepository.markAsError(item.entityType, item.id);
+        useSyncStatusStore
+          .getState()
+          .setLastSyncError("No se pudo sincronizar un cambio pendiente.");
+        return "failed";
+      }
+
+      await waitFor(this.retryPolicy.baseDelayMs * 2 ** (attempt - 1));
     }
 
-    return false;
+    return "failed";
   }
 
-  private async syncItem(item: SyncQueueItem): Promise<void> {
+  private async syncItem(
+    item: SyncQueueItem,
+  ): ReturnType<SyncTransport["syncClient"]> {
     if (item.entityType === "delete_log") {
-      await this.transport.syncDeleteLogEntry(item.payload);
-      return;
+      return this.transport.syncDeleteLogEntry(item.payload);
     }
 
     if (item.entityType === "client") {
-      await this.transport.syncClient(item.payload);
-      return;
+      return this.transport.syncClient(item.payload);
     }
 
     if (item.entityType === "camisa_measurement") {
-      await this.transport.syncCamisaMeasurement(item.payload);
-      return;
+      return this.transport.syncCamisaMeasurement(item.payload);
     }
 
-    await this.transport.syncPantalonMeasurement(item.payload);
+    return this.transport.syncPantalonMeasurement(item.payload);
   }
 }

@@ -1,3 +1,4 @@
+import { useSyncStatusStore } from "../../shared/state/syncStatusStore";
 import type {
   ClientRepository,
   ClientsDependencies,
@@ -11,9 +12,18 @@ let defaultMeasurementRepository: MeasurementRepository | null = null;
 let defaultSyncOrchestrator: SyncOrchestrator | null = null;
 
 function scheduleSyncRun(): void {
+  const store = useSyncStatusStore.getState();
+  store.setHasPending(true);
+
   void getClientsSyncOrchestrator()
     .requestRun("write")
     .catch((err: unknown) => {
+      useSyncStatusStore
+        .getState()
+        .setLastSyncError(
+          "No se pudo iniciar la sincronizacion en segundo plano.",
+        );
+
       // TODO: replace with Crashlytics when telemetry is integrated
       console.error(
         JSON.stringify({
@@ -43,11 +53,16 @@ function getClientsSyncOrchestrator(): SyncOrchestrator {
   let transport: import("../sync").SyncTransport;
 
   if (isSupabaseConfigured()) {
+    useSyncStatusStore.getState().setMode("cloud");
+
     const { SupabaseSyncTransport } =
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       require("../sync/SupabaseSyncTransport") as typeof import("../sync/SupabaseSyncTransport");
     transport = new SupabaseSyncTransport();
   } else {
+    useSyncStatusStore.getState().setMode("local-only");
+    useSyncStatusStore.getState().setHasPending(true);
+
     const { NoopSyncTransport } =
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       require("../sync") as typeof import("../sync");

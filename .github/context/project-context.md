@@ -20,6 +20,7 @@
 - **N-040 cerrado** (2026-05-05): `changedBy`/`changedAt` añadidos en capa de datos (no en UI); corrección de `updated_at` en `markAsSynced`; migración v7 para limpiar tabla `measurements` obsoleta.
 - **N-041 cerrado** (2026-05-05): bypass offline para auth cuando Supabase no está configurado; badge visual de sync en lista de clientes.
 - **N-042 cerrado** (2026-05-05): ciclo de calidad — 214 tests passing, typecheck limpio, lint sin errores.
+- **N-043 identificado** (2026-05-06): robustecer sync cloud-first para evitar falso `synced` en local-only, añadir banner sutil de estado de sync y garantizar reintentos al recuperar red.
 
 ## Tech Stack
 
@@ -47,6 +48,7 @@
 ## Risks / Blockers
 
 - **High**: `schedule` y `pricing` sin implementación real — MVP incompleto (N-008, N-009).
+- **High**: riesgo de falso `synced` cuando Supabase no está configurado (`NoopSyncTransport` retorna éxito) y falta trigger explícito en reconexión de red para reintentos inmediatos (N-043).
 - **Medium**: PR pendiente `feature/ui/n038-measurement-grid` -> `develop` (incluye N-038 a N-042).
 - **Medium**: Coverage signal puede distorsionarse con features vacíos (N-011).
 - **Low**: Crashlytics no integrado; shim `console.error` temporal (N-034).
@@ -59,9 +61,9 @@
 
 ## Next Session Steps (Max 3)
 
-1. **P0 — PR N-038…N-042**: Abrir PR `feature/ui/n038-measurement-grid` -> `develop`.
-2. **P0 — N-008**: Implementar baseline de `schedule` — domain, repository, screens, tests.
-3. **P0 — N-009**: Implementar baseline de `pricing` — domain, repository, screens, tests.
+1. **P0 — N-043**: Ajustar política cloud-first de sync (sin falso `synced` en local-only), agregar banner sutil global de estado y trigger de reintento por reconexión.
+2. **P0 — PR N-038…N-042**: Abrir PR `feature/ui/n038-measurement-grid` -> `develop`.
+3. **P0 — N-008**: Implementar baseline de `schedule` — domain, repository, screens, tests.
 
 ## Confirmed Facts (post N-040/N-041/N-042)
 
