@@ -3,8 +3,14 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { SupabaseSyncTransport } from "./SupabaseSyncTransport";
 
 // Mock the Supabase client module
-const mockUpsert = jest.fn<() => Promise<{ error: null | { code: string } }>>();
-const mockFrom = jest.fn(() => ({ upsert: mockUpsert }));
+type MockError = { code: string } | null;
+const mockUpsert = jest.fn<() => Promise<{ error: MockError }>>();
+const mockDelete = jest.fn<() => { eq: jest.Mock }>();
+const mockEq = jest.fn<() => Promise<{ error: MockError }>>();
+
+mockDelete.mockImplementation(() => ({ eq: mockEq }));
+
+const mockFrom = jest.fn(() => ({ upsert: mockUpsert, delete: mockDelete }));
 
 jest.mock("../supabase/client", () => ({
   getSupabaseClient: () => ({ from: mockFrom }),
@@ -79,6 +85,9 @@ describe("SupabaseSyncTransport", () => {
   beforeEach(() => {
     mockFrom.mockClear();
     mockUpsert.mockReset();
+    mockDelete.mockClear();
+    mockEq.mockReset();
+    mockDelete.mockImplementation(() => ({ eq: mockEq }));
   });
 
   describe("syncClient", () => {
@@ -176,30 +185,73 @@ describe("SupabaseSyncTransport", () => {
   });
 
   describe("syncDeleteLogEntry", () => {
-    it("upserts to 'sync_delete_log' table on success", async () => {
+    it("upserts to 'sync_delete_log' then deletes camisa, pantalon and client from cloud", async () => {
       mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValue({ error: null });
       const transport = new SupabaseSyncTransport();
 
-      await transport.syncDeleteLogEntry(baseDeleteLog);
+      const result = await transport.syncDeleteLogEntry(baseDeleteLog);
 
+      expect(result).toEqual({ outcome: "synced" });
+      // Log upsert
       expect(mockFrom).toHaveBeenCalledWith("sync_delete_log");
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "del-1",
-          entity_type: "client",
-          entity_id: "c-1",
-          deleted_at: "2026-05-01T10:05:00.000Z",
-        }),
-        { onConflict: "id" },
-      );
+      // Cascade deletes: camisa, pantalon, client
+      expect(mockFrom).toHaveBeenCalledWith("camisa_measurements");
+      expect(mockFrom).toHaveBeenCalledWith("pantalon_measurements");
+      expect(mockFrom).toHaveBeenCalledWith("clients");
+      expect(mockDelete).toHaveBeenCalledTimes(3);
     });
 
-    it("returns failed outcome on delete push failure", async () => {
+    it("returns failed when sync_delete_log upsert fails", async () => {
       mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
       const transport = new SupabaseSyncTransport();
 
       const result = await transport.syncDeleteLogEntry(baseDeleteLog);
       expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+      expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it("returns failed when cascade camisa delete fails", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq
+        .mockResolvedValueOnce({ error: { code: "42501" } }); // camisa fails
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncDeleteLogEntry(baseDeleteLog);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+
+    it("returns failed when client delete fails", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq
+        .mockResolvedValueOnce({ error: null })   // camisa ok
+        .mockResolvedValueOnce({ error: null })   // pantalon ok
+        .mockResolvedValueOnce({ error: { code: "23503" } }); // client fails
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncDeleteLogEntry(baseDeleteLog);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "23503" });
+    });
+
+    it("deletes only camisa_measurement when entityType is camisa_measurement", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const camisaDeleteLog = { ...baseDeleteLog, entityType: "camisa_measurement" as const, entityId: "cam-1" };
+
+      const result = await transport.syncDeleteLogEntry(camisaDeleteLog);
+
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockFrom).toHaveBeenCalledWith("camisa_measurements");
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns failed outcome when network throws", async () => {
+      mockUpsert.mockRejectedValueOnce(new Error("network error"));
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncDeleteLogEntry(baseDeleteLog);
+      expect(result).toEqual({ outcome: "deferred_offline" });
     });
   });
 });
