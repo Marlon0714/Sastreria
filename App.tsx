@@ -17,6 +17,9 @@ import type { SyncTriggerSource } from "./src/data/sync/types";
 import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
+import { interceptLogs } from "./src/shared/utils/logInterceptor";
+import { LogViewer } from "./src/shared/components/LogViewer";
+import { LogViewerToggle } from "./src/shared/components/LogViewerToggle";
 
 export default function App() {
   const [isReady, setIsReady] = useState<boolean>(false);
@@ -34,9 +37,9 @@ export default function App() {
     let connectivityController: SyncConnectivityController | null = null;
 
     const logSyncError = (message: string, err: unknown): void => {
-      useSyncStatusStore.getState().setLastSyncError(
-        err instanceof Error ? err.message : String(err),
-      );
+      useSyncStatusStore
+        .getState()
+        .setLastSyncError(err instanceof Error ? err.message : String(err));
 
       console.error(
         JSON.stringify({
@@ -62,7 +65,9 @@ export default function App() {
         const pullSync = supabaseEnabled ? new SupabasePullSync() : null;
 
         const triggerSync = (source: SyncTriggerSource): void => {
-          useSyncStatusStore.getState().setLastSyncAttempt(new Date().toISOString());
+          useSyncStatusStore
+            .getState()
+            .setLastSyncAttempt(new Date().toISOString());
 
           void syncOrchestrator.requestRun(source).catch((err: unknown) => {
             logSyncError("Sync run failed", err);
@@ -78,9 +83,11 @@ export default function App() {
         };
 
         if (pullSync) {
-          realtimeSubscriber = new SupabaseRealtimeInvalidationSubscriber(() => {
-            triggerSync("realtime");
-          });
+          realtimeSubscriber = new SupabaseRealtimeInvalidationSubscriber(
+            () => {
+              triggerSync("realtime");
+            },
+          );
           realtimeSubscriber.start();
         }
 
@@ -126,6 +133,10 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    interceptLogs(); // Siempre intercepta, pero solo muestra si está activo
+  }, []);
+
   if (error) {
     return (
       <View style={styles.centered}>
@@ -144,9 +155,13 @@ export default function App() {
   }
 
   return (
-    <ClientsDependenciesProvider dependencies={clientsDependencies}>
-      <RootNavigator />
-    </ClientsDependenciesProvider>
+    <>
+      <ClientsDependenciesProvider dependencies={clientsDependencies}>
+        <RootNavigator />
+      </ClientsDependenciesProvider>
+      <LogViewerToggle />
+      <LogViewer />
+    </>
   );
 }
 
