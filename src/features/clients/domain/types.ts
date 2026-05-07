@@ -2,22 +2,12 @@ import * as Crypto from "expo-crypto";
 
 import type { BaseEntity } from "../../../shared/domain/baseEntity";
 
-export interface Measurement extends BaseEntity {
-  clientId: string;
-  measuredAt: string;
-  pechoCm: number;
-  cinturaCm: number;
-  caderaCm: number;
-  largoCm: number;
-  notes: string | null;
-}
-
 export interface Client extends BaseEntity {
   firstName: string;
   lastName: string;
   phone: string;
   notes: string | null;
-  measurements: Measurement[];
+  measurements: Array<CamisaMeasurement | PantalonMeasurement>;
 }
 
 export interface CreateClientDTO {
@@ -27,14 +17,84 @@ export interface CreateClientDTO {
   notes?: string;
 }
 
-export interface AddMeasurementDTO {
-  clientId: string;
-  measuredAt?: string;
-  pechoCm: number;
-  cinturaCm: number;
-  caderaCm: number;
-  largoCm: number;
+export interface UpdateClientDTO {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
   notes?: string;
+}
+
+export interface CamisaMeasurement extends BaseEntity {
+  clientId: string;
+  espalda: number | null;
+  hombro: number | null;
+  talleDelantero: number | null;
+  talleTrasero: number | null;
+  distancia: number | null;
+  separacion: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  largo: number | null;
+  largoManga: number | null;
+  anchoManga: number | null;
+  escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
+  changedBy: string | null;
+  changedAt: string | null;
+  notes: string | null;
+}
+
+export interface PantalonMeasurement extends BaseEntity {
+  clientId: string;
+  largo: number | null;
+  cintura: number | null;
+  base: number | null;
+  tiro: number | null;
+  pierna: number | null;
+  rodilla: number | null;
+  bota: number | null;
+  changedBy: string | null;
+  changedAt: string | null;
+  notes: string | null;
+}
+
+export interface UpsertCamisaDTO {
+  clientId: string;
+  espalda?: number | null;
+  hombro?: number | null;
+  talleDelantero?: number | null;
+  talleTrasero?: number | null;
+  distancia?: number | null;
+  separacion?: number | null;
+  pecho?: number | null;
+  cintura?: number | null;
+  base?: number | null;
+  largo?: number | null;
+  largoManga?: number | null;
+  anchoManga?: number | null;
+  escote?: number | null;
+  cuello?: number | null;
+  brazo?: number | null;
+  puno?: number | null;
+  changedBy?: string | null;
+  notes?: string | null;
+}
+
+export interface UpsertPantalonDTO {
+  clientId: string;
+  largo?: number | null;
+  cintura?: number | null;
+  base?: number | null;
+  tiro?: number | null;
+  pierna?: number | null;
+  rodilla?: number | null;
+  bota?: number | null;
+  changedBy?: string | null;
+  notes?: string | null;
 }
 
 export function generateDomainUuid(): string {

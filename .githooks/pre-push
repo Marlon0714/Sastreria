@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf "\n[hook] pre-push: running validate...\n"
+npm run validate
+
+printf "[hook] pre-push: OK\n"

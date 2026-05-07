@@ -1,20 +1,186 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import "react-native-url-polyfill/auto";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+
+import {
+  getClientsDependencies,
+  getClientsSyncOrchestrator,
+} from "./src/data/local/clientsDependencies";
+import { getDatabase } from "./src/data/local/database";
+import { runMigrations } from "./src/data/local/migrations";
+import { isSupabaseConfigured } from "./src/data/supabase/config";
+import { SyncConnectivityController } from "./src/data/sync/SyncConnectivityController";
+import { SupabasePullSync } from "./src/data/sync/SupabasePullSync";
+import { SupabaseRealtimeInvalidationSubscriber } from "./src/data/sync/SupabaseRealtimeInvalidationSubscriber";
+import { SyncLifecycleController } from "./src/data/sync/SyncLifecycleController";
+import type { SyncTriggerSource } from "./src/data/sync/types";
+import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
+import RootNavigator from "./src/navigation/RootNavigator";
+import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
+import { interceptLogs } from "./src/shared/utils/logInterceptor";
+import { LogViewer } from "./src/shared/components/LogViewer";
+import { LogViewerToggle } from "./src/shared/components/LogViewerToggle";
 
 export default function App() {
+  const [isReady, setIsReady] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const clientsDependencies = useMemo(
+    () => (isReady ? getClientsDependencies() : null),
+    [isReady],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    let realtimeSubscriber: SupabaseRealtimeInvalidationSubscriber | null =
+      null;
+    let lifecycleController: SyncLifecycleController | null = null;
+    let connectivityController: SyncConnectivityController | null = null;
+
+    const logSyncError = (message: string, err: unknown): void => {
+      useSyncStatusStore
+        .getState()
+        .setLastSyncError(err instanceof Error ? err.message : String(err));
+
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "App",
+          message,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    };
+
+    const bootstrap = async (): Promise<void> => {
+      try {
+        const db = getDatabase();
+        await runMigrations(db);
+
+        const supabaseEnabled = isSupabaseConfigured();
+        useSyncStatusStore
+          .getState()
+          .setMode(supabaseEnabled ? "cloud" : "local-only");
+
+        const syncOrchestrator = getClientsSyncOrchestrator();
+        const pullSync = supabaseEnabled ? new SupabasePullSync() : null;
+
+        const triggerSync = (source: SyncTriggerSource): void => {
+          useSyncStatusStore
+            .getState()
+            .setLastSyncAttempt(new Date().toISOString());
+
+          void syncOrchestrator.requestRun(source).catch((err: unknown) => {
+            logSyncError("Sync run failed", err);
+          });
+
+          if (!pullSync) {
+            return;
+          }
+
+          void pullSync.pullIncremental().catch((err: unknown) => {
+            logSyncError("Incremental pull sync failed", err);
+          });
+        };
+
+        if (pullSync) {
+          realtimeSubscriber = new SupabaseRealtimeInvalidationSubscriber(
+            () => {
+              triggerSync("realtime");
+            },
+          );
+          realtimeSubscriber.start();
+        }
+
+        lifecycleController = new SyncLifecycleController(() => {
+          triggerSync("foreground");
+        });
+        lifecycleController.start();
+
+        connectivityController = new SyncConnectivityController(
+          () => {
+            triggerSync("network_recovered");
+          },
+          {
+            onConnectivityChange: (isOnline) => {
+              useSyncStatusStore
+                .getState()
+                .setConnectivity(isOnline ? "online" : "offline");
+            },
+          },
+        );
+
+        await connectivityController.start();
+
+        triggerSync("bootstrap");
+
+        if (isMounted) {
+          setIsReady(true);
+        }
+      } catch {
+        if (isMounted) {
+          setError("No se pudo inicializar la base de datos local.");
+        }
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      isMounted = false;
+      lifecycleController?.stop();
+      connectivityController?.stop();
+      void realtimeSubscriber?.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    interceptLogs(); // Siempre intercepta, pero solo muestra si está activo
+  }, []);
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  if (!isReady || !clientsDependencies) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.message}>Preparando aplicación...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <ClientsDependenciesProvider dependencies={clientsDependencies}>
+        <RootNavigator />
+      </ClientsDependenciesProvider>
+      <LogViewerToggle />
+      <LogViewer />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  centered: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 24,
+    backgroundColor: "#f8fafc",
+  },
+  message: {
+    color: "#334155",
+    fontSize: 16,
+  },
+  errorText: {
+    color: "#b91c1c",
+    fontSize: 16,
+    textAlign: "center",
   },
 });

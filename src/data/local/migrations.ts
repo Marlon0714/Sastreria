@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 1;
+const TARGET_SCHEMA_VERSION = 8;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -54,6 +54,134 @@ const MIGRATIONS: readonly Migration[] = [
       `,
     ],
   },
+  {
+    version: 2,
+    name: "v2_measurements_by_garment",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS camisa_measurements (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        espalda REAL,
+        hombro REAL,
+        talle_delantero REAL,
+        talle_trasero REAL,
+        distancia REAL,
+        separacion REAL,
+        pecho REAL,
+        cintura REAL,
+        base REAL,
+        largo REAL,
+        largo_manga REAL,
+        ancho_manga REAL,
+        escote REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        UNIQUE(client_id),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS pantalon_measurements (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        largo REAL,
+        cintura REAL,
+        base REAL,
+        tiro REAL,
+        pierna REAL,
+        rodilla REAL,
+        bota REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        UNIQUE(client_id),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+    ],
+  },
+  {
+    version: 3,
+    name: "v3_camisa_extra_measurements",
+    statements: [
+      `ALTER TABLE camisa_measurements ADD COLUMN cuello REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN brazo REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN puno REAL;`,
+    ],
+  },
+  {
+    version: 4,
+    name: "v4_sync_delete_log",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS sync_delete_log (
+        id TEXT PRIMARY KEY NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        deleted_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'pending'
+          CHECK (sync_status IN ('pending', 'synced', 'error'))
+      );
+      `,
+      `
+      CREATE INDEX IF NOT EXISTS idx_sync_delete_log_status_deleted_at
+      ON sync_delete_log (sync_status, deleted_at ASC);
+      `,
+    ],
+  },
+  {
+    version: 5,
+    name: "v5_sync_checkpoints",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS sync_checkpoints (
+        scope TEXT PRIMARY KEY NOT NULL,
+        cursor_updated_at TEXT,
+        cursor_id TEXT,
+        updated_at TEXT NOT NULL
+      );
+      `,
+    ],
+  },
+  {
+    version: 6,
+    name: "v6_measurements_audit_trail",
+    statements: [
+      `ALTER TABLE camisa_measurements ADD COLUMN changed_by TEXT;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN changed_at TEXT;`,
+      `ALTER TABLE pantalon_measurements ADD COLUMN changed_by TEXT;`,
+      `ALTER TABLE pantalon_measurements ADD COLUMN changed_at TEXT;`,
+    ],
+  },
+  {
+    version: 7,
+    name: "v7_drop_obsolete_measurements_table",
+    // The generic `measurements` table was superseded by `camisa_measurements`
+    // and `pantalon_measurements` in v2. Drop it to remove dead schema.
+    statements: [`DROP TABLE IF EXISTS measurements;`],
+  },
+  {
+    version: 8,
+    name: "v8_pricing_services",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS pricing_services (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        price REAL NOT NULL,
+        notes TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_pricing_services_name ON pricing_services (name);`,
+    ],
+  },
 ];
 
 interface UserVersionRow {
@@ -90,7 +218,10 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         new Date().toISOString(),
       );
 
-      await db.execAsync(`PRAGMA user_version = ${migration.version};`);
+      // PRAGMA user_version does not support ? binding in expo-sqlite;
+      // migration.version is a compile-time const integer — safe to interpolate.
+      const safeVersion = Number(migration.version);
+      await db.execAsync(`PRAGMA user_version = ${safeVersion};`);
     });
   }
 }

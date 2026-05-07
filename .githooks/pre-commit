@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf "\n[hook] pre-commit: running typecheck...\n"
+npm run typecheck
+
+printf "[hook] pre-commit: OK\n"

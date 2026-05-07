@@ -16,6 +16,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.marlon0714.sastreria",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -25,6 +26,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c3d9f967-baf8-456c-942e-92ab873c248e"
+      }
+    },
+    "owner": "marlon0714",
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

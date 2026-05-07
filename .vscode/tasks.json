@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Create Pull Request: feature/ui/n038-measurement-grid → develop",
+			"type": "shell",
+			"command": "gh pr create --base develop --head feature/ui/n038-measurement-grid --title \"feat(sync): 🚀 robust cloud-first sync, honest local-only state, global banner, auto-retry on network recovery\" --body \"- Implementa sync robusto cloud-first, nunca marca como synced en local-only\n- Banner global de estado de sync (local-only, offline, pending)\n- Retry automático de pendientes/errores al recuperar red\n- Refactor de SyncQueueProcessor, SyncTransport, SyncOrchestrator, store Zustand y UI\n- Tests unitarios y de integración para lógica y UI\n- Closes: N-043\n\n**Prioridad técnica:** P0\n\n**Resumen Reviewer:** aprobado, solo recomendaciones menores (Crashlytics, más tests integración).\" --label \"P0, sync, tech-debt\" --reviewer \"aprobado\" --fill",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
