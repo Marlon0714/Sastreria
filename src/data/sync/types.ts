@@ -46,6 +46,13 @@ export type SyncTriggerSource =
   | "network_recovered"
   | "manual";
 
+/**
+ * Resultado de un intento de sincronización con el backend.
+ * - "synced": éxito en cloud, se puede marcar como synced.
+ * - "deferred_local_only": operación aceptada solo local, NO marcar como synced.
+ * - "deferred_offline": sin conexión, NO marcar como synced.
+ * - "failed": error definitivo, requiere intervención.
+ */
 export type SyncTransportAttemptOutcome =
   | "synced"
   | "deferred_local_only"

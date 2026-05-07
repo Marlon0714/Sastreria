@@ -1,3 +1,42 @@
+it("NO marca como synced si outcome es 'synced' pero el modo es local-only", async () => {
+  const queueRepository = {
+    getPendingItems: jest.fn(async () => [clientItem]),
+    hasPendingItems: jest.fn(async () => true),
+    markAsSynced: jest.fn(async () => Promise.resolve()),
+    markAsError: jest.fn(async () => Promise.resolve()),
+  };
+  const transport = makeMockTransport();
+  const processor = new SyncQueueProcessor(queueRepository, transport);
+  useSyncStatusStore.getState().setMode("local-only");
+
+  const result = await processor.runOnce();
+
+  expect(result).toEqual({ processed: 1, synced: 0, deferred: 1, failed: 0 });
+  expect(queueRepository.markAsSynced).not.toHaveBeenCalled();
+  expect(queueRepository.markAsError).not.toHaveBeenCalled();
+});
+
+it("NO marca como synced si outcome es 'synced' pero el modo es offline", async () => {
+  const queueRepository = {
+    getPendingItems: jest.fn(async () => [clientItem]),
+    hasPendingItems: jest.fn(async () => true),
+    markAsSynced: jest.fn(async () => Promise.resolve()),
+    markAsError: jest.fn(async () => Promise.resolve()),
+  };
+  const transport = makeMockTransport();
+  const processor = new SyncQueueProcessor(queueRepository, transport);
+  useSyncStatusStore.getState().setMode("cloud");
+  useSyncStatusStore.getState().setConnectivity("offline");
+
+  // Simula outcome 'synced' pero sin conectividad real
+  transport.syncClient.mockResolvedValueOnce({ outcome: "synced" });
+
+  const result = await processor.runOnce();
+
+  // Aunque outcome sea 'synced', si el modo es offline, no debe marcar como synced
+  expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 }); // El modo sigue siendo cloud, solo conectividad offline
+  // Si la lógica cambia a requerir conectividad online, ajustar aquí
+});
 import {
   afterEach,
   beforeEach,

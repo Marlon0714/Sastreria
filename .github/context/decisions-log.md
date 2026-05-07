@@ -1,4 +1,6 @@
+| 2026-05-06 | Cierre de ciclo sync/delete y pricing repo en rama `fix/sync-validation-and-delete` | Se corrigió la propagación de deletes a Supabase y se validó con 282 tests verdes. El dominio y repositorio de pricing están completos y auditados. | Rama lista para PR a develop; backlog y contexto actualizados. Siguiente ciclo: robustecer sync (N-043), luego UI de schedule/pricing. |
 | 2026-05-06 | N-009: Dominio, repositorio y migración de pricing implementados y auditados | Se requiere pricing editable para MVP, sin roles aún. | Dominio, repo y migración completos, auditados y con tests; UI y navegación siguientes. |
+| 2026-05-06 | fix/sync-validation-and-delete: syncDeleteLogEntry no ejecutaba DELETE real en Supabase | El banner de pendientes nunca desaparecía porque los deletes solo se registraban en audit log pero nunca se propagaban al cloud. | SupabaseSyncTransport.syncDeleteLogEntry ahora ejecuta DELETE en cascade en Supabase. 282 tests pasando. Rama publicada para PR a develop. |
 
 # Decisions Log
 

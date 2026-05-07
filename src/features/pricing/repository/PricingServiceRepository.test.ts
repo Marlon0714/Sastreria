@@ -26,11 +26,26 @@ describe("PricingServiceRepository (contrato)", () => {
 
   beforeEach(() => {
     repo = {
-      getAll: jest.fn<() => Promise<PricingService[]>>().mockResolvedValue([mockService]),
-      getById: jest.fn<(id: string) => Promise<PricingService | null>>().mockResolvedValue(mockService),
-      create: jest.fn<(input: CreatePricingServiceInput) => Promise<PricingService>>().mockResolvedValue(mockService),
-      update: jest.fn<(id: string, input: Partial<CreatePricingServiceInput>) => Promise<PricingService>>().mockResolvedValue(mockService),
-      delete: jest.fn<(id: string) => Promise<void>>().mockResolvedValue(undefined),
+      getAll: jest
+        .fn<() => Promise<PricingService[]>>()
+        .mockResolvedValue([mockService]),
+      getById: jest
+        .fn<(id: string) => Promise<PricingService | null>>()
+        .mockResolvedValue(mockService),
+      create: jest
+        .fn<(input: CreatePricingServiceInput) => Promise<PricingService>>()
+        .mockResolvedValue(mockService),
+      update: jest
+        .fn<
+          (
+            id: string,
+            input: Partial<CreatePricingServiceInput>,
+          ) => Promise<PricingService>
+        >()
+        .mockResolvedValue(mockService),
+      delete: jest
+        .fn<(id: string) => Promise<void>>()
+        .mockResolvedValue(undefined),
     };
   });
 
