@@ -73,7 +73,9 @@ interface DeleteLogRow {
 }
 
 function createCursor(id: string, updatedAt: string): SyncCursor {
-  return { id, updatedAt };
+  // Normalize to UTC ISO string (Z-terminated) regardless of DB format (+00:00, etc.)
+  const normalized = new Date(updatedAt).toISOString();
+  return { id, updatedAt: normalized };
 }
 
 function getLastCursor<T extends { id: string }>(

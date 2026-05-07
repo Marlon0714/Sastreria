@@ -4,9 +4,9 @@
 
 - Date: 2026-05-06
 - Project: sastrería (React Native + Expo)
-- Stage: MVP con Auth + Sync cloud + CRUD clientes + Grid medidas + pricing domain/repo/migración completos y testeados; PR a develop abierto
-- Branch activa: `feature/ui/n038-measurement-grid` (commit actualizado, PR #26 abierto a `develop`)
-- Último ciclo cerrado: N-009 (pricing domain, repo, migración, tests, revisión)
+- Stage: MVP con Auth + Sync cloud + CRUD clientes + Grid medidas + pricing domain/repo/migración completos y testeados; rama `fix/sync-validation-and-delete` lista para merge a develop
+- Branch activa: `fix/sync-validation-and-delete` (ciclo de sync/delete cerrado y validado, 282 tests verdes)
+- Último ciclo cerrado: N-009 (pricing domain, repo, migración, tests, revisión) y fix de sync/delete propagado a cloud
 
 ## Current Focus
 
@@ -54,9 +54,9 @@
 
 ## Next Session Steps (Max 3)
 
-1. **P0 — N-043**: Ajustar política cloud-first de sync (sin falso `synced` en local-only), agregar banner sutil global de estado y trigger de reintento por reconexión.
-2. **P0 — PR N-038…N-042**: Abrir PR `feature/ui/n038-measurement-grid` -> `develop`.
-3. **P0 — N-008**: Implementar baseline de `schedule` — domain, repository, screens, tests.
+1. **P0 — N-043**: Robustecer sync cloud-first (sin falso `synced` en local-only), banner global de estado y trigger de reintento por reconexión. Validación de cierre en rama `fix/sync-validation-and-delete` (ver plan n043-robust-sync-cloud-first.md).
+2. **P0 — N-008**: Implementar baseline de `schedule` (domain, repository, screens, tests).
+3. **P0 — N-009**: Completar UI y navegación de pricing (el dominio/repositorio ya están cerrados).
 
 ## Confirmed Facts (post N-040/N-041/N-042)
 

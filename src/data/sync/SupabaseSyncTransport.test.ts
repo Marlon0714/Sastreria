@@ -202,19 +202,29 @@ describe("SupabaseSyncTransport", () => {
       expect(mockDelete).toHaveBeenCalledTimes(3);
     });
 
-    it("returns failed when sync_delete_log upsert fails", async () => {
+    it("skips audit log and proceeds with cloud delete when sync_delete_log upsert fails with 42501 (RLS)", async () => {
       mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      mockEq.mockResolvedValue({ error: null });
       const transport = new SupabaseSyncTransport();
 
       const result = await transport.syncDeleteLogEntry(baseDeleteLog);
-      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+      // Despite audit log failure, cloud deletes should proceed and succeed
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockDelete).toHaveBeenCalledTimes(3);
+    });
+
+    it("returns failed when sync_delete_log upsert fails with a non-infra error", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "23514" } }); // check violation
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncDeleteLogEntry(baseDeleteLog);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "23514" });
       expect(mockDelete).not.toHaveBeenCalled();
     });
 
     it("returns failed when cascade camisa delete fails", async () => {
       mockUpsert.mockResolvedValueOnce({ error: null });
-      mockEq
-        .mockResolvedValueOnce({ error: { code: "42501" } }); // camisa fails
+      mockEq.mockResolvedValueOnce({ error: { code: "42501" } }); // camisa fails
       const transport = new SupabaseSyncTransport();
 
       const result = await transport.syncDeleteLogEntry(baseDeleteLog);
@@ -224,8 +234,8 @@ describe("SupabaseSyncTransport", () => {
     it("returns failed when client delete fails", async () => {
       mockUpsert.mockResolvedValueOnce({ error: null });
       mockEq
-        .mockResolvedValueOnce({ error: null })   // camisa ok
-        .mockResolvedValueOnce({ error: null })   // pantalon ok
+        .mockResolvedValueOnce({ error: null }) // camisa ok
+        .mockResolvedValueOnce({ error: null }) // pantalon ok
         .mockResolvedValueOnce({ error: { code: "23503" } }); // client fails
       const transport = new SupabaseSyncTransport();
 
@@ -237,7 +247,11 @@ describe("SupabaseSyncTransport", () => {
       mockUpsert.mockResolvedValueOnce({ error: null });
       mockEq.mockResolvedValueOnce({ error: null });
       const transport = new SupabaseSyncTransport();
-      const camisaDeleteLog = { ...baseDeleteLog, entityType: "camisa_measurement" as const, entityId: "cam-1" };
+      const camisaDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "camisa_measurement" as const,
+        entityId: "cam-1",
+      };
 
       const result = await transport.syncDeleteLogEntry(camisaDeleteLog);
 

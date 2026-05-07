@@ -1,14 +1,19 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals";
 import { PricingServiceRepositoryImpl } from "./PricingServiceRepositoryImpl";
 
-const mockRunAsync = jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown>>();
-const mockGetAllAsync = jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown[]>>();
-const mockGetFirstAsync = jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown | null>>();
+const mockRunAsync =
+  jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown>>();
+const mockGetAllAsync =
+  jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown[]>>();
+const mockGetFirstAsync =
+  jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown | null>>();
 
 const mockDatabase = {
   runAsync: (sql: string, ...params: unknown[]) => mockRunAsync(sql, ...params),
-  getAllAsync: <T>(sql: string, ...params: unknown[]) => mockGetAllAsync(sql, ...params) as Promise<T[]>,
-  getFirstAsync: <T>(sql: string, ...params: unknown[]) => mockGetFirstAsync(sql, ...params) as Promise<T | null>,
+  getAllAsync: <T>(sql: string, ...params: unknown[]) =>
+    mockGetAllAsync(sql, ...params) as Promise<T[]>,
+  getFirstAsync: <T>(sql: string, ...params: unknown[]) =>
+    mockGetFirstAsync(sql, ...params) as Promise<T | null>,
 };
 
 jest.mock("./database", () => ({
@@ -100,4 +105,3 @@ describe("PricingServiceRepositoryImpl", () => {
     );
   });
 });
-

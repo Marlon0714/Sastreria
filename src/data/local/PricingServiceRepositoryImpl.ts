@@ -84,7 +84,8 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       ...prev,
       name: input.name !== undefined ? input.name.trim() : prev.name,
       price: input.price !== undefined ? input.price : prev.price,
-      notes: input.notes !== undefined ? (input.notes?.trim() ?? null) : prev.notes,
+      notes:
+        input.notes !== undefined ? (input.notes?.trim() ?? null) : prev.notes,
       updatedAt: now,
       syncStatus: "pending",
     };

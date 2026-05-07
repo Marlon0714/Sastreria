@@ -22,13 +22,19 @@ describe("pricingServiceSchema", () => {
   });
 
   it("falla si el nombre es muy corto", () => {
-    const result = pricingServiceSchema.safeParse({ ...validService, name: "A" });
+    const result = pricingServiceSchema.safeParse({
+      ...validService,
+      name: "A",
+    });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].path).toContain("name");
   });
 
   it("falla si el precio es negativo", () => {
-    const result = pricingServiceSchema.safeParse({ ...validService, price: -1 });
+    const result = pricingServiceSchema.safeParse({
+      ...validService,
+      price: -1,
+    });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].path).toContain("price");
   });
@@ -41,8 +47,13 @@ describe("pricingServiceSchema", () => {
   });
 
   it("acepta notes como null o undefined", () => {
-    expect(pricingServiceSchema.safeParse({ ...validService, notes: null }).success).toBe(true);
-    expect(pricingServiceSchema.safeParse({ ...validService, notes: undefined }).success).toBe(true);
+    expect(
+      pricingServiceSchema.safeParse({ ...validService, notes: null }).success,
+    ).toBe(true);
+    expect(
+      pricingServiceSchema.safeParse({ ...validService, notes: undefined })
+        .success,
+    ).toBe(true);
   });
 });
 
@@ -59,12 +70,24 @@ describe("createPricingServiceSchema", () => {
   });
 
   it("falla si el nombre es muy corto", () => {
-    const result = createPricingServiceSchema.safeParse({ name: "X", price: 5000 });
+    const result = createPricingServiceSchema.safeParse({
+      name: "X",
+      price: 5000,
+    });
     expect(result.success).toBe(false);
   });
 
   it("acepta notes opcional", () => {
-    expect(createPricingServiceSchema.safeParse({ name: "Bordado", price: 5000, notes: "ok" }).success).toBe(true);
-    expect(createPricingServiceSchema.safeParse({ name: "Bordado", price: 5000 }).success).toBe(true);
+    expect(
+      createPricingServiceSchema.safeParse({
+        name: "Bordado",
+        price: 5000,
+        notes: "ok",
+      }).success,
+    ).toBe(true);
+    expect(
+      createPricingServiceSchema.safeParse({ name: "Bordado", price: 5000 })
+        .success,
+    ).toBe(true);
   });
 });

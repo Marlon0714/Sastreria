@@ -78,10 +78,29 @@ export class SyncQueueProcessor {
         result = { outcome: "failed", errorCode: "unexpected_error" };
       }
 
+      // Solo marcar como synced si outcome=cloud-ok y modo cloud
+      const mode = useSyncStatusStore.getState().mode;
       if (result.outcome === "synced") {
-        await this.queueRepository.markAsSynced(item.entityType, item.id);
-        useSyncStatusStore.getState().setLastSyncError(null);
-        return "synced";
+        if (mode === "cloud") {
+          await this.queueRepository.markAsSynced(item.entityType, item.id);
+          useSyncStatusStore.getState().setLastSyncError(null);
+          return "synced";
+        } else {
+          // Log estructurado: intento de marcar synced en modo local-only/offline
+          console.warn(
+            JSON.stringify({
+              level: "warn",
+              service: "SyncQueueProcessor",
+              message:
+                "Intento de marcar como synced en modo no-cloud, ignorado",
+              entityType: item.entityType,
+              itemId: item.id,
+              mode,
+              outcome: result.outcome,
+            }),
+          );
+          return "deferred";
+        }
       }
 
       if (
