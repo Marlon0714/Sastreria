@@ -102,6 +102,44 @@ CREATE INDEX IF NOT EXISTS idx_pricing_services_name ON pricing_services (name);
 
 ---
 
+### v9_sync_delete_log
+
+Tabla de auditoría para registrar eliminaciones sincronizadas con Supabase.
+**Debe aplicarse en Supabase Dashboard → SQL Editor antes de usar la funcionalidad de borrado con sync.**
+
+```sql
+-- Crear tabla de audit log de eliminaciones
+CREATE TABLE IF NOT EXISTS sync_delete_log (
+  id TEXT PRIMARY KEY NOT NULL,
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('client', 'camisa_measurement', 'pantalon_measurement')),
+  entity_id TEXT NOT NULL,
+  deleted_at TEXT NOT NULL
+);
+
+-- Índice para consultas incrementales (pull sync por cursor)
+CREATE INDEX IF NOT EXISTS idx_sync_delete_log_deleted_at
+  ON sync_delete_log (deleted_at ASC, id ASC);
+
+-- Habilitar Row Level Security
+ALTER TABLE sync_delete_log ENABLE ROW LEVEL SECURITY;
+
+-- Política: usuarios autenticados pueden insertar (push de borrados desde la app)
+CREATE POLICY "authenticated insert sync_delete_log"
+  ON sync_delete_log
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+-- Política: usuarios autenticados pueden leer (pull sync desde otros dispositivos)
+CREATE POLICY "authenticated select sync_delete_log"
+  ON sync_delete_log
+  FOR SELECT
+  TO authenticated
+  USING (true);
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

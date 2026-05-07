@@ -126,7 +126,9 @@ export class SupabaseSyncTransport implements SyncTransport {
     try {
       const supabase = getSupabaseClient();
 
-      // 1. Register the delete in the audit log (idempotent)
+      // 1. Register the delete in the audit log (idempotent).
+      // Non-blocking: if the table lacks RLS policies (42501) or doesn't exist yet,
+      // we log a warning but proceed with the actual cloud delete so data stays consistent.
       const { error: logError } = await supabase.from("sync_delete_log").upsert(
         {
           id: entry.id,
@@ -138,7 +140,23 @@ export class SupabaseSyncTransport implements SyncTransport {
       );
 
       if (logError) {
-        return this.toAttemptFailure(logError.code, logError.message);
+        // 42501 = insufficient_privilege (RLS not configured yet)
+        // 42P01 = undefined_table (table not created yet)
+        // These are infrastructure issues; don't block the actual delete.
+        const isInfraError =
+          logError.code === "42501" || logError.code === "42P01";
+        if (!isInfraError) {
+          return this.toAttemptFailure(logError.code, logError.message);
+        }
+        console.warn(
+          JSON.stringify({
+            level: "warn",
+            service: "SupabaseSyncTransport",
+            message:
+              "sync_delete_log upsert skipped due to infra error, proceeding with cloud delete",
+            errorCode: logError.code,
+          }),
+        );
       }
 
       // 2. Execute the actual DELETE in cloud tables based on entity type
