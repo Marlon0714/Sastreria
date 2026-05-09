@@ -4,14 +4,14 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { SupabaseAuthRepositoryPort } from "../../../data/supabase/SupabaseAuthRepository";
 import { useAuth } from "./useAuth";
 
+import { isSupabaseConfigured } from "../../../data/supabase/config";
+
 // Silence console.error from expected thrown errors
 jest.spyOn(console, "error").mockImplementation(() => {});
 
 jest.mock("../../../data/supabase/config", () => ({
   isSupabaseConfigured: jest.fn(() => true),
 }));
-
-import { isSupabaseConfigured } from "../../../data/supabase/config";
 const mockIsConfigured = isSupabaseConfigured as jest.MockedFunction<
   typeof isSupabaseConfigured
 >;

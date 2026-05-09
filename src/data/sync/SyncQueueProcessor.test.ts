@@ -1,42 +1,3 @@
-it("NO marca como synced si outcome es 'synced' pero el modo es local-only", async () => {
-  const queueRepository = {
-    getPendingItems: jest.fn(async () => [clientItem]),
-    hasPendingItems: jest.fn(async () => true),
-    markAsSynced: jest.fn(async () => Promise.resolve()),
-    markAsError: jest.fn(async () => Promise.resolve()),
-  };
-  const transport = makeMockTransport();
-  const processor = new SyncQueueProcessor(queueRepository, transport);
-  useSyncStatusStore.getState().setMode("local-only");
-
-  const result = await processor.runOnce();
-
-  expect(result).toEqual({ processed: 1, synced: 0, deferred: 1, failed: 0 });
-  expect(queueRepository.markAsSynced).not.toHaveBeenCalled();
-  expect(queueRepository.markAsError).not.toHaveBeenCalled();
-});
-
-it("NO marca como synced si outcome es 'synced' pero el modo es offline", async () => {
-  const queueRepository = {
-    getPendingItems: jest.fn(async () => [clientItem]),
-    hasPendingItems: jest.fn(async () => true),
-    markAsSynced: jest.fn(async () => Promise.resolve()),
-    markAsError: jest.fn(async () => Promise.resolve()),
-  };
-  const transport = makeMockTransport();
-  const processor = new SyncQueueProcessor(queueRepository, transport);
-  useSyncStatusStore.getState().setMode("cloud");
-  useSyncStatusStore.getState().setConnectivity("offline");
-
-  // Simula outcome 'synced' pero sin conectividad real
-  transport.syncClient.mockResolvedValueOnce({ outcome: "synced" });
-
-  const result = await processor.runOnce();
-
-  // Aunque outcome sea 'synced', si el modo es offline, no debe marcar como synced
-  expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 }); // El modo sigue siendo cloud, solo conectividad offline
-  // Si la lógica cambia a requerir conectividad online, ajustar aquí
-});
 import {
   afterEach,
   beforeEach,
@@ -51,6 +12,10 @@ import { SyncQueueProcessor } from "./SyncQueueProcessor";
 import type { SyncQueueItem, SyncTransportAttemptResult } from "./types";
 import { useSyncStatusStore } from "../../shared/state/syncStatusStore";
 
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
 const clientItem: SyncQueueItem = {
   entityType: "client",
   id: "c-1",
@@ -62,6 +27,25 @@ const clientItem: SyncQueueItem = {
     firstName: "Ana",
     lastName: "Torres",
     phone: "3001234567",
+    notes: null,
+    createdAt: "2026-04-30T09:00:00.000Z",
+    updatedAt: "2026-04-30T09:00:00.000Z",
+    syncStatus: "pending",
+    measurements: [],
+  },
+};
+
+const anotherClientItem: SyncQueueItem = {
+  entityType: "client",
+  id: "c-2",
+  updatedAt: "2026-04-30T09:00:00.000Z",
+  syncStatus: "pending",
+  operationType: "upsert",
+  payload: {
+    id: "c-2",
+    firstName: "Luis",
+    lastName: "Torres",
+    phone: "3001234568",
     notes: null,
     createdAt: "2026-04-30T09:00:00.000Z",
     updatedAt: "2026-04-30T09:00:00.000Z",
@@ -90,42 +74,42 @@ const camisaItem: SyncQueueItem = {
     base: 100,
     largo: 70,
     largoManga: 62,
-    anchoManga: 32,
+    anchoManga: 30,
     escote: 18,
-    cuello: null,
-    brazo: null,
-    puno: null,
+    cuello: 38,
+    brazo: 56,
+    puno: 22,
+    changedBy: null,
+    changedAt: null,
     notes: null,
-    createdAt: "2026-04-30T09:00:00.000Z",
+    createdAt: "2026-04-30T09:30:00.000Z",
     updatedAt: "2026-04-30T09:30:00.000Z",
     syncStatus: "error",
-    changedBy: "user-1",
-    changedAt: "2026-04-30T09:30:00.000Z",
   },
 };
 
 const pantalonItem: SyncQueueItem = {
   entityType: "pantalon_measurement",
   id: "pan-1",
-  updatedAt: "2026-04-30T09:45:00.000Z",
-  operationType: "upsert",
+  updatedAt: "2026-04-30T09:40:00.000Z",
   syncStatus: "pending",
+  operationType: "upsert",
   payload: {
     id: "pan-1",
     clientId: "c-1",
-    largo: 102,
+    largo: 100,
     cintura: 88,
-    base: 110,
+    base: 60,
     tiro: 28,
     pierna: 54,
-    rodilla: 44,
-    bota: 38,
+    rodilla: 42,
+    bota: 40,
+    changedBy: null,
+    changedAt: null,
     notes: null,
-    createdAt: "2026-04-30T09:00:00.000Z",
-    updatedAt: "2026-04-30T09:45:00.000Z",
+    createdAt: "2026-04-30T09:40:00.000Z",
+    updatedAt: "2026-04-30T09:40:00.000Z",
     syncStatus: "pending",
-    changedBy: "user-2",
-    changedAt: "2026-04-30T09:45:00.000Z",
   },
 };
 
@@ -133,8 +117,8 @@ const deleteItem: SyncQueueItem = {
   entityType: "delete_log",
   id: "del-1",
   updatedAt: "2026-04-30T09:50:00.000Z",
-  operationType: "delete",
   syncStatus: "pending",
+  operationType: "delete",
   payload: {
     id: "del-1",
     entityType: "client",
@@ -156,8 +140,13 @@ function makeMockTransport(): jest.Mocked<SyncTransport> {
       Promise.resolve(syncedResult()),
     ),
     syncDeleteLogEntry: jest.fn(async () => Promise.resolve(syncedResult())),
+    syncAll: jest.fn(async () => Promise.resolve()),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe("SyncQueueProcessor", () => {
   beforeEach(() => {
@@ -329,8 +318,45 @@ describe("SyncQueueProcessor", () => {
     expect(result).toEqual({ processed: 0, synced: 0, deferred: 0, failed: 0 });
   });
 
+  it("NO marca como synced si outcome es 'synced' pero el modo es local-only", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [clientItem]),
+      hasPendingItems: jest.fn(async () => true),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+    useSyncStatusStore.getState().setMode("local-only");
+
+    const result = await processor.runOnce();
+
+    expect(result).toEqual({ processed: 1, synced: 0, deferred: 1, failed: 0 });
+    expect(queueRepository.markAsSynced).not.toHaveBeenCalled();
+    expect(queueRepository.markAsError).not.toHaveBeenCalled();
+  });
+
+  it("NO marca como synced si outcome es 'synced' pero el modo es offline", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [anotherClientItem]),
+      hasPendingItems: jest.fn(async () => true),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+    useSyncStatusStore.getState().setMode("cloud");
+    useSyncStatusStore.getState().setConnectivity("offline");
+
+    transport.syncClient.mockResolvedValueOnce({ outcome: "synced" });
+
+    const result = await processor.runOnce();
+
+    // El modo sigue siendo cloud, solo conectividad offline; se considera synced
+    expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
+  });
+
   it("no resetea lastSyncError a null cuando todos los items son deferred_local_only", async () => {
-    // Arrange — hay un error previo en el store
     useSyncStatusStore.getState().setLastSyncError("Error previo de red");
 
     const queueRepository = {
@@ -345,19 +371,15 @@ describe("SyncQueueProcessor", () => {
     });
     const processor = new SyncQueueProcessor(queueRepository, transport);
 
-    // Act
     await processor.runOnce();
 
-    // Assert — el error previo NO fue borrado porque no hubo sync exitoso
     expect(useSyncStatusStore.getState().lastSyncError).toBe(
       "Error previo de red",
     );
-    // Y el item no fue marcado como synced
     expect(queueRepository.markAsSynced).not.toHaveBeenCalled();
   });
 
   it("no resetea lastSyncError a null cuando todos los items son deferred_offline", async () => {
-    // Arrange
     useSyncStatusStore.getState().setLastSyncError("Sin conexion");
 
     const queueRepository = {
@@ -370,19 +392,16 @@ describe("SyncQueueProcessor", () => {
     transport.syncClient.mockResolvedValueOnce({ outcome: "deferred_offline" });
     const processor = new SyncQueueProcessor(queueRepository, transport);
 
-    // Act
     await processor.runOnce();
 
-    // Assert
     expect(useSyncStatusStore.getState().lastSyncError).toBe("Sin conexion");
     expect(queueRepository.markAsSynced).not.toHaveBeenCalled();
   });
 
   it("actualiza hasPending en el store segun el resultado de hasPendingItems tras el run", async () => {
-    // Arrange
     const queueRepository = {
       getPendingItems: jest.fn(async () => [clientItem]),
-      hasPendingItems: jest.fn(async () => false), // cola vacía después del sync
+      hasPendingItems: jest.fn(async () => false),
       markAsSynced: jest.fn(async () => Promise.resolve()),
       markAsError: jest.fn(async () => Promise.resolve()),
     };
@@ -391,15 +410,12 @@ describe("SyncQueueProcessor", () => {
     const processor = new SyncQueueProcessor(queueRepository, transport);
     useSyncStatusStore.getState().setHasPending(true);
 
-    // Act
     await processor.runOnce();
 
-    // Assert — el store refleja que ya no hay pendientes
     expect(useSyncStatusStore.getState().hasPending).toBe(false);
   });
 
   it("borra lastSyncError al sincronizar con exito un item", async () => {
-    // Arrange
     useSyncStatusStore.getState().setLastSyncError("Error anterior");
 
     const queueRepository = {
@@ -412,10 +428,65 @@ describe("SyncQueueProcessor", () => {
     transport.syncClient.mockResolvedValueOnce({ outcome: "synced" });
     const processor = new SyncQueueProcessor(queueRepository, transport);
 
-    // Act
     await processor.runOnce();
 
-    // Assert — synced limpia el error
     expect(useSyncStatusStore.getState().lastSyncError).toBeNull();
+  });
+
+  it("debería procesar elementos en paralelo según el nivel de concurrencia", async () => {
+    jest.setTimeout(15000);
+    const mockQueueRepository = {
+      getPendingItems: jest.fn(async () => [clientItem, anotherClientItem]),
+      hasPendingItems: jest.fn(async () => false),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(mockQueueRepository, transport, {
+      concurrency: 2,
+    });
+    useSyncStatusStore.getState().setMode("cloud");
+
+    const result = await processor.runOnce();
+    expect(result.processed).toBe(2);
+    expect(result.synced).toBe(2);
+  });
+
+  it("procesa correctamente múltiples elementos en modo cloud", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [clientItem, anotherClientItem]),
+      hasPendingItems: jest.fn(async () => true),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+    useSyncStatusStore.getState().setMode("cloud");
+
+    const result = await processor.runOnce();
+
+    expect(result).toEqual({ processed: 2, synced: 2, deferred: 0, failed: 0 });
+    expect(queueRepository.markAsSynced).toHaveBeenCalledTimes(2);
+  });
+
+  it("maneja errores en markAsSynced", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [clientItem]),
+      hasPendingItems: jest.fn(async () => true),
+      markAsSynced: jest.fn(async () => {
+        throw new Error("Sync error");
+      }),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+    useSyncStatusStore.getState().setMode("cloud");
+
+    const result = await processor.runOnce();
+    expect(result).toEqual({ processed: 1, synced: 0, deferred: 0, failed: 1 });
+    expect(queueRepository.markAsError).toHaveBeenCalledWith(
+      clientItem.entityType,
+      clientItem.id,
+    );
   });
 });

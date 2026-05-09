@@ -7,7 +7,7 @@ export interface Client extends BaseEntity {
   lastName: string;
   phone: string;
   notes: string | null;
-  measurements: Array<CamisaMeasurement | PantalonMeasurement>;
+  measurements: (CamisaMeasurement | PantalonMeasurement)[];
 }
 
 export interface CreateClientDTO {

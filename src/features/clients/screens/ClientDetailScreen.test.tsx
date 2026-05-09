@@ -238,10 +238,10 @@ describe("ClientDetailScreen", () => {
     const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
     expect(alertCall?.[0]).toBe("Eliminar cliente");
 
-    const buttons = (alertCall?.[2] ?? []) as Array<{
+    const buttons = (alertCall?.[2] ?? []) as {
       text?: string;
       onPress?: () => void;
-    }>;
+    }[];
     const confirmButton = buttons.find((button) => button.text === "Eliminar");
     expect(confirmButton).toBeDefined();
 
