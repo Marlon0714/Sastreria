@@ -40,6 +40,9 @@ export type ScheduleStackParamList = {
 };
 
 export type PricingStackParamList = {
+  PricingList: undefined;
+  PricingDetail: { id: string };
+  PricingForm: { id?: string };
   PricingPlaceholder: undefined;
 };
 

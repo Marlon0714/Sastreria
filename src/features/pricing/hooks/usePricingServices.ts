@@ -4,6 +4,8 @@ import type {
   CreatePricingServiceInput,
 } from "../domain/pricingService";
 import { PricingServiceRepositoryImpl } from "../../../data/local/PricingServiceRepositoryImpl";
+import { pricingStrings } from "../domain/strings";
+import { useNetworkStatus } from "../../../shared/utils/network";
 
 const repo = new PricingServiceRepositoryImpl();
 
@@ -11,6 +13,7 @@ export function usePricingServices() {
   const [services, setServices] = useState<PricingService[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isOnline } = useNetworkStatus();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -19,7 +22,7 @@ export function usePricingServices() {
       const all = await repo.getAll();
       setServices(all);
     } catch (e: any) {
-      setError(e.message || "Error loading services");
+      setError(e.message || pricingStrings.fetchError);
     } finally {
       setLoading(false);
     }
@@ -53,5 +56,20 @@ export function usePricingServices() {
     [refresh],
   );
 
-  return { services, loading, error, refresh, create, update, remove };
+  // Exponer syncStatus global y estado offline
+  const syncStatus = services.some((s) => s.syncStatus !== "synced")
+    ? "pending"
+    : "synced";
+
+  return {
+    services,
+    loading,
+    error,
+    refresh,
+    create,
+    update,
+    remove,
+    syncStatus,
+    isOffline: !isOnline,
+  };
 }

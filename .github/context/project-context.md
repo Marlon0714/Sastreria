@@ -2,15 +2,16 @@
 
 ## Snapshot
 
-- Date: 2026-05-06
+- Date: 2026-05-08
 - Project: sastrería (React Native + Expo)
-- Stage: MVP con Auth + Sync cloud + CRUD clientes + Grid medidas + pricing domain/repo/migración completos y testeados; rama `fix/sync-validation-and-delete` lista para merge a develop
-- Branch activa: `fix/sync-validation-and-delete` (ciclo de sync/delete cerrado y validado, 282 tests verdes)
+- Stage: MVP con Auth + Sync cloud + CRUD clientes + Grid medidas + pricing domain/repo/migración completos y testeados; rama `feat/log-viewer-pin` activa, cambios de sync y CI/CD integrados y subidos.
+- Branch activa: `feat/log-viewer-pin` (ciclo de sync/delete cerrado y validado, 292 tests verdes, workflow EAS restringido a main, push realizado)
 - Último ciclo cerrado: N-009 (pricing domain, repo, migración, tests, revisión) y fix de sync/delete propagado a cloud
 
 ## Current Focus
 
 - **N-009 cerrado** (2026-05-06): Dominio, repositorio y migración de pricing implementados, validados y auditados. Tests unitarios y revisión aprobada con observaciones menores. Siguiente: UI y navegación.
+- **CI/CD**: Workflow de build EAS ahora solo se ejecuta en merges a main o manualmente. Validado push y hooks de calidad.
 - `schedule` sigue como P0 pendiente.
 
 ## Tech Stack
