@@ -1,80 +1,80 @@
 name: Build APK (EAS)
 
 on:
-    pull_request:
-        types:
-            - closed
-        branches:
-            - main
-            - develop
-    workflow_dispatch:
-        inputs:
-            profile:
-                description: EAS build profile
-                required: true
-                default: preview
-                type: choice
-                options:
-                    - preview
-                    - production
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - production
 
 jobs:
-    build-apk:
-        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged
-            == true
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
+  build-apk:
+    if:
+      github.event_name == 'workflow_dispatch' || github.event.pull_request.merged
+      == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
 
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20.19.4
-                  cache: npm
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.4
+          cache: npm
 
-            - name: Install dependencies
-              run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-            - name: Resolve EAS profile
-              run: |
-                  if [ "${{ github.event_name }}" = "pull_request" ]; then
-                    if [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
-                      echo "EAS_PROFILE=production" >> "$GITHUB_ENV"
-                    else
-                      echo "EAS_PROFILE=preview" >> "$GITHUB_ENV"
-                    fi
-                  else
-                    echo "EAS_PROFILE=${{ inputs.profile }}" >> "$GITHUB_ENV"
-                  fi
+      - name: Resolve EAS profile
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
+              echo "EAS_PROFILE=production" >> "$GITHUB_ENV"
+            else
+              echo "EAS_PROFILE=preview" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "EAS_PROFILE=${{ inputs.profile }}" >> "$GITHUB_ENV"
+          fi
 
-            - name: Run EAS Android build
-              env:
-                  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-              run: |
-                  if [ -z "$EXPO_TOKEN" ]; then
-                    echo "Missing required secret: EXPO_TOKEN"
-                    exit 1
-                  fi
-                  npx eas-cli build --platform android --profile "$EAS_PROFILE" --non-interactive --wait --json > eas-build.json
+      - name: Run EAS Android build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Missing required secret: EXPO_TOKEN"
+            exit 1
+          fi
+          npx eas-cli build --platform android --profile "$EAS_PROFILE" --non-interactive --wait --json > eas-build.json
 
-            - name: Upload EAS build metadata
-              uses: actions/upload-artifact@v4
-              with:
-                  name: eas-android-build-${{ github.ref_name }}-${{ github.sha }}
-                  path: eas-build.json
-                  if-no-files-found: error
+      - name: Upload EAS build metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: eas-android-build-${{ github.ref_name }}-${{ github.sha }}
+          path: eas-build.json
+          if-no-files-found: error
 
-            - name: Write build summary
-              run: |
-                  echo "## EAS Android Build" >> "$GITHUB_STEP_SUMMARY"
-                  echo "- Profile: $EAS_PROFILE" >> "$GITHUB_STEP_SUMMARY"
-                  echo "- Branch: ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
-                  echo "- Commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
-                  echo "" >> "$GITHUB_STEP_SUMMARY"
-                  echo "- Download build details from artifact: eas-android-build-${{ github.ref_name }}-${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Write build summary
+        run: |
+          echo "## EAS Android Build" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Profile: $EAS_PROFILE" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Download build details from artifact: eas-android-build-${{ github.ref_name }}-${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"

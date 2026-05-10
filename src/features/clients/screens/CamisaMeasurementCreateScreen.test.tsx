@@ -5,7 +5,7 @@ import { ClientsDependenciesProvider } from "../hooks/ClientsDependenciesProvide
 import { noopDependencies } from "../hooks/ClientsDependenciesProvider.test-utils";
 import CamisaMeasurementCreateScreen from "./CamisaMeasurementCreateScreen";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const mockUpsertCamisa = jest.fn<() => Promise<unknown>>();
 const mockReplace = jest.fn();
 

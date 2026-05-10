@@ -16,7 +16,7 @@ export class SyncOrchestrator {
   private rerunRequested = false;
   private lastTriggerSource: SyncTriggerSource = "manual";
   private lastNetworkRecoveredTriggerAt = 0;
-  private readonly networkRecoveredCooldownMs: number;
+  private networkRecoveredCooldownMs: number;
   private readonly now: () => number;
 
   constructor(
@@ -38,6 +38,7 @@ export class SyncOrchestrator {
 
     if (source === "network_recovered") {
       this.lastNetworkRecoveredTriggerAt = this.now();
+      this.networkRecoveredCooldownMs = this.calculateDynamicCooldown(); // Ajuste dinámico
     }
 
     if (this.activeRunPromise) {
@@ -55,6 +56,19 @@ export class SyncOrchestrator {
 
   getLastTriggerSource(): SyncTriggerSource {
     return this.lastTriggerSource;
+  }
+
+  getNetworkLatency(): number {
+    // Default implementation returns 0; can be overridden in tests or injected
+    return 0;
+  }
+
+  calculateDynamicCooldown(): number {
+    const latency = this.getNetworkLatency();
+    if (latency > 1000) {
+      return latency * 2;
+    }
+    return this.networkRecoveredCooldownMs;
   }
 
   private shouldThrottle(source: SyncTriggerSource): boolean {

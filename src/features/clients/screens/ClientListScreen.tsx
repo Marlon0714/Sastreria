@@ -2,6 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -60,7 +61,7 @@ function normalizePhone(value: string): string {
 }
 
 export default function ClientListScreen({ navigation }: Props) {
-  const { clients, isLoading, error, reload } = useClientList();
+  const { clients, isLoading, isRefreshing, error, reload } = useClientList();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState<ClientFilter>("all");
 
@@ -101,7 +102,7 @@ export default function ClientListScreen({ navigation }: Props) {
     });
   }, [clients, filterBy, searchTerm]);
 
-  if (isLoading) {
+  if (isLoading && clients.length === 0) {
     return <LoadingView message="Cargando clientes..." />;
   }
 
@@ -123,6 +124,12 @@ export default function ClientListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {isRefreshing && (
+        <View style={styles.refreshBanner}>
+          <ActivityIndicator size="small" color="#0f766e" />
+          <Text style={styles.refreshText}>Actualizando...</Text>
+        </View>
+      )}
       <View style={styles.searchSection}>
         <TextInput
           accessibilityLabel="Buscar cliente por nombre o telefono"
@@ -227,6 +234,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+  },
+  refreshBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 8,
+    backgroundColor: "#ccfbf1",
+    borderBottomWidth: 1,
+    borderBottomColor: "#99f6e4",
+  },
+  refreshText: {
+    fontSize: 13,
+    color: "#0f766e",
+    fontWeight: "600",
   },
   listContent: {
     padding: 16,

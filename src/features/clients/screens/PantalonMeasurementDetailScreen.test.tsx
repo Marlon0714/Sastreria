@@ -5,6 +5,8 @@ import { ClientsDependenciesProvider } from "../hooks/ClientsDependenciesProvide
 import { noopDependencies } from "../hooks/ClientsDependenciesProvider.test-utils";
 import PantalonMeasurementDetailScreen from "./PantalonMeasurementDetailScreen";
 
+import { usePantalonMeasurement } from "../hooks/usePantalonMeasurement";
+
 const mockNavigate = jest.fn();
 const mockReplace = jest.fn();
 const mockUpsertPantalon = jest.fn();
@@ -21,8 +23,6 @@ jest.mock("../hooks/useUpsertPantalon", () => ({
     error: null,
   }),
 }));
-
-import { usePantalonMeasurement } from "../hooks/usePantalonMeasurement";
 const mockUsePantalon = usePantalonMeasurement as jest.Mock;
 
 function buildProps(clientId = "client-1") {

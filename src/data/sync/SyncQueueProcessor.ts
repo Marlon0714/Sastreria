@@ -43,23 +43,38 @@ export class SyncQueueProcessor {
       failed: 0,
     };
 
-    for (const item of items) {
-      summary.processed += 1;
-      const outcome = await this.processItemWithRetry(item);
+    const concurrency = this.retryPolicy.concurrency ?? 1;
+    const itemBatches = this.chunkArray(items, concurrency);
 
-      if (outcome === "synced") {
-        summary.synced += 1;
-      } else if (outcome === "failed") {
-        summary.failed += 1;
-      } else {
-        summary.deferred += 1;
-      }
+    for (const batch of itemBatches) {
+      await Promise.all(
+        batch.map(async (item) => {
+          summary.processed += 1;
+          const outcome = await this.processItemWithRetry(item);
+
+          if (outcome === "synced") {
+            summary.synced += 1;
+          } else if (outcome === "failed") {
+            summary.failed += 1;
+          } else {
+            summary.deferred += 1;
+          }
+        }),
+      );
     }
 
     const hasPending = await this.queueRepository.hasPendingItems();
     useSyncStatusStore.getState().setHasPending(hasPending);
 
     return summary;
+  }
+
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
   }
 
   private async processItemWithRetry(
@@ -82,9 +97,27 @@ export class SyncQueueProcessor {
       const mode = useSyncStatusStore.getState().mode;
       if (result.outcome === "synced") {
         if (mode === "cloud") {
-          await this.queueRepository.markAsSynced(item.entityType, item.id);
-          useSyncStatusStore.getState().setLastSyncError(null);
-          return "synced";
+          try {
+            await this.queueRepository.markAsSynced(item.entityType, item.id);
+            useSyncStatusStore.getState().setLastSyncError(null);
+            return "synced";
+          } catch (err) {
+            console.error(
+              JSON.stringify({
+                level: "error",
+                service: "SyncQueueProcessor",
+                message: "Error en markAsSynced",
+                entityType: item.entityType,
+                itemId: item.id,
+                error: err instanceof Error ? err.message : String(err),
+              }),
+            );
+            await this.queueRepository.markAsError(item.entityType, item.id);
+            useSyncStatusStore
+              .getState()
+              .setLastSyncError("No se pudo sincronizar un cambio pendiente.");
+            return "failed";
+          }
         } else {
           // Log estructurado: intento de marcar synced en modo local-only/offline
           console.warn(
@@ -111,18 +144,20 @@ export class SyncQueueProcessor {
       }
 
       if (attempt === this.retryPolicy.maxRetries) {
-        // TODO: replace with Crashlytics when telemetry is integrated
-        console.error(
-          JSON.stringify({
-            level: "error",
-            service: "SyncQueueProcessor",
-            message: "Sync retries exhausted, marking item as error",
-            entityType: item.entityType,
-            itemId: item.id,
-            errorCode: result.errorCode ?? "unknown",
-          }),
-        );
-        await this.queueRepository.markAsError(item.entityType, item.id);
+        try {
+          await this.queueRepository.markAsError(item.entityType, item.id);
+        } catch (err) {
+          console.error(
+            JSON.stringify({
+              level: "error",
+              service: "SyncQueueProcessor",
+              message: "Error en markAsError",
+              entityType: item.entityType,
+              itemId: item.id,
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        }
         useSyncStatusStore
           .getState()
           .setLastSyncError("No se pudo sincronizar un cambio pendiente.");

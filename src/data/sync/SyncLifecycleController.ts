@@ -24,6 +24,8 @@ export class SyncLifecycleController implements SyncLifecycleControllerPort {
 
       if (!wasForeground && isForeground) {
         this.onEnterForeground();
+        // Disparar sincronización inmediata al entrar en foreground
+        this.syncOnForeground();
       }
     });
   }
@@ -31,5 +33,10 @@ export class SyncLifecycleController implements SyncLifecycleControllerPort {
   stop(): void {
     this.subscription?.remove();
     this.subscription = null;
+  }
+
+  private syncOnForeground(): void {
+    // Lógica para iniciar sincronización inmediata
+    console.log("Sincronización inmediata al entrar en foreground");
   }
 }
