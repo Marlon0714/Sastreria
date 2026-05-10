@@ -1,3 +1,12 @@
+### 2026-05-09 Pricing UI — Ciclo completo completado
+
+- Se implementó el módulo de pricing UI completo (screens: List/Detail/Form, hooks: usePricingList/Detail/Upsert/Delete, components: PricingItem/PricingForm, PricingStackNavigator, tests).
+- Hook tests migrados a `@testing-library/react-native` (React 19 compatible; `@testing-library/react-hooks` es incompatible con React 19).
+- Navigation props tipados con `NativeStackNavigationProp` (`@react-navigation/native-stack`).
+- Mocks creados/confirmados en `__mocks__/`: `expo-sqlite`, `expo-asset`, `@react-native-community/netinfo`.
+- 309 tests passing, 0 typecheck errors. Commit `7be385e` en rama `feat/log-viewer-pin`. 28 archivos cambiados, 1237 inserciones.
+- N-009 cerrado completamente (N-009.1 a N-009.8 Done). Único P0 restante para MVP: N-008 (schedule).
+
 | 2026-05-08 | Restringir workflow de build EAS a merges en main y ejecuciones manuales | Evitar builds innecesarios en develop y ramas intermedias, optimizar recursos y alinearse a la política de release estable solo en main | Solo se ejecuta el workflow de build EAS cuando se mergea a main o por dispatch manual; validado en rama feat/log-viewer-pin y push exitoso. |
 | 2026-05-06 | Cierre de ciclo sync/delete y pricing repo en rama `fix/sync-validation-and-delete` | Se corrigió la propagación de deletes a Supabase y se validó con 282 tests verdes. El dominio y repositorio de pricing están completos y auditados. | Rama lista para PR a develop; backlog y contexto actualizados. Siguiente ciclo: robustecer sync (N-043), luego UI de schedule/pricing. |
 | 2026-05-06 | N-009: Dominio, repositorio y migración de pricing implementados y auditados | Se requiere pricing editable para MVP, sin roles aún. | Dominio, repo y migración completos, auditados y con tests; UI y navegación siguientes. |
