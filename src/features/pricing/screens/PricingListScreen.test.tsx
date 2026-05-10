@@ -10,7 +10,10 @@ import { pricingStrings } from "../domain/strings";
 jest.mock("../components/PricingItem", () => {
   const React = require("react");
   const { Text } = require("react-native");
-  return (props: any) => React.createElement(Text, null, props.service.name);
+  function PricingItemMock(props: any) {
+    return React.createElement(Text, null, props.service.name);
+  }
+  return PricingItemMock;
 });
 
 jest.mock("@react-navigation/native", () => ({
