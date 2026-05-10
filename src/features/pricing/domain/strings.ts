@@ -1,5 +1,18 @@
 // Centraliza textos y mensajes de error para Pricing
 
+/**
+ * Formatea un precio en pesos colombianos de forma determinista (no depende del locale del SO).
+ * Ejemplo: 10000 → "$10.000"
+ */
+export function formatPrice(value: number): string {
+  return (
+    "$" +
+    Math.round(value)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  );
+}
+
 export const pricingStrings = {
   title: "Precios",
   addPricing: "Agregar precio",

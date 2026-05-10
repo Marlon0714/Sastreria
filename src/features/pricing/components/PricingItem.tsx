@@ -1,6 +1,7 @@
 import React from "react";
 import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
 import type { PricingService } from "../domain/pricingService";
+import { formatPrice } from "../domain/strings";
 
 interface Props {
   service: PricingService;
@@ -12,7 +13,7 @@ export default function PricingItem({ service, onPress }: Props) {
     <TouchableOpacity onPress={onPress} style={styles.item}>
       <View>
         <Text style={styles.name}>{service.name}</Text>
-        <Text style={styles.price}>${service.price.toLocaleString()}</Text>
+        <Text style={styles.price}>{formatPrice(service.price)}</Text>
         {service.notes ? (
           <Text style={styles.notes}>{service.notes}</Text>
         ) : null}

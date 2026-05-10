@@ -11,7 +11,7 @@ import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { PricingStackParamList } from "../../../navigation/types";
 import { usePricingDetail } from "../hooks/usePricingDetail";
-import { pricingStrings } from "../domain/strings";
+import { pricingStrings, formatPrice } from "../domain/strings";
 
 type PricingDetailScreenRouteProp = RouteProp<
   PricingStackParamList,
@@ -55,7 +55,7 @@ export default function PricingDetailScreen() {
       <Text style={styles.label}>{pricingStrings.title}:</Text>
       <Text style={styles.value}>{service.name}</Text>
       <Text style={styles.label}>Precio:</Text>
-      <Text style={styles.value}>${service.price.toLocaleString()}</Text>
+      <Text style={styles.value}>{formatPrice(service.price)}</Text>
       {service.notes ? (
         <>
           <Text style={styles.label}>Notas:</Text>
