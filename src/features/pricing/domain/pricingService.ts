@@ -6,6 +6,7 @@ import { z } from "zod";
  * Reglas de negocio:
  * - name: obligatorio, 2-60 caracteres, único por taller (validar en backend futuro)
  * - price: obligatorio, >= 0, máximo $1.000.000 COP
+ * - category: 'arreglo' | 'confeccion'
  * - notes: opcional, máximo 200 caracteres
  * - id: UUID v4
  * - createdAt/updatedAt: ISO 8601, generados automáticamente
@@ -13,6 +14,14 @@ import { z } from "zod";
  *
  * Validaciones centralizadas en Zod schema.
  */
+export const PRICING_CATEGORIES = ["arreglo", "confeccion"] as const;
+export type PricingCategory = (typeof PRICING_CATEGORIES)[number];
+
+export const PRICING_CATEGORY_LABELS: Record<PricingCategory, string> = {
+  arreglo: "Arreglos",
+  confeccion: "Confecciones",
+};
+
 export const pricingServiceSchema = z.object({
   id: z.string().uuid(), // UUID v4
   name: z
@@ -23,6 +32,7 @@ export const pricingServiceSchema = z.object({
     .number()
     .min(0, "El precio no puede ser negativo")
     .max(1000000, "Precio máximo $1.000.000"),
+  category: z.enum(PRICING_CATEGORIES),
   notes: z.string().max(200, "Máximo 200 caracteres").optional().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

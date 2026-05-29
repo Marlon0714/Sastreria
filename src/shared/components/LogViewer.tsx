@@ -1,16 +1,37 @@
 import React from "react";
-import { View, Text, ScrollView, Button, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  Button,
+  StyleSheet,
+  Platform,
+} from "react-native";
 import { useLogStore } from "../state/logStore";
+
+function copyLogsToClipboard(text: string) {
+  if (Platform.OS === "web") {
+    void navigator.clipboard.writeText(text);
+  }
+}
 
 export const LogViewer = () => {
   const { logs, clearLogs, logViewerEnabled, toggleLogViewer } = useLogStore();
 
   if (!logViewerEnabled) return null;
 
+  const handleCopy = () => {
+    const text = logs
+      .map((l) => `[${l.timestamp}] ${l.level.toUpperCase()}: ${l.message}`)
+      .join("\n");
+    copyLogsToClipboard(text);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Button title="Ocultar" onPress={toggleLogViewer} />
+        <Button title="Copiar" onPress={handleCopy} />
         <Button title="Limpiar" onPress={clearLogs} />
       </View>
       <ScrollView style={styles.scroll}>

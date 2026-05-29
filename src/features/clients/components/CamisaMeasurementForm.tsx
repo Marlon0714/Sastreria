@@ -94,14 +94,14 @@ export default function CamisaMeasurementForm({
       />
       <MeasurementNumberField
         name="distancia"
-        label="Distancia (cm)"
+        label="Distancia entre pezones (cm)"
         control={control}
         errorMessage={errors.distancia?.message}
         disabled={disabled}
       />
       <MeasurementNumberField
         name="separacion"
-        label="Separación (cm)"
+        label="Separación de sisa (cm)"
         control={control}
         errorMessage={errors.separacion?.message}
         disabled={disabled}
@@ -122,7 +122,7 @@ export default function CamisaMeasurementForm({
       />
       <MeasurementNumberField
         name="base"
-        label="Base (cm)"
+        label="Base o cadera (cm)"
         control={control}
         errorMessage={errors.base?.message}
         disabled={disabled}

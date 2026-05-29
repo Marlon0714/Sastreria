@@ -90,6 +90,15 @@ function buildDependencies(): ClientsDependencies {
       upsertPantalon: jest.fn(async () => Promise.reject(new Error("unused"))),
       findCamisaByClientId: jest.fn(async () => Promise.resolve(null)),
       findPantalonByClientId: jest.fn(async () => Promise.resolve(null)),
+  upsertSaco: jest.fn(async () => Promise.reject(new Error("unused"))),
+  upsertChaleco: jest.fn(async () => Promise.reject(new Error("unused"))),
+  findSacoByClientId: jest.fn(async () => Promise.resolve(null)),
+  findChalecoByClientId: jest.fn(async () => Promise.resolve(null)),
+    },
+    tallaRepository: {
+      upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
+      findByClientId: jest.fn(async () => Promise.resolve([])),
+      delete: jest.fn(async () => Promise.resolve()),
     },
   };
 }

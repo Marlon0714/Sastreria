@@ -35,7 +35,7 @@ describe("PantalonMeasurementForm", () => {
 
     expect(getByLabelText("Largo (cm)")).toBeTruthy();
     expect(getByLabelText("Cintura (cm)")).toBeTruthy();
-    expect(getByLabelText("Base (cm)")).toBeTruthy();
+    expect(getByLabelText("Base o cadera (cm)")).toBeTruthy();
     expect(getByLabelText("Tiro (cm)")).toBeTruthy();
     expect(getByLabelText("Pierna (cm)")).toBeTruthy();
     expect(getByLabelText("Rodilla (cm)")).toBeTruthy();

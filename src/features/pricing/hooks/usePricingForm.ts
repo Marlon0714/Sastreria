@@ -35,6 +35,7 @@ export function usePricingForm(id?: string, options?: UsePricingFormOptions) {
           setInitialValues({
             name: service.name,
             price: service.price,
+            category: service.category,
             notes: service.notes || undefined,
           });
           setSyncStatus(service.syncStatus);

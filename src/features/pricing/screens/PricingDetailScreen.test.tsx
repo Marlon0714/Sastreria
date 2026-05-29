@@ -6,9 +6,14 @@ import PricingDetailScreen from "./PricingDetailScreen";
 jest.mock("../hooks/usePricingDetail", () => ({
   usePricingDetail: jest.fn(),
 }));
+jest.mock("../../../data/local/PricingServiceRepositoryImpl", () => ({
+  PricingServiceRepositoryImpl: jest.fn().mockImplementation(() => ({
+    delete: jest.fn().mockImplementation(() => Promise.resolve()),
+  })),
+}));
 jest.mock("@react-navigation/native", () => ({
   useRoute: () => ({ params: { id: "1" } }),
-  useNavigation: () => ({ navigate: jest.fn() }),
+  useNavigation: () => ({ navigate: jest.fn(), setOptions: jest.fn() }),
 }));
 const { usePricingDetail } = require("../hooks/usePricingDetail");
 
@@ -24,7 +29,7 @@ describe("PricingDetailScreen", () => {
       error: null,
     });
     const { getByText } = render(<PricingDetailScreen />);
-    expect(getByText("Precios...")).toBeTruthy();
+    expect(getByText("Cargando servicio...")).toBeTruthy();
   });
 
   it("muestra error si falla o no existe", () => {
@@ -43,16 +48,16 @@ describe("PricingDetailScreen", () => {
       name: "Dobladillo",
       price: 10000,
       notes: "nota",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      syncStatus: "synced" as const,
     };
     usePricingDetail.mockReturnValue({ service, loading: false, error: null });
     const { getByText } = render(<PricingDetailScreen />);
-    expect(getByText("Precios:")).toBeTruthy();
     expect(getByText("Dobladillo")).toBeTruthy();
-    expect(getByText("Precio:")).toBeTruthy();
     expect(getByText("$10.000")).toBeTruthy();
-    expect(getByText("Notas:")).toBeTruthy();
     expect(getByText("nota")).toBeTruthy();
-    fireEvent.press(getByText("Editar precio"));
+    fireEvent.press(getByText("✏ Editar servicio"));
     // Navegación mockeada, no se valida aquí
   });
 });

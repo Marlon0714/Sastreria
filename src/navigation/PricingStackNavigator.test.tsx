@@ -27,7 +27,7 @@ describe("PricingStackNavigator", () => {
       </NavigationContainer>,
     );
 
-    // Assert — la lista vacía muestra el mensaje de no encontrado
-    expect(await findByText("Precio no encontrado")).toBeTruthy();
+    // Assert — la lista vacía muestra el empty state de la categoría activa
+    expect(await findByText("Sin arreglos aún")).toBeTruthy();
   });
 });

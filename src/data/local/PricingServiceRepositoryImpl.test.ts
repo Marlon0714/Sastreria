@@ -71,7 +71,11 @@ describe("PricingServiceRepositoryImpl", () => {
 
   it("create inserta y retorna servicio con syncStatus pending", async () => {
     mockRunAsync.mockResolvedValueOnce(undefined);
-    const input = { name: "Basta de dobladillo", price: 15000 };
+    const input = {
+      name: "Basta de dobladillo",
+      price: 15000,
+      category: "arreglo" as const,
+    };
     const result = await repo.create(input);
     expect(result.name).toBe("Basta de dobladillo");
     expect(result.price).toBe(15000);

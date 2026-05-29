@@ -6,6 +6,7 @@ import type {
   ClientRepository,
   ClientsDependencies,
   MeasurementRepository,
+  TallaRepository,
 } from "../domain/repository";
 import type { CamisaMeasurement, UpsertCamisaDTO } from "../domain/types";
 import { ClientsDependenciesProvider } from "./ClientsDependenciesProvider";
@@ -19,6 +20,10 @@ const mockMeasurementRepository: MeasurementRepository = {
   upsertPantalon: jest.fn(async () => Promise.reject(new Error("unused"))),
   findCamisaByClientId: jest.fn(async () => Promise.resolve(null)),
   findPantalonByClientId: jest.fn(async () => Promise.resolve(null)),
+  upsertSaco: jest.fn(async () => Promise.reject(new Error("unused"))),
+  upsertChaleco: jest.fn(async () => Promise.reject(new Error("unused"))),
+  findSacoByClientId: jest.fn(async () => Promise.resolve(null)),
+  findChalecoByClientId: jest.fn(async () => Promise.resolve(null)),
 };
 
 const noopClientRepository: ClientRepository = {
@@ -27,6 +32,12 @@ const noopClientRepository: ClientRepository = {
   findById: jest.fn(async () => Promise.resolve(null)),
   update: jest.fn(async () => Promise.reject(new Error("unused"))),
   delete: jest.fn(async () => Promise.reject(new Error("unused"))),
+};
+
+const noopTallaRepository: TallaRepository = {
+  upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
+  findByClientId: jest.fn(async () => Promise.resolve([])),
+  delete: jest.fn(async () => Promise.resolve()),
 };
 
 function createWrapper(dependencies: ClientsDependencies) {
@@ -77,6 +88,7 @@ describe("useUpsertCamisa", () => {
       wrapper: createWrapper({
         clientRepository: noopClientRepository,
         measurementRepository: mockMeasurementRepository,
+        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -96,6 +108,7 @@ describe("useUpsertCamisa", () => {
       wrapper: createWrapper({
         clientRepository: noopClientRepository,
         measurementRepository: mockMeasurementRepository,
+        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -141,6 +154,7 @@ describe("useUpsertCamisa", () => {
       wrapper: createWrapper({
         clientRepository: noopClientRepository,
         measurementRepository: mockMeasurementRepository,
+        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -168,6 +182,7 @@ describe("useUpsertCamisa", () => {
       wrapper: createWrapper({
         clientRepository: noopClientRepository,
         measurementRepository: mockMeasurementRepository,
+        tallaRepository: noopTallaRepository,
       }),
     });
 

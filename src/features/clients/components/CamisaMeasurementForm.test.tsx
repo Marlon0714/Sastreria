@@ -37,11 +37,11 @@ describe("CamisaMeasurementForm", () => {
     expect(getByLabelText("Hombro (cm)").props.editable).not.toBe(false);
     expect(getByLabelText("Talle delantero (cm)")).toBeTruthy();
     expect(getByLabelText("Talle trasero (cm)")).toBeTruthy();
-    expect(getByLabelText("Distancia (cm)")).toBeTruthy();
-    expect(getByLabelText("Separación (cm)")).toBeTruthy();
-    expect(getByLabelText("Pecho (cm)")).toBeTruthy();
+    expect(getByLabelText("Distancia entre pezones (cm)")).toBeTruthy();
+    expect(getByLabelText("Separación de sisa (cm)")).toBeTruthy();
+    expect(getByLabelText("Base o cadera (cm)")).toBeTruthy();
     expect(getByLabelText("Cintura (cm)")).toBeTruthy();
-    expect(getByLabelText("Base (cm)")).toBeTruthy();
+    expect(getByLabelText("Pecho (cm)")).toBeTruthy();
     expect(getByLabelText("Largo (cm)")).toBeTruthy();
     expect(getByLabelText("Largo manga (cm)")).toBeTruthy();
     expect(getByLabelText("Ancho manga (cm)")).toBeTruthy();

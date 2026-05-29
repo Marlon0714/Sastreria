@@ -155,6 +155,9 @@ describe("ClientEditScreen", () => {
         firstName: "Ana Maria",
         lastName: "Torres Diaz",
         phone: "3119990000",
+        phone2: "",
+        phone3: "",
+        cedula: "",
         notes: "Nueva observación",
       });
       expect(goBack).toHaveBeenCalledTimes(1);

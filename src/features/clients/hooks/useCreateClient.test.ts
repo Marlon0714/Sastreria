@@ -8,6 +8,7 @@ import type {
   ClientRepository,
   ClientsDependencies,
   MeasurementRepository,
+  TallaRepository,
 } from "../domain/repository";
 import type { Client, CreateClientDTO } from "../domain/types";
 import type { CreateClientSchemaInput } from "../domain/schemas";
@@ -31,6 +32,16 @@ const noopMeasurementRepository: MeasurementRepository = {
   upsertPantalon: jest.fn(async () => Promise.reject(new Error("unused"))),
   findCamisaByClientId: jest.fn(async () => Promise.resolve(null)),
   findPantalonByClientId: jest.fn(async () => Promise.resolve(null)),
+  upsertSaco: jest.fn(async () => Promise.reject(new Error("unused"))),
+  upsertChaleco: jest.fn(async () => Promise.reject(new Error("unused"))),
+  findSacoByClientId: jest.fn(async () => Promise.resolve(null)),
+  findChalecoByClientId: jest.fn(async () => Promise.resolve(null)),
+};
+
+const noopTallaRepository: TallaRepository = {
+  upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
+  findByClientId: jest.fn(async () => Promise.resolve([])),
+  delete: jest.fn(async () => Promise.reject(new Error("unused"))),
 };
 
 function createWrapper(dependencies: ClientsDependencies) {
@@ -57,6 +68,7 @@ describe("useCreateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -82,6 +94,7 @@ describe("useCreateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -106,6 +119,7 @@ describe("useCreateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -133,6 +147,9 @@ describe("useCreateClient", () => {
       firstName: "",
       lastName: "",
       phone: "",
+      phone2: "",
+      phone3: "",
+      cedula: "",
       notes: "",
     });
     expect(output).toEqual(createdClient);
@@ -147,6 +164,7 @@ describe("useCreateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -170,5 +188,109 @@ describe("useCreateClient", () => {
     );
     expect(result.current.isSubmitting).toBe(false);
     expect(resetMock).not.toHaveBeenCalled();
+  });
+
+  it("createClient con phone2 y phone3 válidos incluye phones en el DTO al repositorio", async () => {
+    // Arrange
+    const createdClient = clientFactory();
+    mockCreate.mockResolvedValueOnce(createdClient);
+    const resetMock: UseFormReset<CreateClientSchemaInput> = jest.fn();
+    const { result } = renderHook(() => useCreateClient(), {
+      wrapper: createWrapper({
+        clientRepository: mockClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
+      }),
+    });
+
+    // Act
+    await act(async () => {
+      await result.current.createClient(
+        {
+          firstName: "Ana",
+          lastName: "Torres",
+          phone: "3001234567",
+          phone2: "3009998888",
+          phone3: "3118887777",
+          notes: "",
+        },
+        resetMock,
+      );
+    });
+
+    // Assert
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phones: ["3009998888", "3118887777"],
+      }),
+    );
+  });
+
+  it("createClient con phone2 vacío no incluye phones en el DTO al repositorio", async () => {
+    // Arrange
+    const createdClient = clientFactory();
+    mockCreate.mockResolvedValueOnce(createdClient);
+    const resetMock: UseFormReset<CreateClientSchemaInput> = jest.fn();
+    const { result } = renderHook(() => useCreateClient(), {
+      wrapper: createWrapper({
+        clientRepository: mockClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
+      }),
+    });
+
+    // Act
+    await act(async () => {
+      await result.current.createClient(
+        {
+          firstName: "Ana",
+          lastName: "Torres",
+          phone: "3001234567",
+          phone2: "",
+          phone3: "",
+          notes: "",
+        },
+        resetMock,
+      );
+    });
+
+    // Assert
+    const callPayload = mockCreate.mock.calls[0]?.[0];
+    expect(callPayload?.phones).toBeUndefined();
+  });
+
+  it("createClient con cedula válida la incluye en el DTO al repositorio", async () => {
+    // Arrange
+    const createdClient = clientFactory();
+    mockCreate.mockResolvedValueOnce(createdClient);
+    const resetMock: UseFormReset<CreateClientSchemaInput> = jest.fn();
+    const { result } = renderHook(() => useCreateClient(), {
+      wrapper: createWrapper({
+        clientRepository: mockClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
+      }),
+    });
+
+    // Act
+    await act(async () => {
+      await result.current.createClient(
+        {
+          firstName: "Ana",
+          lastName: "Torres",
+          phone: "3001234567",
+          cedula: "12345678",
+          notes: "",
+        },
+        resetMock,
+      );
+    });
+
+    // Assert
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cedula: "12345678",
+      }),
+    );
   });
 });

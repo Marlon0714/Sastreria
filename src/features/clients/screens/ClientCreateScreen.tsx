@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -19,18 +20,24 @@ type Props = NativeStackScreenProps<ClientsStackParamList, "ClientCreate">;
 
 export default function ClientCreateScreen({ navigation }: Props) {
   const { isSubmitting, error, createClient, validate } = useCreateClient();
+  const [showPhone2, setShowPhone2] = useState(false);
+  const [showPhone3, setShowPhone3] = useState(false);
 
   const {
     control,
     handleSubmit,
     setError,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CreateClientSchemaInput>({
     defaultValues: {
       firstName: "",
       lastName: "",
       phone: "",
+      phone2: "",
+      phone3: "",
+      cedula: "",
       notes: "",
     },
   });
@@ -41,6 +48,9 @@ export default function ClientCreateScreen({ navigation }: Props) {
       "firstName",
       "lastName",
       "phone",
+      "phone2",
+      "phone3",
+      "cedula",
       "notes",
     ];
 
@@ -129,6 +139,108 @@ export default function ClientCreateScreen({ navigation }: Props) {
           ) : null}
         </View>
 
+        {/* Teléfonos adicionales dinámicos */}
+        {showPhone2 ? (
+          <View style={styles.fieldGroup}>
+            <View style={styles.phoneLabelRow}>
+              <Text style={styles.label}>Teléfono 2 (opcional)</Text>
+              <Pressable
+                onPress={() => {
+                  setValue("phone2", "");
+                  setValue("phone3", "");
+                  setShowPhone2(false);
+                  setShowPhone3(false);
+                }}
+                accessibilityLabel="Eliminar teléfono 2"
+              >
+                <Text style={styles.removeBtnText}>✕</Text>
+              </Pressable>
+            </View>
+            <Controller
+              control={control}
+              name="phone2"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  style={styles.input}
+                  value={value}
+                  onChangeText={onChange}
+                  keyboardType="phone-pad"
+                  placeholder="Ej. 3101234567"
+                />
+              )}
+            />
+            {errors.phone2?.message ? (
+              <Text style={styles.errorText}>{errors.phone2.message}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {showPhone2 && showPhone3 ? (
+          <View style={styles.fieldGroup}>
+            <View style={styles.phoneLabelRow}>
+              <Text style={styles.label}>Teléfono 3 (opcional)</Text>
+              <Pressable
+                onPress={() => {
+                  setValue("phone3", "");
+                  setShowPhone3(false);
+                }}
+                accessibilityLabel="Eliminar teléfono 3"
+              >
+                <Text style={styles.removeBtnText}>✕</Text>
+              </Pressable>
+            </View>
+            <Controller
+              control={control}
+              name="phone3"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  style={styles.input}
+                  value={value}
+                  onChangeText={onChange}
+                  keyboardType="phone-pad"
+                  placeholder="Ej. 6011234567"
+                />
+              )}
+            />
+            {errors.phone3?.message ? (
+              <Text style={styles.errorText}>{errors.phone3.message}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {!showPhone2 || !showPhone3 ? (
+          <Pressable
+            style={styles.addPhoneBtn}
+            onPress={() => {
+              if (!showPhone2) setShowPhone2(true);
+              else setShowPhone3(true);
+            }}
+            accessibilityLabel="Agregar teléfono adicional"
+          >
+            <Text style={styles.addPhoneBtnText}>＋ Agregar teléfono</Text>
+          </Pressable>
+        ) : null}
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Cédula (opcional)</Text>
+          <Controller
+            control={control}
+            name="cedula"
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={styles.input}
+                value={value}
+                onChangeText={onChange}
+                keyboardType="number-pad"
+                placeholder="Ej. 1020304050"
+              />
+            )}
+          />
+          {errors.cedula?.message ? (
+            <Text style={styles.errorText}>{errors.cedula.message}</Text>
+          ) : null}
+        </View>
+
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Notas (opcional)</Text>
           <Controller
@@ -191,6 +303,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#334155",
     fontWeight: "600",
+  },
+  sectionLabel: {
+    fontSize: 13,
+    color: "#64748b",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  phoneLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  removeBtnText: {
+    fontSize: 16,
+    color: "#94a3b8",
+    paddingHorizontal: 4,
+  },
+  addPhoneBtn: {
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 10,
+    borderStyle: "dashed",
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  addPhoneBtnText: {
+    color: "#0f766e",
+    fontWeight: "600",
+    fontSize: 14,
   },
   input: {
     borderWidth: 1,

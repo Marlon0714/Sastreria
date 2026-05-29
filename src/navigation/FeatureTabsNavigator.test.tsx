@@ -68,7 +68,7 @@ describe("RootNavigator tabs composition", () => {
     fireEvent.press(getByText("Precios"));
 
     // Assert - pricing ya tiene pantalla real, verificamos que el tab carga
-    expect(await findByText("Precio no encontrado")).toBeTruthy();
+    expect(await findByText("Sin arreglos aún")).toBeTruthy();
 
     // Act
     fireEvent.press(getByText("Clientes"));

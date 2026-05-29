@@ -9,6 +9,7 @@ const mockService: PricingService = {
   id: "11111111-1111-1111-1111-111111111111",
   name: "Arreglo de saco",
   price: 35000,
+  category: "arreglo",
   notes: "Incluye hombreras",
   createdAt: "2024-05-06T12:00:00.000Z",
   updatedAt: "2024-05-06T12:00:00.000Z",
@@ -18,6 +19,7 @@ const mockService: PricingService = {
 const mockInput: CreatePricingServiceInput = {
   name: "Arreglo de saco",
   price: 35000,
+  category: "arreglo",
   notes: "Incluye hombreras",
 };
 

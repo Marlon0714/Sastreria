@@ -68,14 +68,32 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
         <Text style={styles.name}>
           {client.firstName} {client.lastName}
         </Text>
-        <Text style={styles.phone}>{client.phone}</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>📱 Teléfono</Text>
+          <Text style={styles.infoValue}>{client.phone}</Text>
+        </View>
+        {client.phones?.map((phone, idx) => (
+          <View key={idx} style={styles.infoRow}>
+            <Text style={styles.infoLabel}>📱 Tel. {idx + 2}</Text>
+            <Text style={styles.infoValue}>{phone}</Text>
+          </View>
+        ))}
+        {client.cedula ? (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>🪪 Cédula</Text>
+            <Text style={styles.infoValue}>{client.cedula}</Text>
+          </View>
+        ) : null}
         {client.notes ? (
-          <Text style={styles.notes}>Notas: {client.notes}</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>📋 Notas</Text>
+            <Text style={styles.infoValue}>{client.notes}</Text>
+          </View>
         ) : null}
       </View>
 
       <Pressable
-        accessibilityLabel="Ver medidas del cliente"
+        accessibilityLabel="Ver y registrar medidas del cliente"
         style={styles.primaryButton}
         onPress={() =>
           navigation.navigate("MeasurementTypeSelect", {
@@ -84,7 +102,7 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
           })
         }
       >
-        <Text style={styles.primaryButtonText}>Medidas</Text>
+        <Text style={styles.primaryButtonText}>Ver / Registrar medidas</Text>
       </Pressable>
 
       <Pressable
@@ -138,13 +156,21 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#0f172a",
   },
-  phone: {
-    fontSize: 15,
-    color: "#334155",
+  infoRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "flex-start",
   },
-  notes: {
-    fontSize: 14,
-    color: "#334155",
+  infoLabel: {
+    fontSize: 13,
+    color: "#64748b",
+    fontWeight: "600",
+    minWidth: 90,
+  },
+  infoValue: {
+    flex: 1,
+    fontSize: 15,
+    color: "#0f172a",
   },
   primaryButton: {
     backgroundColor: "#0f766e",
@@ -184,5 +210,53 @@ const styles = StyleSheet.create({
   deleteErrorText: {
     color: "#b91c1c",
     fontSize: 13,
+  },
+  tallasCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  tallasTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  tallasChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tallaChip: {
+    backgroundColor: "#f0fdf4",
+    borderColor: "#86efac",
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  tallaChipText: {
+    fontSize: 14,
+    color: "#166534",
+    fontWeight: "600",
+  },
+  tallasEmpty: {
+    fontSize: 13,
+    color: "#94a3b8",
+  },
+  tallasButton: {
+    borderColor: "#0f766e",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  tallasButtonText: {
+    color: "#0f766e",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });
