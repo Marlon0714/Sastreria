@@ -62,7 +62,7 @@ export default function PantalonMeasurementForm({
       />
       <MeasurementNumberField
         name="base"
-        label="Base (cm)"
+        label="Base o cadera (cm)"
         control={control}
         errorMessage={errors.base?.message}
         disabled={disabled}

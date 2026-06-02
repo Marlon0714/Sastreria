@@ -3,11 +3,96 @@ import { getDatabase } from "./database";
 import type { MeasurementRepository } from "../../features/clients/domain/repository";
 import {
   type CamisaMeasurement,
-  generateDomainUuid,
   type PantalonMeasurement,
+  type SacoMeasurement,
+  type ChalecoMeasurement,
+  generateDomainUuid,
   type UpsertCamisaDTO,
   type UpsertPantalonDTO,
+  type UpsertSacoDTO,
+  type UpsertChalecoDTO,
 } from "../../features/clients/domain/types";
+interface SacoMeasurementRow {
+  id: string;
+  client_id: string;
+  espalda: number | null;
+  hombro: number | null;
+  talle_delantero: number | null;
+  talle_trasero: number | null;
+  distancia: number | null;
+  separacion: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  largo: number | null;
+  largo_manga: number | null;
+  ancho_manga: number | null;
+  escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: SyncStatus;
+}
+
+interface ChalecoMeasurementRow {
+  id: string;
+  client_id: string;
+  espalda: number | null;
+  talle_trasero: number | null;
+  largo: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  escote: number | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: SyncStatus;
+}
+function mapSacoRow(row: SacoMeasurementRow): SacoMeasurement {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    espalda: row.espalda,
+    hombro: row.hombro,
+    talleDelantero: row.talle_delantero,
+    talleTrasero: row.talle_trasero,
+    distancia: row.distancia,
+    separacion: row.separacion,
+    pecho: row.pecho,
+    cintura: row.cintura,
+    base: row.base,
+    largo: row.largo,
+    largoManga: row.largo_manga,
+    anchoManga: row.ancho_manga,
+    escote: row.escote,
+    cuello: row.cuello,
+    brazo: row.brazo,
+    puno: row.puno,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    syncStatus: row.sync_status,
+  };
+}
+
+function mapChalecoRow(row: ChalecoMeasurementRow): ChalecoMeasurement {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    espalda: row.espalda,
+    talleTrasero: row.talle_trasero,
+    largo: row.largo,
+    pecho: row.pecho,
+    cintura: row.cintura,
+    base: row.base,
+    escote: row.escote,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    syncStatus: row.sync_status,
+  };
+}
 
 type WriteCommittedCallback = () => void | Promise<void>;
 
@@ -140,6 +225,191 @@ function mapPantalonRow(row: PantalonMeasurementRow): PantalonMeasurement {
 }
 
 export class MeasurementRepositoryImpl implements MeasurementRepository {
+  async upsertSaco(input: UpsertSacoDTO): Promise<SacoMeasurement> {
+    const db = getDatabase();
+    const nowIso = new Date().toISOString();
+    const existing = await this.findSacoRowByClientId(input.clientId);
+    const id = existing?.id ?? generateDomainUuid();
+    const createdAt = existing?.created_at ?? nowIso;
+    const syncStatus: SyncStatus = "pending";
+
+    const sacoMeasurement: SacoMeasurement = {
+      id,
+      clientId: input.clientId,
+      espalda: normalizeNullableNumber(input.espalda),
+      hombro: normalizeNullableNumber(input.hombro),
+      talleDelantero: normalizeNullableNumber(input.talleDelantero),
+      talleTrasero: normalizeNullableNumber(input.talleTrasero),
+      distancia: normalizeNullableNumber(input.distancia),
+      separacion: normalizeNullableNumber(input.separacion),
+      pecho: normalizeNullableNumber(input.pecho),
+      cintura: normalizeNullableNumber(input.cintura),
+      base: normalizeNullableNumber(input.base),
+      largo: normalizeNullableNumber(input.largo),
+      largoManga: normalizeNullableNumber(input.largoManga),
+      anchoManga: normalizeNullableNumber(input.anchoManga),
+      escote: normalizeNullableNumber(input.escote),
+      cuello: normalizeNullableNumber(input.cuello),
+      brazo: normalizeNullableNumber(input.brazo),
+      puno: normalizeNullableNumber(input.puno),
+      createdAt,
+      updatedAt: nowIso,
+      syncStatus,
+    };
+
+    await db.runAsync(
+      `
+        INSERT INTO saco_measurements (
+          id, client_id, espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
+          pecho, cintura, base, largo, largo_manga, ancho_manga, escote, cuello, brazo, puno,
+          created_at, updated_at, sync_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(client_id) DO UPDATE SET
+          espalda = excluded.espalda,
+          hombro = excluded.hombro,
+          talle_delantero = excluded.talle_delantero,
+          talle_trasero = excluded.talle_trasero,
+          distancia = excluded.distancia,
+          separacion = excluded.separacion,
+          pecho = excluded.pecho,
+          cintura = excluded.cintura,
+          base = excluded.base,
+          largo = excluded.largo,
+          largo_manga = excluded.largo_manga,
+          ancho_manga = excluded.ancho_manga,
+          escote = excluded.escote,
+          cuello = excluded.cuello,
+          brazo = excluded.brazo,
+          puno = excluded.puno,
+          updated_at = excluded.updated_at,
+          sync_status = excluded.sync_status;
+        `,
+      sacoMeasurement.id,
+      sacoMeasurement.clientId,
+      sacoMeasurement.espalda,
+      sacoMeasurement.hombro,
+      sacoMeasurement.talleDelantero,
+      sacoMeasurement.talleTrasero,
+      sacoMeasurement.distancia,
+      sacoMeasurement.separacion,
+      sacoMeasurement.pecho,
+      sacoMeasurement.cintura,
+      sacoMeasurement.base,
+      sacoMeasurement.largo,
+      sacoMeasurement.largoManga,
+      sacoMeasurement.anchoManga,
+      sacoMeasurement.escote,
+      sacoMeasurement.cuello,
+      sacoMeasurement.brazo,
+      sacoMeasurement.puno,
+      sacoMeasurement.createdAt,
+      sacoMeasurement.updatedAt,
+      sacoMeasurement.syncStatus,
+    );
+
+    this.notifyWriteCommitted();
+    return sacoMeasurement;
+  }
+
+  async upsertChaleco(input: UpsertChalecoDTO): Promise<ChalecoMeasurement> {
+    const db = getDatabase();
+    const nowIso = new Date().toISOString();
+    const existing = await this.findChalecoRowByClientId(input.clientId);
+    const id = existing?.id ?? generateDomainUuid();
+    const createdAt = existing?.created_at ?? nowIso;
+    const syncStatus: SyncStatus = "pending";
+
+    const chalecoMeasurement: ChalecoMeasurement = {
+      id,
+      clientId: input.clientId,
+      espalda: normalizeNullableNumber(input.espalda),
+      talleTrasero: normalizeNullableNumber(input.talleTrasero),
+      largo: normalizeNullableNumber(input.largo),
+      pecho: normalizeNullableNumber(input.pecho),
+      cintura: normalizeNullableNumber(input.cintura),
+      base: normalizeNullableNumber(input.base),
+      escote: normalizeNullableNumber(input.escote),
+      createdAt,
+      updatedAt: nowIso,
+      syncStatus,
+    };
+
+    await db.runAsync(
+      `
+        INSERT INTO chaleco_measurements (
+          id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, escote, created_at, updated_at, sync_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(client_id) DO UPDATE SET
+          espalda = excluded.espalda,
+          talle_trasero = excluded.talle_trasero,
+          largo = excluded.largo,
+          pecho = excluded.pecho,
+          cintura = excluded.cintura,
+          base = excluded.base,
+          escote = excluded.escote,
+          updated_at = excluded.updated_at,
+          sync_status = excluded.sync_status;
+        `,
+      chalecoMeasurement.id,
+      chalecoMeasurement.clientId,
+      chalecoMeasurement.espalda,
+      chalecoMeasurement.talleTrasero,
+      chalecoMeasurement.largo,
+      chalecoMeasurement.pecho,
+      chalecoMeasurement.cintura,
+      chalecoMeasurement.base,
+      chalecoMeasurement.escote,
+      chalecoMeasurement.createdAt,
+      chalecoMeasurement.updatedAt,
+      chalecoMeasurement.syncStatus,
+    );
+
+    this.notifyWriteCommitted();
+    return chalecoMeasurement;
+  }
+  async findSacoByClientId(clientId: string): Promise<SacoMeasurement | null> {
+    const row = await this.findSacoRowByClientId(clientId);
+    if (!row) return null;
+    return mapSacoRow(row);
+  }
+
+  async findChalecoByClientId(
+    clientId: string,
+  ): Promise<ChalecoMeasurement | null> {
+    const row = await this.findChalecoRowByClientId(clientId);
+    if (!row) return null;
+    return mapChalecoRow(row);
+  }
+
+  private async findSacoRowByClientId(
+    clientId: string,
+  ): Promise<SacoMeasurementRow | null> {
+    const db = getDatabase();
+    return db.getFirstAsync<SacoMeasurementRow>(
+      `
+        SELECT id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, escote, created_at, updated_at, sync_status
+        FROM saco_measurements
+        WHERE client_id = ?
+        LIMIT 1;
+        `,
+      clientId,
+    );
+  }
+
+  private async findChalecoRowByClientId(
+    clientId: string,
+  ): Promise<ChalecoMeasurementRow | null> {
+    const db = getDatabase();
+    return db.getFirstAsync<ChalecoMeasurementRow>(
+      `
+        SELECT id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, escote, created_at, updated_at, sync_status
+        FROM chaleco_measurements
+        WHERE client_id = ?
+        LIMIT 1;
+        `,
+      clientId,
+    );
+  }
   constructor(
     private readonly options: MeasurementRepositoryImplOptions = {},
   ) {}

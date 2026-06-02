@@ -2,6 +2,7 @@ import type { PricingServiceRepository } from "../../features/pricing/repository
 import type {
   PricingService,
   CreatePricingServiceInput,
+  PricingCategory,
 } from "../../features/pricing/domain/pricingService";
 import { generateDomainUuid } from "../../features/clients/domain/types";
 import { getDatabase } from "./database";
@@ -10,6 +11,7 @@ interface PricingServiceRow {
   id: string;
   name: string;
   price: number;
+  category: PricingCategory;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +23,7 @@ function mapRow(row: PricingServiceRow): PricingService {
     id: row.id,
     name: row.name,
     price: row.price,
+    category: row.category ?? "arreglo",
     notes: row.notes,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -32,7 +35,7 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
   async getAll(): Promise<PricingService[]> {
     const db = getDatabase();
     const rows = await db.getAllAsync<PricingServiceRow>(
-      `SELECT id, name, price, notes, createdAt, updatedAt, sync_status FROM pricing_services ORDER BY name ASC;`,
+      `SELECT id, name, price, category, notes, createdAt, updatedAt, sync_status FROM pricing_services ORDER BY name ASC;`,
     );
     return rows.map(mapRow);
   }
@@ -40,7 +43,7 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
   async getById(id: string): Promise<PricingService | null> {
     const db = getDatabase();
     const row = await db.getFirstAsync<PricingServiceRow>(
-      `SELECT id, name, price, notes, createdAt, updatedAt, sync_status FROM pricing_services WHERE id = ? LIMIT 1;`,
+      `SELECT id, name, price, category, notes, createdAt, updatedAt, sync_status FROM pricing_services WHERE id = ? LIMIT 1;`,
       id,
     );
     return row ? mapRow(row) : null;
@@ -53,16 +56,18 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       id: generateDomainUuid(),
       name: input.name.trim(),
       price: input.price,
+      category: input.category,
       notes: input.notes?.trim() ?? null,
       createdAt: now,
       updatedAt: now,
       syncStatus: "pending",
     };
     await db.runAsync(
-      `INSERT INTO pricing_services (id, name, price, notes, createdAt, updatedAt, sync_status) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+      `INSERT INTO pricing_services (id, name, price, category, notes, createdAt, updatedAt, sync_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
       entity.id,
       entity.name,
       entity.price,
+      entity.category,
       entity.notes ?? null,
       entity.createdAt,
       entity.updatedAt,
@@ -84,6 +89,7 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       ...prev,
       name: input.name !== undefined ? input.name.trim() : prev.name,
       price: input.price !== undefined ? input.price : prev.price,
+      category: input.category !== undefined ? input.category : prev.category,
       notes:
         input.notes !== undefined ? (input.notes?.trim() ?? null) : prev.notes,
       updatedAt: now,
@@ -91,9 +97,10 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
     };
 
     await db.runAsync(
-      `UPDATE pricing_services SET name = ?, price = ?, notes = ?, updatedAt = ?, sync_status = 'pending' WHERE id = ?;`,
+      `UPDATE pricing_services SET name = ?, price = ?, category = ?, notes = ?, updatedAt = ?, sync_status = 'pending' WHERE id = ?;`,
       updated.name,
       updated.price,
+      updated.category,
       updated.notes ?? null,
       updated.updatedAt,
       id,

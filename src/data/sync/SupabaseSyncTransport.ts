@@ -4,17 +4,50 @@ import type {
   PantalonMeasurement,
 } from "../../features/clients/domain/types";
 import type { SyncTransport } from "./SyncTransport";
-import type { SyncDeleteLogEntry, SyncTransportAttemptResult } from "./types";
+import type {
+  SyncDeleteLogEntry,
+  SyncTransportAttemptResult,
+  SyncQueueItem,
+  SyncClientQueueItem,
+  SyncCamisaQueueItem,
+  SyncPantalonQueueItem,
+  SyncDeleteQueueItem,
+} from "./types";
+
 import { getSupabaseClient } from "../supabase/client";
 
-/**
- * SyncTransport implementation that pushes local entities to Supabase.
- * Uses upsert (INSERT … ON CONFLICT DO UPDATE) keyed by `id` so retries
- * are idempotent and last-write-wins by `updated_at`.
- *
- * Errors return sanitized attempt outcomes without leaking PII.
- */
 export class SupabaseSyncTransport implements SyncTransport {
+  async syncAll(items: SyncQueueItem[]): Promise<void> {
+    await Promise.all(
+      items.map(async (item) => {
+        try {
+          switch (item.entityType) {
+            case "client":
+              await this.syncClient((item as SyncClientQueueItem).payload);
+              break;
+            case "camisa_measurement":
+              await this.syncCamisaMeasurement(
+                (item as SyncCamisaQueueItem).payload,
+              );
+              break;
+            case "pantalon_measurement":
+              await this.syncPantalonMeasurement(
+                (item as SyncPantalonQueueItem).payload,
+              );
+              break;
+            case "delete_log":
+              await this.syncDeleteLogEntry(
+                (item as SyncDeleteQueueItem).payload,
+              );
+              break;
+          }
+        } catch {
+          // Loguear error si es necesario
+        }
+      }),
+    );
+  }
+
   async syncClient(client: Client): Promise<SyncTransportAttemptResult> {
     try {
       const supabase = getSupabaseClient();
@@ -126,9 +159,6 @@ export class SupabaseSyncTransport implements SyncTransport {
     try {
       const supabase = getSupabaseClient();
 
-      // 1. Register the delete in the audit log (idempotent).
-      // Non-blocking: if the table lacks RLS policies (42501) or doesn't exist yet,
-      // we log a warning but proceed with the actual cloud delete so data stays consistent.
       const { error: logError } = await supabase.from("sync_delete_log").upsert(
         {
           id: entry.id,
@@ -140,9 +170,6 @@ export class SupabaseSyncTransport implements SyncTransport {
       );
 
       if (logError) {
-        // 42501 = insufficient_privilege (RLS not configured yet)
-        // 42P01 = undefined_table (table not created yet)
-        // These are infrastructure issues; don't block the actual delete.
         const isInfraError =
           logError.code === "42501" || logError.code === "42P01";
         if (!isInfraError) {
@@ -159,7 +186,6 @@ export class SupabaseSyncTransport implements SyncTransport {
         );
       }
 
-      // 2. Execute the actual DELETE in cloud tables based on entity type
       const deleteResult = await this.executeCloudDelete(supabase, entry);
       if (deleteResult) {
         return deleteResult;

@@ -65,7 +65,7 @@ export default function CamisaMeasurementGrid({
       <MeasurementGridSection title="Largo">
         <MeasurementCard
           name="talleDelantero"
-          label="T. Delantero"
+          label="Talle delantero"
           accessibilityLabel="Talle delantero (cm)"
           control={control}
           errorMessage={errors.talleDelantero?.message}
@@ -73,7 +73,7 @@ export default function CamisaMeasurementGrid({
         />
         <MeasurementCard
           name="talleTrasero"
-          label="T. Trasero"
+          label="Talle trasero"
           accessibilityLabel="Talle trasero (cm)"
           control={control}
           errorMessage={errors.talleTrasero?.message}
@@ -108,7 +108,7 @@ export default function CamisaMeasurementGrid({
       <MeasurementGridSection title="Manga">
         <MeasurementCard
           name="largoManga"
-          label="L. Manga"
+          label="Largo manga"
           accessibilityLabel="Largo manga (cm)"
           control={control}
           errorMessage={errors.largoManga?.message}
@@ -116,7 +116,7 @@ export default function CamisaMeasurementGrid({
         />
         <MeasurementCard
           name="anchoManga"
-          label="A. Manga"
+          label="Ancho manga"
           accessibilityLabel="Ancho manga (cm)"
           control={control}
           errorMessage={errors.anchoManga?.message}

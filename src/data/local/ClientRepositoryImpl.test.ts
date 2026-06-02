@@ -104,13 +104,15 @@ describe("ClientRepositoryImpl", () => {
     expect(mockRunAsync).toHaveBeenCalledTimes(1);
     const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
 
-    expect(sql).toContain("VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    expect(sql).toContain("VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     expect(sql).not.toContain("Ana");
     expect(params).toEqual([
       "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       "Ana",
       "Torres",
       "3001234567",
+      null,
+      null,
       "Cliente frecuente",
       "2026-04-29T12:30:00.000Z",
       "2026-04-29T12:30:00.000Z",
@@ -256,6 +258,8 @@ describe("ClientRepositoryImpl", () => {
       "Ana",
       "Torres",
       "3001234567",
+      null,
+      null,
       "VIP",
       "2026-04-29T12:30:00.000Z",
       "11111111-1111-4111-8111-111111111111",

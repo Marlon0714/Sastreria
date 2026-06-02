@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    fontSize: 13,
+    fontSize: 15,
     color: "#334155",
     fontWeight: "600",
   },

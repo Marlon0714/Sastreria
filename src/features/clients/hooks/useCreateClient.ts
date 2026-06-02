@@ -43,6 +43,15 @@ function mapValidationErrors(
     phone: fieldErrors.phone?.[0]
       ? { type: "zod", message: fieldErrors.phone[0] }
       : undefined,
+    phone2: fieldErrors.phone2?.[0]
+      ? { type: "zod", message: fieldErrors.phone2[0] }
+      : undefined,
+    phone3: fieldErrors.phone3?.[0]
+      ? { type: "zod", message: fieldErrors.phone3[0] }
+      : undefined,
+    cedula: fieldErrors.cedula?.[0]
+      ? { type: "zod", message: fieldErrors.cedula[0] }
+      : undefined,
     notes: fieldErrors.notes?.[0]
       ? { type: "zod", message: fieldErrors.notes[0] }
       : undefined,
@@ -73,10 +82,24 @@ export function useCreateClient(
     setIsSubmitting(true);
 
     try {
-      const payload: CreateClientSchemaOutput =
-        createClientSchema.parse(values);
+      const parsed: CreateClientSchemaOutput = createClientSchema.parse(values);
+      const phones = [values.phone2, values.phone3].filter((p): p is string =>
+        Boolean(p?.trim()),
+      );
+      const payload = {
+        ...parsed,
+        phones: phones.length > 0 ? phones : undefined,
+      };
       const createdClient = await clientRepository.create(payload);
-      reset({ firstName: "", lastName: "", phone: "", notes: "" });
+      reset({
+        firstName: "",
+        lastName: "",
+        phone: "",
+        phone2: "",
+        phone3: "",
+        cedula: "",
+        notes: "",
+      });
       return createdClient;
     } catch {
       setError("No se pudo crear el cliente. Intenta nuevamente.");

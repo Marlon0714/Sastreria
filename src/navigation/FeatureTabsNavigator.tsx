@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ClientsStackNavigator from "./ClientsStackNavigator";
 import PricingStackNavigator from "./PricingStackNavigator";
 import ScheduleStackNavigator from "./ScheduleStackNavigator";
+import TallasStackNavigator from "./TallasStackNavigator";
 import type { RootTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -26,6 +27,16 @@ export default function FeatureTabsNavigator() {
           title: "Clientes",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="TallasTab"
+        component={TallasStackNavigator}
+        options={{
+          tabBarLabel: "Tallas",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="resize" size={size} color={color} />
           ),
         }}
       />

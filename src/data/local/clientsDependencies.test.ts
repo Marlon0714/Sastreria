@@ -12,6 +12,10 @@ import type {
   UpdateClientDTO,
   UpsertCamisaDTO,
   UpsertPantalonDTO,
+  SacoMeasurement,
+  ChalecoMeasurement,
+  UpsertSacoDTO,
+  UpsertChalecoDTO,
 } from "../../features/clients/domain/types";
 
 function buildClientRepositoryContract(): ClientRepository {
@@ -42,12 +46,28 @@ function buildMeasurementRepositoryContract(): MeasurementRepository {
       async (_input: UpsertPantalonDTO): Promise<PantalonMeasurement> =>
         Promise.reject(new Error("not implemented")),
     ),
+    upsertSaco: jest.fn(
+      async (_input: UpsertSacoDTO): Promise<SacoMeasurement> =>
+        Promise.reject(new Error("not implemented")),
+    ),
+    upsertChaleco: jest.fn(
+      async (_input: UpsertChalecoDTO): Promise<ChalecoMeasurement> =>
+        Promise.reject(new Error("not implemented")),
+    ),
     findCamisaByClientId: jest.fn(
       async (_clientId: string): Promise<CamisaMeasurement | null> =>
         Promise.resolve(null),
     ),
     findPantalonByClientId: jest.fn(
       async (_clientId: string): Promise<PantalonMeasurement | null> =>
+        Promise.resolve(null),
+    ),
+    findSacoByClientId: jest.fn(
+      async (_clientId: string): Promise<SacoMeasurement | null> =>
+        Promise.resolve(null),
+    ),
+    findChalecoByClientId: jest.fn(
+      async (_clientId: string): Promise<ChalecoMeasurement | null> =>
         Promise.resolve(null),
     ),
   };

@@ -111,6 +111,7 @@ export interface RetryPolicy {
   maxRetries: number;
   baseDelayMs: number;
   batchSize: number;
+  concurrency?: number; // Nuevo campo para definir el nivel de concurrencia
 }
 
 export interface SyncRunResult {

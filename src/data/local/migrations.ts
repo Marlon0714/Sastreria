@@ -6,9 +6,137 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 8;
+const TARGET_SCHEMA_VERSION = 13;
 
 const MIGRATIONS: readonly Migration[] = [
+  {
+    version: 12,
+    name: "v12_talla_templates",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS talla_templates (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('camisa', 'pantalon', 'saco', 'chaleco')),
+        espalda REAL,
+        hombro REAL,
+        talle_delantero REAL,
+        talle_trasero REAL,
+        distancia REAL,
+        separacion REAL,
+        pecho REAL,
+        cintura REAL,
+        base REAL,
+        largo REAL,
+        largo_manga REAL,
+        ancho_manga REAL,
+        escote REAL,
+        cuello REAL,
+        brazo REAL,
+        puno REAL,
+        tiro REAL,
+        pierna REAL,
+        rodilla REAL,
+        bota REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
+      );
+      `,
+    ],
+  },
+  {
+    version: 11,
+    name: "v11_saco_extra_fields",
+    statements: [
+      `ALTER TABLE saco_measurements ADD COLUMN hombro REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN talle_delantero REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN distancia REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN separacion REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN largo_manga REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN ancho_manga REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cuello REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN brazo REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN puno REAL;`,
+    ],
+  },
+  {
+    version: 10,
+    name: "v10_client_tallas",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS client_tallas (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('camisa', 'pantalon', 'saco', 'chaleco')),
+        value TEXT NOT NULL,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        UNIQUE(client_id, type),
+        FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_client_tallas_client_id
+       ON client_tallas (client_id);`,
+    ],
+  },
+  {
+    version: 9,
+    name: "v9_client_phones_cedula_saco_chaleco_measurements",
+    statements: [
+      // Agregar campos phones y cedula a clients
+      `ALTER TABLE clients ADD COLUMN phones TEXT;`,
+      `ALTER TABLE clients ADD COLUMN cedula TEXT;`,
+
+      // Crear tabla saco_measurements
+      `
+        CREATE TABLE IF NOT EXISTS saco_measurements (
+          id TEXT PRIMARY KEY NOT NULL,
+          client_id TEXT NOT NULL,
+          espalda REAL,
+          talle_trasero REAL,
+          largo REAL,
+          pecho REAL,
+          cintura REAL,
+          base REAL,
+          escote REAL,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+          UNIQUE(client_id),
+          FOREIGN KEY (client_id) REFERENCES clients (id)
+        );
+        `,
+
+      // Crear tabla chaleco_measurements
+      `
+        CREATE TABLE IF NOT EXISTS chaleco_measurements (
+          id TEXT PRIMARY KEY NOT NULL,
+          client_id TEXT NOT NULL,
+          espalda REAL,
+          talle_trasero REAL,
+          largo REAL,
+          pecho REAL,
+          cintura REAL,
+          base REAL,
+          escote REAL,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+          UNIQUE(client_id),
+          FOREIGN KEY (client_id) REFERENCES clients (id)
+        );
+        `,
+
+      // Nota: cuello/brazo/puno fueron añadidos en v3; rodilla/bota están en
+      // el CREATE TABLE de v2. No se repiten aquí para evitar errores en upgrades.
+    ],
+  },
   {
     version: 1,
     name: "v1_initial_schema",
@@ -39,7 +167,7 @@ const MIGRATIONS: readonly Migration[] = [
         measured_at TEXT NOT NULL,
         pecho_cm REAL NOT NULL,
         cintura_cm REAL NOT NULL,
-        cadera_cm REAL NOT NULL,
+        base_cm REAL NOT NULL,
         largo_cm REAL NOT NULL,
         notes TEXT,
         created_at TEXT NOT NULL,
@@ -182,6 +310,13 @@ const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_pricing_services_name ON pricing_services (name);`,
     ],
   },
+  {
+    version: 13,
+    name: "v13_pricing_services_category",
+    statements: [
+      `ALTER TABLE pricing_services ADD COLUMN category TEXT NOT NULL DEFAULT 'arreglo' CHECK (category IN ('arreglo', 'confeccion'));`,
+    ],
+  },
 ];
 
 interface UserVersionRow {
@@ -198,7 +333,11 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     return;
   }
 
-  for (const migration of MIGRATIONS) {
+  const sortedMigrations = [...MIGRATIONS].sort(
+    (a, b) => a.version - b.version,
+  );
+
+  for (const migration of sortedMigrations) {
     if (migration.version <= currentVersion) {
       continue;
     }

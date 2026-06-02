@@ -19,6 +19,8 @@ interface ClientRow {
   first_name: string;
   last_name: string;
   phone: string;
+  phones: string | null; // JSON array de teléfonos adicionales
+  cedula: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -31,6 +33,8 @@ function mapClientRow(row: ClientRow): Client {
     firstName: row.first_name,
     lastName: row.last_name,
     phone: row.phone,
+    phones: row.phones ? (JSON.parse(row.phones) as string[]) : undefined,
+    cedula: row.cedula ?? undefined,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -51,12 +55,19 @@ export class ClientRepositoryImpl implements ClientRepository {
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
       phone: input.phone.trim(),
+      phones: input.phones?.filter(Boolean),
+      cedula: input.cedula?.trim() ?? undefined,
       notes: input.notes?.trim() ?? null,
       createdAt: nowIso,
       updatedAt: nowIso,
       syncStatus: "pending",
       measurements: [],
     };
+
+    const phonesJson =
+      client.phones && client.phones.length > 0
+        ? JSON.stringify(client.phones)
+        : null;
 
     await db.runAsync(
       `
@@ -65,16 +76,20 @@ export class ClientRepositoryImpl implements ClientRepository {
         first_name,
         last_name,
         phone,
+        phones,
+        cedula,
         notes,
         created_at,
         updated_at,
         sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `,
       client.id,
       client.firstName,
       client.lastName,
       client.phone,
+      phonesJson,
+      client.cedula ?? null,
       client.notes,
       client.createdAt,
       client.updatedAt,
@@ -95,6 +110,8 @@ export class ClientRepositoryImpl implements ClientRepository {
         first_name,
         last_name,
         phone,
+        phones,
+        cedula,
         notes,
         created_at,
         updated_at,
@@ -116,6 +133,8 @@ export class ClientRepositoryImpl implements ClientRepository {
         first_name,
         last_name,
         phone,
+        phones,
+        cedula,
         notes,
         created_at,
         updated_at,
@@ -138,12 +157,19 @@ export class ClientRepositoryImpl implements ClientRepository {
     const db = getDatabase();
     const nowIso = new Date().toISOString();
 
+    const phonesJson =
+      input.phones && input.phones.filter(Boolean).length > 0
+        ? JSON.stringify(input.phones.filter(Boolean))
+        : null;
+
     await db.runAsync(
       `
       UPDATE clients
       SET first_name = ?,
           last_name  = ?,
           phone      = ?,
+          phones     = ?,
+          cedula     = ?,
           notes      = ?,
           updated_at = ?,
           sync_status = 'pending'
@@ -152,6 +178,8 @@ export class ClientRepositoryImpl implements ClientRepository {
       input.firstName.trim(),
       input.lastName.trim(),
       input.phone.trim(),
+      phonesJson,
+      input.cedula?.trim() ?? null,
       input.notes?.trim() ?? null,
       nowIso,
       input.id,
@@ -164,6 +192,8 @@ export class ClientRepositoryImpl implements ClientRepository {
         first_name,
         last_name,
         phone,
+        phones,
+        cedula,
         notes,
         created_at,
         updated_at,
@@ -182,6 +212,8 @@ export class ClientRepositoryImpl implements ClientRepository {
         firstName: input.firstName.trim(),
         lastName: input.lastName.trim(),
         phone: input.phone.trim(),
+        phones: input.phones?.filter(Boolean),
+        cedula: input.cedula?.trim() ?? undefined,
         notes: input.notes?.trim() ?? null,
         createdAt: nowIso,
         updatedAt: nowIso,

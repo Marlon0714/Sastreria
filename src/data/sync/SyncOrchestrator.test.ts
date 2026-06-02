@@ -91,7 +91,9 @@ describe("SyncOrchestrator", () => {
 
   it("throttles network_recovered bursts with cooldown", async () => {
     const processor = {
-      runOnce: jest.fn<() => Promise<SyncRunResult>>().mockResolvedValue(emptyResult()),
+      runOnce: jest
+        .fn<() => Promise<SyncRunResult>>()
+        .mockResolvedValue(emptyResult()),
     };
 
     let nowValue = 1000;
@@ -145,5 +147,33 @@ describe("SyncOrchestrator", () => {
     await expect(orchestrator.requestRun()).rejects.toThrow("temporary outage");
     await expect(orchestrator.requestRun()).resolves.toBeUndefined();
     expect(processor.runOnce).toHaveBeenCalledTimes(2);
+  });
+
+  it("debería ajustar cooldown dinámicamente basado en métricas de red", async () => {
+    const processor = {
+      runOnce: jest.fn(async () => ({
+        processed: 1,
+        synced: 1,
+        deferred: 0,
+        failed: 0,
+      })),
+    };
+    const orchestrator = new SyncOrchestrator(processor);
+    // Mock del método getNetworkLatency
+    orchestrator.getNetworkLatency = jest.fn(() => 2000);
+
+    const cooldown = orchestrator.calculateDynamicCooldown();
+    expect(cooldown).toBe(4000);
+  });
+
+  it("maneja excepciones en processor.runOnce", async () => {
+    const processor = {
+      runOnce: jest.fn(async () => {
+        throw new Error("RunOnce error");
+      }),
+    };
+    const orchestrator = new SyncOrchestrator(processor);
+
+    await expect(orchestrator.requestRun()).rejects.toThrow("RunOnce error");
   });
 });

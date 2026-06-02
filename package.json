@@ -13,6 +13,14 @@
     "web": "expo start --web",
     "apk:debug": "cd android && ./gradlew assembleDebug",
     "apk:release": "cd android && ./gradlew assembleRelease",
+    "apk:bg": "bash scripts/build-apk-bg.sh start debug",
+    "apk:bg:install": "bash scripts/build-apk-bg.sh start debug --install",
+    "apk:bg:release": "bash scripts/build-apk-bg.sh start release",
+    "apk:bg:release:install": "bash scripts/build-apk-bg.sh start release --install",
+    "apk:bg:status": "bash scripts/build-apk-bg.sh status",
+    "apk:bg:logs": "bash scripts/build-apk-bg.sh logs",
+    "apk:bg:stop": "bash scripts/build-apk-bg.sh stop",
+    "metro:usb": "adb reverse tcp:8081 tcp:8081 && npm run dev",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:coverage": "jest --coverage",
@@ -54,9 +62,9 @@
     }
   },
   "dependencies": {
-    "@react-native-community/netinfo": "^11.4.1",
     "@expo/vector-icons": "^15.0.3",
     "@hookform/resolvers": "^5.2.2",
+    "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/bottom-tabs": "^7.8.2",
     "@react-navigation/native": "^7.2.2",
     "@react-navigation/native-stack": "^7.14.12",
@@ -80,6 +88,7 @@
   },
   "devDependencies": {
     "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-hooks": "^7.0.2",
     "@testing-library/react-native": "^13.3.3",
     "@types/react": "~19.1.0",
     "eas-cli": "^18.8.1",

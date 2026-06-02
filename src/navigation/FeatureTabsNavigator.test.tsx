@@ -4,6 +4,20 @@ import { fireEvent, render } from "@testing-library/react-native";
 import RootNavigator from "./RootNavigator";
 import { useSyncStatusStore } from "../shared/state/syncStatusStore";
 
+jest.mock("../features/pricing/hooks/usePricingServices", () => ({
+  usePricingServices: () => ({
+    services: [],
+    loading: false,
+    error: null,
+    refresh: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+    syncStatus: "synced",
+    isOffline: false,
+  }),
+}));
+
 jest.mock("./ClientsStackNavigator", () => {
   const React = jest.requireActual("react") as typeof import("react");
   const { Text } = jest.requireActual(
@@ -53,12 +67,8 @@ describe("RootNavigator tabs composition", () => {
     // Act
     fireEvent.press(getByText("Precios"));
 
-    // Assert
-    expect(
-      await findByText(
-        "Proximamente podras administrar el catalogo de precios.",
-      ),
-    ).toBeTruthy();
+    // Assert - pricing ya tiene pantalla real, verificamos que el tab carga
+    expect(await findByText("Sin arreglos aún")).toBeTruthy();
 
     // Act
     fireEvent.press(getByText("Clientes"));

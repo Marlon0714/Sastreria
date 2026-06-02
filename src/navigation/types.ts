@@ -33,6 +33,19 @@ export type ClientsStackParamList = {
     clientId: string;
     mode?: MeasurementTypeSelectMode;
   };
+  /** Crear medidas de saco para un cliente. */
+  SacoMeasurementCreate: { clientId: string; mode?: MeasurementTypeSelectMode };
+  /** Editar medidas de saco para un cliente. */
+  SacoMeasurementEdit: { clientId: string };
+  /** Crear medidas de chaleco para un cliente. */
+  ChalecoMeasurementCreate: {
+    clientId: string;
+    mode?: MeasurementTypeSelectMode;
+  };
+  /** Editar medidas de chaleco para un cliente. */
+  ChalecoMeasurementEdit: { clientId: string };
+  /** Gestión de tallas por cliente (acceso desde ClientDetail). */
+  Tallas: { clientId: string };
 };
 
 export type ScheduleStackParamList = {
@@ -40,11 +53,23 @@ export type ScheduleStackParamList = {
 };
 
 export type PricingStackParamList = {
+  PricingList: undefined;
+  PricingDetail: { id: string };
+  PricingForm: { id?: string; category?: "arreglo" | "confeccion" };
   PricingPlaceholder: undefined;
+};
+
+export type TallasStackParamList = {
+  TallasList: undefined;
+  TallaForm: {
+    type: "camisa" | "pantalon" | "saco" | "chaleco";
+    tallaId?: string;
+  };
 };
 
 export type RootTabParamList = {
   ClientsTab: NavigatorScreenParams<ClientsStackParamList>;
+  TallasTab: NavigatorScreenParams<TallasStackParamList>;
   ScheduleTab: NavigatorScreenParams<ScheduleStackParamList>;
   PricingTab: NavigatorScreenParams<PricingStackParamList>;
 };

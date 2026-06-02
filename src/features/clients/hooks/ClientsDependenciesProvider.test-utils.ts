@@ -18,7 +18,16 @@ export const noopDependencies: ClientsDependencies = {
   measurementRepository: {
     upsertCamisa: async () => Promise.reject(new Error("noop")),
     upsertPantalon: async () => Promise.reject(new Error("noop")),
+    upsertSaco: async () => Promise.reject(new Error("noop")),
+    upsertChaleco: async () => Promise.reject(new Error("noop")),
     findCamisaByClientId: async () => Promise.resolve(null),
     findPantalonByClientId: async () => Promise.resolve(null),
+    findSacoByClientId: async () => Promise.resolve(null),
+    findChalecoByClientId: async () => Promise.resolve(null),
+  },
+  tallaRepository: {
+    upsert: async () => Promise.reject(new Error("noop")),
+    findByClientId: async () => Promise.resolve([]),
+    delete: async () => Promise.reject(new Error("noop")),
   },
 };

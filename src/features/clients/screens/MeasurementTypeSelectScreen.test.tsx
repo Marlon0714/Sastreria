@@ -21,18 +21,18 @@ describe("MeasurementTypeSelectScreen", () => {
     const { getByLabelText, queryByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("create")} />,
     );
-    expect(getByLabelText("Registrar medidas de camisa")).toBeTruthy();
-    expect(getByLabelText("Registrar medidas de pantalón")).toBeTruthy();
+    expect(getByLabelText("Registrar medidas de Camisa")).toBeTruthy();
+    expect(getByLabelText("Registrar medidas de Pantalón")).toBeTruthy();
     expect(queryByLabelText("Continuar sin medidas")).toBeNull();
-    expect(queryByLabelText("Ver medidas de camisa")).toBeNull();
+    expect(queryByLabelText("Ver medidas de Camisa")).toBeNull();
   });
 
   it("renders view buttons in view mode without skip option", () => {
     const { getByLabelText, queryByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("view")} />,
     );
-    expect(getByLabelText("Ver medidas de camisa")).toBeTruthy();
-    expect(getByLabelText("Ver medidas de pantalón")).toBeTruthy();
+    expect(getByLabelText("Ver medidas de Camisa")).toBeTruthy();
+    expect(getByLabelText("Ver medidas de Pantalón")).toBeTruthy();
     expect(queryByLabelText("Continuar sin medidas")).toBeNull();
   });
 
@@ -40,7 +40,7 @@ describe("MeasurementTypeSelectScreen", () => {
     const { getByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("create", "abc-123")} />,
     );
-    fireEvent.press(getByLabelText("Registrar medidas de camisa"));
+    fireEvent.press(getByLabelText("Registrar medidas de Camisa"));
     expect(mockNavigate).toHaveBeenCalledWith("CamisaMeasurementDetail", {
       clientId: "abc-123",
       mode: "create",
@@ -51,7 +51,7 @@ describe("MeasurementTypeSelectScreen", () => {
     const { getByLabelText } = render(
       <MeasurementTypeSelectScreen {...buildProps("view", "xyz-456")} />,
     );
-    fireEvent.press(getByLabelText("Ver medidas de pantalón"));
+    fireEvent.press(getByLabelText("Ver medidas de Pantalón"));
     expect(mockNavigate).toHaveBeenCalledWith("PantalonMeasurementDetail", {
       clientId: "xyz-456",
       mode: "view",

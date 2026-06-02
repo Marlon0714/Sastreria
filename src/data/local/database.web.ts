@@ -17,7 +17,7 @@ interface MeasurementRow {
   measured_at: string;
   pecho_cm: number;
   cintura_cm: number;
-  cadera_cm: number;
+  base_cm: number;
   largo_cm: number;
   notes: string | null;
   created_at: string;
@@ -70,6 +70,47 @@ interface PantalonMeasurementRow {
   sync_status: SyncStatus;
 }
 
+interface PricingServiceWebRow {
+  id: string;
+  name: string;
+  price: number;
+  category: "arreglo" | "confeccion";
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sync_status: SyncStatus;
+}
+
+interface TallaTemplateWebRow {
+  id: string;
+  name: string;
+  type: string;
+  espalda: number | null;
+  hombro: number | null;
+  talle_delantero: number | null;
+  talle_trasero: number | null;
+  distancia: number | null;
+  separacion: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  largo: number | null;
+  largo_manga: number | null;
+  ancho_manga: number | null;
+  escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
+  tiro: number | null;
+  pierna: number | null;
+  rodilla: number | null;
+  bota: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: SyncStatus;
+}
+
 interface UserVersionRow {
   user_version: number;
 }
@@ -93,6 +134,8 @@ interface InMemoryState {
   measurements: MeasurementRow[];
   camisaMeasurements: CamisaMeasurementRow[];
   pantalonMeasurements: PantalonMeasurementRow[];
+  tallaTemplates: TallaTemplateWebRow[];
+  pricingServices: PricingServiceWebRow[];
 }
 
 const state: InMemoryState = {
@@ -101,6 +144,8 @@ const state: InMemoryState = {
   measurements: [],
   camisaMeasurements: [],
   pantalonMeasurements: [],
+  tallaTemplates: [],
+  pricingServices: [],
 };
 
 function normalizeSql(sql: string): string {
@@ -153,7 +198,7 @@ const webDatabase: WebDatabase = {
         measuredAt,
         pechoCm,
         cinturaCm,
-        caderaCm,
+        baseCm,
         largoCm,
         notes,
         createdAt,
@@ -179,7 +224,7 @@ const webDatabase: WebDatabase = {
         measured_at: measuredAt,
         pecho_cm: pechoCm,
         cintura_cm: cinturaCm,
-        cadera_cm: caderaCm,
+        base_cm: baseCm,
         largo_cm: largoCm,
         notes,
         created_at: createdAt,
@@ -384,6 +429,257 @@ const webDatabase: WebDatabase = {
       return { lastInsertRowId: 0, changes: 1 };
     }
 
+    if (normalized.includes("insert into pricing_services")) {
+      const [
+        id,
+        name,
+        price,
+        category,
+        notes,
+        createdAt,
+        updatedAt,
+        syncStatus,
+      ] = params as [
+        string,
+        string,
+        number,
+        string,
+        string | null,
+        string,
+        string,
+        SyncStatus,
+      ];
+      state.pricingServices.push({
+        id,
+        name,
+        price,
+        category:
+          category === "arreglo" || category === "confeccion"
+            ? category
+            : "arreglo",
+        notes,
+        createdAt,
+        updatedAt,
+        sync_status: syncStatus,
+      });
+      return { lastInsertRowId: 0, changes: 1 };
+    }
+
+    if (normalized.includes("update pricing_services")) {
+      const [name, price, category, notes, updatedAt, id] = params as [
+        string,
+        number,
+        string,
+        string | null,
+        string,
+        string,
+      ];
+      const idx = state.pricingServices.findIndex((r) => r.id === id);
+      if (idx >= 0) {
+        state.pricingServices[idx] = {
+          ...state.pricingServices[idx],
+          name,
+          price,
+          category:
+            category === "arreglo" || category === "confeccion"
+              ? category
+              : "arreglo",
+          notes,
+          updatedAt,
+          sync_status: "pending",
+        };
+      }
+      return { lastInsertRowId: 0, changes: 1 };
+    }
+
+    if (normalized.includes("delete from pricing_services")) {
+      const [id] = params as [string];
+      state.pricingServices = state.pricingServices.filter((r) => r.id !== id);
+      return { lastInsertRowId: 0, changes: 1 };
+    }
+
+    if (normalized.includes("insert into talla_templates")) {
+      const [
+        id,
+        name,
+        type,
+        espalda,
+        hombro,
+        talle_delantero,
+        talle_trasero,
+        distancia,
+        separacion,
+        pecho,
+        cintura,
+        base,
+        largo,
+        largo_manga,
+        ancho_manga,
+        escote,
+        cuello,
+        brazo,
+        puno,
+        tiro,
+        pierna,
+        rodilla,
+        bota,
+        notes,
+        createdAt,
+        updatedAt,
+        syncStatus,
+      ] = params as [
+        string,
+        string,
+        string,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        string | null,
+        string,
+        string,
+        SyncStatus,
+      ];
+      state.tallaTemplates.push({
+        id,
+        name,
+        type,
+        espalda,
+        hombro,
+        talle_delantero,
+        talle_trasero,
+        distancia,
+        separacion,
+        pecho,
+        cintura,
+        base,
+        largo,
+        largo_manga,
+        ancho_manga,
+        escote,
+        cuello,
+        brazo,
+        puno,
+        tiro,
+        pierna,
+        rodilla,
+        bota,
+        notes,
+        created_at: createdAt,
+        updated_at: updatedAt,
+        sync_status: syncStatus,
+      });
+      return { lastInsertRowId: 0, changes: 1 };
+    }
+
+    if (normalized.includes("update talla_templates")) {
+      const [
+        name,
+        espalda,
+        hombro,
+        talle_delantero,
+        talle_trasero,
+        distancia,
+        separacion,
+        pecho,
+        cintura,
+        base,
+        largo,
+        largo_manga,
+        ancho_manga,
+        escote,
+        cuello,
+        brazo,
+        puno,
+        tiro,
+        pierna,
+        rodilla,
+        bota,
+        notes,
+        updatedAt,
+        id,
+      ] = params as [
+        string | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        number | null,
+        string | null,
+        string,
+        string,
+      ];
+      const idx = state.tallaTemplates.findIndex((r) => r.id === id);
+      if (idx >= 0) {
+        const existing = state.tallaTemplates[idx];
+        state.tallaTemplates[idx] = {
+          ...existing,
+          name: name ?? existing.name,
+          espalda,
+          hombro,
+          talle_delantero,
+          talle_trasero,
+          distancia,
+          separacion,
+          pecho,
+          cintura,
+          base,
+          largo,
+          largo_manga,
+          ancho_manga,
+          escote,
+          cuello,
+          brazo,
+          puno,
+          tiro,
+          pierna,
+          rodilla,
+          bota,
+          notes,
+          updated_at: updatedAt,
+          sync_status: "pending",
+        };
+      }
+      return { lastInsertRowId: 0, changes: 1 };
+    }
+
+    if (normalized.includes("delete from talla_templates")) {
+      const [id] = params as [string];
+      state.tallaTemplates = state.tallaTemplates.filter((r) => r.id !== id);
+      return { lastInsertRowId: 0, changes: 1 };
+    }
+
     return { lastInsertRowId: 0, changes: 0 };
   },
 
@@ -405,6 +701,23 @@ const webDatabase: WebDatabase = {
       const rows = state.measurements
         .filter((row) => row.client_id === clientId)
         .sort((a, b) => b.measured_at.localeCompare(a.measured_at));
+      return rows as T[];
+    }
+
+    if (normalized.includes("from pricing_services")) {
+      const rows = [...state.pricingServices].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
+      return rows as T[];
+    }
+
+    if (normalized.includes("from talla_templates")) {
+      let rows = [...state.tallaTemplates];
+      if (normalized.includes("where type = ?")) {
+        const [type] = params as [string];
+        rows = rows.filter((r) => r.type === type);
+      }
+      rows.sort((a, b) => a.name.localeCompare(b.name));
       return rows as T[];
     }
 
@@ -449,6 +762,24 @@ const webDatabase: WebDatabase = {
         state.pantalonMeasurements.find(
           (measurement) => measurement.client_id === clientId,
         ) ?? null;
+      return row as T | null;
+    }
+
+    if (
+      normalized.includes("from pricing_services") &&
+      normalized.includes("where id = ?")
+    ) {
+      const [id] = params as [string];
+      const row = state.pricingServices.find((r) => r.id === id) ?? null;
+      return row as T | null;
+    }
+
+    if (
+      normalized.includes("from talla_templates") &&
+      normalized.includes("where id = ?")
+    ) {
+      const [id] = params as [string];
+      const row = state.tallaTemplates.find((r) => r.id === id) ?? null;
       return row as T | null;
     }
 

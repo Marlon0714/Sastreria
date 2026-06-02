@@ -134,7 +134,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    interceptLogs(); // Siempre intercepta, pero solo muestra si está activo
+    interceptLogs();
   }, []);
 
   if (error) {

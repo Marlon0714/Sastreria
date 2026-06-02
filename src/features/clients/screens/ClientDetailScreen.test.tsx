@@ -56,6 +56,19 @@ jest.mock("../hooks/useDeleteClient", () => {
   };
 });
 
+jest.mock("../hooks/useTallas", () => {
+  return {
+    useTallas: () => ({
+      tallas: [],
+      isLoading: false,
+      error: null,
+      upsertTalla: jest.fn(),
+      deleteTalla: jest.fn(),
+      reload: jest.fn(),
+    }),
+  };
+});
+
 type ScreenProps = React.ComponentProps<typeof ClientDetailScreen>;
 
 function buildProps(navigate: jest.Mock, popToTop: jest.Mock): ScreenProps {
@@ -152,7 +165,7 @@ describe("ClientDetailScreen", () => {
 
     expect(getByText("Ana Torres")).toBeTruthy();
     expect(getByText("3001234567")).toBeTruthy();
-    expect(getByText("Notas: Cliente frecuente")).toBeTruthy();
+    expect(getByText("Cliente frecuente")).toBeTruthy();
     // Bug fix N-026: syncStatus is internal metadata, must not be visible.
     expect(queryByText(/syncStatus/i)).toBeNull();
     expect(queryByText(/pending/i)).toBeNull();
@@ -176,7 +189,7 @@ describe("ClientDetailScreen", () => {
       <ClientDetailScreen {...buildProps(navigate, popToTop)} />,
     );
 
-    fireEvent.press(getByText("Medidas"));
+    fireEvent.press(getByText("Ver / Registrar medidas"));
     expect(navigate).toHaveBeenCalledWith("MeasurementTypeSelect", {
       clientId: client.id,
       mode: "create",
@@ -238,10 +251,10 @@ describe("ClientDetailScreen", () => {
     const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
     expect(alertCall?.[0]).toBe("Eliminar cliente");
 
-    const buttons = (alertCall?.[2] ?? []) as Array<{
+    const buttons = (alertCall?.[2] ?? []) as {
       text?: string;
       onPress?: () => void;
-    }>;
+    }[];
     const confirmButton = buttons.find((button) => button.text === "Eliminar");
     expect(confirmButton).toBeDefined();
 
