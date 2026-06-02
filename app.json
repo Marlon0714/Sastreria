@@ -34,8 +34,6 @@
       }
     },
     "owner": "marlon0714",
-    "plugins": [
-      "expo-secure-store"
-    ]
+    "plugins": ["expo-secure-store"]
   }
 }
