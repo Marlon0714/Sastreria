@@ -191,7 +191,7 @@ export default function PricingListScreen() {
                 <Text style={styles.emptyIcon}>🔍</Text>
                 <Text style={styles.emptyTitle}>Sin resultados</Text>
                 <Text style={styles.emptySubtitle}>
-                  No hay servicios que coincidan con "{query}".
+                  No hay servicios que coincidan con &quot;{query}&quot;.
                 </Text>
               </>
             ) : (
