@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,6 +16,7 @@
       "supportsTablet": true
     },
     "android": {
+      "jsEngine": "hermes",
       "package": "com.marlon0714.sastreria",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
