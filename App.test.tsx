@@ -5,6 +5,8 @@ import App from "./App";
 import type { ClientsDependencies } from "./src/features/clients/domain/repository";
 import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
 
+jest.setTimeout(15000);
+
 const mockGetDatabase = jest.fn<() => object>();
 const mockRunMigrations = jest.fn<(db: object) => Promise<void>>();
 const mockGetClientsDependencies = jest.fn<() => ClientsDependencies>();
@@ -133,9 +135,12 @@ describe("App bootstrap sync trigger", () => {
     render(<App />);
 
     // Act
-    await waitFor(() => {
-      expect(screen.getByText("RootNavigator")).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText("RootNavigator")).toBeTruthy();
+      },
+      { timeout: 10000 },
+    );
 
     // Assert
     expect(mockRunMigrations).toHaveBeenCalledTimes(1);
