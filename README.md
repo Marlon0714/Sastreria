@@ -1,4 +1,4 @@
-# Sastrería App
+# Sastrería App.
 
 ## Migraciones y sincronización de esquema (Supabase)
 
