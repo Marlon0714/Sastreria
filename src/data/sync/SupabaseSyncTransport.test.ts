@@ -95,6 +95,75 @@ const basePricing = {
   syncStatus: "pending" as const,
 };
 
+const baseSaco = {
+  id: "saco-1",
+  clientId: "c-1",
+  espalda: 42,
+  hombro: 14,
+  talleDelantero: 43,
+  talleTrasero: 41,
+  distancia: 22,
+  separacion: 10,
+  pecho: 98,
+  cintura: 80,
+  base: 100,
+  largo: 70,
+  largoManga: 62,
+  anchoManga: 30,
+  escote: 18,
+  cuello: 38,
+  brazo: 56,
+  puno: 22,
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  syncStatus: "pending" as const,
+};
+
+const baseChaleco = {
+  id: "chaleco-1",
+  clientId: "c-1",
+  espalda: 42,
+  talleTrasero: 41,
+  largo: 70,
+  pecho: 98,
+  cintura: 80,
+  base: 100,
+  escote: 18,
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  syncStatus: "pending" as const,
+};
+
+const baseTallaTemplate = {
+  id: "template-1",
+  name: "Molde estándar",
+  type: "camisa" as const,
+  espalda: 42,
+  hombro: 14,
+  talleDelantero: 43,
+  talleTrasero: 41,
+  distancia: 22,
+  separacion: 10,
+  pecho: 98,
+  cintura: 80,
+  base: 100,
+  largo: 70,
+  largoManga: 62,
+  anchoManga: 30,
+  escote: 18,
+  cuello: 38,
+  brazo: 56,
+  puno: 22,
+  tiro: null,
+  pierna: null,
+  rodilla: null,
+  bota: null,
+  notes: null,
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  syncStatus: "pending" as const,
+};
+
 const baseDeleteLog = {
   id: "del-1",
   entityType: "client" as const,
@@ -260,6 +329,93 @@ describe("SupabaseSyncTransport", () => {
       const transport = new SupabaseSyncTransport();
 
       const result = await transport.syncPricingService(basePricing);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+  });
+
+  describe("syncSacoMeasurement", () => {
+    it("upserts to 'saco_measurements' table on success", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncSacoMeasurement(baseSaco);
+
+      expect(mockFrom).toHaveBeenCalledWith("saco_measurements");
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "saco-1",
+          client_id: "c-1",
+          talle_delantero: 43,
+          cuello: 38,
+          brazo: 56,
+          puno: 22,
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("returns failed outcome on Supabase failure", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncSacoMeasurement(baseSaco);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+  });
+
+  describe("syncChalecoMeasurement", () => {
+    it("upserts to 'chaleco_measurements' table on success", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncChalecoMeasurement(baseChaleco);
+
+      expect(mockFrom).toHaveBeenCalledWith("chaleco_measurements");
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "chaleco-1",
+          client_id: "c-1",
+          talle_trasero: 41,
+          escote: 18,
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("returns failed outcome on Supabase failure", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncChalecoMeasurement(baseChaleco);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+  });
+
+  describe("syncTallaTemplate", () => {
+    it("upserts to 'talla_templates' table on success", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncTallaTemplate(baseTallaTemplate);
+
+      expect(mockFrom).toHaveBeenCalledWith("talla_templates");
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "template-1",
+          name: "Molde estándar",
+          type: "camisa",
+          talle_delantero: 43,
+          tiro: null,
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("returns failed outcome on Supabase failure", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncTallaTemplate(baseTallaTemplate);
       expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
     });
   });

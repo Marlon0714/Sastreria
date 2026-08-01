@@ -8,6 +8,9 @@ type InvalidationTable =
   | "pantalon_measurements"
   | "client_tallas"
   | "pricing_services"
+  | "saco_measurements"
+  | "chaleco_measurements"
+  | "talla_templates"
   | "sync_delete_log";
 
 const SYNC_TABLES: readonly InvalidationTable[] = [
@@ -16,6 +19,9 @@ const SYNC_TABLES: readonly InvalidationTable[] = [
   "pantalon_measurements",
   "client_tallas",
   "pricing_services",
+  "saco_measurements",
+  "chaleco_measurements",
+  "talla_templates",
   "sync_delete_log",
 ];
 

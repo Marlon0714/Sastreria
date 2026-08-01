@@ -149,6 +149,96 @@ const pricingItem: SyncQueueItem = {
   },
 };
 
+const sacoItem: SyncQueueItem = {
+  entityType: "saco_measurement",
+  id: "saco-1",
+  updatedAt: "2026-08-01T09:20:00.000Z",
+  syncStatus: "pending",
+  operationType: "upsert",
+  payload: {
+    id: "saco-1",
+    clientId: "c-1",
+    espalda: 42,
+    hombro: 14,
+    talleDelantero: 43,
+    talleTrasero: 41,
+    distancia: 22,
+    separacion: 10,
+    pecho: 98,
+    cintura: 80,
+    base: 100,
+    largo: 70,
+    largoManga: 62,
+    anchoManga: 30,
+    escote: 18,
+    cuello: 38,
+    brazo: 56,
+    puno: 22,
+    createdAt: "2026-08-01T09:20:00.000Z",
+    updatedAt: "2026-08-01T09:20:00.000Z",
+    syncStatus: "pending",
+  },
+};
+
+const chalecoItem: SyncQueueItem = {
+  entityType: "chaleco_measurement",
+  id: "chaleco-1",
+  updatedAt: "2026-08-01T09:25:00.000Z",
+  syncStatus: "pending",
+  operationType: "upsert",
+  payload: {
+    id: "chaleco-1",
+    clientId: "c-1",
+    espalda: 42,
+    talleTrasero: 41,
+    largo: 70,
+    pecho: 98,
+    cintura: 80,
+    base: 100,
+    escote: 18,
+    createdAt: "2026-08-01T09:25:00.000Z",
+    updatedAt: "2026-08-01T09:25:00.000Z",
+    syncStatus: "pending",
+  },
+};
+
+const tallaTemplateItem: SyncQueueItem = {
+  entityType: "talla_template",
+  id: "template-1",
+  updatedAt: "2026-08-01T09:30:00.000Z",
+  syncStatus: "pending",
+  operationType: "upsert",
+  payload: {
+    id: "template-1",
+    name: "Molde estándar",
+    type: "camisa",
+    espalda: 42,
+    hombro: 14,
+    talleDelantero: 43,
+    talleTrasero: 41,
+    distancia: 22,
+    separacion: 10,
+    pecho: 98,
+    cintura: 80,
+    base: 100,
+    largo: 70,
+    largoManga: 62,
+    anchoManga: 30,
+    escote: 18,
+    cuello: 38,
+    brazo: 56,
+    puno: 22,
+    tiro: null,
+    pierna: null,
+    rodilla: null,
+    bota: null,
+    notes: null,
+    createdAt: "2026-08-01T09:30:00.000Z",
+    updatedAt: "2026-08-01T09:30:00.000Z",
+    syncStatus: "pending",
+  },
+};
+
 const deleteItem: SyncQueueItem = {
   entityType: "delete_log",
   id: "del-1",
@@ -177,6 +267,11 @@ function makeMockTransport(): jest.Mocked<SyncTransport> {
     ),
     syncClientTalla: jest.fn(async () => Promise.resolve(syncedResult())),
     syncPricingService: jest.fn(async () => Promise.resolve(syncedResult())),
+    syncSacoMeasurement: jest.fn(async () => Promise.resolve(syncedResult())),
+    syncChalecoMeasurement: jest.fn(async () =>
+      Promise.resolve(syncedResult()),
+    ),
+    syncTallaTemplate: jest.fn(async () => Promise.resolve(syncedResult())),
     syncDeleteLogEntry: jest.fn(async () => Promise.resolve(syncedResult())),
     syncAll: jest.fn(async () => Promise.resolve()),
   };
@@ -331,6 +426,69 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "pricing_service",
       "price-1",
+    );
+  });
+
+  it("syncs saco_measurement items through saco transport method", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [sacoItem]),
+      hasPendingItems: jest.fn(async () => false),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+
+    const result = await processor.runOnce();
+
+    expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
+    expect(transport.syncSacoMeasurement).toHaveBeenCalledTimes(1);
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
+      "saco_measurement",
+      "saco-1",
+    );
+  });
+
+  it("syncs chaleco_measurement items through chaleco transport method", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [chalecoItem]),
+      hasPendingItems: jest.fn(async () => false),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+
+    const result = await processor.runOnce();
+
+    expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
+    expect(transport.syncChalecoMeasurement).toHaveBeenCalledTimes(1);
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
+      "chaleco_measurement",
+      "chaleco-1",
+    );
+  });
+
+  it("syncs talla_template items through talla_template transport method", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [tallaTemplateItem]),
+      hasPendingItems: jest.fn(async () => false),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+
+    const result = await processor.runOnce();
+
+    expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
+    expect(transport.syncTallaTemplate).toHaveBeenCalledTimes(1);
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
+      "talla_template",
+      "template-1",
     );
   });
 

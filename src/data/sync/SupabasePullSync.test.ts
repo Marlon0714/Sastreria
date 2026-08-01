@@ -23,6 +23,9 @@ const mockQueryResults: Record<string, MockQueryResult[]> = {
   pantalon_measurements: [],
   client_tallas: [],
   pricing_services: [],
+  saco_measurements: [],
+  chaleco_measurements: [],
+  talla_templates: [],
   sync_delete_log: [],
 };
 
@@ -32,6 +35,9 @@ const mockOrCalls: Record<string, string[]> = {
   pantalon_measurements: [],
   client_tallas: [],
   pricing_services: [],
+  saco_measurements: [],
+  chaleco_measurements: [],
+  talla_templates: [],
   sync_delete_log: [],
 };
 
@@ -88,12 +94,18 @@ describe("SupabasePullSync", () => {
     mockQueryResults.pantalon_measurements = [];
     mockQueryResults.client_tallas = [];
     mockQueryResults.pricing_services = [];
+    mockQueryResults.saco_measurements = [];
+    mockQueryResults.chaleco_measurements = [];
+    mockQueryResults.talla_templates = [];
     mockQueryResults.sync_delete_log = [];
     mockOrCalls.clients = [];
     mockOrCalls.camisa_measurements = [];
     mockOrCalls.pantalon_measurements = [];
     mockOrCalls.client_tallas = [];
     mockOrCalls.pricing_services = [];
+    mockOrCalls.saco_measurements = [];
+    mockOrCalls.chaleco_measurements = [];
+    mockOrCalls.talla_templates = [];
     mockOrCalls.sync_delete_log = [];
     mockRunAsync.mockReset();
     mockWithTransactionAsync.mockClear();
@@ -434,6 +446,149 @@ describe("SupabasePullSync", () => {
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
       "sync_delete_log",
       { id: "del-4", updatedAt: "2026-08-01T14:00:00.000Z" },
+    );
+  });
+
+  it("applies saco_measurements incremental upserts and advances checkpoint", async () => {
+    mockQueryResults.saco_measurements.push({
+      data: [
+        {
+          id: "saco-1",
+          client_id: "c-1",
+          espalda: 42,
+          hombro: 14,
+          talle_delantero: 43,
+          talle_trasero: 41,
+          distancia: 22,
+          separacion: 10,
+          pecho: 98,
+          cintura: 80,
+          base: 100,
+          largo: 70,
+          largo_manga: 62,
+          ancho_manga: 30,
+          escote: 18,
+          cuello: 38,
+          brazo: 56,
+          puno: 22,
+          notes: null,
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const sacoCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO saco_measurements"),
+    );
+    expect(sacoCalls).toHaveLength(1);
+    const [, ...params] = sacoCalls[0] ?? [];
+    expect(params).toContain(38); // cuello
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "saco_measurements",
+      { id: "saco-1", updatedAt: "2026-08-01T10:05:00.000Z" },
+    );
+  });
+
+  it("applies chaleco_measurements incremental upserts and advances checkpoint", async () => {
+    mockQueryResults.chaleco_measurements.push({
+      data: [
+        {
+          id: "chaleco-1",
+          client_id: "c-1",
+          espalda: 42,
+          talle_trasero: 41,
+          largo: 70,
+          pecho: 98,
+          cintura: 80,
+          base: 100,
+          escote: 18,
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const chalecoCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO chaleco_measurements"),
+    );
+    expect(chalecoCalls).toHaveLength(1);
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "chaleco_measurements",
+      { id: "chaleco-1", updatedAt: "2026-08-01T10:05:00.000Z" },
+    );
+  });
+
+  it("applies talla_templates incremental upserts and advances checkpoint", async () => {
+    mockQueryResults.talla_templates.push({
+      data: [
+        {
+          id: "template-1",
+          name: "Molde estándar",
+          type: "camisa",
+          espalda: 42,
+          hombro: 14,
+          talle_delantero: 43,
+          talle_trasero: 41,
+          distancia: 22,
+          separacion: 10,
+          pecho: 98,
+          cintura: 80,
+          base: 100,
+          largo: 70,
+          largo_manga: 62,
+          ancho_manga: 30,
+          escote: 18,
+          cuello: 38,
+          brazo: 56,
+          puno: 22,
+          tiro: null,
+          pierna: null,
+          rodilla: null,
+          bota: null,
+          notes: null,
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const templateCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO talla_templates"),
+    );
+    expect(templateCalls).toHaveLength(1);
+    const [, ...params] = templateCalls[0] ?? [];
+    expect(params).toContain("Molde estándar");
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "talla_templates",
+      { id: "template-1", updatedAt: "2026-08-01T10:05:00.000Z" },
     );
   });
 

@@ -186,6 +186,12 @@ export class SyncQueueProcessor {
         return this.transport.syncClientTalla(item.payload);
       case "pricing_service":
         return this.transport.syncPricingService(item.payload);
+      case "saco_measurement":
+        return this.transport.syncSacoMeasurement(item.payload);
+      case "chaleco_measurement":
+        return this.transport.syncChalecoMeasurement(item.payload);
+      case "talla_template":
+        return this.transport.syncTallaTemplate(item.payload);
       default: {
         const exhaustiveCheck: never = item;
         throw new Error(

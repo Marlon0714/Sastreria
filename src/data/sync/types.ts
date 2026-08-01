@@ -1,10 +1,13 @@
 import type {
   CamisaMeasurement,
+  ChalecoMeasurement,
   Client,
   ClientTalla,
   PantalonMeasurement,
+  SacoMeasurement,
 } from "../../features/clients/domain/types";
 import type { PricingService } from "../../features/pricing/domain/pricingService";
+import type { TallaTemplate } from "../../features/tallas/domain/types";
 import type { SyncStatus } from "../../shared/domain/baseEntity";
 
 export type SyncEntityType =
@@ -13,6 +16,9 @@ export type SyncEntityType =
   | "pantalon_measurement"
   | "client_talla"
   | "pricing_service"
+  | "saco_measurement"
+  | "chaleco_measurement"
+  | "talla_template"
   | "delete_log";
 
 export type SyncOperationType = "upsert" | "delete";
@@ -23,6 +29,9 @@ export type SyncCheckpointScope =
   | "pantalon_measurements"
   | "client_tallas"
   | "pricing_services"
+  | "saco_measurements"
+  | "chaleco_measurements"
+  | "talla_templates"
   | "sync_delete_log";
 
 export interface SyncCursor {
@@ -111,6 +120,21 @@ export interface SyncPricingServiceQueueItem extends SyncQueueItemBase {
   payload: PricingService;
 }
 
+export interface SyncSacoQueueItem extends SyncQueueItemBase {
+  entityType: "saco_measurement";
+  payload: SacoMeasurement;
+}
+
+export interface SyncChalecoQueueItem extends SyncQueueItemBase {
+  entityType: "chaleco_measurement";
+  payload: ChalecoMeasurement;
+}
+
+export interface SyncTallaTemplateQueueItem extends SyncQueueItemBase {
+  entityType: "talla_template";
+  payload: TallaTemplate;
+}
+
 export interface SyncDeleteQueueItem extends SyncQueueItemBase {
   entityType: "delete_log";
   operationType: "delete";
@@ -123,6 +147,9 @@ export type SyncQueueItem =
   | SyncPantalonQueueItem
   | SyncClientTallaQueueItem
   | SyncPricingServiceQueueItem
+  | SyncSacoQueueItem
+  | SyncChalecoQueueItem
+  | SyncTallaTemplateQueueItem
   | SyncDeleteQueueItem;
 
 export interface RetryPolicy {

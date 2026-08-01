@@ -10,6 +10,12 @@ import { generateDomainUuid } from "../../features/clients/domain/types";
 
 type SyncStatus = "pending" | "synced" | "error";
 
+type WriteCommittedCallback = () => void | Promise<void>;
+
+interface TallaTemplateRepositoryImplOptions {
+  onWriteCommitted?: WriteCommittedCallback;
+}
+
 interface TallaTemplateRow {
   id: string;
   name: string;
@@ -77,6 +83,10 @@ function n(v: number | null | undefined): number | null {
 }
 
 export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
+  constructor(
+    private readonly options: TallaTemplateRepositoryImplOptions = {},
+  ) {}
+
   async findAll(): Promise<TallaTemplate[]> {
     const db = getDatabase();
     const rows = await db.getAllAsync<TallaTemplateRow>(
@@ -138,6 +148,7 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       `SELECT * FROM talla_templates WHERE id = ?;`,
       id,
     );
+    this.notifyWriteCommitted();
     return mapRow(row!);
   }
 
@@ -182,11 +193,21 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       `SELECT * FROM talla_templates WHERE id = ?;`,
       dto.id,
     );
+    this.notifyWriteCommitted();
     return mapRow(row!);
   }
 
   async delete(id: string): Promise<void> {
     const db = getDatabase();
     await db.runAsync(`DELETE FROM talla_templates WHERE id = ?;`, id);
+  }
+
+  private notifyWriteCommitted(): void {
+    if (!this.options.onWriteCommitted) {
+      return;
+    }
+    void Promise.resolve(this.options.onWriteCommitted()).catch(
+      () => undefined,
+    );
   }
 }

@@ -86,6 +86,73 @@ interface PricingServiceRow {
   updatedAt: string;
 }
 
+interface SacoRow {
+  id: string;
+  client_id: string;
+  espalda: number | null;
+  hombro: number | null;
+  talle_delantero: number | null;
+  talle_trasero: number | null;
+  distancia: number | null;
+  separacion: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  largo: number | null;
+  largo_manga: number | null;
+  ancho_manga: number | null;
+  escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ChalecoRow {
+  id: string;
+  client_id: string;
+  espalda: number | null;
+  talle_trasero: number | null;
+  largo: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  escote: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TallaTemplateRow {
+  id: string;
+  name: string;
+  type: "camisa" | "pantalon" | "saco" | "chaleco";
+  espalda: number | null;
+  hombro: number | null;
+  talle_delantero: number | null;
+  talle_trasero: number | null;
+  distancia: number | null;
+  separacion: number | null;
+  pecho: number | null;
+  cintura: number | null;
+  base: number | null;
+  largo: number | null;
+  largo_manga: number | null;
+  ancho_manga: number | null;
+  escote: number | null;
+  cuello: number | null;
+  brazo: number | null;
+  puno: number | null;
+  tiro: number | null;
+  pierna: number | null;
+  rodilla: number | null;
+  bota: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface DeleteLogRow {
   id: string;
   entity_type: DeleteEntityType;
@@ -127,6 +194,9 @@ export class SupabasePullSync {
     await this.pullPantalonMeasurementsIncremental();
     await this.pullClientTallasIncremental();
     await this.pullPricingServicesIncremental();
+    await this.pullSacoMeasurementsIncremental();
+    await this.pullChalecoMeasurementsIncremental();
+    await this.pullTallaTemplatesIncremental();
     await this.pullDeleteLogIncremental();
   }
 
@@ -494,6 +564,286 @@ export class SupabasePullSync {
     if (nextCursor) {
       await this.checkpointRepository.advanceCursor(
         "pricing_services",
+        nextCursor,
+      );
+    }
+  }
+
+  private async pullSacoMeasurementsIncremental(): Promise<void> {
+    const cursor = await this.checkpointRepository.getCursor(
+      "saco_measurements",
+    );
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("saco_measurements")
+      .select(
+        "id, client_id, espalda, hombro, talle_delantero, talle_trasero, " +
+          "distancia, separacion, pecho, cintura, base, largo, largo_manga, " +
+          "ancho_manga, escote, cuello, brazo, puno, notes, created_at, updated_at",
+      )
+      .order("updated_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(this.batchSize);
+
+    query = this.applyCursorFilter(query, cursor, "updated_at");
+
+    const { data, error } = await query;
+    const db = getDatabase();
+
+    if (error) {
+      throw new Error(`[pull] saco incremental fetch failed: ${error.code}`);
+    }
+
+    const rows = (data ?? []) as unknown as SacoRow[];
+    if (!rows.length) {
+      return;
+    }
+
+    await db.withTransactionAsync(async () => {
+      for (const row of rows) {
+        await db.runAsync(
+          `
+          INSERT INTO saco_measurements
+            (id, client_id, espalda, hombro, talle_delantero, talle_trasero,
+             distancia, separacion, pecho, cintura, base, largo, largo_manga,
+             ancho_manga, escote, cuello, brazo, puno, notes, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          ON CONFLICT(id) DO UPDATE SET
+            espalda         = excluded.espalda,
+            hombro          = excluded.hombro,
+            talle_delantero = excluded.talle_delantero,
+            talle_trasero   = excluded.talle_trasero,
+            distancia       = excluded.distancia,
+            separacion      = excluded.separacion,
+            pecho           = excluded.pecho,
+            cintura         = excluded.cintura,
+            base            = excluded.base,
+            largo           = excluded.largo,
+            largo_manga     = excluded.largo_manga,
+            ancho_manga     = excluded.ancho_manga,
+            escote          = excluded.escote,
+            cuello          = excluded.cuello,
+            brazo           = excluded.brazo,
+            puno            = excluded.puno,
+            notes           = excluded.notes,
+            updated_at      = excluded.updated_at,
+            sync_status     = 'synced'
+          WHERE excluded.updated_at >= saco_measurements.updated_at;
+          `,
+          row.id,
+          row.client_id,
+          row.espalda ?? null,
+          row.hombro ?? null,
+          row.talle_delantero ?? null,
+          row.talle_trasero ?? null,
+          row.distancia ?? null,
+          row.separacion ?? null,
+          row.pecho ?? null,
+          row.cintura ?? null,
+          row.base ?? null,
+          row.largo ?? null,
+          row.largo_manga ?? null,
+          row.ancho_manga ?? null,
+          row.escote ?? null,
+          row.cuello ?? null,
+          row.brazo ?? null,
+          row.puno ?? null,
+          row.notes ?? null,
+          row.created_at,
+          row.updated_at,
+        );
+      }
+    });
+
+    const nextCursor = getLastCursor(rows, (row) => row.updated_at);
+    if (nextCursor) {
+      await this.checkpointRepository.advanceCursor(
+        "saco_measurements",
+        nextCursor,
+      );
+    }
+  }
+
+  private async pullChalecoMeasurementsIncremental(): Promise<void> {
+    const cursor = await this.checkpointRepository.getCursor(
+      "chaleco_measurements",
+    );
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("chaleco_measurements")
+      .select(
+        "id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, " +
+          "escote, created_at, updated_at",
+      )
+      .order("updated_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(this.batchSize);
+
+    query = this.applyCursorFilter(query, cursor, "updated_at");
+
+    const { data, error } = await query;
+    const db = getDatabase();
+
+    if (error) {
+      throw new Error(
+        `[pull] chaleco incremental fetch failed: ${error.code}`,
+      );
+    }
+
+    const rows = (data ?? []) as unknown as ChalecoRow[];
+    if (!rows.length) {
+      return;
+    }
+
+    await db.withTransactionAsync(async () => {
+      for (const row of rows) {
+        await db.runAsync(
+          `
+          INSERT INTO chaleco_measurements
+            (id, client_id, espalda, talle_trasero, largo, pecho, cintura, base,
+             escote, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          ON CONFLICT(id) DO UPDATE SET
+            espalda       = excluded.espalda,
+            talle_trasero = excluded.talle_trasero,
+            largo         = excluded.largo,
+            pecho         = excluded.pecho,
+            cintura       = excluded.cintura,
+            base          = excluded.base,
+            escote        = excluded.escote,
+            updated_at    = excluded.updated_at,
+            sync_status   = 'synced'
+          WHERE excluded.updated_at >= chaleco_measurements.updated_at;
+          `,
+          row.id,
+          row.client_id,
+          row.espalda ?? null,
+          row.talle_trasero ?? null,
+          row.largo ?? null,
+          row.pecho ?? null,
+          row.cintura ?? null,
+          row.base ?? null,
+          row.escote ?? null,
+          row.created_at,
+          row.updated_at,
+        );
+      }
+    });
+
+    const nextCursor = getLastCursor(rows, (row) => row.updated_at);
+    if (nextCursor) {
+      await this.checkpointRepository.advanceCursor(
+        "chaleco_measurements",
+        nextCursor,
+      );
+    }
+  }
+
+  private async pullTallaTemplatesIncremental(): Promise<void> {
+    const cursor = await this.checkpointRepository.getCursor(
+      "talla_templates",
+    );
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("talla_templates")
+      .select(
+        "id, name, type, espalda, hombro, talle_delantero, talle_trasero, " +
+          "distancia, separacion, pecho, cintura, base, largo, largo_manga, " +
+          "ancho_manga, escote, cuello, brazo, puno, tiro, pierna, rodilla, bota, " +
+          "notes, created_at, updated_at",
+      )
+      .order("updated_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(this.batchSize);
+
+    query = this.applyCursorFilter(query, cursor, "updated_at");
+
+    const { data, error } = await query;
+    const db = getDatabase();
+
+    if (error) {
+      throw new Error(
+        `[pull] talla_templates incremental fetch failed: ${error.code}`,
+      );
+    }
+
+    const rows = (data ?? []) as unknown as TallaTemplateRow[];
+    if (!rows.length) {
+      return;
+    }
+
+    await db.withTransactionAsync(async () => {
+      for (const row of rows) {
+        await db.runAsync(
+          `
+          INSERT INTO talla_templates
+            (id, name, type, espalda, hombro, talle_delantero, talle_trasero,
+             distancia, separacion, pecho, cintura, base, largo, largo_manga,
+             ancho_manga, escote, cuello, brazo, puno, tiro, pierna, rodilla, bota,
+             notes, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          ON CONFLICT(id) DO UPDATE SET
+            name            = excluded.name,
+            type            = excluded.type,
+            espalda         = excluded.espalda,
+            hombro          = excluded.hombro,
+            talle_delantero = excluded.talle_delantero,
+            talle_trasero   = excluded.talle_trasero,
+            distancia       = excluded.distancia,
+            separacion      = excluded.separacion,
+            pecho           = excluded.pecho,
+            cintura         = excluded.cintura,
+            base            = excluded.base,
+            largo           = excluded.largo,
+            largo_manga     = excluded.largo_manga,
+            ancho_manga     = excluded.ancho_manga,
+            escote          = excluded.escote,
+            cuello          = excluded.cuello,
+            brazo           = excluded.brazo,
+            puno            = excluded.puno,
+            tiro            = excluded.tiro,
+            pierna          = excluded.pierna,
+            rodilla         = excluded.rodilla,
+            bota            = excluded.bota,
+            notes           = excluded.notes,
+            updated_at      = excluded.updated_at,
+            sync_status     = 'synced'
+          WHERE excluded.updated_at >= talla_templates.updated_at;
+          `,
+          row.id,
+          row.name,
+          row.type,
+          row.espalda ?? null,
+          row.hombro ?? null,
+          row.talle_delantero ?? null,
+          row.talle_trasero ?? null,
+          row.distancia ?? null,
+          row.separacion ?? null,
+          row.pecho ?? null,
+          row.cintura ?? null,
+          row.base ?? null,
+          row.largo ?? null,
+          row.largo_manga ?? null,
+          row.ancho_manga ?? null,
+          row.escote ?? null,
+          row.cuello ?? null,
+          row.brazo ?? null,
+          row.puno ?? null,
+          row.tiro ?? null,
+          row.pierna ?? null,
+          row.rodilla ?? null,
+          row.bota ?? null,
+          row.notes ?? null,
+          row.created_at,
+          row.updated_at,
+        );
+      }
+    });
+
+    const nextCursor = getLastCursor(rows, (row) => row.updated_at);
+    if (nextCursor) {
+      await this.checkpointRepository.advanceCursor(
+        "talla_templates",
         nextCursor,
       );
     }

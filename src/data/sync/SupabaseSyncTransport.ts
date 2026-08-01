@@ -1,10 +1,13 @@
 import type {
   CamisaMeasurement,
+  ChalecoMeasurement,
   Client,
   ClientTalla,
   PantalonMeasurement,
+  SacoMeasurement,
 } from "../../features/clients/domain/types";
 import type { PricingService } from "../../features/pricing/domain/pricingService";
+import type { TallaTemplate } from "../../features/tallas/domain/types";
 import type { SyncTransport } from "./SyncTransport";
 import type {
   SyncDeleteLogEntry,
@@ -15,6 +18,9 @@ import type {
   SyncPantalonQueueItem,
   SyncClientTallaQueueItem,
   SyncPricingServiceQueueItem,
+  SyncSacoQueueItem,
+  SyncChalecoQueueItem,
+  SyncTallaTemplateQueueItem,
   SyncDeleteQueueItem,
 } from "./types";
 
@@ -47,6 +53,21 @@ export class SupabaseSyncTransport implements SyncTransport {
             case "pricing_service":
               await this.syncPricingService(
                 (item as SyncPricingServiceQueueItem).payload,
+              );
+              break;
+            case "saco_measurement":
+              await this.syncSacoMeasurement(
+                (item as SyncSacoQueueItem).payload,
+              );
+              break;
+            case "chaleco_measurement":
+              await this.syncChalecoMeasurement(
+                (item as SyncChalecoQueueItem).payload,
+              );
+              break;
+            case "talla_template":
+              await this.syncTallaTemplate(
+                (item as SyncTallaTemplateQueueItem).payload,
               );
               break;
             case "delete_log":
@@ -213,6 +234,126 @@ export class SupabaseSyncTransport implements SyncTransport {
           notes: service.notes,
           createdat: service.createdAt,
           updatedat: service.updatedAt,
+        },
+        { onConflict: "id" },
+      );
+
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+
+      return { outcome: "synced" };
+    } catch {
+      return { outcome: "deferred_offline" };
+    }
+  }
+
+  async syncSacoMeasurement(
+    measurement: SacoMeasurement,
+  ): Promise<SyncTransportAttemptResult> {
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.from("saco_measurements").upsert(
+        {
+          id: measurement.id,
+          client_id: measurement.clientId,
+          espalda: measurement.espalda,
+          hombro: measurement.hombro,
+          talle_delantero: measurement.talleDelantero,
+          talle_trasero: measurement.talleTrasero,
+          distancia: measurement.distancia,
+          separacion: measurement.separacion,
+          pecho: measurement.pecho,
+          cintura: measurement.cintura,
+          base: measurement.base,
+          largo: measurement.largo,
+          largo_manga: measurement.largoManga,
+          ancho_manga: measurement.anchoManga,
+          escote: measurement.escote,
+          cuello: measurement.cuello,
+          brazo: measurement.brazo,
+          puno: measurement.puno,
+          created_at: measurement.createdAt,
+          updated_at: measurement.updatedAt,
+        },
+        { onConflict: "id" },
+      );
+
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+
+      return { outcome: "synced" };
+    } catch {
+      return { outcome: "deferred_offline" };
+    }
+  }
+
+  async syncChalecoMeasurement(
+    measurement: ChalecoMeasurement,
+  ): Promise<SyncTransportAttemptResult> {
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.from("chaleco_measurements").upsert(
+        {
+          id: measurement.id,
+          client_id: measurement.clientId,
+          espalda: measurement.espalda,
+          talle_trasero: measurement.talleTrasero,
+          largo: measurement.largo,
+          pecho: measurement.pecho,
+          cintura: measurement.cintura,
+          base: measurement.base,
+          escote: measurement.escote,
+          created_at: measurement.createdAt,
+          updated_at: measurement.updatedAt,
+        },
+        { onConflict: "id" },
+      );
+
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+
+      return { outcome: "synced" };
+    } catch {
+      return { outcome: "deferred_offline" };
+    }
+  }
+
+  async syncTallaTemplate(
+    template: TallaTemplate,
+  ): Promise<SyncTransportAttemptResult> {
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.from("talla_templates").upsert(
+        {
+          id: template.id,
+          name: template.name,
+          type: template.type,
+          espalda: template.espalda,
+          hombro: template.hombro,
+          talle_delantero: template.talleDelantero,
+          talle_trasero: template.talleTrasero,
+          distancia: template.distancia,
+          separacion: template.separacion,
+          pecho: template.pecho,
+          cintura: template.cintura,
+          base: template.base,
+          largo: template.largo,
+          largo_manga: template.largoManga,
+          ancho_manga: template.anchoManga,
+          escote: template.escote,
+          cuello: template.cuello,
+          brazo: template.brazo,
+          puno: template.puno,
+          tiro: template.tiro,
+          pierna: template.pierna,
+          rodilla: template.rodilla,
+          bota: template.bota,
+          notes: template.notes,
+          created_at: template.createdAt,
+          updated_at: template.updatedAt,
         },
         { onConflict: "id" },
       );

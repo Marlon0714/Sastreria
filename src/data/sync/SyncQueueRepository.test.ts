@@ -88,6 +88,9 @@ describe("SyncQueueRepository", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: "del-1",
@@ -114,14 +117,18 @@ describe("SyncQueueRepository", () => {
     expect(camisaItem.payload.changedBy).toBe("modista-1");
     expect(camisaItem.payload.changedAt).toBe("2026-04-30T08:59:00.000Z");
 
-    expect(mockGetAllAsync).toHaveBeenCalledTimes(6);
+    expect(mockGetAllAsync).toHaveBeenCalledTimes(9);
     const [clientSql, ...clientParams] = mockGetAllAsync.mock.calls[0] ?? [];
     const [camisaSql, ...camisaParams] = mockGetAllAsync.mock.calls[1] ?? [];
     const [pantalonSql, ...pantalonParams] =
       mockGetAllAsync.mock.calls[2] ?? [];
     const [tallaSql, ...tallaParams] = mockGetAllAsync.mock.calls[3] ?? [];
     const [pricingSql, ...pricingParams] = mockGetAllAsync.mock.calls[4] ?? [];
-    const [deleteSql, ...deleteParams] = mockGetAllAsync.mock.calls[5] ?? [];
+    const [sacoSql, ...sacoParams] = mockGetAllAsync.mock.calls[5] ?? [];
+    const [chalecoSql, ...chalecoParams] = mockGetAllAsync.mock.calls[6] ?? [];
+    const [tallaTemplateSql, ...tallaTemplateParams] =
+      mockGetAllAsync.mock.calls[7] ?? [];
+    const [deleteSql, ...deleteParams] = mockGetAllAsync.mock.calls[8] ?? [];
 
     expect(clientSql).toContain("FROM clients");
     expect(clientSql).toContain("sync_status IN (?, ?)");
@@ -148,6 +155,18 @@ describe("SyncQueueRepository", () => {
     expect(pricingSql).toContain("sync_status IN (?, ?)");
     expect(pricingSql).toContain("updatedAt");
     expect(pricingParams).toEqual(["pending", "error", 1]);
+
+    expect(sacoSql).toContain("FROM saco_measurements");
+    expect(sacoSql).toContain("sync_status IN (?, ?)");
+    expect(sacoParams).toEqual(["pending", "error", 1]);
+
+    expect(chalecoSql).toContain("FROM chaleco_measurements");
+    expect(chalecoSql).toContain("sync_status IN (?, ?)");
+    expect(chalecoParams).toEqual(["pending", "error", 1]);
+
+    expect(tallaTemplateSql).toContain("FROM talla_templates");
+    expect(tallaTemplateSql).toContain("sync_status IN (?, ?)");
+    expect(tallaTemplateParams).toEqual(["pending", "error", 1]);
 
     expect(deleteSql).toContain("FROM sync_delete_log");
     expect(deleteSql).toContain("sync_status IN (?, ?)");
@@ -217,6 +236,45 @@ describe("SyncQueueRepository", () => {
     expect(sql).not.toContain("updatedAt");
     expect(status).toBe("error");
     expect(id).toBe("price-1");
+  });
+
+  it("marks saco_measurement row as synced without mutating updated_at", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+
+    const repository = new SyncQueueRepository();
+    await repository.markAsSynced("saco_measurement", "saco-1");
+
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("UPDATE saco_measurements");
+    expect(sql).not.toContain("updated_at");
+    expect(status).toBe("synced");
+    expect(id).toBe("saco-1");
+  });
+
+  it("marks chaleco_measurement row as error without mutating updated_at", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+
+    const repository = new SyncQueueRepository();
+    await repository.markAsError("chaleco_measurement", "chaleco-1");
+
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("UPDATE chaleco_measurements");
+    expect(sql).not.toContain("updated_at");
+    expect(status).toBe("error");
+    expect(id).toBe("chaleco-1");
+  });
+
+  it("marks talla_template row as synced without mutating updated_at", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+
+    const repository = new SyncQueueRepository();
+    await repository.markAsSynced("talla_template", "template-1");
+
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("UPDATE talla_templates");
+    expect(sql).not.toContain("updated_at");
+    expect(status).toBe("synced");
+    expect(id).toBe("template-1");
   });
 
   it("marks delete_log row as synced without mutating timestamp", async () => {

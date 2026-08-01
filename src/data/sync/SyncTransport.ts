@@ -1,10 +1,13 @@
 import type {
   CamisaMeasurement,
+  ChalecoMeasurement,
   Client,
   ClientTalla,
   PantalonMeasurement,
+  SacoMeasurement,
 } from "../../features/clients/domain/types";
 import type { PricingService } from "../../features/pricing/domain/pricingService";
+import type { TallaTemplate } from "../../features/tallas/domain/types";
 import type {
   SyncDeleteLogEntry,
   SyncTransportAttemptResult,
@@ -14,6 +17,9 @@ import type {
   SyncPantalonQueueItem,
   SyncClientTallaQueueItem,
   SyncPricingServiceQueueItem,
+  SyncSacoQueueItem,
+  SyncChalecoQueueItem,
+  SyncTallaTemplateQueueItem,
   SyncDeleteQueueItem,
 } from "./types";
 
@@ -28,6 +34,15 @@ export interface SyncTransport {
   syncClientTalla(talla: ClientTalla): Promise<SyncTransportAttemptResult>;
   syncPricingService(
     service: PricingService,
+  ): Promise<SyncTransportAttemptResult>;
+  syncSacoMeasurement(
+    measurement: SacoMeasurement,
+  ): Promise<SyncTransportAttemptResult>;
+  syncChalecoMeasurement(
+    measurement: ChalecoMeasurement,
+  ): Promise<SyncTransportAttemptResult>;
+  syncTallaTemplate(
+    template: TallaTemplate,
   ): Promise<SyncTransportAttemptResult>;
   syncDeleteLogEntry(
     entry: SyncDeleteLogEntry,
@@ -64,6 +79,24 @@ export class NoopSyncTransport implements SyncTransport {
     return Promise.resolve({ outcome: "deferred_local_only" });
   }
 
+  async syncSacoMeasurement(
+    _measurement: SacoMeasurement,
+  ): Promise<SyncTransportAttemptResult> {
+    return Promise.resolve({ outcome: "deferred_local_only" });
+  }
+
+  async syncChalecoMeasurement(
+    _measurement: ChalecoMeasurement,
+  ): Promise<SyncTransportAttemptResult> {
+    return Promise.resolve({ outcome: "deferred_local_only" });
+  }
+
+  async syncTallaTemplate(
+    _template: TallaTemplate,
+  ): Promise<SyncTransportAttemptResult> {
+    return Promise.resolve({ outcome: "deferred_local_only" });
+  }
+
   async syncDeleteLogEntry(
     _entry: SyncDeleteLogEntry,
   ): Promise<SyncTransportAttemptResult> {
@@ -96,6 +129,21 @@ export class NoopSyncTransport implements SyncTransport {
             case "pricing_service":
               await this.syncPricingService(
                 (item as SyncPricingServiceQueueItem).payload,
+              );
+              break;
+            case "saco_measurement":
+              await this.syncSacoMeasurement(
+                (item as SyncSacoQueueItem).payload,
+              );
+              break;
+            case "chaleco_measurement":
+              await this.syncChalecoMeasurement(
+                (item as SyncChalecoQueueItem).payload,
+              );
+              break;
+            case "talla_template":
+              await this.syncTallaTemplate(
+                (item as SyncTallaTemplateQueueItem).payload,
               );
               break;
             case "delete_log":
