@@ -235,7 +235,7 @@ describe("SupabaseSyncTransport", () => {
   });
 
   describe("syncPricingService", () => {
-    it("upserts to 'pricing_services' table on success, preserving camelCase columns", async () => {
+    it("upserts to 'pricing_services' table on success, using the real lowercase createdat/updatedat columns", async () => {
       mockUpsert.mockResolvedValueOnce({ error: null });
       const transport = new SupabaseSyncTransport();
 
@@ -248,8 +248,8 @@ describe("SupabaseSyncTransport", () => {
           name: "Dobladillo",
           price: 10000,
           category: "arreglo",
-          createdAt: "2026-08-01T10:00:00.000Z",
-          updatedAt: "2026-08-01T10:00:00.000Z",
+          createdat: "2026-08-01T10:00:00.000Z",
+          updatedat: "2026-08-01T10:00:00.000Z",
         }),
         { onConflict: "id" },
       );

@@ -434,14 +434,20 @@ export class SupabasePullSync {
       "pricing_services",
     );
     const supabase = getSupabaseClient();
+    // La tabla real en Supabase quedó con columnas en minúscula
+    // (createdat/updatedat) por el CREATE TABLE sin comillas — se alias a
+    // camelCase acá para que el resto del código (row mapping, INSERT local)
+    // no tenga que cambiar.
     let query = supabase
       .from("pricing_services")
-      .select("id, name, price, category, notes, createdAt, updatedAt")
-      .order("updatedAt", { ascending: true })
+      .select(
+        "id, name, price, category, notes, createdAt:createdat, updatedAt:updatedat",
+      )
+      .order("updatedat", { ascending: true })
       .order("id", { ascending: true })
       .limit(this.batchSize);
 
-    query = this.applyCursorFilter(query, cursor, "updatedAt");
+    query = this.applyCursorFilter(query, cursor, "updatedat");
 
     const { data, error } = await query;
     const db = getDatabase();
@@ -576,7 +582,7 @@ export class SupabasePullSync {
   private applyCursorFilter<TQuery>(
     query: TQuery,
     cursor: SyncCursor | null,
-    timestampColumn: "updated_at" | "deleted_at" | "updatedAt",
+    timestampColumn: "updated_at" | "deleted_at" | "updatedat",
   ): TQuery {
     if (!cursor) {
       return query;

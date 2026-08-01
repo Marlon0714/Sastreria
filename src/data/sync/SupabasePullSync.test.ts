@@ -348,9 +348,10 @@ describe("SupabasePullSync", () => {
     const pullSync = new SupabasePullSync(checkpointRepository);
     await pullSync.pullIncremental();
 
-    // El cursor de esta tabla usa "updatedAt" (camelCase), no "updated_at".
+    // La columna real en Supabase es "updatedat" (todo minúscula, Postgres
+    // plegó el CREATE TABLE sin comillas) — el filtro debe usar ese nombre.
     expect(mockOrCalls.pricing_services).toContain(
-      "updatedAt.gt.2026-08-01T09:00:00.000Z,and(updatedAt.eq.2026-08-01T09:00:00.000Z,id.gt.00000000-0000-0000-0000-000000000002)",
+      "updatedat.gt.2026-08-01T09:00:00.000Z,and(updatedat.eq.2026-08-01T09:00:00.000Z,id.gt.00000000-0000-0000-0000-000000000002)",
     );
 
     const pricingCalls = mockRunAsync.mock.calls.filter((call) =>

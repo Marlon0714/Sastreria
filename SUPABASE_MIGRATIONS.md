@@ -316,3 +316,8 @@ CREATE POLICY "authenticated all pricing_services" ON pricing_services
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
 - Si tienes dudas, revisa `src/data/local/migrations.ts` y traduce cada cambio relevante.
 - Si una columna ya existe, puedes omitir el error correspondiente.
+- **⚠️ Trampa de Postgres con `CREATE TABLE ... createdAt TEXT` (sin comillas):** Postgres pliega los identificadores no citados a minúsculas. El SQL de `v8_pricing_services` (arriba) declara `createdAt`/`updatedAt`, pero la tabla real en Supabase terminó con columnas `createdat`/`updatedat` (todo minúscula) — descubierto el 2026-08-01 al conectar el sync (error `42703 undefined_column`). SQLite local NO tiene este problema (preserva el case declarado y compara sin distinguir mayúsculas). Antes de asumir el nombre de una columna en Supabase, verifica con:
+  ```sql
+  SELECT column_name FROM information_schema.columns WHERE table_name = '<tabla>';
+  ```
+  El código de sync (`SupabaseSyncTransport.ts`, `SupabasePullSync.ts`) para `pricing_services` ya usa `createdat`/`updatedat` reales al hablar con Supabase (con alias en el `.select()` de vuelta a camelCase para no tocar el resto del código).
