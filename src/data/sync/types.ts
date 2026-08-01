@@ -1,14 +1,18 @@
 import type {
   CamisaMeasurement,
   Client,
+  ClientTalla,
   PantalonMeasurement,
 } from "../../features/clients/domain/types";
+import type { PricingService } from "../../features/pricing/domain/pricingService";
 import type { SyncStatus } from "../../shared/domain/baseEntity";
 
 export type SyncEntityType =
   | "client"
   | "camisa_measurement"
   | "pantalon_measurement"
+  | "client_talla"
+  | "pricing_service"
   | "delete_log";
 
 export type SyncOperationType = "upsert" | "delete";
@@ -17,6 +21,8 @@ export type SyncCheckpointScope =
   | "clients"
   | "camisa_measurements"
   | "pantalon_measurements"
+  | "client_tallas"
+  | "pricing_services"
   | "sync_delete_log";
 
 export interface SyncCursor {
@@ -95,6 +101,16 @@ export interface SyncPantalonQueueItem extends SyncQueueItemBase {
   payload: PantalonMeasurement;
 }
 
+export interface SyncClientTallaQueueItem extends SyncQueueItemBase {
+  entityType: "client_talla";
+  payload: ClientTalla;
+}
+
+export interface SyncPricingServiceQueueItem extends SyncQueueItemBase {
+  entityType: "pricing_service";
+  payload: PricingService;
+}
+
 export interface SyncDeleteQueueItem extends SyncQueueItemBase {
   entityType: "delete_log";
   operationType: "delete";
@@ -105,6 +121,8 @@ export type SyncQueueItem =
   | SyncClientQueueItem
   | SyncCamisaQueueItem
   | SyncPantalonQueueItem
+  | SyncClientTallaQueueItem
+  | SyncPricingServiceQueueItem
   | SyncDeleteQueueItem;
 
 export interface RetryPolicy {

@@ -281,6 +281,36 @@ CREATE POLICY "authenticated all talla_templates"
 
 ---
 
+### v14_wire_pricing_and_tallas_sync (2026-08-01)
+
+**Contexto:** `pricing_services` y `client_tallas` nunca estuvieron conectadas al motor de sync (ver `N-058`/decisions-log 2026-08-01 en `.github/context/`). Al activarlas, se detectaron dos gaps en el esquema de Supabase respecto al local que deben aplicarse ANTES de desplegar el build con el fix:
+
+```sql
+-- 1. La migración local v13_pricing_services_category nunca se documentó/aplicó aquí.
+-- Sin esto, cualquier upsert de pricing_service fallará (columna inexistente).
+ALTER TABLE pricing_services
+  ADD COLUMN category TEXT NOT NULL DEFAULT 'arreglo'
+  CHECK (category IN ('arreglo', 'confeccion'));
+
+-- 2. sync_delete_log.entity_type no permitía 'client_talla'. El delete de tallas
+-- ya escribía este valor localmente (ver TallaRepositoryImpl.delete); sin este
+-- ALTER, todo delete de talla queda atascado en estado 'error' permanentemente.
+-- Verificar el nombre real de la constraint en el SQL editor antes del DROP.
+ALTER TABLE sync_delete_log DROP CONSTRAINT IF EXISTS sync_delete_log_entity_type_check;
+ALTER TABLE sync_delete_log
+  ADD CONSTRAINT sync_delete_log_entity_type_check
+  CHECK (entity_type IN ('client', 'camisa_measurement', 'pantalon_measurement', 'client_talla'));
+
+-- 3. pricing_services no tenía RLS/policy documentada (a diferencia de client_tallas
+-- y talla_templates). Verificar en el dashboard: si RLS está activado sin policy,
+-- el sync fallará en silencio (permission denied). Aplicar solo si hace falta:
+ALTER TABLE pricing_services ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated all pricing_services" ON pricing_services
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

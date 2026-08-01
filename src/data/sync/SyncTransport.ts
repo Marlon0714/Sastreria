@@ -1,8 +1,10 @@
 import type {
   CamisaMeasurement,
   Client,
+  ClientTalla,
   PantalonMeasurement,
 } from "../../features/clients/domain/types";
+import type { PricingService } from "../../features/pricing/domain/pricingService";
 import type {
   SyncDeleteLogEntry,
   SyncTransportAttemptResult,
@@ -10,6 +12,8 @@ import type {
   SyncClientQueueItem,
   SyncCamisaQueueItem,
   SyncPantalonQueueItem,
+  SyncClientTallaQueueItem,
+  SyncPricingServiceQueueItem,
   SyncDeleteQueueItem,
 } from "./types";
 
@@ -20,6 +24,10 @@ export interface SyncTransport {
   ): Promise<SyncTransportAttemptResult>;
   syncPantalonMeasurement(
     measurement: PantalonMeasurement,
+  ): Promise<SyncTransportAttemptResult>;
+  syncClientTalla(talla: ClientTalla): Promise<SyncTransportAttemptResult>;
+  syncPricingService(
+    service: PricingService,
   ): Promise<SyncTransportAttemptResult>;
   syncDeleteLogEntry(
     entry: SyncDeleteLogEntry,
@@ -40,6 +48,18 @@ export class NoopSyncTransport implements SyncTransport {
 
   async syncPantalonMeasurement(
     _measurement: PantalonMeasurement,
+  ): Promise<SyncTransportAttemptResult> {
+    return Promise.resolve({ outcome: "deferred_local_only" });
+  }
+
+  async syncClientTalla(
+    _talla: ClientTalla,
+  ): Promise<SyncTransportAttemptResult> {
+    return Promise.resolve({ outcome: "deferred_local_only" });
+  }
+
+  async syncPricingService(
+    _service: PricingService,
   ): Promise<SyncTransportAttemptResult> {
     return Promise.resolve({ outcome: "deferred_local_only" });
   }
@@ -66,6 +86,16 @@ export class NoopSyncTransport implements SyncTransport {
             case "pantalon_measurement":
               await this.syncPantalonMeasurement(
                 (item as SyncPantalonQueueItem).payload,
+              );
+              break;
+            case "client_talla":
+              await this.syncClientTalla(
+                (item as SyncClientTallaQueueItem).payload,
+              );
+              break;
+            case "pricing_service":
+              await this.syncPricingService(
+                (item as SyncPricingServiceQueueItem).payload,
               );
               break;
             case "delete_log":

@@ -3,7 +3,7 @@ import type {
   CreatePricingServiceInput,
   PricingService,
 } from "../domain/pricingService";
-import { PricingServiceRepositoryImpl } from "../../../data/local/PricingServiceRepositoryImpl";
+import { getDefaultPricingServiceRepository } from "../../../data/local/pricingDependencies";
 import { pricingStrings } from "../domain/strings";
 import { useNetworkStatus } from "../../../shared/utils/network";
 
@@ -22,7 +22,7 @@ export function usePricingForm(id?: string, options?: UsePricingFormOptions) {
   const [syncStatus, setSyncStatus] = useState<
     "pending" | "synced" | "error" | undefined
   >(undefined);
-  const repo = new PricingServiceRepositoryImpl();
+  const repo = getDefaultPricingServiceRepository();
   const { isOnline } = useNetworkStatus();
 
   useEffect(() => {

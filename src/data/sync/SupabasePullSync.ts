@@ -10,7 +10,8 @@ import type { SyncCursor } from "./types";
 type DeleteEntityType =
   | "client"
   | "camisa_measurement"
-  | "pantalon_measurement";
+  | "pantalon_measurement"
+  | "client_talla";
 
 interface ClientRow {
   id: string;
@@ -65,6 +66,26 @@ interface PantalonRow {
   updated_at: string;
 }
 
+interface TallaRow {
+  id: string;
+  client_id: string;
+  type: "camisa" | "pantalon" | "saco" | "chaleco";
+  value: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PricingServiceRow {
+  id: string;
+  name: string;
+  price: number;
+  category: "arreglo" | "confeccion";
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface DeleteLogRow {
   id: string;
   entity_type: DeleteEntityType;
@@ -104,6 +125,8 @@ export class SupabasePullSync {
     await this.pullClientsIncremental();
     await this.pullCamisaMeasurementsIncremental();
     await this.pullPantalonMeasurementsIncremental();
+    await this.pullClientTallasIncremental();
+    await this.pullPricingServicesIncremental();
     await this.pullDeleteLogIncremental();
   }
 
@@ -344,6 +367,132 @@ export class SupabasePullSync {
     }
   }
 
+  private async pullClientTallasIncremental(): Promise<void> {
+    const cursor = await this.checkpointRepository.getCursor("client_tallas");
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("client_tallas")
+      .select("id, client_id, type, value, notes, created_at, updated_at")
+      .order("updated_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(this.batchSize);
+
+    query = this.applyCursorFilter(query, cursor, "updated_at");
+
+    const { data, error } = await query;
+    const db = getDatabase();
+
+    if (error) {
+      throw new Error(
+        `[pull] client_tallas incremental fetch failed: ${error.code}`,
+      );
+    }
+
+    const rows = (data ?? []) as unknown as TallaRow[];
+    if (!rows.length) {
+      return;
+    }
+
+    await db.withTransactionAsync(async () => {
+      for (const row of rows) {
+        await db.runAsync(
+          `
+          INSERT INTO client_tallas
+            (id, client_id, type, value, notes, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'synced')
+          ON CONFLICT(id) DO UPDATE SET
+            client_id   = excluded.client_id,
+            type        = excluded.type,
+            value       = excluded.value,
+            notes       = excluded.notes,
+            updated_at  = excluded.updated_at,
+            sync_status = 'synced'
+          WHERE excluded.updated_at >= client_tallas.updated_at;
+          `,
+          row.id,
+          row.client_id,
+          row.type,
+          row.value,
+          row.notes ?? null,
+          row.created_at,
+          row.updated_at,
+        );
+      }
+    });
+
+    const nextCursor = getLastCursor(rows, (row) => row.updated_at);
+    if (nextCursor) {
+      await this.checkpointRepository.advanceCursor(
+        "client_tallas",
+        nextCursor,
+      );
+    }
+  }
+
+  private async pullPricingServicesIncremental(): Promise<void> {
+    const cursor = await this.checkpointRepository.getCursor(
+      "pricing_services",
+    );
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("pricing_services")
+      .select("id, name, price, category, notes, createdAt, updatedAt")
+      .order("updatedAt", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(this.batchSize);
+
+    query = this.applyCursorFilter(query, cursor, "updatedAt");
+
+    const { data, error } = await query;
+    const db = getDatabase();
+
+    if (error) {
+      throw new Error(
+        `[pull] pricing_services incremental fetch failed: ${error.code}`,
+      );
+    }
+
+    const rows = (data ?? []) as unknown as PricingServiceRow[];
+    if (!rows.length) {
+      return;
+    }
+
+    await db.withTransactionAsync(async () => {
+      for (const row of rows) {
+        await db.runAsync(
+          `
+          INSERT INTO pricing_services
+            (id, name, price, category, notes, createdAt, updatedAt, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'synced')
+          ON CONFLICT(id) DO UPDATE SET
+            name        = excluded.name,
+            price       = excluded.price,
+            category    = excluded.category,
+            notes       = excluded.notes,
+            updatedAt   = excluded.updatedAt,
+            sync_status = 'synced'
+          WHERE excluded.updatedAt >= pricing_services.updatedAt;
+          `,
+          row.id,
+          row.name,
+          row.price,
+          row.category,
+          row.notes ?? null,
+          row.createdAt,
+          row.updatedAt,
+        );
+      }
+    });
+
+    const nextCursor = getLastCursor(rows, (row) => row.updatedAt);
+    if (nextCursor) {
+      await this.checkpointRepository.advanceCursor(
+        "pricing_services",
+        nextCursor,
+      );
+    }
+  }
+
   private async pullDeleteLogIncremental(): Promise<void> {
     const cursor = await this.checkpointRepository.getCursor("sync_delete_log");
     const supabase = getSupabaseClient();
@@ -397,6 +546,13 @@ export class SupabasePullSync {
           );
         }
 
+        if (row.entity_type === "client_talla") {
+          await db.runAsync(
+            `DELETE FROM client_tallas WHERE id = ?;`,
+            row.entity_id,
+          );
+        }
+
         await db.runAsync(
           `
           UPDATE sync_delete_log
@@ -420,7 +576,7 @@ export class SupabasePullSync {
   private applyCursorFilter<TQuery>(
     query: TQuery,
     cursor: SyncCursor | null,
-    timestampColumn: "updated_at" | "deleted_at",
+    timestampColumn: "updated_at" | "deleted_at" | "updatedAt",
   ): TQuery {
     if (!cursor) {
       return query;

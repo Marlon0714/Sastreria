@@ -113,6 +113,42 @@ const pantalonItem: SyncQueueItem = {
   },
 };
 
+const tallaItem: SyncQueueItem = {
+  entityType: "client_talla",
+  id: "talla-1",
+  updatedAt: "2026-08-01T09:00:00.000Z",
+  syncStatus: "pending",
+  operationType: "upsert",
+  payload: {
+    id: "talla-1",
+    clientId: "c-1",
+    type: "camisa",
+    value: "M",
+    notes: null,
+    createdAt: "2026-08-01T09:00:00.000Z",
+    updatedAt: "2026-08-01T09:00:00.000Z",
+    syncStatus: "pending",
+  },
+};
+
+const pricingItem: SyncQueueItem = {
+  entityType: "pricing_service",
+  id: "price-1",
+  updatedAt: "2026-08-01T09:10:00.000Z",
+  syncStatus: "pending",
+  operationType: "upsert",
+  payload: {
+    id: "price-1",
+    name: "Dobladillo",
+    price: 10000,
+    category: "arreglo",
+    notes: null,
+    createdAt: "2026-08-01T09:10:00.000Z",
+    updatedAt: "2026-08-01T09:10:00.000Z",
+    syncStatus: "pending",
+  },
+};
+
 const deleteItem: SyncQueueItem = {
   entityType: "delete_log",
   id: "del-1",
@@ -139,6 +175,8 @@ function makeMockTransport(): jest.Mocked<SyncTransport> {
     syncPantalonMeasurement: jest.fn(async () =>
       Promise.resolve(syncedResult()),
     ),
+    syncClientTalla: jest.fn(async () => Promise.resolve(syncedResult())),
+    syncPricingService: jest.fn(async () => Promise.resolve(syncedResult())),
     syncDeleteLogEntry: jest.fn(async () => Promise.resolve(syncedResult())),
     syncAll: jest.fn(async () => Promise.resolve()),
   };
@@ -252,6 +290,73 @@ describe("SyncQueueProcessor", () => {
       "pantalon_measurement",
       "pan-1",
     );
+  });
+
+  it("syncs client_talla items through talla transport method", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [tallaItem]),
+      hasPendingItems: jest.fn(async () => false),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+
+    const result = await processor.runOnce();
+
+    expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
+    expect(transport.syncClientTalla).toHaveBeenCalledTimes(1);
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
+      "client_talla",
+      "talla-1",
+    );
+  });
+
+  it("syncs pricing_service items through pricing transport method", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [pricingItem]),
+      hasPendingItems: jest.fn(async () => false),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+
+    const result = await processor.runOnce();
+
+    expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
+    expect(transport.syncPricingService).toHaveBeenCalledTimes(1);
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
+      "pricing_service",
+      "price-1",
+    );
+  });
+
+  it("regresión: un entityType no reconocido NO debe caer silenciosamente en syncPantalonMeasurement", async () => {
+    const unknownItem = {
+      ...pantalonItem,
+      id: "unknown-1",
+      entityType: "unknown_future_entity",
+    } as unknown as SyncQueueItem;
+
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [unknownItem]),
+      hasPendingItems: jest.fn(async () => false),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport, {
+      maxRetries: 1,
+      baseDelayMs: 1,
+    });
+
+    const result = await processor.runOnce();
+
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
+    expect(result).toEqual({ processed: 1, synced: 0, deferred: 0, failed: 1 });
   });
 
   it("syncs delete log items through delete transport method", async () => {

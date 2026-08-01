@@ -173,18 +173,25 @@ export class SyncQueueProcessor {
   private async syncItem(
     item: SyncQueueItem,
   ): ReturnType<SyncTransport["syncClient"]> {
-    if (item.entityType === "delete_log") {
-      return this.transport.syncDeleteLogEntry(item.payload);
+    switch (item.entityType) {
+      case "delete_log":
+        return this.transport.syncDeleteLogEntry(item.payload);
+      case "client":
+        return this.transport.syncClient(item.payload);
+      case "camisa_measurement":
+        return this.transport.syncCamisaMeasurement(item.payload);
+      case "pantalon_measurement":
+        return this.transport.syncPantalonMeasurement(item.payload);
+      case "client_talla":
+        return this.transport.syncClientTalla(item.payload);
+      case "pricing_service":
+        return this.transport.syncPricingService(item.payload);
+      default: {
+        const exhaustiveCheck: never = item;
+        throw new Error(
+          `Tipo de entidad de sync no soportado: ${JSON.stringify(exhaustiveCheck)}`,
+        );
+      }
     }
-
-    if (item.entityType === "client") {
-      return this.transport.syncClient(item.payload);
-    }
-
-    if (item.entityType === "camisa_measurement") {
-      return this.transport.syncCamisaMeasurement(item.payload);
-    }
-
-    return this.transport.syncPantalonMeasurement(item.payload);
   }
 }

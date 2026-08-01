@@ -21,6 +21,8 @@ const mockQueryResults: Record<string, MockQueryResult[]> = {
   clients: [],
   camisa_measurements: [],
   pantalon_measurements: [],
+  client_tallas: [],
+  pricing_services: [],
   sync_delete_log: [],
 };
 
@@ -28,6 +30,8 @@ const mockOrCalls: Record<string, string[]> = {
   clients: [],
   camisa_measurements: [],
   pantalon_measurements: [],
+  client_tallas: [],
+  pricing_services: [],
   sync_delete_log: [],
 };
 
@@ -82,10 +86,14 @@ describe("SupabasePullSync", () => {
     mockQueryResults.clients = [];
     mockQueryResults.camisa_measurements = [];
     mockQueryResults.pantalon_measurements = [];
+    mockQueryResults.client_tallas = [];
+    mockQueryResults.pricing_services = [];
     mockQueryResults.sync_delete_log = [];
     mockOrCalls.clients = [];
     mockOrCalls.camisa_measurements = [];
     mockOrCalls.pantalon_measurements = [];
+    mockOrCalls.client_tallas = [];
+    mockOrCalls.pricing_services = [];
     mockOrCalls.sync_delete_log = [];
     mockRunAsync.mockReset();
     mockWithTransactionAsync.mockClear();
@@ -268,6 +276,163 @@ describe("SupabasePullSync", () => {
         id: "pan-1",
         updatedAt: "2026-05-01T10:12:00.000Z",
       },
+    );
+  });
+
+  it("applies client_tallas incremental upserts and advances checkpoint", async () => {
+    mockQueryResults.client_tallas.push({
+      data: [
+        {
+          id: "talla-1",
+          client_id: "c-1",
+          type: "camisa",
+          value: "M",
+          notes: null,
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const tallaCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO client_tallas"),
+    );
+    expect(tallaCalls).toHaveLength(1);
+    const [, ...params] = tallaCalls[0] ?? [];
+    expect(params).toContain("camisa");
+    expect(params).toContain("M");
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "client_tallas",
+      { id: "talla-1", updatedAt: "2026-08-01T10:05:00.000Z" },
+    );
+  });
+
+  it("applies pricing_services incremental upserts using the updatedAt (camelCase) cursor and advances checkpoint", async () => {
+    mockQueryResults.pricing_services.push({
+      data: [
+        {
+          id: "price-1",
+          name: "Dobladillo",
+          price: 10000,
+          category: "arreglo",
+          notes: null,
+          createdAt: "2026-08-01T10:00:00.000Z",
+          updatedAt: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async (scope: string) => {
+        if (scope === "pricing_services") {
+          return {
+            updatedAt: "2026-08-01T09:00:00.000Z",
+            id: "00000000-0000-0000-0000-000000000002",
+          };
+        }
+        return null;
+      }),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    // El cursor de esta tabla usa "updatedAt" (camelCase), no "updated_at".
+    expect(mockOrCalls.pricing_services).toContain(
+      "updatedAt.gt.2026-08-01T09:00:00.000Z,and(updatedAt.eq.2026-08-01T09:00:00.000Z,id.gt.00000000-0000-0000-0000-000000000002)",
+    );
+
+    const pricingCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO pricing_services"),
+    );
+    expect(pricingCalls).toHaveLength(1);
+    const [, ...params] = pricingCalls[0] ?? [];
+    expect(params).toContain("Dobladillo");
+    expect(params).toContain(10000);
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "pricing_services",
+      { id: "price-1", updatedAt: "2026-08-01T10:05:00.000Z" },
+    );
+  });
+
+  it("throws when client_tallas incremental fetch fails", async () => {
+    mockQueryResults.client_tallas.push({
+      data: [],
+      error: { code: "42503" },
+    });
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+    const pullSync = new SupabasePullSync(checkpointRepository);
+
+    await expect(pullSync.pullIncremental()).rejects.toThrow(
+      "[pull] client_tallas incremental fetch failed: 42503",
+    );
+    expect(checkpointRepository.advanceCursor).not.toHaveBeenCalled();
+  });
+
+  it("throws when pricing_services incremental fetch fails", async () => {
+    mockQueryResults.pricing_services.push({
+      data: [],
+      error: { code: "42503" },
+    });
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+    const pullSync = new SupabasePullSync(checkpointRepository);
+
+    await expect(pullSync.pullIncremental()).rejects.toThrow(
+      "[pull] pricing_services incremental fetch failed: 42503",
+    );
+    expect(checkpointRepository.advanceCursor).not.toHaveBeenCalled();
+  });
+
+  it("applies client_talla delete by id when entity_type is client_talla", async () => {
+    mockQueryResults.sync_delete_log.push({
+      data: [
+        {
+          id: "del-4",
+          entity_type: "client_talla",
+          entity_id: "talla-99",
+          deleted_at: "2026-08-01T14:00:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const sqlStatements = mockRunAsync.mock.calls.map((call) =>
+      String(call[0]),
+    );
+    expect(
+      sqlStatements.some((sql) => sql.includes("DELETE FROM client_tallas")),
+    ).toBe(true);
+    expect(
+      sqlStatements.some((sql) => sql.includes("DELETE FROM clients")),
+    ).toBe(false);
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "sync_delete_log",
+      { id: "del-4", updatedAt: "2026-08-01T14:00:00.000Z" },
     );
   });
 

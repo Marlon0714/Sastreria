@@ -6,12 +6,16 @@ type InvalidationTable =
   | "clients"
   | "camisa_measurements"
   | "pantalon_measurements"
+  | "client_tallas"
+  | "pricing_services"
   | "sync_delete_log";
 
 const SYNC_TABLES: readonly InvalidationTable[] = [
   "clients",
   "camisa_measurements",
   "pantalon_measurements",
+  "client_tallas",
+  "pricing_services",
   "sync_delete_log",
 ];
 

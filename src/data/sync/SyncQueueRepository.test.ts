@@ -86,6 +86,8 @@ describe("SyncQueueRepository", () => {
         },
       ])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: "del-1",
@@ -112,12 +114,14 @@ describe("SyncQueueRepository", () => {
     expect(camisaItem.payload.changedBy).toBe("modista-1");
     expect(camisaItem.payload.changedAt).toBe("2026-04-30T08:59:00.000Z");
 
-    expect(mockGetAllAsync).toHaveBeenCalledTimes(4);
+    expect(mockGetAllAsync).toHaveBeenCalledTimes(6);
     const [clientSql, ...clientParams] = mockGetAllAsync.mock.calls[0] ?? [];
     const [camisaSql, ...camisaParams] = mockGetAllAsync.mock.calls[1] ?? [];
     const [pantalonSql, ...pantalonParams] =
       mockGetAllAsync.mock.calls[2] ?? [];
-    const [deleteSql, ...deleteParams] = mockGetAllAsync.mock.calls[3] ?? [];
+    const [tallaSql, ...tallaParams] = mockGetAllAsync.mock.calls[3] ?? [];
+    const [pricingSql, ...pricingParams] = mockGetAllAsync.mock.calls[4] ?? [];
+    const [deleteSql, ...deleteParams] = mockGetAllAsync.mock.calls[5] ?? [];
 
     expect(clientSql).toContain("FROM clients");
     expect(clientSql).toContain("sync_status IN (?, ?)");
@@ -135,6 +139,15 @@ describe("SyncQueueRepository", () => {
     expect(pantalonSql).toContain("FROM pantalon_measurements");
     expect(pantalonSql).toContain("sync_status IN (?, ?)");
     expect(pantalonParams).toEqual(["pending", "error", 1]);
+
+    expect(tallaSql).toContain("FROM client_tallas");
+    expect(tallaSql).toContain("sync_status IN (?, ?)");
+    expect(tallaParams).toEqual(["pending", "error", 1]);
+
+    expect(pricingSql).toContain("FROM pricing_services");
+    expect(pricingSql).toContain("sync_status IN (?, ?)");
+    expect(pricingSql).toContain("updatedAt");
+    expect(pricingParams).toEqual(["pending", "error", 1]);
 
     expect(deleteSql).toContain("FROM sync_delete_log");
     expect(deleteSql).toContain("sync_status IN (?, ?)");
@@ -178,6 +191,32 @@ describe("SyncQueueRepository", () => {
     expect(sql).not.toContain("updated_at");
     expect(status).toBe("synced");
     expect(id).toBe("pan-1");
+  });
+
+  it("marks client_talla row as synced without mutating updated_at", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+
+    const repository = new SyncQueueRepository();
+    await repository.markAsSynced("client_talla", "talla-1");
+
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("UPDATE client_tallas");
+    expect(sql).not.toContain("updated_at");
+    expect(status).toBe("synced");
+    expect(id).toBe("talla-1");
+  });
+
+  it("marks pricing_service row as error without mutating updatedAt", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+
+    const repository = new SyncQueueRepository();
+    await repository.markAsError("pricing_service", "price-1");
+
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("UPDATE pricing_services");
+    expect(sql).not.toContain("updatedAt");
+    expect(status).toBe("error");
+    expect(id).toBe("price-1");
   });
 
   it("marks delete_log row as synced without mutating timestamp", async () => {

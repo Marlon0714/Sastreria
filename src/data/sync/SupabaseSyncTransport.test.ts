@@ -73,6 +73,28 @@ const basePantalon = {
   syncStatus: "pending" as const,
 };
 
+const baseTalla = {
+  id: "talla-1",
+  clientId: "c-1",
+  type: "camisa" as const,
+  value: "M",
+  notes: null,
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  syncStatus: "pending" as const,
+};
+
+const basePricing = {
+  id: "price-1",
+  name: "Dobladillo",
+  price: 10000,
+  category: "arreglo" as const,
+  notes: null,
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  syncStatus: "pending" as const,
+};
+
 const baseDeleteLog = {
   id: "del-1",
   entityType: "client" as const,
@@ -184,6 +206,64 @@ describe("SupabaseSyncTransport", () => {
     });
   });
 
+  describe("syncClientTalla", () => {
+    it("upserts to 'client_tallas' table on success", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncClientTalla(baseTalla);
+
+      expect(mockFrom).toHaveBeenCalledWith("client_tallas");
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "talla-1",
+          client_id: "c-1",
+          type: "camisa",
+          value: "M",
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("returns failed outcome on Supabase failure", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncClientTalla(baseTalla);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+  });
+
+  describe("syncPricingService", () => {
+    it("upserts to 'pricing_services' table on success, preserving camelCase columns", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncPricingService(basePricing);
+
+      expect(mockFrom).toHaveBeenCalledWith("pricing_services");
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "price-1",
+          name: "Dobladillo",
+          price: 10000,
+          category: "arreglo",
+          createdAt: "2026-08-01T10:00:00.000Z",
+          updatedAt: "2026-08-01T10:00:00.000Z",
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("returns failed outcome on Supabase failure", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncPricingService(basePricing);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+  });
+
   describe("syncDeleteLogEntry", () => {
     it("upserts to 'sync_delete_log' then deletes camisa, pantalon and client from cloud", async () => {
       mockUpsert.mockResolvedValueOnce({ error: null });
@@ -257,6 +337,24 @@ describe("SupabaseSyncTransport", () => {
 
       expect(result).toEqual({ outcome: "synced" });
       expect(mockFrom).toHaveBeenCalledWith("camisa_measurements");
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it("deletes only client_tallas when entityType is client_talla", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const tallaDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "client_talla" as const,
+        entityId: "talla-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(tallaDeleteLog);
+
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockFrom).toHaveBeenCalledWith("client_tallas");
+      expect(mockFrom).not.toHaveBeenCalledWith("clients");
       expect(mockDelete).toHaveBeenCalledTimes(1);
     });
 

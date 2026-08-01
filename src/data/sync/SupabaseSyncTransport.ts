@@ -1,8 +1,10 @@
 import type {
   CamisaMeasurement,
   Client,
+  ClientTalla,
   PantalonMeasurement,
 } from "../../features/clients/domain/types";
+import type { PricingService } from "../../features/pricing/domain/pricingService";
 import type { SyncTransport } from "./SyncTransport";
 import type {
   SyncDeleteLogEntry,
@@ -11,6 +13,8 @@ import type {
   SyncClientQueueItem,
   SyncCamisaQueueItem,
   SyncPantalonQueueItem,
+  SyncClientTallaQueueItem,
+  SyncPricingServiceQueueItem,
   SyncDeleteQueueItem,
 } from "./types";
 
@@ -33,6 +37,16 @@ export class SupabaseSyncTransport implements SyncTransport {
             case "pantalon_measurement":
               await this.syncPantalonMeasurement(
                 (item as SyncPantalonQueueItem).payload,
+              );
+              break;
+            case "client_talla":
+              await this.syncClientTalla(
+                (item as SyncClientTallaQueueItem).payload,
+              );
+              break;
+            case "pricing_service":
+              await this.syncPricingService(
+                (item as SyncPricingServiceQueueItem).payload,
               );
               break;
             case "delete_log":
@@ -153,6 +167,62 @@ export class SupabaseSyncTransport implements SyncTransport {
     }
   }
 
+  async syncClientTalla(
+    talla: ClientTalla,
+  ): Promise<SyncTransportAttemptResult> {
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.from("client_tallas").upsert(
+        {
+          id: talla.id,
+          client_id: talla.clientId,
+          type: talla.type,
+          value: talla.value,
+          notes: talla.notes,
+          created_at: talla.createdAt,
+          updated_at: talla.updatedAt,
+        },
+        { onConflict: "id" },
+      );
+
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+
+      return { outcome: "synced" };
+    } catch {
+      return { outcome: "deferred_offline" };
+    }
+  }
+
+  async syncPricingService(
+    service: PricingService,
+  ): Promise<SyncTransportAttemptResult> {
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.from("pricing_services").upsert(
+        {
+          id: service.id,
+          name: service.name,
+          price: service.price,
+          category: service.category,
+          notes: service.notes,
+          createdAt: service.createdAt,
+          updatedAt: service.updatedAt,
+        },
+        { onConflict: "id" },
+      );
+
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+
+      return { outcome: "synced" };
+    } catch {
+      return { outcome: "deferred_offline" };
+    }
+  }
+
   async syncDeleteLogEntry(
     entry: SyncDeleteLogEntry,
   ): Promise<SyncTransportAttemptResult> {
@@ -244,6 +314,17 @@ export class SupabaseSyncTransport implements SyncTransport {
     if (entry.entityType === "pantalon_measurement") {
       const { error } = await supabase
         .from("pantalon_measurements")
+        .delete()
+        .eq("id", entry.entityId);
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+      return null;
+    }
+
+    if (entry.entityType === "client_talla") {
+      const { error } = await supabase
+        .from("client_tallas")
         .delete()
         .eq("id", entry.entityId);
       if (error) {

@@ -320,18 +320,22 @@ describe("ClientRepositoryImpl", () => {
     await repository.delete("11111111-1111-4111-8111-111111111111");
 
     expect(mockWithTransactionAsync).toHaveBeenCalledTimes(1);
-    expect(mockRunAsync).toHaveBeenCalledTimes(4);
+    expect(mockRunAsync).toHaveBeenCalledTimes(5);
 
     const [deleteCamisaSql, deleteCamisaId] = mockRunAsync.mock.calls[0] ?? [];
     const [deletePantalonSql, deletePantalonId] =
       mockRunAsync.mock.calls[1] ?? [];
-    const [deleteClientSql, deleteClientId] = mockRunAsync.mock.calls[2] ?? [];
-    const [insertLogSql, ...insertLogParams] = mockRunAsync.mock.calls[3] ?? [];
+    const [deleteTallaSql, deleteTallaClientId] =
+      mockRunAsync.mock.calls[2] ?? [];
+    const [deleteClientSql, deleteClientId] = mockRunAsync.mock.calls[3] ?? [];
+    const [insertLogSql, ...insertLogParams] = mockRunAsync.mock.calls[4] ?? [];
 
     expect(deleteCamisaSql).toContain("DELETE FROM camisa_measurements");
     expect(deleteCamisaId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deletePantalonSql).toContain("DELETE FROM pantalon_measurements");
     expect(deletePantalonId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(deleteTallaSql).toContain("DELETE FROM client_tallas");
+    expect(deleteTallaClientId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deleteClientSql).toContain("DELETE FROM clients");
     expect(deleteClientId).toBe("11111111-1111-4111-8111-111111111111");
 

@@ -7,6 +7,12 @@ import type {
 import { generateDomainUuid } from "../../features/clients/domain/types";
 import { getDatabase } from "./database";
 
+type WriteCommittedCallback = () => void | Promise<void>;
+
+interface PricingServiceRepositoryImplOptions {
+  onWriteCommitted?: WriteCommittedCallback;
+}
+
 interface PricingServiceRow {
   id: string;
   name: string;
@@ -32,6 +38,10 @@ function mapRow(row: PricingServiceRow): PricingService {
 }
 
 export class PricingServiceRepositoryImpl implements PricingServiceRepository {
+  constructor(
+    private readonly options: PricingServiceRepositoryImplOptions = {},
+  ) {}
+
   async getAll(): Promise<PricingService[]> {
     const db = getDatabase();
     const rows = await db.getAllAsync<PricingServiceRow>(
@@ -73,6 +83,7 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       entity.updatedAt,
       entity.syncStatus,
     );
+    this.notifyWriteCommitted();
     return entity;
   }
 
@@ -105,11 +116,21 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       updated.updatedAt,
       id,
     );
+    this.notifyWriteCommitted();
     return updated;
   }
 
   async delete(id: string): Promise<void> {
     const db = getDatabase();
     await db.runAsync(`DELETE FROM pricing_services WHERE id = ?;`, id);
+  }
+
+  private notifyWriteCommitted(): void {
+    if (!this.options.onWriteCommitted) {
+      return;
+    }
+    void Promise.resolve(this.options.onWriteCommitted()).catch(
+      () => undefined,
+    );
   }
 }

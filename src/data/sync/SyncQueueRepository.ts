@@ -3,8 +3,10 @@ import { getDatabase } from "../local/database";
 import type {
   SyncCamisaQueueItem,
   SyncClientQueueItem,
+  SyncClientTallaQueueItem,
   SyncDeleteQueueItem,
   SyncPantalonQueueItem,
+  SyncPricingServiceQueueItem,
   SyncQueueItem,
 } from "./types";
 
@@ -64,9 +66,35 @@ interface PantalonQueueRow {
   sync_status: "pending" | "synced" | "error";
 }
 
+interface TallaQueueRow {
+  id: string;
+  client_id: string;
+  type: "camisa" | "pantalon" | "saco" | "chaleco";
+  value: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: "pending" | "synced" | "error";
+}
+
+interface PricingServiceQueueRow {
+  id: string;
+  name: string;
+  price: number;
+  category: "arreglo" | "confeccion";
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sync_status: "pending" | "synced" | "error";
+}
+
 interface DeleteQueueRow {
   id: string;
-  entity_type: "client" | "camisa_measurement" | "pantalon_measurement";
+  entity_type:
+    | "client"
+    | "camisa_measurement"
+    | "pantalon_measurement"
+    | "client_talla";
   entity_id: string;
   deleted_at: string;
   sync_status: "pending" | "synced" | "error";
@@ -155,6 +183,48 @@ function toPantalonQueueItem(row: PantalonQueueRow): SyncPantalonQueueItem {
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      syncStatus: row.sync_status,
+    },
+  };
+}
+
+function toTallaQueueItem(row: TallaQueueRow): SyncClientTallaQueueItem {
+  return {
+    entityType: "client_talla",
+    id: row.id,
+    updatedAt: row.updated_at,
+    syncStatus: row.sync_status,
+    operationType: "upsert",
+    payload: {
+      id: row.id,
+      clientId: row.client_id,
+      type: row.type,
+      value: row.value,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      syncStatus: row.sync_status,
+    },
+  };
+}
+
+function toPricingServiceQueueItem(
+  row: PricingServiceQueueRow,
+): SyncPricingServiceQueueItem {
+  return {
+    entityType: "pricing_service",
+    id: row.id,
+    updatedAt: row.updatedAt,
+    syncStatus: row.sync_status,
+    operationType: "upsert",
+    payload: {
+      id: row.id,
+      name: row.name,
+      price: row.price,
+      category: row.category,
+      notes: row.notes,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
       syncStatus: row.sync_status,
     },
   };
@@ -281,6 +351,48 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       limit,
     );
 
+    const tallaRows = await db.getAllAsync<TallaQueueRow>(
+      `
+      SELECT
+        id,
+        client_id,
+        type,
+        value,
+        notes,
+        created_at,
+        updated_at,
+        sync_status
+      FROM client_tallas
+      WHERE sync_status IN (?, ?)
+      ORDER BY updated_at ASC
+      LIMIT ?;
+      `,
+      statuses[0],
+      statuses[1],
+      limit,
+    );
+
+    const pricingRows = await db.getAllAsync<PricingServiceQueueRow>(
+      `
+      SELECT
+        id,
+        name,
+        price,
+        category,
+        notes,
+        createdAt,
+        updatedAt,
+        sync_status
+      FROM pricing_services
+      WHERE sync_status IN (?, ?)
+      ORDER BY updatedAt ASC
+      LIMIT ?;
+      `,
+      statuses[0],
+      statuses[1],
+      limit,
+    );
+
     const deleteRows = await db.getAllAsync<DeleteQueueRow>(
       `
       SELECT
@@ -303,6 +415,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ...clientRows.map(toClientQueueItem),
       ...camisaRows.map(toCamisaQueueItem),
       ...pantalonRows.map(toPantalonQueueItem),
+      ...tallaRows.map(toTallaQueueItem),
+      ...pricingRows.map(toPricingServiceQueueItem),
       ...deleteRows.map(toDeleteQueueItem),
     ]
       .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))
@@ -326,15 +440,31 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       return result?.total ?? 0;
     };
 
-    const [clientsCount, camisaCount, pantalonCount, deleteCount] =
-      await Promise.all([
-        countQuery("clients"),
-        countQuery("camisa_measurements"),
-        countQuery("pantalon_measurements"),
-        countQuery("sync_delete_log"),
-      ]);
+    const [
+      clientsCount,
+      camisaCount,
+      pantalonCount,
+      tallaCount,
+      pricingCount,
+      deleteCount,
+    ] = await Promise.all([
+      countQuery("clients"),
+      countQuery("camisa_measurements"),
+      countQuery("pantalon_measurements"),
+      countQuery("client_tallas"),
+      countQuery("pricing_services"),
+      countQuery("sync_delete_log"),
+    ]);
 
-    return clientsCount + camisaCount + pantalonCount + deleteCount > 0;
+    return (
+      clientsCount +
+        camisaCount +
+        pantalonCount +
+        tallaCount +
+        pricingCount +
+        deleteCount >
+      0
+    );
   }
 
   async markAsSynced(
@@ -361,6 +491,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       client: "clients",
       camisa_measurement: "camisa_measurements",
       pantalon_measurement: "pantalon_measurements",
+      client_talla: "client_tallas",
+      pricing_service: "pricing_services",
       delete_log: "sync_delete_log",
     };
     const table = tableMap[entityType];

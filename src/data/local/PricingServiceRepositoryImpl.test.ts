@@ -108,4 +108,47 @@ describe("PricingServiceRepositoryImpl", () => {
       baseRow.id,
     );
   });
+
+  describe("onWriteCommitted", () => {
+    it("se llama una vez después de create()", async () => {
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      const onWriteCommitted = jest.fn<() => void>();
+      const repoWithHook = new PricingServiceRepositoryImpl({
+        onWriteCommitted,
+      });
+
+      await repoWithHook.create({
+        name: "Basta de dobladillo",
+        price: 15000,
+        category: "arreglo",
+      });
+
+      expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+
+    it("se llama una vez después de update()", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow);
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      const onWriteCommitted = jest.fn<() => void>();
+      const repoWithHook = new PricingServiceRepositoryImpl({
+        onWriteCommitted,
+      });
+
+      await repoWithHook.update(baseRow.id, { price: 30000 });
+
+      expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+
+    it("NO se llama después de delete() (fuera de alcance por ahora)", async () => {
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      const onWriteCommitted = jest.fn<() => void>();
+      const repoWithHook = new PricingServiceRepositoryImpl({
+        onWriteCommitted,
+      });
+
+      await repoWithHook.delete(baseRow.id);
+
+      expect(onWriteCommitted).not.toHaveBeenCalled();
+    });
+  });
 });

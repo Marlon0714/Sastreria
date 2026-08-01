@@ -124,7 +124,7 @@ function getDefaultTallaRepository(): TallaRepository {
   return defaultTallaRepository;
 }
 
-export { getClientsSyncOrchestrator };
+export { getClientsSyncOrchestrator, scheduleSyncRun };
 
 export function resolveClientRepository(
   repository?: ClientRepository,
