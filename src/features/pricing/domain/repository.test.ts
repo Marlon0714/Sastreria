@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import type { PricingServiceRepository } from "./PricingServiceRepository";
+import type { PricingServiceRepository } from "./repository";
 import type {
   PricingService,
   CreatePricingServiceInput,
-} from "../domain/pricingService";
+} from "./pricingService";
 
 const mockService: PricingService = {
   id: "11111111-1111-1111-1111-111111111111",

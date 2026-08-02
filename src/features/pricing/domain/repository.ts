@@ -1,7 +1,7 @@
 import type {
   PricingService,
   CreatePricingServiceInput,
-} from "../domain/pricingService";
+} from "./pricingService";
 
 export interface PricingServiceRepository {
   getAll(): Promise<PricingService[]>;

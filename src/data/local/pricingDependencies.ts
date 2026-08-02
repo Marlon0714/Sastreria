@@ -1,4 +1,4 @@
-import type { PricingServiceRepository } from "../../features/pricing/repository/PricingServiceRepository";
+import type { PricingServiceRepository } from "../../features/pricing/domain/repository";
 
 import { scheduleSyncRun } from "./clientsDependencies";
 
