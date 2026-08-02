@@ -82,8 +82,8 @@ interface PricingServiceRow {
   price: number;
   category: "arreglo" | "confeccion";
   notes: string | null;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface SacoRow {
@@ -504,20 +504,14 @@ export class SupabasePullSync {
       "pricing_services",
     );
     const supabase = getSupabaseClient();
-    // La tabla real en Supabase quedó con columnas en minúscula
-    // (createdat/updatedat) por el CREATE TABLE sin comillas — se alias a
-    // camelCase acá para que el resto del código (row mapping, INSERT local)
-    // no tenga que cambiar.
     let query = supabase
       .from("pricing_services")
-      .select(
-        "id, name, price, category, notes, createdAt:createdat, updatedAt:updatedat",
-      )
-      .order("updatedat", { ascending: true })
+      .select("id, name, price, category, notes, created_at, updated_at")
+      .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
       .limit(this.batchSize);
 
-    query = this.applyCursorFilter(query, cursor, "updatedat");
+    query = this.applyCursorFilter(query, cursor, "updated_at");
 
     const { data, error } = await query;
     const db = getDatabase();
@@ -554,13 +548,13 @@ export class SupabasePullSync {
           row.price,
           row.category,
           row.notes ?? null,
-          row.createdAt,
-          row.updatedAt,
+          row.created_at,
+          row.updated_at,
         );
       }
     });
 
-    const nextCursor = getLastCursor(rows, (row) => row.updatedAt);
+    const nextCursor = getLastCursor(rows, (row) => row.updated_at);
     if (nextCursor) {
       await this.checkpointRepository.advanceCursor(
         "pricing_services",
@@ -932,7 +926,7 @@ export class SupabasePullSync {
   private applyCursorFilter<TQuery>(
     query: TQuery,
     cursor: SyncCursor | null,
-    timestampColumn: "updated_at" | "deleted_at" | "updatedat",
+    timestampColumn: "updated_at" | "deleted_at",
   ): TQuery {
     if (!cursor) {
       return query;

@@ -328,7 +328,7 @@ describe("SupabasePullSync", () => {
     );
   });
 
-  it("applies pricing_services incremental upserts using the updatedAt (camelCase) cursor and advances checkpoint", async () => {
+  it("applies pricing_services incremental upserts and advances checkpoint", async () => {
     mockQueryResults.pricing_services.push({
       data: [
         {
@@ -337,8 +337,8 @@ describe("SupabasePullSync", () => {
           price: 10000,
           category: "arreglo",
           notes: null,
-          createdAt: "2026-08-01T10:00:00.000Z",
-          updatedAt: "2026-08-01T10:05:00.000Z",
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:05:00.000Z",
         },
       ],
       error: null,
@@ -360,10 +360,8 @@ describe("SupabasePullSync", () => {
     const pullSync = new SupabasePullSync(checkpointRepository);
     await pullSync.pullIncremental();
 
-    // La columna real en Supabase es "updatedat" (todo minúscula, Postgres
-    // plegó el CREATE TABLE sin comillas) — el filtro debe usar ese nombre.
     expect(mockOrCalls.pricing_services).toContain(
-      "updatedat.gt.2026-08-01T09:00:00.000Z,and(updatedat.eq.2026-08-01T09:00:00.000Z,id.gt.00000000-0000-0000-0000-000000000002)",
+      "updated_at.gt.2026-08-01T09:00:00.000Z,and(updated_at.eq.2026-08-01T09:00:00.000Z,id.gt.00000000-0000-0000-0000-000000000002)",
     );
 
     const pricingCalls = mockRunAsync.mock.calls.filter((call) =>

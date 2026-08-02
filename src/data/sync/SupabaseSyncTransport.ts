@@ -189,18 +189,14 @@ export class SupabaseSyncTransport implements SyncTransport {
   async syncPricingService(
     service: PricingService,
   ): Promise<SyncTransportAttemptResult> {
-    // Ojo: la tabla pricing_services en Supabase se creo con CREATE TABLE sin
-    // comillas en createdAt/updatedAt, por lo que Postgres los plegó a
-    // minusculas (createdat/updatedat). Aqui SI hay que usar esos nombres
-    // reales; el resto del codigo (SQLite local, dominio) sigue en camelCase.
     return this.upsertSynced("pricing_services", {
       id: service.id,
       name: service.name,
       price: service.price,
       category: service.category,
       notes: service.notes,
-      createdat: service.createdAt,
-      updatedat: service.updatedAt,
+      created_at: service.createdAt,
+      updated_at: service.updatedAt,
     });
   }
 

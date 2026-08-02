@@ -311,6 +311,19 @@ CREATE POLICY "authenticated all pricing_services" ON pricing_services
 
 ---
 
+### v15_pricing_services_fix_column_case (2026-08-01)
+
+**Contexto:** `v8_pricing_services` declaró `createdAt`/`updatedAt` sin comillas, y Postgres las plegó a `createdat`/`updatedat` (ver advertencia en Notas). El código de sync convivió un tiempo con esa inconsistencia mediante un alias (ver `decisions-log.md` N-071). Este es el arreglo de fondo: renombrar las columnas para que coincidan con el resto de las tablas (`created_at`/`updated_at`, snake_case estándar).
+
+```sql
+ALTER TABLE pricing_services RENAME COLUMN createdat TO created_at;
+ALTER TABLE pricing_services RENAME COLUMN updatedat TO updated_at;
+```
+
+Después de aplicar esto, `SupabaseSyncTransport.ts` y `SupabasePullSync.ts` ya NO usan ningún alias ni nombre en minúscula para `pricing_services` — quedó igual de simple que las demás tablas.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
@@ -320,5 +333,5 @@ CREATE POLICY "authenticated all pricing_services" ON pricing_services
   ```sql
   SELECT column_name FROM information_schema.columns WHERE table_name = '<tabla>';
   ```
-  El código de sync (`SupabaseSyncTransport.ts`, `SupabasePullSync.ts`) para `pricing_services` ya usa `createdat`/`updatedat` reales al hablar con Supabase (con alias en el `.select()` de vuelta a camelCase para no tocar el resto del código).
+  **Resuelto 2026-08-01** (ver `v15_pricing_services_fix_column_case` arriba): se renombraron las columnas a `created_at`/`updated_at` y se quitó el alias del código. Esta nota queda como advertencia general para no repetir el error en una tabla futura.
 - **⚠️ `sync_status` es `NOT NULL` sin `DEFAULT` en TODAS las tablas** (ver cada `CREATE TABLE` arriba: `sync_status TEXT NOT NULL CHECK (...)`, nunca `DEFAULT`). Esto existe desde `v1_initial_schema` (`clients`), no es nuevo. Si el `.upsert()` de `SupabaseSyncTransport.ts` no incluye `sync_status` explícitamente en el payload, la primera vez que un registro se inserta (fila nueva, no actualización) Postgres intenta dejarlo en `NULL` y viola el constraint — descubierto el 2026-08-01 al reportar el error "null value in column sync_status violates not-null constraint" para `pricing_services`/`client_tallas`, pero afectaba potencialmente a CUALQUIER tabla desde el principio. Fix: **todos** los métodos `syncX()` en `SupabaseSyncTransport.ts` ahora envían `sync_status: "synced"` explícitamente (tiene sentido semántico: si el registro llegó a Supabase, por definición ya está sincronizado desde la perspectiva del servidor). Si agregas una entidad nueva al sync, no olvides este campo.

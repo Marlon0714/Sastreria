@@ -308,7 +308,7 @@ describe("SupabaseSyncTransport", () => {
   });
 
   describe("syncPricingService", () => {
-    it("upserts to 'pricing_services' table on success, using the real lowercase createdat/updatedat columns", async () => {
+    it("upserts to 'pricing_services' table on success", async () => {
       mockUpsert.mockResolvedValueOnce({ error: null });
       const transport = new SupabaseSyncTransport();
 
@@ -322,8 +322,8 @@ describe("SupabaseSyncTransport", () => {
           name: "Dobladillo",
           price: 10000,
           category: "arreglo",
-          createdat: "2026-08-01T10:00:00.000Z",
-          updatedat: "2026-08-01T10:00:00.000Z",
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:00:00.000Z",
         }),
         { onConflict: "id" },
       );
