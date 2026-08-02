@@ -339,6 +339,45 @@ ALTER TABLE sync_delete_log
 
 ---
 
+### v17_schedules (2026-08-02)
+
+**Contexto:** N-008 (Agenda) — nueva entidad `schedule` conectada al sync desde el día uno (decisión explícita del usuario, para no repetir el gap de `pricing_service`/`client_talla` que costó arreglar en producción). Se necesita crear la tabla `schedules` en Supabase y permitir `'schedule'` en el CHECK de `sync_delete_log.entity_type` (el delete-sync también se conectó desde el inicio).
+
+```sql
+-- 1. Tabla schedules — mismas columnas snake_case que el resto (created_at/updated_at,
+-- no createdAt/updatedAt como el error historico de pricing_services v8).
+CREATE TABLE IF NOT EXISTS schedules (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  time TEXT NOT NULL,
+  client_id UUID NOT NULL REFERENCES clients (id),
+  notes TEXT,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
+);
+CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);
+CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);
+
+-- 2. RLS + policy, mismo patrón que las demás tablas.
+ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated all schedules" ON schedules
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 3. Ampliar el CHECK de sync_delete_log para permitir 'schedule' (delete-sync
+-- conectado desde el inicio, no en una pasada futura). Verificar el nombre real
+-- de la constraint antes del DROP.
+ALTER TABLE sync_delete_log DROP CONSTRAINT IF EXISTS sync_delete_log_entity_type_check;
+ALTER TABLE sync_delete_log
+  ADD CONSTRAINT sync_delete_log_entity_type_check
+  CHECK (entity_type IN ('client', 'camisa_measurement', 'pantalon_measurement', 'client_talla', 'pricing_service', 'schedule'));
+```
+
+**Importante:** correr esto en Supabase ANTES de instalar un build que incluya el código de Agenda — sin la tabla, cualquier intento de sync de un turno fallará (`relation "schedules" does not exist`), y sin el CHECK ampliado, cualquier delete de turno quedará atascado en `error`.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
