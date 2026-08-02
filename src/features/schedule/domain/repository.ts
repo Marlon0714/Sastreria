@@ -1,4 +1,4 @@
-import { Schedule, CreateScheduleDTO, UpdateScheduleDTO } from "./types";
+import type { Schedule, CreateScheduleDTO, UpdateScheduleDTO } from "./types";
 
 export interface ScheduleRepository {
   getAll(): Promise<Schedule[]>;

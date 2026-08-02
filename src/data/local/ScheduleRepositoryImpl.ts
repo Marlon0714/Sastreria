@@ -1,4 +1,8 @@
 import { getDatabase } from "./database";
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 import type { ScheduleRepository } from "../../features/schedule/domain/repository";
 import type {
   Schedule,
@@ -34,10 +38,12 @@ function mapRow(row: ScheduleRow): Schedule {
 }
 
 export class ScheduleRepositoryImpl implements ScheduleRepository {
+  constructor(private readonly options: WriteCommittedOptions = {}) {}
+
   async getAll(): Promise<Schedule[]> {
     const db = getDatabase();
     const rows = await db.getAllAsync<ScheduleRow>(
-      "SELECT * FROM schedules ORDER BY date DESC, time DESC",
+      "SELECT * FROM schedules ORDER BY date ASC, time ASC",
     );
     return rows.map(mapRow);
   }
@@ -96,6 +102,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       schedule.updatedAt,
       schedule.syncStatus,
     );
+    notifyWriteCommitted(this.options);
     return schedule;
   }
 
@@ -121,11 +128,30 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       updated.syncStatus,
       id,
     );
+    notifyWriteCommitted(this.options);
     return updated;
   }
 
   async delete(id: string): Promise<void> {
     const db = getDatabase();
-    await db.runAsync("DELETE FROM schedules WHERE id = ?", id);
+    const nowIso = new Date().toISOString();
+    const deleteLogId = generateDomainUuid();
+
+    await db.withTransactionAsync(async () => {
+      await db.runAsync("DELETE FROM schedules WHERE id = ?", id);
+      await db.runAsync(
+        `
+        INSERT INTO sync_delete_log (id, entity_type, entity_id, deleted_at, sync_status)
+        VALUES (?, ?, ?, ?, ?);
+        `,
+        deleteLogId,
+        "schedule",
+        id,
+        nowIso,
+        "pending",
+      );
+    });
+
+    notifyWriteCommitted(this.options);
   }
 }

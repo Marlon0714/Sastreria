@@ -192,6 +192,8 @@ export class SyncQueueProcessor {
         return this.transport.syncChalecoMeasurement(item.payload);
       case "talla_template":
         return this.transport.syncTallaTemplate(item.payload);
+      case "schedule":
+        return this.transport.syncSchedule(item.payload);
       default: {
         const exhaustiveCheck: never = item;
         throw new Error(

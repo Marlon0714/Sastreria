@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 13;
+const TARGET_SCHEMA_VERSION = 14;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -315,6 +315,28 @@ const MIGRATIONS: readonly Migration[] = [
     name: "v13_pricing_services_category",
     statements: [
       `ALTER TABLE pricing_services ADD COLUMN category TEXT NOT NULL DEFAULT 'arreglo' CHECK (category IN ('arreglo', 'confeccion'));`,
+    ],
+  },
+  {
+    version: 14,
+    name: "v14_schedules",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS schedules (
+        id TEXT PRIMARY KEY NOT NULL,
+        date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        client_id TEXT NOT NULL,
+        notes TEXT,
+        status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);`,
     ],
   },
 ];

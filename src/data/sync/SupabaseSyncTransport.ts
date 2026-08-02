@@ -7,6 +7,7 @@ import type {
   SacoMeasurement,
 } from "../../features/clients/domain/types";
 import type { PricingService } from "../../features/pricing/domain/pricingService";
+import type { Schedule } from "../../features/schedule/domain/types";
 import type { TallaTemplate } from "../../features/tallas/domain/types";
 import type { SyncTransport } from "./SyncTransport";
 import type {
@@ -21,6 +22,7 @@ import type {
   SyncSacoQueueItem,
   SyncChalecoQueueItem,
   SyncTallaTemplateQueueItem,
+  SyncScheduleQueueItem,
   SyncDeleteQueueItem,
 } from "./types";
 
@@ -68,6 +70,11 @@ export class SupabaseSyncTransport implements SyncTransport {
             case "talla_template":
               await this.syncTallaTemplate(
                 (item as SyncTallaTemplateQueueItem).payload,
+              );
+              break;
+            case "schedule":
+              await this.syncSchedule(
+                (item as SyncScheduleQueueItem).payload,
               );
               break;
             case "delete_log":
@@ -278,6 +285,19 @@ export class SupabaseSyncTransport implements SyncTransport {
     });
   }
 
+  async syncSchedule(schedule: Schedule): Promise<SyncTransportAttemptResult> {
+    return this.upsertSynced("schedules", {
+      id: schedule.id,
+      date: schedule.date,
+      time: schedule.time,
+      client_id: schedule.clientId,
+      notes: schedule.notes ?? null,
+      status: schedule.status,
+      created_at: schedule.createdAt,
+      updated_at: schedule.updatedAt,
+    });
+  }
+
   async syncDeleteLogEntry(
     entry: SyncDeleteLogEntry,
   ): Promise<SyncTransportAttemptResult> {
@@ -328,7 +348,7 @@ export class SupabaseSyncTransport implements SyncTransport {
     entry: SyncDeleteLogEntry,
   ): Promise<SyncTransportAttemptResult | null> {
     if (entry.entityType === "client") {
-      // Delete measurements first (cascade), then the client
+      // Delete measurements and schedules first (cascade), then the client
       const { error: camisaError } = await supabase
         .from("camisa_measurements")
         .delete()
@@ -343,6 +363,14 @@ export class SupabaseSyncTransport implements SyncTransport {
         .eq("client_id", entry.entityId);
       if (pantalonError) {
         return this.toAttemptFailure(pantalonError.code, pantalonError.message);
+      }
+
+      const { error: scheduleError } = await supabase
+        .from("schedules")
+        .delete()
+        .eq("client_id", entry.entityId);
+      if (scheduleError) {
+        return this.toAttemptFailure(scheduleError.code, scheduleError.message);
       }
 
       const { error: clientError } = await supabase
@@ -392,6 +420,17 @@ export class SupabaseSyncTransport implements SyncTransport {
     if (entry.entityType === "pricing_service") {
       const { error } = await supabase
         .from("pricing_services")
+        .delete()
+        .eq("id", entry.entityId);
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+      return null;
+    }
+
+    if (entry.entityType === "schedule") {
+      const { error } = await supabase
+        .from("schedules")
         .delete()
         .eq("id", entry.entityId);
       if (error) {

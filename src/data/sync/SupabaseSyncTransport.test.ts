@@ -164,6 +164,18 @@ const baseTallaTemplate = {
   syncStatus: "pending" as const,
 };
 
+const baseSchedule = {
+  id: "schedule-1",
+  date: "2026-08-10",
+  time: "14:30",
+  clientId: "c-1",
+  notes: "Ajuste de traje",
+  status: "pending" as const,
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  syncStatus: "pending" as const,
+};
+
 const baseDeleteLog = {
   id: "del-1",
   entityType: "client" as const,
@@ -428,6 +440,36 @@ describe("SupabaseSyncTransport", () => {
     });
   });
 
+  describe("syncSchedule", () => {
+    it("upserts to 'schedules' table on success", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncSchedule(baseSchedule);
+
+      expect(mockFrom).toHaveBeenCalledWith("schedules");
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sync_status: "synced",
+          id: "schedule-1",
+          date: "2026-08-10",
+          time: "14:30",
+          client_id: "c-1",
+          status: "pending",
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("returns failed outcome on Supabase failure", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncSchedule(baseSchedule);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+  });
+
   describe("syncDeleteLogEntry", () => {
     it("upserts to 'sync_delete_log' then deletes camisa, pantalon and client from cloud", async () => {
       mockUpsert.mockResolvedValueOnce({ error: null });
@@ -439,11 +481,12 @@ describe("SupabaseSyncTransport", () => {
       expect(result).toEqual({ outcome: "synced" });
       // Log upsert
       expect(mockFrom).toHaveBeenCalledWith("sync_delete_log");
-      // Cascade deletes: camisa, pantalon, client
+      // Cascade deletes: camisa, pantalon, schedules, client
       expect(mockFrom).toHaveBeenCalledWith("camisa_measurements");
       expect(mockFrom).toHaveBeenCalledWith("pantalon_measurements");
+      expect(mockFrom).toHaveBeenCalledWith("schedules");
       expect(mockFrom).toHaveBeenCalledWith("clients");
-      expect(mockDelete).toHaveBeenCalledTimes(3);
+      expect(mockDelete).toHaveBeenCalledTimes(4);
     });
 
     it("skips audit log and proceeds with cloud delete when sync_delete_log upsert fails with 42501 (RLS)", async () => {
@@ -454,7 +497,7 @@ describe("SupabaseSyncTransport", () => {
       const result = await transport.syncDeleteLogEntry(baseDeleteLog);
       // Despite audit log failure, cloud deletes should proceed and succeed
       expect(result).toEqual({ outcome: "synced" });
-      expect(mockDelete).toHaveBeenCalledTimes(3);
+      expect(mockDelete).toHaveBeenCalledTimes(4);
     });
 
     it("returns failed when sync_delete_log upsert fails with a non-infra error", async () => {
@@ -536,6 +579,24 @@ describe("SupabaseSyncTransport", () => {
 
       expect(result).toEqual({ outcome: "synced" });
       expect(mockFrom).toHaveBeenCalledWith("pricing_services");
+      expect(mockFrom).not.toHaveBeenCalledWith("clients");
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it("deletes only schedules when entityType is schedule", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const scheduleDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "schedule" as const,
+        entityId: "schedule-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(scheduleDeleteLog);
+
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockFrom).toHaveBeenCalledWith("schedules");
       expect(mockFrom).not.toHaveBeenCalledWith("clients");
       expect(mockDelete).toHaveBeenCalledTimes(1);
     });

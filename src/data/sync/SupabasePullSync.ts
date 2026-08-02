@@ -12,7 +12,8 @@ type DeleteEntityType =
   | "camisa_measurement"
   | "pantalon_measurement"
   | "client_talla"
-  | "pricing_service";
+  | "pricing_service"
+  | "schedule";
 
 interface ClientRow {
   id: string;
@@ -154,6 +155,17 @@ interface TallaTemplateRow {
   updated_at: string;
 }
 
+interface ScheduleRow {
+  id: string;
+  date: string;
+  time: string;
+  client_id: string;
+  notes: string | null;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+}
+
 interface DeleteLogRow {
   id: string;
   entity_type: DeleteEntityType;
@@ -198,6 +210,7 @@ export class SupabasePullSync {
     await this.pullSacoMeasurementsIncremental();
     await this.pullChalecoMeasurementsIncremental();
     await this.pullTallaTemplatesIncremental();
+    await this.pullSchedulesIncremental();
     await this.pullDeleteLogIncremental();
   }
 
@@ -844,6 +857,65 @@ export class SupabasePullSync {
     }
   }
 
+  private async pullSchedulesIncremental(): Promise<void> {
+    const cursor = await this.checkpointRepository.getCursor("schedules");
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("schedules")
+      .select("id, date, time, client_id, notes, status, created_at, updated_at")
+      .order("updated_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(this.batchSize);
+
+    query = this.applyCursorFilter(query, cursor, "updated_at");
+
+    const { data, error } = await query;
+    const db = getDatabase();
+
+    if (error) {
+      throw new Error(`[pull] schedules incremental fetch failed: ${error.code}`);
+    }
+
+    const rows = (data ?? []) as unknown as ScheduleRow[];
+    if (!rows.length) {
+      return;
+    }
+
+    await db.withTransactionAsync(async () => {
+      for (const row of rows) {
+        await db.runAsync(
+          `
+          INSERT INTO schedules
+            (id, date, time, client_id, notes, status, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          ON CONFLICT(id) DO UPDATE SET
+            date        = excluded.date,
+            time        = excluded.time,
+            client_id   = excluded.client_id,
+            notes       = excluded.notes,
+            status      = excluded.status,
+            updated_at  = excluded.updated_at,
+            sync_status = 'synced'
+          WHERE excluded.updated_at >= schedules.updated_at;
+          `,
+          row.id,
+          row.date,
+          row.time,
+          row.client_id,
+          row.notes ?? null,
+          row.status,
+          row.created_at,
+          row.updated_at,
+        );
+      }
+    });
+
+    const nextCursor = getLastCursor(rows, (row) => row.updated_at);
+    if (nextCursor) {
+      await this.checkpointRepository.advanceCursor("schedules", nextCursor);
+    }
+  }
+
   private async pullDeleteLogIncremental(): Promise<void> {
     const cursor = await this.checkpointRepository.getCursor("sync_delete_log");
     const supabase = getSupabaseClient();
@@ -880,6 +952,10 @@ export class SupabasePullSync {
             `DELETE FROM pantalon_measurements WHERE client_id = ?;`,
             row.entity_id,
           );
+          await db.runAsync(
+            `DELETE FROM schedules WHERE client_id = ?;`,
+            row.entity_id,
+          );
           await db.runAsync(`DELETE FROM clients WHERE id = ?;`, row.entity_id);
         }
 
@@ -907,6 +983,13 @@ export class SupabasePullSync {
         if (row.entity_type === "pricing_service") {
           await db.runAsync(
             `DELETE FROM pricing_services WHERE id = ?;`,
+            row.entity_id,
+          );
+        }
+
+        if (row.entity_type === "schedule") {
+          await db.runAsync(
+            `DELETE FROM schedules WHERE id = ?;`,
             row.entity_id,
           );
         }

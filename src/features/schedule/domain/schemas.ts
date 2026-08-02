@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { ScheduleStatus } from "./types";
 
 export const scheduleStatusSchema = z.enum([
   "pending",
@@ -10,10 +9,14 @@ export const scheduleStatusSchema = z.enum([
 
 export const scheduleSchema = z.object({
   id: z.string().uuid(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  time: z.string().regex(/^\d{2}:\d{2}$/),
-  clientId: z.string().uuid(),
-  notes: z.string().optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe tener el formato AAAA-MM-DD"),
+  time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "La hora debe tener el formato HH:MM"),
+  clientId: z.string().uuid("El cliente es inválido"),
+  notes: z.string().trim().max(500).optional(),
   status: scheduleStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -28,3 +31,7 @@ export const createScheduleSchema = scheduleSchema.omit({
 });
 
 export const updateScheduleSchema = createScheduleSchema.partial();
+
+export type CreateScheduleSchemaInput = z.input<typeof createScheduleSchema>;
+export type CreateScheduleSchemaOutput = z.output<typeof createScheduleSchema>;
+export type UpdateScheduleSchemaInput = z.input<typeof updateScheduleSchema>;

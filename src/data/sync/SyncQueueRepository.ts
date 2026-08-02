@@ -10,6 +10,7 @@ import type {
   SyncPricingServiceQueueItem,
   SyncQueueItem,
   SyncSacoQueueItem,
+  SyncScheduleQueueItem,
   SyncTallaTemplateQueueItem,
 } from "./types";
 
@@ -161,13 +162,27 @@ interface TallaTemplateQueueRow {
   sync_status: "pending" | "synced" | "error";
 }
 
+interface ScheduleQueueRow {
+  id: string;
+  date: string;
+  time: string;
+  client_id: string;
+  notes: string | null;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+  sync_status: "pending" | "synced" | "error";
+}
+
 interface DeleteQueueRow {
   id: string;
   entity_type:
     | "client"
     | "camisa_measurement"
     | "pantalon_measurement"
-    | "client_talla";
+    | "client_talla"
+    | "pricing_service"
+    | "schedule";
   entity_id: string;
   deleted_at: string;
   sync_status: "pending" | "synced" | "error";
@@ -401,6 +416,27 @@ function toTallaTemplateQueueItem(
   };
 }
 
+function toScheduleQueueItem(row: ScheduleQueueRow): SyncScheduleQueueItem {
+  return {
+    entityType: "schedule",
+    id: row.id,
+    updatedAt: row.updated_at,
+    syncStatus: row.sync_status,
+    operationType: "upsert",
+    payload: {
+      id: row.id,
+      date: row.date,
+      time: row.time,
+      clientId: row.client_id,
+      notes: row.notes ?? undefined,
+      status: row.status,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      syncStatus: row.sync_status,
+    },
+  };
+}
+
 function toDeleteQueueItem(row: DeleteQueueRow): SyncDeleteQueueItem {
   return {
     entityType: "delete_log",
@@ -445,6 +481,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       sacoRows,
       chalecoRows,
       tallaTemplateRows,
+      scheduleRows,
       deleteRows,
     ] = await Promise.all([
       db.getAllAsync<ClientQueueRow>(
@@ -667,6 +704,27 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         statuses[1],
         limit,
       ),
+      db.getAllAsync<ScheduleQueueRow>(
+        `
+      SELECT
+        id,
+        date,
+        time,
+        client_id,
+        notes,
+        status,
+        created_at,
+        updated_at,
+        sync_status
+      FROM schedules
+      WHERE sync_status IN (?, ?)
+      ORDER BY updated_at ASC
+      LIMIT ?;
+      `,
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
       db.getAllAsync<DeleteQueueRow>(
         `
       SELECT
@@ -695,6 +753,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ...sacoRows.map(toSacoQueueItem),
       ...chalecoRows.map(toChalecoQueueItem),
       ...tallaTemplateRows.map(toTallaTemplateQueueItem),
+      ...scheduleRows.map(toScheduleQueueItem),
       ...deleteRows.map(toDeleteQueueItem),
     ]
       .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))
@@ -727,6 +786,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       sacoCount,
       chalecoCount,
       tallaTemplateCount,
+      scheduleCount,
       deleteCount,
     ] = await Promise.all([
       countQuery("clients"),
@@ -737,6 +797,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       countQuery("saco_measurements"),
       countQuery("chaleco_measurements"),
       countQuery("talla_templates"),
+      countQuery("schedules"),
       countQuery("sync_delete_log"),
     ]);
 
@@ -749,6 +810,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         sacoCount +
         chalecoCount +
         tallaTemplateCount +
+        scheduleCount +
         deleteCount >
       0
     );
@@ -783,6 +845,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       saco_measurement: "saco_measurements",
       chaleco_measurement: "chaleco_measurements",
       talla_template: "talla_templates",
+      schedule: "schedules",
       delete_log: "sync_delete_log",
     };
     const table = tableMap[entityType];

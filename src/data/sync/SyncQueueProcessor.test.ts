@@ -131,6 +131,25 @@ const tallaItem: SyncQueueItem = {
   },
 };
 
+const scheduleItem: SyncQueueItem = {
+  entityType: "schedule",
+  id: "schedule-1",
+  updatedAt: "2026-08-01T09:20:00.000Z",
+  syncStatus: "pending",
+  operationType: "upsert",
+  payload: {
+    id: "schedule-1",
+    date: "2026-08-10",
+    time: "14:30",
+    clientId: "c-1",
+    notes: undefined,
+    status: "pending",
+    createdAt: "2026-08-01T09:20:00.000Z",
+    updatedAt: "2026-08-01T09:20:00.000Z",
+    syncStatus: "pending",
+  },
+};
+
 const pricingItem: SyncQueueItem = {
   entityType: "pricing_service",
   id: "price-1",
@@ -272,6 +291,7 @@ function makeMockTransport(): jest.Mocked<SyncTransport> {
       Promise.resolve(syncedResult()),
     ),
     syncTallaTemplate: jest.fn(async () => Promise.resolve(syncedResult())),
+    syncSchedule: jest.fn(async () => Promise.resolve(syncedResult())),
     syncDeleteLogEntry: jest.fn(async () => Promise.resolve(syncedResult())),
     syncAll: jest.fn(async () => Promise.resolve()),
   };
@@ -426,6 +446,27 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "pricing_service",
       "price-1",
+    );
+  });
+
+  it("syncs schedule items through schedule transport method", async () => {
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [scheduleItem]),
+      hasPendingItems: jest.fn(async () => false),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    const processor = new SyncQueueProcessor(queueRepository, transport);
+
+    const result = await processor.runOnce();
+
+    expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
+    expect(transport.syncSchedule).toHaveBeenCalledTimes(1);
+    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
+      "schedule",
+      "schedule-1",
     );
   });
 

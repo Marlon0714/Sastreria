@@ -26,6 +26,7 @@ const mockQueryResults: Record<string, MockQueryResult[]> = {
   saco_measurements: [],
   chaleco_measurements: [],
   talla_templates: [],
+  schedules: [],
   sync_delete_log: [],
 };
 
@@ -38,6 +39,7 @@ const mockOrCalls: Record<string, string[]> = {
   saco_measurements: [],
   chaleco_measurements: [],
   talla_templates: [],
+  schedules: [],
   sync_delete_log: [],
 };
 
@@ -97,6 +99,7 @@ describe("SupabasePullSync", () => {
     mockQueryResults.saco_measurements = [];
     mockQueryResults.chaleco_measurements = [];
     mockQueryResults.talla_templates = [];
+    mockQueryResults.schedules = [];
     mockQueryResults.sync_delete_log = [];
     mockOrCalls.clients = [];
     mockOrCalls.camisa_measurements = [];
@@ -106,6 +109,7 @@ describe("SupabasePullSync", () => {
     mockOrCalls.saco_measurements = [];
     mockOrCalls.chaleco_measurements = [];
     mockOrCalls.talla_templates = [];
+    mockOrCalls.schedules = [];
     mockOrCalls.sync_delete_log = [];
     mockRunAsync.mockReset();
     mockWithTransactionAsync.mockClear();
@@ -375,6 +379,61 @@ describe("SupabasePullSync", () => {
       "pricing_services",
       { id: "price-1", updatedAt: "2026-08-01T10:05:00.000Z" },
     );
+  });
+
+  it("applies schedules incremental upserts and advances checkpoint", async () => {
+    mockQueryResults.schedules.push({
+      data: [
+        {
+          id: "schedule-1",
+          date: "2026-08-10",
+          time: "14:30",
+          client_id: "c-1",
+          notes: null,
+          status: "pending",
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const scheduleCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO schedules"),
+    );
+    expect(scheduleCalls).toHaveLength(1);
+    const [, ...params] = scheduleCalls[0] ?? [];
+    expect(params).toContain("2026-08-10");
+    expect(params).toContain("14:30");
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "schedules",
+      { id: "schedule-1", updatedAt: "2026-08-01T10:05:00.000Z" },
+    );
+  });
+
+  it("throws when schedules incremental fetch fails", async () => {
+    mockQueryResults.schedules.push({
+      data: [],
+      error: { code: "42503" },
+    });
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+    const pullSync = new SupabasePullSync(checkpointRepository);
+
+    await expect(pullSync.pullIncremental()).rejects.toThrow(
+      "[pull] schedules incremental fetch failed: 42503",
+    );
+    expect(checkpointRepository.advanceCursor).not.toHaveBeenCalled();
   });
 
   it("throws when client_tallas incremental fetch fails", async () => {
@@ -649,6 +708,9 @@ describe("SupabasePullSync", () => {
       sqlStatements.some((sql) => sql.includes("DELETE FROM clients")),
     ).toBe(true);
     expect(
+      sqlStatements.some((sql) => sql.includes("DELETE FROM schedules")),
+    ).toBe(true);
+    expect(
       sqlStatements.some((sql) => sql.includes("UPDATE sync_delete_log")),
     ).toBe(true);
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
@@ -657,6 +719,39 @@ describe("SupabasePullSync", () => {
         id: "del-1",
         updatedAt: "2026-05-01T11:00:00.000Z",
       },
+    );
+  });
+
+  it("applies schedule delete by id when entity_type is schedule", async () => {
+    mockQueryResults.sync_delete_log.push({
+      data: [
+        {
+          id: "del-6",
+          entity_type: "schedule",
+          entity_id: "schedule-99",
+          deleted_at: "2026-08-02T14:00:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const sqlStatements = mockRunAsync.mock.calls.map((call) =>
+      String(call[0]),
+    );
+    expect(
+      sqlStatements.some((sql) => sql.includes("DELETE FROM schedules WHERE id = ?")),
+    ).toBe(true);
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "sync_delete_log",
+      { id: "del-6", updatedAt: "2026-08-02T14:00:00.000Z" },
     );
   });
 
