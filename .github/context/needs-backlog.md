@@ -122,6 +122,4 @@ Limpieza: la sección de mayo tenía ítems obsoletos, eliminados aquí — el P
 1. **N-008** — baseline de `schedule`: único feature grande sin construir, sin bloqueadores técnicos activos.
 2. Bloqueados hasta decisión/recursos externos: **N-006/N-057** (gates de CI, cambia comportamiento del pipeline compartido), **N-053** (dividir archivos grandes), **N-054** (DI real en `clientsDependencies.ts`), **N-034** (Crashlytics real, requiere proyecto Firebase).
 3. **N-069** (botón de acceso a `client_talla`) en pausa por decisión del usuario.
-4. **N-027** (E2E multi-módulo) requiere meter infraestructura de testing nueva (Detox/Maestro).
-4. **N-069** (botón de acceso a `client_talla`) queda explícitamente en pausa por decisión del usuario.
-5. **N-027** (E2E multi-módulo) requiere meter infraestructura de testing nueva (Detox/Maestro) — no es un ajuste incremental.
+4. **N-027** (E2E multi-módulo) requiere meter infraestructura de testing nueva (Detox/Maestro) — no es un ajuste incremental.
