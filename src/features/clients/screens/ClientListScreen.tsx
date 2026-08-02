@@ -206,6 +206,9 @@ export default function ClientListScreen({ navigation }: Props) {
           </Pressable>
         </View>
       </View>
+      <Text style={styles.clientCountText} accessibilityLabel="Total de clientes registrados">
+        {clients.length} {clients.length === 1 ? "cliente" : "clientes"}
+      </Text>
       <FlatList
         data={filteredClients}
         keyExtractor={(item) => item.id}
@@ -313,6 +316,13 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontSize: 14,
     marginTop: 32,
+  },
+  clientCountText: {
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: "600",
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   card: {
     backgroundColor: "#ffffff",

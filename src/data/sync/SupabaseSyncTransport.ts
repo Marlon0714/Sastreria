@@ -389,6 +389,17 @@ export class SupabaseSyncTransport implements SyncTransport {
       return null;
     }
 
+    if (entry.entityType === "pricing_service") {
+      const { error } = await supabase
+        .from("pricing_services")
+        .delete()
+        .eq("id", entry.entityId);
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+      return null;
+    }
+
     return null;
   }
 

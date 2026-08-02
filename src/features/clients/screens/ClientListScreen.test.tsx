@@ -148,6 +148,55 @@ describe("ClientListScreen", () => {
     expect(getByLabelText("Filtro todos")).toBeTruthy();
     expect(getByLabelText("Filtro nombre")).toBeTruthy();
     expect(getByLabelText("Filtro telefono")).toBeTruthy();
+    expect(getByLabelText("Total de clientes registrados")).toHaveTextContent(
+      "2 clientes",
+    );
+  });
+
+  it("shows the client count in singular when there is only one client", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({ id: "aaaa-1", firstName: "Ana", lastName: "Torres" }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByLabelText("Total de clientes registrados")).toHaveTextContent(
+      "1 cliente",
+    );
+  });
+
+  it("keeps the total client count unchanged while filtering the visible list", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({ id: "aaaa-1", firstName: "María", lastName: "García" }),
+        clientFactory({ id: "aaaa-2", firstName: "Juan", lastName: "Pérez" }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "maria",
+    );
+
+    expect(getByLabelText("Total de clientes registrados")).toHaveTextContent(
+      "2 clientes",
+    );
   });
 
   it("filters clients by name when searching", () => {

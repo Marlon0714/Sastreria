@@ -118,6 +118,24 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
 
   async delete(id: string): Promise<void> {
     const db = getDatabase();
-    await db.runAsync(`DELETE FROM pricing_services WHERE id = ?;`, id);
+    const nowIso = new Date().toISOString();
+    const deleteLogId = generateDomainUuid();
+
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(`DELETE FROM pricing_services WHERE id = ?;`, id);
+      await db.runAsync(
+        `
+        INSERT INTO sync_delete_log (id, entity_type, entity_id, deleted_at, sync_status)
+        VALUES (?, ?, ?, ?, ?);
+        `,
+        deleteLogId,
+        "pricing_service",
+        id,
+        nowIso,
+        "pending",
+      );
+    });
+
+    notifyWriteCommitted(this.options);
   }
 }

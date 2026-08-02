@@ -11,7 +11,8 @@ type DeleteEntityType =
   | "client"
   | "camisa_measurement"
   | "pantalon_measurement"
-  | "client_talla";
+  | "client_talla"
+  | "pricing_service";
 
 interface ClientRow {
   id: string;
@@ -899,6 +900,13 @@ export class SupabasePullSync {
         if (row.entity_type === "client_talla") {
           await db.runAsync(
             `DELETE FROM client_tallas WHERE id = ?;`,
+            row.entity_id,
+          );
+        }
+
+        if (row.entity_type === "pricing_service") {
+          await db.runAsync(
+            `DELETE FROM pricing_services WHERE id = ?;`,
             row.entity_id,
           );
         }

@@ -7,6 +7,9 @@ const mockGetAllAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown[]>>();
 const mockGetFirstAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown | null>>();
+const mockWithTransactionAsync =
+  jest.fn<(callback: () => Promise<void>) => Promise<void>>();
+const mockGenerateDomainUuid = jest.fn<() => string>();
 
 const mockDatabase = {
   runAsync: (sql: string, ...params: unknown[]) => mockRunAsync(sql, ...params),
@@ -14,6 +17,8 @@ const mockDatabase = {
     mockGetAllAsync(sql, ...params) as Promise<T[]>,
   getFirstAsync: <T>(sql: string, ...params: unknown[]) =>
     mockGetFirstAsync(sql, ...params) as Promise<T | null>,
+  withTransactionAsync: (callback: () => Promise<void>) =>
+    mockWithTransactionAsync(callback),
 };
 
 jest.mock("./database", () => ({
@@ -21,7 +26,7 @@ jest.mock("./database", () => ({
 }));
 
 jest.mock("../../features/clients/domain/types", () => ({
-  generateDomainUuid: () => "550e8400-e29b-41d4-a716-446655440000",
+  generateDomainUuid: () => mockGenerateDomainUuid(),
 }));
 
 const baseRow = {
@@ -40,6 +45,12 @@ describe("PricingServiceRepositoryImpl", () => {
   beforeEach(() => {
     repo = new PricingServiceRepositoryImpl();
     jest.clearAllMocks();
+    mockGenerateDomainUuid.mockReturnValue(
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
+    mockWithTransactionAsync.mockImplementation(async (callback) => {
+      await callback();
+    });
   });
 
   it("getAll retorna servicios mapeados", async () => {
@@ -100,13 +111,27 @@ describe("PricingServiceRepositoryImpl", () => {
     );
   });
 
-  it("delete elimina el registro por id", async () => {
-    mockRunAsync.mockResolvedValueOnce(undefined);
-    await expect(repo.delete(baseRow.id)).resolves.toBeUndefined();
-    expect(mockRunAsync).toHaveBeenCalledWith(
-      expect.stringContaining("DELETE FROM pricing_services"),
-      baseRow.id,
+  it("delete elimina el registro y registra entrada en sync_delete_log dentro de transacción", async () => {
+    mockGenerateDomainUuid.mockReturnValueOnce(
+      "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
     );
+    mockRunAsync.mockResolvedValue(undefined);
+
+    await expect(repo.delete(baseRow.id)).resolves.toBeUndefined();
+
+    expect(mockWithTransactionAsync).toHaveBeenCalledTimes(1);
+    expect(mockRunAsync).toHaveBeenCalledTimes(2);
+
+    const [deleteSql, deleteParam] = mockRunAsync.mock.calls[0] ?? [];
+    expect(deleteSql).toContain("DELETE FROM pricing_services WHERE id = ?");
+    expect(deleteParam).toBe(baseRow.id);
+
+    const [insertSql, ...insertParams] = mockRunAsync.mock.calls[1] ?? [];
+    expect(insertSql).toContain("INSERT INTO sync_delete_log");
+    expect(insertParams[0]).toBe("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+    expect(insertParams[1]).toBe("pricing_service");
+    expect(insertParams[2]).toBe(baseRow.id);
+    expect(insertParams[4]).toBe("pending");
   });
 
   describe("onWriteCommitted", () => {
@@ -139,8 +164,8 @@ describe("PricingServiceRepositoryImpl", () => {
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
     });
 
-    it("NO se llama después de delete() (fuera de alcance por ahora)", async () => {
-      mockRunAsync.mockResolvedValueOnce(undefined);
+    it("se llama una vez después de delete() (N-066)", async () => {
+      mockRunAsync.mockResolvedValue(undefined);
       const onWriteCommitted = jest.fn<() => void>();
       const repoWithHook = new PricingServiceRepositoryImpl({
         onWriteCommitted,
@@ -148,7 +173,7 @@ describe("PricingServiceRepositoryImpl", () => {
 
       await repoWithHook.delete(baseRow.id);
 
-      expect(onWriteCommitted).not.toHaveBeenCalled();
+      expect(onWriteCommitted).toHaveBeenCalledTimes(1);
     });
   });
 });

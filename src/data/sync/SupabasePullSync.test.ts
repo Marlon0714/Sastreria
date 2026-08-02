@@ -447,6 +447,39 @@ describe("SupabasePullSync", () => {
     );
   });
 
+  it("applies pricing_service delete by id when entity_type is pricing_service", async () => {
+    mockQueryResults.sync_delete_log.push({
+      data: [
+        {
+          id: "del-5",
+          entity_type: "pricing_service",
+          entity_id: "pricing-99",
+          deleted_at: "2026-08-02T14:00:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const sqlStatements = mockRunAsync.mock.calls.map((call) =>
+      String(call[0]),
+    );
+    expect(
+      sqlStatements.some((sql) => sql.includes("DELETE FROM pricing_services")),
+    ).toBe(true);
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "sync_delete_log",
+      { id: "del-5", updatedAt: "2026-08-02T14:00:00.000Z" },
+    );
+  });
+
   it("applies saco_measurements incremental upserts and advances checkpoint", async () => {
     mockQueryResults.saco_measurements.push({
       data: [

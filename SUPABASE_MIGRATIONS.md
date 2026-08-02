@@ -324,6 +324,21 @@ Después de aplicar esto, `SupabaseSyncTransport.ts` y `SupabasePullSync.ts` ya 
 
 ---
 
+### v16_pricing_service_delete_sync (2026-08-02)
+
+**Contexto:** N-066 conecta el delete de `pricing_service` al mismo pipeline de `sync_delete_log` que ya usa `client_talla` (N-065). `PricingServiceRepositoryImpl.delete()` ahora escribe `entity_type: 'pricing_service'` en `sync_delete_log`, pero el CHECK de la tabla (ver `v14_wire_pricing_and_tallas_sync`) solo permite `'client', 'camisa_measurement', 'pantalon_measurement', 'client_talla'`. Sin este ALTER, **todo delete de un precio queda atascado en estado `error` para siempre** (mismo síntoma que tuvo `client_talla` antes de v14).
+
+```sql
+ALTER TABLE sync_delete_log DROP CONSTRAINT IF EXISTS sync_delete_log_entity_type_check;
+ALTER TABLE sync_delete_log
+  ADD CONSTRAINT sync_delete_log_entity_type_check
+  CHECK (entity_type IN ('client', 'camisa_measurement', 'pantalon_measurement', 'client_talla', 'pricing_service'));
+```
+
+(Verificar el nombre real de la constraint en el SQL editor antes del DROP, puede diferir si Supabase la renombró automáticamente en algún punto.)
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

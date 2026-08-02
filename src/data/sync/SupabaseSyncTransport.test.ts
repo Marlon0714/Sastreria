@@ -522,6 +522,24 @@ describe("SupabaseSyncTransport", () => {
       expect(mockDelete).toHaveBeenCalledTimes(1);
     });
 
+    it("deletes only pricing_services when entityType is pricing_service", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const pricingDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "pricing_service" as const,
+        entityId: "pricing-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(pricingDeleteLog);
+
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockFrom).toHaveBeenCalledWith("pricing_services");
+      expect(mockFrom).not.toHaveBeenCalledWith("clients");
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    });
+
     it("returns failed outcome when network throws", async () => {
       mockUpsert.mockRejectedValueOnce(new Error("network error"));
       const transport = new SupabaseSyncTransport();
