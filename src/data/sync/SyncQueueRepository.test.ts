@@ -304,13 +304,17 @@ describe("SyncQueueRepository", () => {
   });
 
   it("throws when fetching pending items fails", async () => {
+    // Las 9 queries de getPendingItems corren en paralelo (Promise.all), así
+    // que todas se disparan aunque la primera falle — solo el await conjunto
+    // rechaza de inmediato con el primer error.
     mockGetAllAsync.mockRejectedValueOnce(new Error("db unavailable"));
+    mockGetAllAsync.mockResolvedValue([]);
 
     const repository = new SyncQueueRepository();
 
     await expect(repository.getPendingItems(10)).rejects.toThrow(
       "db unavailable",
     );
-    expect(mockGetAllAsync).toHaveBeenCalledTimes(1);
+    expect(mockGetAllAsync).toHaveBeenCalledTimes(9);
   });
 });

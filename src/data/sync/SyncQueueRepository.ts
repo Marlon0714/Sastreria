@@ -436,8 +436,19 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
     const db = getDatabase();
     const statuses = ["pending", "error"] as const;
 
-    const clientRows = await db.getAllAsync<ClientQueueRow>(
-      `
+    const [
+      clientRows,
+      camisaRows,
+      pantalonRows,
+      tallaRows,
+      pricingRows,
+      sacoRows,
+      chalecoRows,
+      tallaTemplateRows,
+      deleteRows,
+    ] = await Promise.all([
+      db.getAllAsync<ClientQueueRow>(
+        `
       SELECT
         id,
         first_name,
@@ -452,13 +463,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY updated_at ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
-
-    const camisaRows = await db.getAllAsync<CamisaQueueRow>(
-      `
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<CamisaQueueRow>(
+        `
       SELECT
         id,
         client_id,
@@ -489,13 +499,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY updated_at ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
-
-    const pantalonRows = await db.getAllAsync<PantalonQueueRow>(
-      `
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<PantalonQueueRow>(
+        `
       SELECT
         id,
         client_id,
@@ -517,13 +526,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY updated_at ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
-
-    const tallaRows = await db.getAllAsync<TallaQueueRow>(
-      `
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<TallaQueueRow>(
+        `
       SELECT
         id,
         client_id,
@@ -538,13 +546,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY updated_at ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
-
-    const pricingRows = await db.getAllAsync<PricingServiceQueueRow>(
-      `
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<PricingServiceQueueRow>(
+        `
       SELECT
         id,
         name,
@@ -559,13 +566,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY updatedAt ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
-
-    const sacoRows = await db.getAllAsync<SacoQueueRow>(
-      `
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<SacoQueueRow>(
+        `
       SELECT
         id,
         client_id,
@@ -594,13 +600,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY updated_at ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
-
-    const chalecoRows = await db.getAllAsync<ChalecoQueueRow>(
-      `
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<ChalecoQueueRow>(
+        `
       SELECT
         id,
         client_id,
@@ -619,13 +624,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY updated_at ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
-
-    const tallaTemplateRows = await db.getAllAsync<TallaTemplateQueueRow>(
-      `
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<TallaTemplateQueueRow>(
+        `
       SELECT
         id,
         name,
@@ -659,13 +663,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY updated_at ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
-
-    const deleteRows = await db.getAllAsync<DeleteQueueRow>(
-      `
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<DeleteQueueRow>(
+        `
       SELECT
         id,
         entity_type,
@@ -677,10 +680,11 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ORDER BY deleted_at ASC
       LIMIT ?;
       `,
-      statuses[0],
-      statuses[1],
-      limit,
-    );
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+    ]);
 
     return [
       ...clientRows.map(toClientQueueItem),

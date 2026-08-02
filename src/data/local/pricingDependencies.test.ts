@@ -59,26 +59,4 @@ describe("pricingDependencies", () => {
 
     expect(pricingRepositoryCtor).toHaveBeenCalledTimes(2);
   });
-
-  it("resolvePricingServiceRepository devuelve el override si se provee", () => {
-    jest.doMock("./clientsDependencies", () => ({
-      scheduleSyncRun: jest.fn(),
-    }));
-
-    const override = {} as unknown;
-    let resolved: unknown;
-
-    jest.isolateModules(() => {
-      const pricingDependenciesModule =
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        require("./pricingDependencies") as typeof import("./pricingDependencies");
-      resolved = pricingDependenciesModule.resolvePricingServiceRepository(
-        override as ReturnType<
-          typeof pricingDependenciesModule.getDefaultPricingServiceRepository
-        >,
-      );
-    });
-
-    expect(resolved).toBe(override);
-  });
 });

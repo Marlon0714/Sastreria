@@ -7,14 +7,12 @@ import type {
   TallaGarmentType,
 } from "../../features/tallas/domain/types";
 import { generateDomainUuid } from "../../features/clients/domain/types";
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 
 type SyncStatus = "pending" | "synced" | "error";
-
-type WriteCommittedCallback = () => void | Promise<void>;
-
-interface TallaTemplateRepositoryImplOptions {
-  onWriteCommitted?: WriteCommittedCallback;
-}
 
 interface TallaTemplateRow {
   id: string;
@@ -83,9 +81,7 @@ function n(v: number | null | undefined): number | null {
 }
 
 export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
-  constructor(
-    private readonly options: TallaTemplateRepositoryImplOptions = {},
-  ) {}
+  constructor(private readonly options: WriteCommittedOptions = {}) {}
 
   async findAll(): Promise<TallaTemplate[]> {
     const db = getDatabase();
@@ -148,7 +144,7 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       `SELECT * FROM talla_templates WHERE id = ?;`,
       id,
     );
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
     return mapRow(row!);
   }
 
@@ -193,21 +189,12 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       `SELECT * FROM talla_templates WHERE id = ?;`,
       dto.id,
     );
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
     return mapRow(row!);
   }
 
   async delete(id: string): Promise<void> {
     const db = getDatabase();
     await db.runAsync(`DELETE FROM talla_templates WHERE id = ?;`, id);
-  }
-
-  private notifyWriteCommitted(): void {
-    if (!this.options.onWriteCommitted) {
-      return;
-    }
-    void Promise.resolve(this.options.onWriteCommitted()).catch(
-      () => undefined,
-    );
   }
 }

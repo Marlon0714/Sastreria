@@ -6,12 +6,10 @@ import type {
 } from "../../features/pricing/domain/pricingService";
 import { generateDomainUuid } from "../../features/clients/domain/types";
 import { getDatabase } from "./database";
-
-type WriteCommittedCallback = () => void | Promise<void>;
-
-interface PricingServiceRepositoryImplOptions {
-  onWriteCommitted?: WriteCommittedCallback;
-}
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 
 interface PricingServiceRow {
   id: string;
@@ -38,9 +36,7 @@ function mapRow(row: PricingServiceRow): PricingService {
 }
 
 export class PricingServiceRepositoryImpl implements PricingServiceRepository {
-  constructor(
-    private readonly options: PricingServiceRepositoryImplOptions = {},
-  ) {}
+  constructor(private readonly options: WriteCommittedOptions = {}) {}
 
   async getAll(): Promise<PricingService[]> {
     const db = getDatabase();
@@ -83,7 +79,7 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       entity.updatedAt,
       entity.syncStatus,
     );
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
     return entity;
   }
 
@@ -116,21 +112,12 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       updated.updatedAt,
       id,
     );
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
     return updated;
   }
 
   async delete(id: string): Promise<void> {
     const db = getDatabase();
     await db.runAsync(`DELETE FROM pricing_services WHERE id = ?;`, id);
-  }
-
-  private notifyWriteCommitted(): void {
-    if (!this.options.onWriteCommitted) {
-      return;
-    }
-    void Promise.resolve(this.options.onWriteCommitted()).catch(
-      () => undefined,
-    );
   }
 }

@@ -83,22 +83,21 @@ export class SupabaseSyncTransport implements SyncTransport {
     );
   }
 
-  async syncClient(client: Client): Promise<SyncTransportAttemptResult> {
+  /**
+   * Upsert genérico que SIEMPRE marca sync_status: "synced" — estructuralmente
+   * imposible de omitir para cualquier entidad nueva que se agregue después
+   * (ver decisions-log 2026-08-01 / N-070: un registro nuevo sin este campo
+   * viola el NOT NULL de Supabase en todas las tablas).
+   */
+  private async upsertSynced(
+    table: string,
+    row: Record<string, unknown>,
+  ): Promise<SyncTransportAttemptResult> {
     try {
       const supabase = getSupabaseClient();
-      const { error } = await supabase.from("clients").upsert(
-        {
-          id: client.id,
-          first_name: client.firstName,
-          last_name: client.lastName,
-          phone: client.phone,
-          notes: client.notes,
-          created_at: client.createdAt,
-          updated_at: client.updatedAt,
-          sync_status: "synced",
-        },
-        { onConflict: "id" },
-      );
+      const { error } = await supabase
+        .from(table)
+        .upsert({ ...row, sync_status: "synced" }, { onConflict: "id" });
 
       if (error) {
         return this.toAttemptFailure(error.code, error.message);
@@ -108,272 +107,179 @@ export class SupabaseSyncTransport implements SyncTransport {
     } catch {
       return { outcome: "deferred_offline" };
     }
+  }
+
+  async syncClient(client: Client): Promise<SyncTransportAttemptResult> {
+    return this.upsertSynced("clients", {
+      id: client.id,
+      first_name: client.firstName,
+      last_name: client.lastName,
+      phone: client.phone,
+      notes: client.notes,
+      created_at: client.createdAt,
+      updated_at: client.updatedAt,
+    });
   }
 
   async syncCamisaMeasurement(
     measurement: CamisaMeasurement,
   ): Promise<SyncTransportAttemptResult> {
-    try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("camisa_measurements").upsert(
-        {
-          id: measurement.id,
-          client_id: measurement.clientId,
-          espalda: measurement.espalda,
-          hombro: measurement.hombro,
-          talle_delantero: measurement.talleDelantero,
-          talle_trasero: measurement.talleTrasero,
-          distancia: measurement.distancia,
-          separacion: measurement.separacion,
-          pecho: measurement.pecho,
-          cintura: measurement.cintura,
-          base: measurement.base,
-          largo: measurement.largo,
-          largo_manga: measurement.largoManga,
-          ancho_manga: measurement.anchoManga,
-          escote: measurement.escote,
-          cuello: measurement.cuello,
-          brazo: measurement.brazo,
-          puno: measurement.puno,
-          changed_by: measurement.changedBy,
-          changed_at: measurement.changedAt,
-          notes: measurement.notes,
-          created_at: measurement.createdAt,
-          updated_at: measurement.updatedAt,
-          sync_status: "synced",
-        },
-        { onConflict: "id" },
-      );
-
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-
-      return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
-    }
+    return this.upsertSynced("camisa_measurements", {
+      id: measurement.id,
+      client_id: measurement.clientId,
+      espalda: measurement.espalda,
+      hombro: measurement.hombro,
+      talle_delantero: measurement.talleDelantero,
+      talle_trasero: measurement.talleTrasero,
+      distancia: measurement.distancia,
+      separacion: measurement.separacion,
+      pecho: measurement.pecho,
+      cintura: measurement.cintura,
+      base: measurement.base,
+      largo: measurement.largo,
+      largo_manga: measurement.largoManga,
+      ancho_manga: measurement.anchoManga,
+      escote: measurement.escote,
+      cuello: measurement.cuello,
+      brazo: measurement.brazo,
+      puno: measurement.puno,
+      changed_by: measurement.changedBy,
+      changed_at: measurement.changedAt,
+      notes: measurement.notes,
+      created_at: measurement.createdAt,
+      updated_at: measurement.updatedAt,
+    });
   }
 
   async syncPantalonMeasurement(
     measurement: PantalonMeasurement,
   ): Promise<SyncTransportAttemptResult> {
-    try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("pantalon_measurements").upsert(
-        {
-          id: measurement.id,
-          client_id: measurement.clientId,
-          largo: measurement.largo,
-          cintura: measurement.cintura,
-          base: measurement.base,
-          tiro: measurement.tiro,
-          pierna: measurement.pierna,
-          rodilla: measurement.rodilla,
-          bota: measurement.bota,
-          changed_by: measurement.changedBy,
-          changed_at: measurement.changedAt,
-          notes: measurement.notes,
-          created_at: measurement.createdAt,
-          updated_at: measurement.updatedAt,
-          sync_status: "synced",
-        },
-        { onConflict: "id" },
-      );
-
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-
-      return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
-    }
+    return this.upsertSynced("pantalon_measurements", {
+      id: measurement.id,
+      client_id: measurement.clientId,
+      largo: measurement.largo,
+      cintura: measurement.cintura,
+      base: measurement.base,
+      tiro: measurement.tiro,
+      pierna: measurement.pierna,
+      rodilla: measurement.rodilla,
+      bota: measurement.bota,
+      changed_by: measurement.changedBy,
+      changed_at: measurement.changedAt,
+      notes: measurement.notes,
+      created_at: measurement.createdAt,
+      updated_at: measurement.updatedAt,
+    });
   }
 
   async syncClientTalla(
     talla: ClientTalla,
   ): Promise<SyncTransportAttemptResult> {
-    try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("client_tallas").upsert(
-        {
-          id: talla.id,
-          client_id: talla.clientId,
-          type: talla.type,
-          value: talla.value,
-          notes: talla.notes,
-          created_at: talla.createdAt,
-          updated_at: talla.updatedAt,
-          sync_status: "synced",
-        },
-        { onConflict: "id" },
-      );
-
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-
-      return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
-    }
+    return this.upsertSynced("client_tallas", {
+      id: talla.id,
+      client_id: talla.clientId,
+      type: talla.type,
+      value: talla.value,
+      notes: talla.notes,
+      created_at: talla.createdAt,
+      updated_at: talla.updatedAt,
+    });
   }
 
   async syncPricingService(
     service: PricingService,
   ): Promise<SyncTransportAttemptResult> {
-    try {
-      const supabase = getSupabaseClient();
-      // Ojo: la tabla pricing_services en Supabase se creo con CREATE TABLE sin
-      // comillas en createdAt/updatedAt, por lo que Postgres los plegó a
-      // minusculas (createdat/updatedat). Aqui SI hay que usar esos nombres
-      // reales; el resto del codigo (SQLite local, dominio) sigue en camelCase.
-      const { error } = await supabase.from("pricing_services").upsert(
-        {
-          id: service.id,
-          name: service.name,
-          price: service.price,
-          category: service.category,
-          notes: service.notes,
-          createdat: service.createdAt,
-          updatedat: service.updatedAt,
-          sync_status: "synced",
-        },
-        { onConflict: "id" },
-      );
-
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-
-      return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
-    }
+    // Ojo: la tabla pricing_services en Supabase se creo con CREATE TABLE sin
+    // comillas en createdAt/updatedAt, por lo que Postgres los plegó a
+    // minusculas (createdat/updatedat). Aqui SI hay que usar esos nombres
+    // reales; el resto del codigo (SQLite local, dominio) sigue en camelCase.
+    return this.upsertSynced("pricing_services", {
+      id: service.id,
+      name: service.name,
+      price: service.price,
+      category: service.category,
+      notes: service.notes,
+      createdat: service.createdAt,
+      updatedat: service.updatedAt,
+    });
   }
 
   async syncSacoMeasurement(
     measurement: SacoMeasurement,
   ): Promise<SyncTransportAttemptResult> {
-    try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("saco_measurements").upsert(
-        {
-          id: measurement.id,
-          client_id: measurement.clientId,
-          espalda: measurement.espalda,
-          hombro: measurement.hombro,
-          talle_delantero: measurement.talleDelantero,
-          talle_trasero: measurement.talleTrasero,
-          distancia: measurement.distancia,
-          separacion: measurement.separacion,
-          pecho: measurement.pecho,
-          cintura: measurement.cintura,
-          base: measurement.base,
-          largo: measurement.largo,
-          largo_manga: measurement.largoManga,
-          ancho_manga: measurement.anchoManga,
-          escote: measurement.escote,
-          cuello: measurement.cuello,
-          brazo: measurement.brazo,
-          puno: measurement.puno,
-          created_at: measurement.createdAt,
-          updated_at: measurement.updatedAt,
-          sync_status: "synced",
-        },
-        { onConflict: "id" },
-      );
-
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-
-      return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
-    }
+    return this.upsertSynced("saco_measurements", {
+      id: measurement.id,
+      client_id: measurement.clientId,
+      espalda: measurement.espalda,
+      hombro: measurement.hombro,
+      talle_delantero: measurement.talleDelantero,
+      talle_trasero: measurement.talleTrasero,
+      distancia: measurement.distancia,
+      separacion: measurement.separacion,
+      pecho: measurement.pecho,
+      cintura: measurement.cintura,
+      base: measurement.base,
+      largo: measurement.largo,
+      largo_manga: measurement.largoManga,
+      ancho_manga: measurement.anchoManga,
+      escote: measurement.escote,
+      cuello: measurement.cuello,
+      brazo: measurement.brazo,
+      puno: measurement.puno,
+      created_at: measurement.createdAt,
+      updated_at: measurement.updatedAt,
+    });
   }
 
   async syncChalecoMeasurement(
     measurement: ChalecoMeasurement,
   ): Promise<SyncTransportAttemptResult> {
-    try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("chaleco_measurements").upsert(
-        {
-          id: measurement.id,
-          client_id: measurement.clientId,
-          espalda: measurement.espalda,
-          talle_trasero: measurement.talleTrasero,
-          largo: measurement.largo,
-          pecho: measurement.pecho,
-          cintura: measurement.cintura,
-          base: measurement.base,
-          escote: measurement.escote,
-          created_at: measurement.createdAt,
-          updated_at: measurement.updatedAt,
-          sync_status: "synced",
-        },
-        { onConflict: "id" },
-      );
-
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-
-      return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
-    }
+    return this.upsertSynced("chaleco_measurements", {
+      id: measurement.id,
+      client_id: measurement.clientId,
+      espalda: measurement.espalda,
+      talle_trasero: measurement.talleTrasero,
+      largo: measurement.largo,
+      pecho: measurement.pecho,
+      cintura: measurement.cintura,
+      base: measurement.base,
+      escote: measurement.escote,
+      created_at: measurement.createdAt,
+      updated_at: measurement.updatedAt,
+    });
   }
 
   async syncTallaTemplate(
     template: TallaTemplate,
   ): Promise<SyncTransportAttemptResult> {
-    try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("talla_templates").upsert(
-        {
-          id: template.id,
-          name: template.name,
-          type: template.type,
-          espalda: template.espalda,
-          hombro: template.hombro,
-          talle_delantero: template.talleDelantero,
-          talle_trasero: template.talleTrasero,
-          distancia: template.distancia,
-          separacion: template.separacion,
-          pecho: template.pecho,
-          cintura: template.cintura,
-          base: template.base,
-          largo: template.largo,
-          largo_manga: template.largoManga,
-          ancho_manga: template.anchoManga,
-          escote: template.escote,
-          cuello: template.cuello,
-          brazo: template.brazo,
-          puno: template.puno,
-          tiro: template.tiro,
-          pierna: template.pierna,
-          rodilla: template.rodilla,
-          bota: template.bota,
-          notes: template.notes,
-          created_at: template.createdAt,
-          updated_at: template.updatedAt,
-          sync_status: "synced",
-        },
-        { onConflict: "id" },
-      );
-
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-
-      return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
-    }
+    return this.upsertSynced("talla_templates", {
+      id: template.id,
+      name: template.name,
+      type: template.type,
+      espalda: template.espalda,
+      hombro: template.hombro,
+      talle_delantero: template.talleDelantero,
+      talle_trasero: template.talleTrasero,
+      distancia: template.distancia,
+      separacion: template.separacion,
+      pecho: template.pecho,
+      cintura: template.cintura,
+      base: template.base,
+      largo: template.largo,
+      largo_manga: template.largoManga,
+      ancho_manga: template.anchoManga,
+      escote: template.escote,
+      cuello: template.cuello,
+      brazo: template.brazo,
+      puno: template.puno,
+      tiro: template.tiro,
+      pierna: template.pierna,
+      rodilla: template.rodilla,
+      bota: template.bota,
+      notes: template.notes,
+      created_at: template.createdAt,
+      updated_at: template.updatedAt,
+    });
   }
 
   async syncDeleteLogEntry(

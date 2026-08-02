@@ -2,7 +2,7 @@ import type { PricingServiceRepository } from "../../features/pricing/repository
 
 import { scheduleSyncRun } from "./clientsDependencies";
 
-function getDefaultPricingServiceRepository(): PricingServiceRepository {
+export function getDefaultPricingServiceRepository(): PricingServiceRepository {
   const { PricingServiceRepositoryImpl } =
     // Lazy load avoids pulling SQLite/Expo internals in unit tests.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -13,11 +13,3 @@ function getDefaultPricingServiceRepository(): PricingServiceRepository {
   // nueva en cada llamada.
   return new PricingServiceRepositoryImpl({ onWriteCommitted: scheduleSyncRun });
 }
-
-export function resolvePricingServiceRepository(
-  repository?: PricingServiceRepository,
-): PricingServiceRepository {
-  return repository ?? getDefaultPricingServiceRepository();
-}
-
-export { getDefaultPricingServiceRepository };
