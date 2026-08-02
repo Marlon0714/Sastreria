@@ -12,8 +12,6 @@ import {
 import ChalecoMeasurementGrid from "../components/ChalecoMeasurementGrid";
 import { useUpsertChaleco } from "../hooks/useUpsertChaleco";
 
-// TODO: agregar validación y feedback de error
-
 type Props = NativeStackScreenProps<
   ClientsStackParamList,
   "ChalecoMeasurementEdit"

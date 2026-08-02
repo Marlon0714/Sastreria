@@ -109,6 +109,11 @@ export default function TallasScreen({ route }: Props) {
     [clientId, editingTalla, upsertTalla, closeModal],
   );
 
+  const submitForm = useCallback(
+    () => handleSubmit(onSubmit)(),
+    [handleSubmit, onSubmit],
+  );
+
   const confirmDelete = useCallback(
     (talla: ClientTalla) => {
       const label = TALLA_CONFIG[talla.type].label.toLowerCase();
@@ -227,7 +232,7 @@ export default function TallasScreen({ route }: Props) {
               </Pressable>
               <Pressable
                 style={styles.modalSaveButton}
-                onPress={handleSubmit(onSubmit)}
+                onPress={submitForm}
                 accessibilityLabel="Guardar talla"
               >
                 <Text style={styles.modalSaveText}>Guardar</Text>

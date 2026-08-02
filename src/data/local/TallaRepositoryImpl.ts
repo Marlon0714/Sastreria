@@ -1,4 +1,8 @@
 import { getDatabase } from "./database";
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 
 import type { TallaRepository } from "../../features/clients/domain/repository";
 import {
@@ -8,12 +12,6 @@ import {
   type TallaType,
   type UpdateTallaDTO,
 } from "../../features/clients/domain/types";
-
-type WriteCommittedCallback = () => void | Promise<void>;
-
-interface TallaRepositoryImplOptions {
-  onWriteCommitted?: WriteCommittedCallback;
-}
 
 interface TallaRow {
   id: string;
@@ -40,7 +38,7 @@ function mapTallaRow(row: TallaRow): ClientTalla {
 }
 
 export class TallaRepositoryImpl implements TallaRepository {
-  constructor(private readonly options: TallaRepositoryImplOptions = {}) {}
+  constructor(private readonly options: WriteCommittedOptions = {}) {}
 
   async upsert(input: CreateTallaDTO | UpdateTallaDTO): Promise<ClientTalla> {
     const db = getDatabase();
@@ -67,7 +65,7 @@ export class TallaRepositoryImpl implements TallaRepository {
       nowIso,
     );
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
 
     const rows = await db.getAllAsync<TallaRow>(
       `SELECT * FROM client_tallas WHERE id = ?;`,
@@ -107,15 +105,6 @@ export class TallaRepositoryImpl implements TallaRepository {
       );
     });
 
-    this.notifyWriteCommitted();
-  }
-
-  private notifyWriteCommitted(): void {
-    if (!this.options.onWriteCommitted) {
-      return;
-    }
-    void Promise.resolve(this.options.onWriteCommitted()).catch(
-      () => undefined,
-    );
+    notifyWriteCommitted(this.options);
   }
 }

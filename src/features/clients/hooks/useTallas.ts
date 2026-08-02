@@ -30,8 +30,17 @@ export function useTallas(clientId: string): {
     try {
       const data = await repo.findByClientId(clientId);
       setTallas(data);
-    } catch {
+    } catch (err) {
       setError("Error al cargar las tallas.");
+      // TODO: replace with Crashlytics when telemetry is integrated
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "useTallas",
+          message: "reload failed",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -65,8 +74,17 @@ export function useTallas(clientId: string): {
         }
         await reload();
         return talla;
-      } catch {
+      } catch (err) {
         setError("Error al guardar la talla.");
+        // TODO: replace with Crashlytics when telemetry is integrated
+        console.error(
+          JSON.stringify({
+            level: "error",
+            service: "useTallas",
+            message: "upsertTalla failed",
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
         return null;
       }
     },
@@ -80,8 +98,17 @@ export function useTallas(clientId: string): {
         await repo.delete(id);
         await reload();
         return true;
-      } catch {
+      } catch (err) {
         setError("Error al eliminar la talla.");
+        // TODO: replace with Crashlytics when telemetry is integrated
+        console.error(
+          JSON.stringify({
+            level: "error",
+            service: "useTallas",
+            message: "deleteTalla failed",
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
         return false;
       }
     },

@@ -1,4 +1,8 @@
 import { getDatabase } from "./database";
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 
 import type { MeasurementRepository } from "../../features/clients/domain/repository";
 import {
@@ -92,12 +96,6 @@ function mapChalecoRow(row: ChalecoMeasurementRow): ChalecoMeasurement {
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
   };
-}
-
-type WriteCommittedCallback = () => void | Promise<void>;
-
-interface MeasurementRepositoryImplOptions {
-  onWriteCommitted?: WriteCommittedCallback;
 }
 
 type SyncStatus = "pending" | "synced" | "error";
@@ -307,7 +305,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       sacoMeasurement.syncStatus,
     );
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
     return sacoMeasurement;
   }
 
@@ -364,7 +362,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       chalecoMeasurement.syncStatus,
     );
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
     return chalecoMeasurement;
   }
   async findSacoByClientId(clientId: string): Promise<SacoMeasurement | null> {
@@ -411,7 +409,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     );
   }
   constructor(
-    private readonly options: MeasurementRepositoryImplOptions = {},
+    private readonly options: WriteCommittedOptions = {},
   ) {}
 
   async upsertCamisa(input: UpsertCamisaDTO): Promise<CamisaMeasurement> {
@@ -528,7 +526,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       camisaMeasurement.syncStatus,
     );
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
 
     return camisaMeasurement;
   }
@@ -611,7 +609,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       pantalonMeasurement.syncStatus,
     );
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
 
     return pantalonMeasurement;
   }
@@ -704,17 +702,6 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       LIMIT 1;
       `,
       clientId,
-    );
-  }
-
-  private notifyWriteCommitted(): void {
-    if (!this.options.onWriteCommitted) {
-      return;
-    }
-
-    // Sync trigger must never block or fail local writes.
-    void Promise.resolve(this.options.onWriteCommitted()).catch(
-      () => undefined,
     );
   }
 }

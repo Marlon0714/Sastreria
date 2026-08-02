@@ -1,4 +1,8 @@
 import { getDatabase } from "./database";
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 
 import type { ClientRepository } from "../../features/clients/domain/repository";
 import {
@@ -7,12 +11,6 @@ import {
   type CreateClientDTO,
   type UpdateClientDTO,
 } from "../../features/clients/domain/types";
-
-type WriteCommittedCallback = () => void | Promise<void>;
-
-interface ClientRepositoryImplOptions {
-  onWriteCommitted?: WriteCommittedCallback;
-}
 
 interface ClientRow {
   id: string;
@@ -27,13 +25,24 @@ interface ClientRow {
   sync_status: "pending" | "synced" | "error";
 }
 
+function parsePhonesJson(value: string | null): string[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(value) as string[];
+  } catch {
+    return undefined;
+  }
+}
+
 function mapClientRow(row: ClientRow): Client {
   return {
     id: row.id,
     firstName: row.first_name,
     lastName: row.last_name,
     phone: row.phone,
-    phones: row.phones ? (JSON.parse(row.phones) as string[]) : undefined,
+    phones: parsePhonesJson(row.phones),
     cedula: row.cedula ?? undefined,
     notes: row.notes,
     createdAt: row.created_at,
@@ -44,7 +53,7 @@ function mapClientRow(row: ClientRow): Client {
 }
 
 export class ClientRepositoryImpl implements ClientRepository {
-  constructor(private readonly options: ClientRepositoryImplOptions = {}) {}
+  constructor(private readonly options: WriteCommittedOptions = {}) {}
 
   async create(input: CreateClientDTO): Promise<Client> {
     const db = getDatabase();
@@ -96,7 +105,7 @@ export class ClientRepositoryImpl implements ClientRepository {
       client.syncStatus,
     );
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
 
     return client;
   }
@@ -222,7 +231,7 @@ export class ClientRepositoryImpl implements ClientRepository {
       };
     }
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
 
     return mapClientRow(row);
   }
@@ -256,17 +265,6 @@ export class ClientRepositoryImpl implements ClientRepository {
       );
     });
 
-    this.notifyWriteCommitted();
-  }
-
-  private notifyWriteCommitted(): void {
-    if (!this.options.onWriteCommitted) {
-      return;
-    }
-
-    // Sync trigger must never block or fail local writes.
-    void Promise.resolve(this.options.onWriteCommitted()).catch(
-      () => undefined,
-    );
+    notifyWriteCommitted(this.options);
   }
 }

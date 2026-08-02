@@ -12,8 +12,6 @@ import {
 import SacoMeasurementGrid from "../components/SacoMeasurementGrid";
 import { useUpsertSaco } from "../hooks/useUpsertSaco";
 
-// TODO: agregar validación y feedback de error
-
 type Props = NativeStackScreenProps<
   ClientsStackParamList,
   "SacoMeasurementEdit"

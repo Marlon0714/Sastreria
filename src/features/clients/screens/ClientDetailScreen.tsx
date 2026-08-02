@@ -73,7 +73,7 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
           <Text style={styles.infoValue}>{client.phone}</Text>
         </View>
         {client.phones?.map((phone, idx) => (
-          <View key={idx} style={styles.infoRow}>
+          <View key={`${phone}-${idx}`} style={styles.infoRow}>
             <Text style={styles.infoLabel}>📱 Tel. {idx + 2}</Text>
             <Text style={styles.infoValue}>{phone}</Text>
           </View>
@@ -88,6 +88,28 @@ export default function ClientDetailScreen({ navigation, route }: Props) {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>📋 Notas</Text>
             <Text style={styles.infoValue}>{client.notes}</Text>
+          </View>
+        ) : null}
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>🗓️ Creado</Text>
+          <Text style={styles.infoValue}>
+            {new Date(client.createdAt).toLocaleDateString("es-CO", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </Text>
+        </View>
+        {client.updatedAt !== client.createdAt ? (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>✏️ Editado</Text>
+            <Text style={styles.infoValue}>
+              {new Date(client.updatedAt).toLocaleDateString("es-CO", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </Text>
           </View>
         ) : null}
       </View>
