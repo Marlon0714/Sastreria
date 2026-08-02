@@ -420,4 +420,72 @@ describe("ClientListScreen", () => {
 
     expect(mockUnlockDebugMode).not.toHaveBeenCalled();
   });
+
+  it("does not show the load more button when there are 20 clients or fewer", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: Array.from({ length: 20 }, (_, i) =>
+        clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
+      ),
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { queryByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
+  });
+
+  it("shows the load more button and reveals the rest of the clients on press", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: Array.from({ length: 25 }, (_, i) =>
+        clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
+      ),
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, getByText, queryByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByText("Mostrando 20 de 25")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Cargar más clientes"));
+
+    // All 25 now fit within the page size increment (20 + 20), so the
+    // "load more" affordance disappears entirely.
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
+  });
+
+  it("resets the visible count when the search term changes", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: Array.from({ length: 25 }, (_, i) =>
+        clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
+      ),
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, queryByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Cargar más clientes"));
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "Cliente",
+    );
+
+    expect(getByLabelText("Cargar más clientes")).toBeTruthy();
+  });
 });

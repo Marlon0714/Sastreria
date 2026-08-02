@@ -23,6 +23,8 @@ const DEBUG_UNLOCK_PHRASE = "modo taller oculto";
 type Props = NativeStackScreenProps<ClientsStackParamList, "ClientList">;
 type ClientFilter = "all" | "name" | "phone";
 
+const PAGE_SIZE = 20;
+
 function renderSyncBadge(syncStatus: "pending" | "synced" | "error") {
   if (syncStatus === "synced") {
     return null;
@@ -69,7 +71,12 @@ export default function ClientListScreen({ navigation }: Props) {
   const { clients, isLoading, isRefreshing, error, reload } = useClientList();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState<ClientFilter>("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const unlockDebugMode = useDebugModeStore((state) => state.unlock);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchTerm, filterBy]);
 
   useEffect(() => {
     if (normalizeText(searchTerm) !== normalizeText(DEBUG_UNLOCK_PHRASE)) {
@@ -115,6 +122,12 @@ export default function ClientListScreen({ navigation }: Props) {
       );
     });
   }, [clients, filterBy, searchTerm]);
+
+  const visibleClients = useMemo(
+    () => filteredClients.slice(0, visibleCount),
+    [filteredClients, visibleCount],
+  );
+  const hasMore = filteredClients.length > visibleClients.length;
 
   if (isLoading && clients.length === 0) {
     return <LoadingView message="Cargando clientes..." />;
@@ -210,7 +223,7 @@ export default function ClientListScreen({ navigation }: Props) {
         {clients.length} {clients.length === 1 ? "cliente" : "clientes"}
       </Text>
       <FlatList
-        data={filteredClients}
+        data={visibleClients}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
@@ -218,6 +231,24 @@ export default function ClientListScreen({ navigation }: Props) {
             <Text style={styles.noResultsText}>
               No hay clientes que coincidan con la busqueda.
             </Text>
+          ) : null
+        }
+        ListFooterComponent={
+          hasMore ? (
+            <View style={styles.loadMoreSection}>
+              <Text style={styles.loadMoreCountText}>
+                Mostrando {visibleClients.length} de {filteredClients.length}
+              </Text>
+              <Pressable
+                accessibilityLabel="Cargar más clientes"
+                style={styles.loadMoreButton}
+                onPress={() =>
+                  setVisibleCount((count) => count + PAGE_SIZE)
+                }
+              >
+                <Text style={styles.loadMoreButtonText}>Cargar más</Text>
+              </Pressable>
+            </View>
           ) : null
         }
         renderItem={({ item }) => (
@@ -316,6 +347,27 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontSize: 14,
     marginTop: 32,
+  },
+  loadMoreSection: {
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 16,
+  },
+  loadMoreCountText: {
+    color: "#94a3b8",
+    fontSize: 12,
+  },
+  loadMoreButton: {
+    borderWidth: 1,
+    borderColor: "#0f766e",
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  loadMoreButtonText: {
+    color: "#0f766e",
+    fontWeight: "700",
+    fontSize: 13,
   },
   clientCountText: {
     color: "#64748b",
