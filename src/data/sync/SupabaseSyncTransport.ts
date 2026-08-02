@@ -95,6 +95,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           notes: client.notes,
           created_at: client.createdAt,
           updated_at: client.updatedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );
@@ -139,6 +140,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           notes: measurement.notes,
           created_at: measurement.createdAt,
           updated_at: measurement.updatedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );
@@ -174,6 +176,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           notes: measurement.notes,
           created_at: measurement.createdAt,
           updated_at: measurement.updatedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );
@@ -202,6 +205,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           notes: talla.notes,
           created_at: talla.createdAt,
           updated_at: talla.updatedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );
@@ -234,6 +238,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           notes: service.notes,
           createdat: service.createdAt,
           updatedat: service.updatedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );
@@ -275,6 +280,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           puno: measurement.puno,
           created_at: measurement.createdAt,
           updated_at: measurement.updatedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );
@@ -307,6 +313,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           escote: measurement.escote,
           created_at: measurement.createdAt,
           updated_at: measurement.updatedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );
@@ -354,6 +361,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           notes: template.notes,
           created_at: template.createdAt,
           updated_at: template.updatedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );
@@ -380,6 +388,7 @@ export class SupabaseSyncTransport implements SyncTransport {
           entity_type: entry.entityType,
           entity_id: entry.entityId,
           deleted_at: entry.deletedAt,
+          sync_status: "synced",
         },
         { onConflict: "id" },
       );

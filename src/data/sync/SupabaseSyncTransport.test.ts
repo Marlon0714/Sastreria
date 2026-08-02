@@ -191,6 +191,7 @@ describe("SupabaseSyncTransport", () => {
       expect(mockFrom).toHaveBeenCalledWith("clients");
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          sync_status: "synced",
           id: "c-1",
           first_name: "Ana",
           last_name: "Torres",
@@ -222,6 +223,7 @@ describe("SupabaseSyncTransport", () => {
       expect(mockFrom).toHaveBeenCalledWith("camisa_measurements");
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          sync_status: "synced",
           id: "cam-1",
           client_id: "c-1",
           espalda: 42,
@@ -255,6 +257,7 @@ describe("SupabaseSyncTransport", () => {
       expect(mockFrom).toHaveBeenCalledWith("pantalon_measurements");
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          sync_status: "synced",
           id: "pan-1",
           client_id: "c-1",
           largo: 102,
@@ -285,6 +288,7 @@ describe("SupabaseSyncTransport", () => {
       expect(mockFrom).toHaveBeenCalledWith("client_tallas");
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          sync_status: "synced",
           id: "talla-1",
           client_id: "c-1",
           type: "camisa",
@@ -313,6 +317,7 @@ describe("SupabaseSyncTransport", () => {
       expect(mockFrom).toHaveBeenCalledWith("pricing_services");
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          sync_status: "synced",
           id: "price-1",
           name: "Dobladillo",
           price: 10000,
@@ -343,6 +348,7 @@ describe("SupabaseSyncTransport", () => {
       expect(mockFrom).toHaveBeenCalledWith("saco_measurements");
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          sync_status: "synced",
           id: "saco-1",
           client_id: "c-1",
           talle_delantero: 43,
@@ -373,6 +379,7 @@ describe("SupabaseSyncTransport", () => {
       expect(mockFrom).toHaveBeenCalledWith("chaleco_measurements");
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          sync_status: "synced",
           id: "chaleco-1",
           client_id: "c-1",
           talle_trasero: 41,
@@ -401,6 +408,7 @@ describe("SupabaseSyncTransport", () => {
       expect(mockFrom).toHaveBeenCalledWith("talla_templates");
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          sync_status: "synced",
           id: "template-1",
           name: "Molde estándar",
           type: "camisa",
