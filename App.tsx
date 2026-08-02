@@ -16,6 +16,7 @@ import { SyncLifecycleController } from "./src/data/sync/SyncLifecycleController
 import type { SyncTriggerSource } from "./src/data/sync/types";
 import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
+import { useDebugModeStore } from "./src/shared/state/debugModeStore";
 import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
 import { interceptLogs } from "./src/shared/utils/logInterceptor";
 import { LogViewer } from "./src/shared/components/LogViewer";
@@ -24,6 +25,7 @@ import { LogViewerToggle } from "./src/shared/components/LogViewerToggle";
 export default function App() {
   const [isReady, setIsReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const debugModeUnlocked = useDebugModeStore((state) => state.debugModeUnlocked);
   const clientsDependencies = useMemo(
     () => (isReady ? getClientsDependencies() : null),
     [isReady],
@@ -137,6 +139,10 @@ export default function App() {
     interceptLogs();
   }, []);
 
+  useEffect(() => {
+    void useDebugModeStore.getState().hydrate();
+  }, []);
+
   if (error) {
     return (
       <View style={styles.centered}>
@@ -159,8 +165,12 @@ export default function App() {
       <ClientsDependenciesProvider dependencies={clientsDependencies}>
         <RootNavigator />
       </ClientsDependenciesProvider>
-      <LogViewerToggle />
-      <LogViewer />
+      {debugModeUnlocked ? (
+        <>
+          <LogViewerToggle />
+          <LogViewer />
+        </>
+      ) : null}
     </>
   );
 }

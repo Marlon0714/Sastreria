@@ -13,6 +13,12 @@ interface UseClientListResult {
 }
 
 const mockUseClientList = jest.fn<() => UseClientListResult>();
+const mockUnlockDebugMode = jest.fn<() => Promise<void>>();
+
+jest.mock("../../../shared/state/debugModeStore", () => ({
+  useDebugModeStore: (selector: (state: { unlock: () => Promise<void> }) => unknown) =>
+    selector({ unlock: mockUnlockDebugMode }),
+}));
 
 jest.mock("@react-navigation/native", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
@@ -51,6 +57,8 @@ function buildProps(navigate: jest.Mock): ScreenProps {
 describe("ClientListScreen", () => {
   beforeEach(() => {
     mockUseClientList.mockReset();
+    mockUnlockDebugMode.mockReset();
+    mockUnlockDebugMode.mockResolvedValue();
   });
 
   it("renders loading state", () => {
@@ -315,5 +323,52 @@ describe("ClientListScreen", () => {
     expect(navigate).toHaveBeenCalledWith("ClientDetail", {
       clientId: client.id,
     });
+  });
+
+  it("unlocks debug mode silently when the exact secret phrase is typed in search", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({ id: "aaaa-1", firstName: "Ana", lastName: "Torres" }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+    const searchInput = getByLabelText(
+      "Buscar cliente por nombre o telefono",
+    );
+
+    fireEvent.changeText(searchInput, "Modo Taller Oculto");
+
+    expect(mockUnlockDebugMode).toHaveBeenCalledTimes(1);
+    expect(searchInput.props.value).toBe("");
+  });
+
+  it("does not unlock debug mode on a normal search", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({ id: "aaaa-1", firstName: "Ana", lastName: "Torres" }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "ana",
+    );
+
+    expect(mockUnlockDebugMode).not.toHaveBeenCalled();
   });
 });

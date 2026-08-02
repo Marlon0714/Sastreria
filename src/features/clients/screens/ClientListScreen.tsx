@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,7 +13,12 @@ import {
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { EmptyView, ErrorView, LoadingView } from "../../../shared/components";
+import { useDebugModeStore } from "../../../shared/state/debugModeStore";
 import { useClientList } from "../hooks/useClientList";
+
+// Frase de desbloqueo del modo debug (visor de logs). Cambiar por algo que
+// solo tú conozcas y que nadie escribiría por accidente en una búsqueda real.
+const DEBUG_UNLOCK_PHRASE = "modo taller oculto";
 
 type Props = NativeStackScreenProps<ClientsStackParamList, "ClientList">;
 type ClientFilter = "all" | "name" | "phone";
@@ -64,6 +69,15 @@ export default function ClientListScreen({ navigation }: Props) {
   const { clients, isLoading, isRefreshing, error, reload } = useClientList();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState<ClientFilter>("all");
+  const unlockDebugMode = useDebugModeStore((state) => state.unlock);
+
+  useEffect(() => {
+    if (normalizeText(searchTerm) !== normalizeText(DEBUG_UNLOCK_PHRASE)) {
+      return;
+    }
+    setSearchTerm("");
+    void unlockDebugMode();
+  }, [searchTerm, unlockDebugMode]);
 
   useFocusEffect(
     useCallback(() => {
