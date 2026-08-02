@@ -14,6 +14,7 @@ import {
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { EmptyView, ErrorView, LoadingView } from "../../../shared/components";
 import { useDebugModeStore } from "../../../shared/state/debugModeStore";
+import { normalizePhone, normalizeText } from "../../../shared/utils/textSearch";
 import { useClientList } from "../hooks/useClientList";
 
 // Frase de desbloqueo del modo debug (visor de logs). Cambiar por algo que
@@ -53,18 +54,6 @@ function renderSyncBadge(syncStatus: "pending" | "synced" | "error") {
       </Text>
     </View>
   );
-}
-
-function normalizeText(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
-function normalizePhone(value: string): string {
-  return value.replace(/\D/g, "");
 }
 
 export default function ClientListScreen({ navigation }: Props) {

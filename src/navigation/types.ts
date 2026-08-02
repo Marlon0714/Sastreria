@@ -49,7 +49,8 @@ export type ClientsStackParamList = {
 };
 
 export type ScheduleStackParamList = {
-  SchedulePlaceholder: undefined;
+  ScheduleList: undefined;
+  ScheduleForm: { scheduleId?: string };
 };
 
 export type PricingStackParamList = {

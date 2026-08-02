@@ -29,6 +29,17 @@ jest.mock("./ClientsStackNavigator", () => {
   };
 });
 
+jest.mock("./ScheduleStackNavigator", () => {
+  const React = jest.requireActual("react") as typeof import("react");
+  const { Text } = jest.requireActual(
+    "react-native",
+  ) as typeof import("react-native");
+
+  return function MockScheduleStackNavigator() {
+    return React.createElement(Text, null, "Pantalla agenda");
+  };
+});
+
 // Mock useAuth so RootNavigator renders tabs directly (authenticated state)
 jest.mock("../features/auth/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -60,9 +71,7 @@ describe("RootNavigator tabs composition", () => {
     fireEvent.press(getByText("Agenda"));
 
     // Assert
-    expect(
-      await findByText("Proximamente podras gestionar arreglos."),
-    ).toBeTruthy();
+    expect(await findByText("Pantalla agenda")).toBeTruthy();
 
     // Act
     fireEvent.press(getByText("Precios"));
