@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+import {
+  ID_DIGITS_PATTERN,
+  PERSON_NAME_PATTERN,
+  PHONE_DIGITS_PATTERN,
+  normalizeDigitsInput,
+} from "../../../shared/domain/textPatterns";
+
 /**
  * Campo opcional de medida (para camisa/pantalón).
  * Acepta string vacío, undefined, null o número. Convierte string vacío a null
@@ -59,19 +66,45 @@ const optionalPhoneField = z
   .trim()
   .max(30)
   .optional()
-  .transform((v) => (v === "" ? undefined : v));
+  .transform((v) => (v === "" || v === undefined ? undefined : normalizeDigitsInput(v)))
+  .refine((v) => v === undefined || PHONE_DIGITS_PATTERN.test(v), {
+    message: "El teléfono solo puede contener números",
+  });
+
+// Transforma a "" en vez de undefined: la columna es NOT NULL (acepta "" sin migración)
+// y así `phone` se mantiene como `string` en el tipo de salida.
+const primaryPhoneField = z
+  .string()
+  .trim()
+  .max(30)
+  .optional()
+  .transform((v) => (v ? normalizeDigitsInput(v) : ""))
+  .refine((v) => v === "" || PHONE_DIGITS_PATTERN.test(v), {
+    message: "El teléfono solo puede contener números",
+  });
 
 const optionalCedulaField = z
   .string()
   .trim()
   .max(20)
   .optional()
-  .transform((v) => (v === "" ? undefined : v));
+  .transform((v) => (v === "" || v === undefined ? undefined : normalizeDigitsInput(v)))
+  .refine((v) => v === undefined || ID_DIGITS_PATTERN.test(v), {
+    message: "La cédula solo puede contener números",
+  });
+
+const personNameField = (label: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `El ${label} es obligatorio`)
+    .max(80)
+    .regex(PERSON_NAME_PATTERN, `El ${label} solo puede contener letras`);
 
 export const createClientSchema = z.object({
-  firstName: z.string().trim().min(1, "El nombre es obligatorio").max(80),
-  lastName: z.string().trim().min(1, "El apellido es obligatorio").max(80),
-  phone: z.string().trim().min(7, "El teléfono no es válido").max(30),
+  firstName: personNameField("nombre"),
+  lastName: personNameField("apellido"),
+  phone: primaryPhoneField,
   phone2: optionalPhoneField,
   phone3: optionalPhoneField,
   cedula: optionalCedulaField,
@@ -157,9 +190,9 @@ export type CreateClientSchemaOutput = z.output<typeof createClientSchema>;
 
 export const updateClientSchema = z.object({
   id: z.string().uuid("El id de cliente es inválido"),
-  firstName: z.string().trim().min(1, "El nombre es obligatorio").max(80),
-  lastName: z.string().trim().min(1, "El apellido es obligatorio").max(80),
-  phone: z.string().trim().min(7, "El teléfono no es válido").max(30),
+  firstName: personNameField("nombre"),
+  lastName: personNameField("apellido"),
+  phone: primaryPhoneField,
   phone2: optionalPhoneField,
   phone3: optionalPhoneField,
   cedula: optionalCedulaField,

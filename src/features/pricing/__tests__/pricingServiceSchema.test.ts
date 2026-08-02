@@ -56,6 +56,24 @@ describe("pricingServiceSchema", () => {
         .success,
     ).toBe(true);
   });
+
+  it("acepta nombres de servicio con números y puntuación común", () => {
+    expect(
+      pricingServiceSchema.safeParse({
+        ...validService,
+        name: 'Ajuste de basta x2 (50% adelanto)',
+      }).success,
+    ).toBe(true);
+  });
+
+  it("falla si el nombre contiene caracteres de inyección bloqueados", () => {
+    const result = pricingServiceSchema.safeParse({
+      ...validService,
+      name: "<script>alert(1)</script>",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toContain("name");
+  });
 });
 
 describe("createPricingServiceSchema", () => {

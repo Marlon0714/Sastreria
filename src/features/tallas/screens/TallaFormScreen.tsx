@@ -13,6 +13,7 @@ import {
 
 import type { TallasStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
+import { SIZE_VALUE_PATTERN } from "../../../shared/domain/textPatterns";
 import { MeasurementCard } from "../../clients/components/MeasurementCard";
 import { MeasurementGridSection } from "../../clients/components/MeasurementGridSection";
 import type { TallaGarmentType, TallaTemplate } from "../domain/types";
@@ -162,6 +163,13 @@ export default function TallaFormScreen({ navigation, route }: Props) {
     const name = values.name.trim();
     if (!name) {
       Alert.alert("Campo requerido", "El nombre de la talla es obligatorio.");
+      return;
+    }
+    if (!SIZE_VALUE_PATTERN.test(name)) {
+      Alert.alert(
+        "Formato inválido",
+        'El nombre de la talla solo puede contener letras, números, espacios, "/" y "-".',
+      );
       return;
     }
     const nums = {

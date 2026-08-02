@@ -166,7 +166,7 @@ export default function ClientEditScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Teléfono</Text>
+          <Text style={styles.label}>Teléfono (opcional)</Text>
           <Controller
             control={control}
             name="phone"

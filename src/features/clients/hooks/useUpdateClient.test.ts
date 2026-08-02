@@ -202,7 +202,7 @@ describe("useUpdateClient", () => {
       id: "invalid-id",
       firstName: "",
       lastName: "",
-      phone: "123",
+      phone: "",
       notes: "",
     });
 
@@ -210,6 +210,6 @@ describe("useUpdateClient", () => {
     expect(errors.id?.message).toBe("El id de cliente es inválido");
     expect(errors.firstName?.message).toBe("El nombre es obligatorio");
     expect(errors.lastName?.message).toBe("El apellido es obligatorio");
-    expect(errors.phone?.message).toBe("El teléfono no es válido");
+    expect(errors.phone?.message).toBeUndefined();
   });
 });

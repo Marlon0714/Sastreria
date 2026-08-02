@@ -101,13 +101,13 @@ describe("useCreateClient", () => {
     const errors = result.current.validate({
       firstName: "",
       lastName: "",
-      phone: "123",
+      phone: "",
       notes: "",
     });
 
     expect(errors.firstName?.message).toBe("El nombre es obligatorio");
     expect(errors.lastName?.message).toBe("El apellido es obligatorio");
-    expect(errors.phone?.message).toBe("El teléfono no es válido");
+    expect(errors.phone?.message).toBeUndefined();
   });
 
   it("creates client successfully and resets form", async () => {
