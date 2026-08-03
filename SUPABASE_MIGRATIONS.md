@@ -397,7 +397,19 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "authenticated read profiles" ON profiles FOR SELECT TO authenticated USING (true);
-CREATE POLICY "self update profile" ON profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+-- RLS controla FILAS, no columnas: sin este REVOKE, cualquier sesión autenticada
+-- podría hacer `select pin_hash from profiles` directo (aunque el código de la
+-- app nunca lo pida) y llevarse todos los hashes para intentar romperlos offline.
+REVOKE SELECT (pin_hash) ON profiles FROM authenticated;
+
+-- Sin política de UPDATE por ahora: ninguna pantalla edita el propio perfil
+-- todavía. No se otorga un permiso que ninguna funcionalidad usa (si se
+-- otorgara "self update" a nivel de fila como en un intento anterior, un
+-- operario podría hacer `UPDATE profiles SET role='owner' WHERE id = auth.uid()`,
+-- porque RLS por fila no restringe qué columnas se tocan). Cuando exista una
+-- función real de "editar mi nombre", se agrega una policy o función que
+-- permita tocar `display_name` únicamente, nunca `role` ni `pin_hash`.
 
 -- Resuelve qué operario corresponde a un PIN, sin exponer los hashes al cliente.
 CREATE OR REPLACE FUNCTION resolve_operario_by_pin(candidate_pin TEXT)
