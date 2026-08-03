@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import type { SupabaseAuthRepositoryPort } from "../../../data/supabase/SupabaseAuthRepository";
 import { useAuth } from "./useAuth";
+import { useIdentityStore } from "../../../shared/state/identityStore";
 
 import { isSupabaseConfigured } from "../../../data/supabase/config";
 
@@ -15,6 +16,27 @@ jest.mock("../../../data/supabase/config", () => ({
 const mockIsConfigured = isSupabaseConfigured as jest.MockedFunction<
   typeof isSupabaseConfigured
 >;
+
+const secureStoreData = new Map<string, string>();
+const mockGetItemAsync = jest.fn<(key: string) => Promise<string | null>>();
+const mockSetItemAsync =
+  jest.fn<(key: string, value: string) => Promise<void>>();
+const mockDeleteItemAsync = jest.fn<(key: string) => Promise<void>>();
+
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: (key: string): Promise<string | null> =>
+    mockGetItemAsync(key),
+  setItemAsync: (key: string, value: string): Promise<void> =>
+    mockSetItemAsync(key, value),
+  deleteItemAsync: (key: string): Promise<void> => mockDeleteItemAsync(key),
+}));
+
+const testProfile = {
+  id: "user-1",
+  displayName: "María Gómez",
+  role: "operario" as const,
+  isSharedDevice: false,
+};
 
 function makeRepo(
   overrides: Partial<SupabaseAuthRepositoryPort> = {},
@@ -33,6 +55,9 @@ function makeRepo(
     hasValidSession: jest
       .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
       .mockResolvedValue(false),
+    getProfile: jest
+      .fn<SupabaseAuthRepositoryPort["getProfile"]>()
+      .mockResolvedValue(testProfile),
     ...overrides,
   };
 }
@@ -41,6 +66,19 @@ describe("useAuth", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsConfigured.mockReturnValue(true);
+    secureStoreData.clear();
+    mockGetItemAsync.mockImplementation((key) =>
+      Promise.resolve(secureStoreData.get(key) ?? null),
+    );
+    mockSetItemAsync.mockImplementation((key, value) => {
+      secureStoreData.set(key, value);
+      return Promise.resolve();
+    });
+    mockDeleteItemAsync.mockImplementation((key) => {
+      secureStoreData.delete(key);
+      return Promise.resolve();
+    });
+    useIdentityStore.getState().reset();
   });
 
   describe("inicialización de sesión", () => {
@@ -55,19 +93,25 @@ describe("useAuth", () => {
 
       expect(result.current.isAuthenticated).toBe(false);
       expect(result.current.error).toBeNull();
+      expect(result.current.profile).toBeNull();
     });
 
-    it("marca isAuthenticated en true cuando hay sesión válida previa", async () => {
+    it("marca isAuthenticated en true y carga el perfil cuando hay sesión válida previa", async () => {
       const repo = makeRepo({
         hasValidSession: jest
           .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
           .mockResolvedValue(true),
+        getSession: jest
+          .fn<SupabaseAuthRepositoryPort["getSession"]>()
+          .mockResolvedValue({ userId: "user-1", accessToken: "token-abc" }),
       });
       const { result } = renderHook(() => useAuth(repo));
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.profile).toEqual(testProfile);
+      expect(useIdentityStore.getState().ownProfile).toEqual(testProfile);
     });
 
     it("queda autenticado si Supabase no está configurado (modo offline)", async () => {
@@ -93,10 +137,33 @@ describe("useAuth", () => {
 
       expect(result.current.isAuthenticated).toBe(false);
     });
+
+    it("usa el perfil cacheado en SecureStore si getProfile falla", async () => {
+      secureStoreData.set(
+        "sastreria_cached_profile",
+        JSON.stringify(testProfile),
+      );
+      const repo = makeRepo({
+        hasValidSession: jest
+          .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
+          .mockResolvedValue(true),
+        getSession: jest
+          .fn<SupabaseAuthRepositoryPort["getSession"]>()
+          .mockResolvedValue({ userId: "user-1", accessToken: "token-abc" }),
+        getProfile: jest
+          .fn<SupabaseAuthRepositoryPort["getProfile"]>()
+          .mockRejectedValue(new Error("network error")),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.profile).toEqual(testProfile);
+    });
   });
 
   describe("signIn", () => {
-    it("autentica al usuario con credenciales correctas", async () => {
+    it("autentica al usuario con credenciales correctas y carga su perfil", async () => {
       const repo = makeRepo();
       const { result } = renderHook(() => useAuth(repo));
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -107,9 +174,14 @@ describe("useAuth", () => {
 
       expect(result.current.isAuthenticated).toBe(true);
       expect(result.current.error).toBeNull();
+      expect(result.current.profile).toEqual(testProfile);
       expect(repo.signIn).toHaveBeenCalledWith(
         "user@example.com",
         "password123",
+      );
+      expect(mockSetItemAsync).toHaveBeenCalledWith(
+        "sastreria_cached_profile",
+        JSON.stringify(testProfile),
       );
     });
 
@@ -169,14 +241,18 @@ describe("useAuth", () => {
   });
 
   describe("signOut", () => {
-    it("cierra sesión correctamente", async () => {
+    it("cierra sesión correctamente y limpia el perfil", async () => {
       const repo = makeRepo({
         hasValidSession: jest
           .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
           .mockResolvedValue(true),
+        getSession: jest
+          .fn<SupabaseAuthRepositoryPort["getSession"]>()
+          .mockResolvedValue({ userId: "user-1", accessToken: "token-abc" }),
       });
       const { result } = renderHook(() => useAuth(repo));
       await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+      await waitFor(() => expect(result.current.profile).toEqual(testProfile));
 
       await act(async () => {
         await result.current.signOut();
@@ -184,6 +260,8 @@ describe("useAuth", () => {
 
       expect(result.current.isAuthenticated).toBe(false);
       expect(result.current.isLoading).toBe(false);
+      expect(result.current.profile).toBeNull();
+      expect(useIdentityStore.getState().ownProfile).toBeNull();
       expect(repo.signOut).toHaveBeenCalledTimes(1);
     });
   });
