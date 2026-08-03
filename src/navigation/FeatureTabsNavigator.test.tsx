@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import RootNavigator from "./RootNavigator";
+import { useIdentityStore } from "../shared/state/identityStore";
 import { useSyncStatusStore } from "../shared/state/syncStatusStore";
 
 jest.mock("../features/pricing/hooks/usePricingServices", () => ({
@@ -55,6 +56,22 @@ describe("RootNavigator tabs composition", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useSyncStatusStore.getState().reset();
+    useIdentityStore.getState().reset();
+  });
+
+  it("muestra todas las tabs para un operario (punto de partida amplio confirmado)", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "user-1",
+      displayName: "María Gómez",
+      role: "operario",
+      isSharedDevice: false,
+    });
+
+    const { getByText } = render(<RootNavigator />);
+
+    expect(getByText("Clientes")).toBeTruthy();
+    expect(getByText("Agenda")).toBeTruthy();
+    expect(getByText("Precios")).toBeTruthy();
   });
 
   it("mantiene accesible clients y muestra placeholders al cambiar de tab", async () => {
