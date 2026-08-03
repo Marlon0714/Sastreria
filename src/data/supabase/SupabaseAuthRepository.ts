@@ -1,5 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 
+import type { Profile } from "../../features/auth/domain/profile";
 import { getSupabaseClient } from "./client";
 
 export interface AuthSession {
@@ -12,6 +13,7 @@ export interface SupabaseAuthRepositoryPort {
   signOut(): Promise<void>;
   getSession(): Promise<AuthSession | null>;
   hasValidSession(): Promise<boolean>;
+  getProfile(userId: string): Promise<Profile | null>;
 }
 
 function toAuthSession(session: Session): AuthSession {
@@ -60,5 +62,25 @@ export class SupabaseAuthRepository implements SupabaseAuthRepositoryPort {
   async hasValidSession(): Promise<boolean> {
     const session = await this.getSession();
     return session !== null;
+  }
+
+  async getProfile(userId: string): Promise<Profile | null> {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, display_name, role, is_shared_device")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return {
+      id: data.id,
+      displayName: data.display_name,
+      role: data.role,
+      isSharedDevice: data.is_shared_device,
+    };
   }
 }

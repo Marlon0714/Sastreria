@@ -378,6 +378,50 @@ ALTER TABLE sync_delete_log
 
 ---
 
+### v18_profiles_roles (2026-08-03)
+
+**Contexto:** Bloque 0 del rediseño de Agenda (N-076) — login real por operario (no texto libre) más roles, para poder atribuir cada acción a una persona concreta. Hoy el login es un candado binario sin ningún concepto de identidad; esta migración crea `profiles`, separada de `auth.users` (que Supabase gestiona internamente), y la función `resolve_operario_by_pin` que usa la tablet compartida del mostrador para identificar quién actúa sin exponer los hashes de PIN al cliente.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto; -- para hashear PINs con crypt()/gen_salt()
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+  display_name TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('owner', 'operario')),
+  is_shared_device BOOLEAN NOT NULL DEFAULT false,
+  pin_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated read profiles" ON profiles FOR SELECT TO authenticated USING (true);
+CREATE POLICY "self update profile" ON profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+-- Resuelve qué operario corresponde a un PIN, sin exponer los hashes al cliente.
+CREATE OR REPLACE FUNCTION resolve_operario_by_pin(candidate_pin TEXT)
+RETURNS TABLE (id UUID, display_name TEXT, role TEXT)
+LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT id, display_name, role FROM profiles
+  WHERE role = 'operario' AND pin_hash IS NOT NULL
+    AND pin_hash = crypt(candidate_pin, pin_hash);
+$$;
+```
+
+**Flujo para dar de alta un operario nuevo** (manual, por el dueño): crear el usuario en Supabase Dashboard → Authentication → Users (correo + contraseña), copiar su UUID, y correr:
+
+```sql
+INSERT INTO profiles (id, display_name, role, is_shared_device, pin_hash)
+VALUES ('<uuid-del-usuario>', 'María Gómez', 'operario', false, crypt('1234', gen_salt('bf')));
+```
+
+Para la cuenta de la tablet compartida: mismo flujo pero `is_shared_device = true`, sin necesidad de `pin_hash` propio (nadie se identifica *como* la tablet, solo a través de ella).
+
+**Importante:** correr esto en Supabase ANTES de instalar un build que incluya este código — sin la tabla `profiles`, `getProfile()` falla silenciosamente (retorna `null`) y ningún usuario tiene rol ni identidad más allá del login binario previo.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
