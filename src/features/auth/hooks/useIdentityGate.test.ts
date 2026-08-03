@@ -144,4 +144,55 @@ describe("useIdentityGate", () => {
     expect(resolved).toBeNull();
     expect(result.current.isPinPromptVisible).toBe(false);
   });
+
+  describe("releaseIdentity", () => {
+    it("limpia el resolvedActor en dispositivo compartido, forzando pedir PIN de nuevo en la siguiente acción", async () => {
+      useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
+      mockRpc.mockResolvedValue({
+        data: [{ id: "user-2", display_name: "Juan Pérez", role: "operario" }],
+        error: null,
+      });
+      const { result } = renderHook(() => useIdentityGate());
+
+      act(() => {
+        void result.current.requireIdentity();
+      });
+      await act(async () => {
+        await result.current.submitPin("1234");
+      });
+      expect(useIdentityStore.getState().resolvedActor).not.toBeNull();
+
+      act(() => {
+        result.current.releaseIdentity();
+      });
+
+      expect(useIdentityStore.getState().resolvedActor).toBeNull();
+
+      // La siguiente acción (misma persona u otra) vuelve a pedir PIN.
+      act(() => {
+        void result.current.requireIdentity();
+      });
+      expect(result.current.isPinPromptVisible).toBe(true);
+    });
+
+    it("no hace nada en cuentas personales (la identidad dura toda la sesión)", async () => {
+      useIdentityStore.getState().setOwnProfile(personalProfile);
+      const { result } = renderHook(() => useIdentityGate());
+
+      act(() => {
+        result.current.releaseIdentity();
+      });
+
+      expect(useIdentityStore.getState().resolvedActor).toEqual(
+        personalProfile,
+      );
+
+      let resolved: unknown;
+      await act(async () => {
+        resolved = await result.current.requireIdentity();
+      });
+      expect(resolved).toEqual(personalProfile);
+      expect(result.current.isPinPromptVisible).toBe(false);
+    });
+  });
 });

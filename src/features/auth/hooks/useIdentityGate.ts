@@ -18,6 +18,17 @@ interface UseIdentityGateResult {
    * a que se valide un PIN o se cancele.
    */
   requireIdentity: () => Promise<Profile | null>;
+  /**
+   * Marca como terminada la acción que consumió la identidad resuelta por
+   * PIN. En dispositivo compartido, cada PIN vale para UNA sola acción: se
+   * debe llamar justo después de completarla (ej. al guardar el cambio de
+   * estado) para que la siguiente acción — sea de la misma persona o de
+   * otra que tome la tablet después — vuelva a pedir PIN. Evita que dos
+   * trabajadores consecutivos en la misma tablet queden atribuidos al
+   * mismo PIN sin darse cuenta. No hace nada en cuentas personales (ahí no
+   * hay ambigüedad que resolver, la identidad dura toda la sesión).
+   */
+  releaseIdentity: () => void;
   isPinPromptVisible: boolean;
   pinError: string | null;
   submitPin: (pin: string) => Promise<void>;
@@ -28,6 +39,9 @@ export function useIdentityGate(): UseIdentityGateResult {
   const ownProfile = useIdentityStore((state) => state.ownProfile);
   const resolvedActor = useIdentityStore((state) => state.resolvedActor);
   const setResolvedActor = useIdentityStore((state) => state.setResolvedActor);
+  const clearResolvedActor = useIdentityStore(
+    (state) => state.clearResolvedActor,
+  );
 
   const [isPinPromptVisible, setIsPinPromptVisible] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
@@ -87,8 +101,15 @@ export function useIdentityGate(): UseIdentityGateResult {
     pendingResolveRef.current = null;
   }, []);
 
+  const releaseIdentity = useCallback((): void => {
+    if (ownProfile?.isSharedDevice) {
+      clearResolvedActor();
+    }
+  }, [ownProfile, clearResolvedActor]);
+
   return {
     requireIdentity,
+    releaseIdentity,
     isPinPromptVisible,
     pinError,
     submitPin,
