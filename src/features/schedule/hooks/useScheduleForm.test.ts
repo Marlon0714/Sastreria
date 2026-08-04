@@ -251,4 +251,50 @@ describe("useScheduleForm", () => {
       "No se pudo guardar el turno. Intenta nuevamente.",
     );
   });
+
+  it("libera la identidad aunque falle la creación del evento tras una mutación exitosa", async () => {
+    mockCreate.mockResolvedValueOnce(baseSchedule);
+    mockCreateEvent.mockRejectedValueOnce(new Error("network blip"));
+    const identityGate = makeIdentityGate();
+    const { result } = renderHook(() =>
+      useScheduleForm(undefined, identityGate),
+    );
+
+    let submitted: Schedule | null = null;
+    await act(async () => {
+      submitted = await result.current.submit(input);
+    });
+
+    expect(submitted).toBeNull();
+    expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignora un segundo submit concurrente mientras el primero sigue en curso", async () => {
+    let resolveCreate: ((schedule: Schedule) => void) | undefined;
+    mockCreate.mockImplementationOnce(
+      () =>
+        new Promise<Schedule>((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    const identityGate = makeIdentityGate();
+    const { result } = renderHook(() =>
+      useScheduleForm(undefined, identityGate),
+    );
+
+    let firstResult: Promise<Schedule | null> = Promise.resolve(null);
+    let secondResult: Schedule | null = baseSchedule;
+    await act(async () => {
+      firstResult = result.current.submit(input);
+      secondResult = await result.current.submit(input);
+    });
+
+    expect(secondResult).toBeNull();
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+
+    resolveCreate?.(baseSchedule);
+    await act(async () => {
+      await firstResult;
+    });
+  });
 });

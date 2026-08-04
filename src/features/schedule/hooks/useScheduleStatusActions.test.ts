@@ -201,4 +201,53 @@ describe("useScheduleStatusActions", () => {
       "No se pudo actualizar el turno. Intenta nuevamente.",
     );
   });
+
+  it("libera la identidad aunque falle la creación del evento tras una mutación exitosa", async () => {
+    mockMarkReady.mockResolvedValueOnce({
+      ...baseSchedule,
+      status: "listo_para_entregar",
+    });
+    mockCreateEvent.mockRejectedValueOnce(new Error("network blip"));
+    const identityGate = makeIdentityGate();
+    const { result } = renderHook(() =>
+      useScheduleStatusActions(baseSchedule.id, identityGate),
+    );
+
+    let resolved: Schedule | null = baseSchedule;
+    await act(async () => {
+      resolved = await result.current.markReady();
+    });
+
+    expect(resolved).toBeNull();
+    expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignora una segunda acción concurrente mientras la primera sigue en curso", async () => {
+    let resolveMarkReady: ((schedule: Schedule) => void) | undefined;
+    mockMarkReady.mockImplementationOnce(
+      () =>
+        new Promise<Schedule>((resolve) => {
+          resolveMarkReady = resolve;
+        }),
+    );
+    const identityGate = makeIdentityGate();
+    const { result } = renderHook(() =>
+      useScheduleStatusActions(baseSchedule.id, identityGate),
+    );
+
+    let firstResult: Promise<Schedule | null> = Promise.resolve(null);
+    let secondResult: Schedule | null = baseSchedule;
+    await act(async () => {
+      firstResult = result.current.markReady();
+      secondResult = await result.current.markReady();
+    });
+
+    expect(secondResult).toBeNull();
+    expect(mockMarkReady).toHaveBeenCalledTimes(1);
+
+    resolveMarkReady?.({ ...baseSchedule, status: "listo_para_entregar" });
+    await act(async () => {
+      await firstResult;
+    });
+  });
 });

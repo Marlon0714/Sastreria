@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ResolvedIdentity } from "../../auth/hooks/useIdentityGate";
 import { getDefaultScheduleEventRepository } from "../../../data/local/scheduleEventDependencies";
@@ -34,6 +34,9 @@ export function useScheduleForm(
   const [isLoading, setIsLoading] = useState<boolean>(!!scheduleId);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  // Lock síncrono (no depende de que React re-renderice) para que un doble
+  // tap en "Guardar" no dispare dos envíos/eventos en paralelo.
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (!scheduleId) {
@@ -68,10 +71,22 @@ export function useScheduleForm(
 
   const submit = useCallback(
     async (values: CreateScheduleDTO): Promise<Schedule | null> => {
+      if (isSubmittingRef.current) {
+        return null;
+      }
+      isSubmittingRef.current = true;
+
       setError(null);
       setIsSubmitting(true);
+
+      let identity = null;
       try {
-        const identity = await identityGate.requireIdentity();
+        if (scheduleId && !schedule) {
+          setError("Este turno ya no existe o no se pudo cargar.");
+          return null;
+        }
+
+        identity = await identityGate.requireIdentity();
         if (!identity) {
           setError("No se pudo confirmar tu identidad. Intenta de nuevo.");
           return null;
@@ -108,7 +123,6 @@ export function useScheduleForm(
             }
           }
 
-          identityGate.releaseIdentity();
           return updated;
         }
 
@@ -125,7 +139,6 @@ export function useScheduleForm(
               : undefined,
           identityVerified: identity.verified,
         });
-        identityGate.releaseIdentity();
         return created;
       } catch {
         setError(
@@ -135,7 +148,11 @@ export function useScheduleForm(
         );
         return null;
       } finally {
+        if (identity) {
+          identityGate.releaseIdentity();
+        }
         setIsSubmitting(false);
+        isSubmittingRef.current = false;
       }
     },
     [repo, eventRepo, scheduleId, schedule, identityGate],

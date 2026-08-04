@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { getDefaultScheduleEventRepository } from "../../../data/local/scheduleEventDependencies";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
@@ -25,17 +25,28 @@ export function useScheduleStatusActions(
   const eventRepo = useMemo(() => getDefaultScheduleEventRepository(), []);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Lock síncrono (no depende de que React re-renderice) para que un doble
+  // tap en "Marcar listo/entregado" o una corrección no dispare dos
+  // mutaciones/eventos en paralelo.
+  const isRunningRef = useRef(false);
 
   const runAction = useCallback(
     async (
       action: ScheduleEventAction,
       perform: () => Promise<Schedule>,
     ): Promise<Schedule | null> => {
+      if (isRunningRef.current) {
+        return null;
+      }
+      isRunningRef.current = true;
+
       setError(null);
       setIsProcessing(true);
+
+      let identity = null;
       try {
         const existing = await repo.getById(scheduleId);
-        const identity = await identityGate.requireIdentity();
+        identity = await identityGate.requireIdentity();
         if (!identity) {
           setError("No se pudo confirmar tu identidad. Intenta de nuevo.");
           return null;
@@ -52,13 +63,16 @@ export function useScheduleStatusActions(
           }),
           identityVerified: identity.verified,
         });
-        identityGate.releaseIdentity();
         return updated;
       } catch {
         setError("No se pudo actualizar el turno. Intenta nuevamente.");
         return null;
       } finally {
+        if (identity) {
+          identityGate.releaseIdentity();
+        }
         setIsProcessing(false);
+        isRunningRef.current = false;
       }
     },
     [repo, eventRepo, scheduleId, identityGate],
