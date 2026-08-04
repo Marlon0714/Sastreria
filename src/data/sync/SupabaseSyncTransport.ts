@@ -236,6 +236,7 @@ export class SupabaseSyncTransport implements SyncTransport {
       cuello: measurement.cuello,
       brazo: measurement.brazo,
       puno: measurement.puno,
+      notes: measurement.notes,
       created_at: measurement.createdAt,
       updated_at: measurement.updatedAt,
     });
@@ -254,6 +255,7 @@ export class SupabaseSyncTransport implements SyncTransport {
       cintura: measurement.cintura,
       base: measurement.base,
       escote: measurement.escote,
+      notes: measurement.notes,
       created_at: measurement.createdAt,
       updated_at: measurement.updatedAt,
     });

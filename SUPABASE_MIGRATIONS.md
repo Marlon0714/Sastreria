@@ -15,6 +15,12 @@ Este archivo documenta cada migración SQL que debe aplicarse manualmente en Sup
 
 ### v10_client_phones_cedula_saco_chaleco_measurements (2026-05-13)
 
+**⚠️ Corrección 2026-08-04 (QA de flujos, N-077 en adelante):** esta sección nunca incluyó la columna `notes` en `saco_measurements`/`chaleco_measurements`, aunque el SQLite local (`v9` en `migrations.ts`) sí la tenía desde el principio. El código (`SupabaseSyncTransport`/`SupabasePullSync`) ahora sí envía/lee `notes` para estas dos tablas — si tu Supabase se creó copiando el SQL original de esta sección, **corre el bloque de abajo (ya corregido con `notes`) antes de instalar el próximo build**, o al menos:
+```sql
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE chaleco_measurements ADD COLUMN IF NOT EXISTS notes TEXT;
+```
+
 ```sql
 -- Agregar columna phones (JSON string) y cedula a clients
 ALTER TABLE clients ADD COLUMN phones TEXT;
@@ -31,6 +37,7 @@ CREATE TABLE IF NOT EXISTS saco_measurements (
   cintura REAL,
   base REAL,
   escote REAL,
+  notes TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
@@ -49,6 +56,7 @@ CREATE TABLE IF NOT EXISTS chaleco_measurements (
   cintura REAL,
   base REAL,
   escote REAL,
+  notes TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),

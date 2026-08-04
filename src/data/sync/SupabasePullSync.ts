@@ -122,6 +122,7 @@ interface ChalecoRow {
   cintura: number | null;
   base: number | null;
   escote: number | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -713,7 +714,7 @@ export class SupabasePullSync {
       .from("chaleco_measurements")
       .select(
         "id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, " +
-          "escote, created_at, updated_at",
+          "escote, notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -741,8 +742,8 @@ export class SupabasePullSync {
           `
           INSERT INTO chaleco_measurements
             (id, client_id, espalda, talle_trasero, largo, pecho, cintura, base,
-             escote, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+             escote, notes, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             espalda       = excluded.espalda,
             talle_trasero = excluded.talle_trasero,
@@ -751,6 +752,7 @@ export class SupabasePullSync {
             cintura       = excluded.cintura,
             base          = excluded.base,
             escote        = excluded.escote,
+            notes         = excluded.notes,
             updated_at    = excluded.updated_at,
             sync_status   = 'synced'
           WHERE excluded.updated_at >= chaleco_measurements.updated_at;
@@ -764,6 +766,7 @@ export class SupabasePullSync {
           row.cintura ?? null,
           row.base ?? null,
           row.escote ?? null,
+          row.notes ?? null,
           row.created_at,
           row.updated_at,
         );

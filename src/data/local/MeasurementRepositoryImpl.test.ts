@@ -273,6 +273,44 @@ describe("MeasurementRepositoryImpl", () => {
     expect(sql).toContain("INSERT INTO pantalon_measurements");
   });
 
+  it("upserts saco guardando y recortando las notas", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null);
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGenerateDomainUuid.mockReturnValueOnce("saco-1");
+
+    const repository = new MeasurementRepositoryImpl();
+    const created = await repository.upsertSaco({
+      clientId: "11111111-1111-4111-8111-111111111111",
+      pecho: 100,
+      notes: "  Ajuste de espalda  ",
+    });
+
+    expect(created.notes).toBe("Ajuste de espalda");
+    const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("INSERT INTO saco_measurements");
+    expect(sql).toContain("notes");
+    expect(params).toContain("Ajuste de espalda");
+  });
+
+  it("upserts chaleco guardando y recortando las notas", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null);
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGenerateDomainUuid.mockReturnValueOnce("chaleco-1");
+
+    const repository = new MeasurementRepositoryImpl();
+    const created = await repository.upsertChaleco({
+      clientId: "11111111-1111-4111-8111-111111111111",
+      pecho: 100,
+      notes: "  Entallar  ",
+    });
+
+    expect(created.notes).toBe("Entallar");
+    const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("INSERT INTO chaleco_measurements");
+    expect(sql).toContain("notes");
+    expect(params).toContain("Entallar");
+  });
+
   it("findCamisaByClientId and findPantalonByClientId return null when missing", async () => {
     mockGetFirstAsync.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
 

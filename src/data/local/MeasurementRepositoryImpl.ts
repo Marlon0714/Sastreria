@@ -51,6 +51,7 @@ interface ChalecoMeasurementRow {
   cintura: number | null;
   base: number | null;
   escote: number | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   sync_status: SyncStatus;
@@ -75,6 +76,7 @@ function mapSacoRow(row: SacoMeasurementRow): SacoMeasurement {
     cuello: row.cuello,
     brazo: row.brazo,
     puno: row.puno,
+    notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
@@ -92,6 +94,7 @@ function mapChalecoRow(row: ChalecoMeasurementRow): ChalecoMeasurement {
     cintura: row.cintura,
     base: row.base,
     escote: row.escote,
+    notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
@@ -250,6 +253,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       cuello: normalizeNullableNumber(input.cuello),
       brazo: normalizeNullableNumber(input.brazo),
       puno: normalizeNullableNumber(input.puno),
+      notes: normalizeNullableNotes(input.notes),
       createdAt,
       updatedAt: nowIso,
       syncStatus,
@@ -259,9 +263,9 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       `
         INSERT INTO saco_measurements (
           id, client_id, espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
-          pecho, cintura, base, largo, largo_manga, ancho_manga, escote, cuello, brazo, puno,
+          pecho, cintura, base, largo, largo_manga, ancho_manga, escote, cuello, brazo, puno, notes,
           created_at, updated_at, sync_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(client_id) DO UPDATE SET
           espalda = excluded.espalda,
           hombro = excluded.hombro,
@@ -279,6 +283,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
           cuello = excluded.cuello,
           brazo = excluded.brazo,
           puno = excluded.puno,
+          notes = excluded.notes,
           updated_at = excluded.updated_at,
           sync_status = excluded.sync_status;
         `,
@@ -300,6 +305,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       sacoMeasurement.cuello,
       sacoMeasurement.brazo,
       sacoMeasurement.puno,
+      sacoMeasurement.notes,
       sacoMeasurement.createdAt,
       sacoMeasurement.updatedAt,
       sacoMeasurement.syncStatus,
@@ -327,6 +333,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       cintura: normalizeNullableNumber(input.cintura),
       base: normalizeNullableNumber(input.base),
       escote: normalizeNullableNumber(input.escote),
+      notes: normalizeNullableNotes(input.notes),
       createdAt,
       updatedAt: nowIso,
       syncStatus,
@@ -335,8 +342,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     await db.runAsync(
       `
         INSERT INTO chaleco_measurements (
-          id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, escote, created_at, updated_at, sync_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, escote, notes, created_at, updated_at, sync_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(client_id) DO UPDATE SET
           espalda = excluded.espalda,
           talle_trasero = excluded.talle_trasero,
@@ -345,6 +352,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
           cintura = excluded.cintura,
           base = excluded.base,
           escote = excluded.escote,
+          notes = excluded.notes,
           updated_at = excluded.updated_at,
           sync_status = excluded.sync_status;
         `,
@@ -357,6 +365,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       chalecoMeasurement.cintura,
       chalecoMeasurement.base,
       chalecoMeasurement.escote,
+      chalecoMeasurement.notes,
       chalecoMeasurement.createdAt,
       chalecoMeasurement.updatedAt,
       chalecoMeasurement.syncStatus,

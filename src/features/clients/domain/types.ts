@@ -135,6 +135,7 @@ export interface SacoMeasurement extends BaseEntity {
   cuello: number | null;
   brazo: number | null;
   puno: number | null;
+  notes: string | null;
 }
 
 export interface UpsertSacoDTO {
@@ -155,6 +156,7 @@ export interface UpsertSacoDTO {
   cuello?: number | null;
   brazo?: number | null;
   puno?: number | null;
+  notes?: string | null;
 }
 
 // ─── Medidas Chaleco (N-045) ──────────────────────────────────────────────────
@@ -168,6 +170,7 @@ export interface ChalecoMeasurement extends BaseEntity {
   cintura: number | null;
   base: number | null;
   escote: number | null;
+  notes: string | null;
 }
 
 export interface UpsertChalecoDTO {
@@ -179,6 +182,7 @@ export interface UpsertChalecoDTO {
   cintura?: number | null;
   base?: number | null;
   escote?: number | null;
+  notes?: string | null;
 }
 
 // ─── Tallas ───────────────────────────────────────────────────────────────────

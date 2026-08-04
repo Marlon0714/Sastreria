@@ -129,6 +129,7 @@ interface ChalecoQueueRow {
   cintura: number | null;
   base: number | null;
   escote: number | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   sync_status: "pending" | "synced" | "error";
@@ -369,6 +370,7 @@ function toSacoQueueItem(row: SacoQueueRow): SyncSacoQueueItem {
       cuello: row.cuello,
       brazo: row.brazo,
       puno: row.puno,
+      notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       syncStatus: row.sync_status,
@@ -393,6 +395,7 @@ function toChalecoQueueItem(row: ChalecoQueueRow): SyncChalecoQueueItem {
       cintura: row.cintura,
       base: row.base,
       escote: row.escote,
+      notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       syncStatus: row.sync_status,
@@ -709,6 +712,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         cintura,
         base,
         escote,
+        notes,
         created_at,
         updated_at,
         sync_status
