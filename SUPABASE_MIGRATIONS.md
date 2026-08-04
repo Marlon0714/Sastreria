@@ -339,7 +339,9 @@ ALTER TABLE sync_delete_log
 
 ---
 
-### v17_schedules (2026-08-02)
+### v17_schedules (2026-08-02) — SUPERADA, no ejecutar: ver v19 para el script real a correr
+
+**⚠️ 2026-08-04: se confirmó que este SQL nunca se ejecutó en Supabase** (la tabla `schedules` no existe todavía en el proyecto real). Como el rediseño de la Agenda (v19, más abajo) ya cambió esta misma tabla antes de que existiera en Supabase, no tiene sentido correr esta versión vieja para luego migrarla — el script consolidado de la sección `v19_schedule_redesign` crea `schedules` directo con la forma final. Esta sección queda solo como referencia histórica de cómo se planeó originalmente. **También se corrigió aquí un bug real que nunca se detectó por no haberse corrido:** `client_id` estaba declarado `UUID`, pero `clients.id` es `TEXT` en toda la app — esa foreign key habría fallado al crearse por tipos incompatibles.
 
 **Contexto:** N-008 (Agenda) — nueva entidad `schedule` conectada al sync desde el día uno (decisión explícita del usuario, para no repetir el gap de `pricing_service`/`client_talla` que costó arreglar en producción). Se necesita crear la tabla `schedules` en Supabase y permitir `'schedule'` en el CHECK de `sync_delete_log.entity_type` (el delete-sync también se conectó desde el inicio).
 
@@ -350,7 +352,7 @@ CREATE TABLE IF NOT EXISTS schedules (
   id TEXT PRIMARY KEY,
   date TEXT NOT NULL,
   time TEXT NOT NULL,
-  client_id UUID NOT NULL REFERENCES clients (id),
+  client_id TEXT NOT NULL REFERENCES clients (id),
   notes TEXT,
   status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
   created_at TIMESTAMPTZ NOT NULL,
@@ -434,26 +436,68 @@ Para la cuenta de la tablet compartida: mismo flujo pero `is_shared_device = tru
 
 ---
 
-### v19_schedule_redesign — SOLO SQLite por ahora, Supabase pendiente (Fases 1-3 del Bloque 1, N-077)
+### v19_schedule_redesign — script consolidado, Supabase pendiente (Fases 1-3 del Bloque 1, N-077)
 
 **Contexto:** Rediseño de la Agenda — `date`/`time` pasan a opcionales, `status` cambia de valores placeholder (`pending/confirmed/completed/cancelled`) a los 5 estados de negocio reales (`pendiente/agendado/en_proceso/listo_para_entregar/entregado`), y se agregan `price`/`operario_id`/`ready_at`/`delivered_at` + la tabla `schedule_events` (historial append-only). El lado **SQLite ya está aplicado** (migración `v19_schedule_redesign` en `migrations.ts`, patrón "recrear tabla" — primera vez en el proyecto) y el **motor de sync ya está completamente cableado** en la app (Fase 3: `schedule` con las columnas nuevas + `schedule_event` como entidad nueva create-only, en los 6 archivos de siempre + el subscriber de realtime). El lado **Supabase todavía NO se ha migrado** — el SQL de abajo sigue sin ejecutarse.
 
-**Riesgo real ahora que el sync está cableado:** con el código de sync ya activo, si se instala un build con este código apuntando a un Supabase sin esta migración, cualquier intento de sincronizar un turno fallará (`schedules` no tiene las columnas nuevas, o el `CHECK` de `status` en Supabase sigue esperando los valores viejos) y `schedule_events` fallará directo con `relation "schedule_events" does not exist`. Se confirmó con el usuario que **no hay datos reales de Agenda en producción todavía** (ningún build con esta feature salió a un dispositivo real), así que no hay riesgo de pérdida de datos — pero **no se debe instalar ningún build con este código hasta correr el SQL siguiente en Supabase**:
+**Riesgo real ahora que el sync está cableado:** con el código de sync ya activo, si se instala un build con este código apuntando a un Supabase sin esta migración, cualquier intento de sincronizar un turno fallará (`schedules` no tiene las columnas nuevas, o el `CHECK` de `status` en Supabase sigue esperando los valores viejos) y `schedule_events` fallará directo con `relation "schedule_events" does not exist`. Se confirmó con el usuario que **no hay datos reales de Agenda en producción todavía** (ningún build con esta feature salió a un dispositivo real), así que no hay riesgo de pérdida de datos.
+
+**2026-08-04: se descubrió que `schedules` tampoco existía en Supabase** (`v17_schedules` nunca se corrió) — por eso este script ya no es un `ALTER` incremental sobre una tabla existente, sino un `CREATE TABLE` directo con la forma final (salta v17→v19 de una vez). Incluye además `profiles`/`v18_profiles_roles` con `IF NOT EXISTS`/`CREATE OR REPLACE` por si tampoco se hubiera corrido, para que este único script sea seguro de ejecutar de punta a punta sin depender del orden de migraciones anteriores:
 
 ```sql
--- Pendiente de ejecutar ANTES de instalar cualquier build con este código:
-ALTER TABLE schedules ALTER COLUMN date DROP NOT NULL;
-ALTER TABLE schedules ALTER COLUMN time DROP NOT NULL;
-ALTER TABLE schedules ADD COLUMN IF NOT EXISTS price NUMERIC;
-ALTER TABLE schedules ADD COLUMN IF NOT EXISTS operario_id UUID REFERENCES profiles (id);
-ALTER TABLE schedules ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ;
-ALTER TABLE schedules ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
+-- 1. profiles (Bloque 0, N-076) -- no-op si ya existe.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-ALTER TABLE schedules DROP CONSTRAINT IF EXISTS schedules_status_check;
-ALTER TABLE schedules
-  ADD CONSTRAINT schedules_status_check
-  CHECK (status IN ('pendiente', 'agendado', 'en_proceso', 'listo_para_entregar', 'entregado'));
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+  display_name TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('owner', 'operario')),
+  is_shared_device BOOLEAN NOT NULL DEFAULT false,
+  pin_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated read profiles" ON profiles;
+CREATE POLICY "authenticated read profiles" ON profiles FOR SELECT TO authenticated USING (true);
+REVOKE SELECT (pin_hash) ON profiles FROM authenticated;
+
+CREATE OR REPLACE FUNCTION resolve_operario_by_pin(candidate_pin TEXT)
+RETURNS TABLE (id UUID, display_name TEXT, role TEXT)
+LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT id, display_name, role FROM profiles
+  WHERE role = 'operario' AND pin_hash IS NOT NULL
+    AND pin_hash = crypt(candidate_pin, pin_hash);
+$$;
+
+-- 2. schedules -- forma final directa (client_id es TEXT, igual que clients.id;
+-- v17 documentaba UUID por error, nunca detectado porque nunca se corrió).
+CREATE TABLE IF NOT EXISTS schedules (
+  id TEXT PRIMARY KEY NOT NULL,
+  client_id TEXT NOT NULL REFERENCES clients (id),
+  date TEXT,
+  time TEXT,
+  price NUMERIC,
+  operario_id UUID REFERENCES profiles (id),
+  notes TEXT,
+  status TEXT NOT NULL CHECK (status IN ('pendiente', 'agendado', 'en_proceso', 'listo_para_entregar', 'entregado')),
+  ready_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
+);
+CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);
+CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_operario_id ON schedules (operario_id);
+
+ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated all schedules" ON schedules;
+CREATE POLICY "authenticated all schedules" ON schedules
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 3. schedule_events -- historial append-only, entidad nueva.
 CREATE TABLE IF NOT EXISTS schedule_events (
   id TEXT PRIMARY KEY,
   schedule_id TEXT NOT NULL,
@@ -466,9 +510,17 @@ CREATE TABLE IF NOT EXISTS schedule_events (
   sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
 );
 ALTER TABLE schedule_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated all schedule_events" ON schedule_events;
 CREATE POLICY "authenticated all schedule_events" ON schedule_events
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 -- schedule_events NO se agrega a sync_delete_log: nunca se borra desde la app.
+
+-- 4. sync_delete_log -- permitir 'schedule' como entity_type borrable
+-- (delete-sync conectado desde el inicio, igual que v17 lo planeaba).
+ALTER TABLE sync_delete_log DROP CONSTRAINT IF EXISTS sync_delete_log_entity_type_check;
+ALTER TABLE sync_delete_log
+  ADD CONSTRAINT sync_delete_log_entity_type_check
+  CHECK (entity_type IN ('client', 'camisa_measurement', 'pantalon_measurement', 'client_talla', 'pricing_service', 'schedule'));
 ```
 
 **Fase 4 (2026-08-04): sin cambios nuevos en Supabase.** El espejo local `profiles_cache` (picker de operario + selección offline de identidad) lee de la tabla `profiles` que ya existe desde el Bloque 0 (`v18_profiles_roles`) — la policy `authenticated read profiles` ya permite el pull, `updated_at` ya existe para el cursor, y `pin_hash` sigue sin exponerse (nunca se selecciona). Solo hubo migración local (`v20_profiles_cache` en `migrations.ts`) y código de la app.
