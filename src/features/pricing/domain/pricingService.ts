@@ -28,6 +28,7 @@ export const pricingServiceSchema = z.object({
   id: z.string().uuid(), // UUID v4
   name: z
     .string()
+    .trim()
     .min(2, "El nombre debe tener al menos 2 caracteres")
     .max(60, "Máximo 60 caracteres")
     .regex(SAFE_FREE_TEXT_PATTERN, "El nombre contiene caracteres no permitidos"),
