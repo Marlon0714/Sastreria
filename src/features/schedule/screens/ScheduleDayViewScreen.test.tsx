@@ -187,10 +187,54 @@ describe("ScheduleDayViewScreen", () => {
     expect(queryByLabelText("Ir a hoy")).toBeNull();
   });
 
-  it("muestra la sección de pendientes solo si hay turnos sin fecha", async () => {
+  it("no muestra el badge de pendientes cuando no hay turnos sin fecha", () => {
+    const { queryByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(queryByText("📋 Pendientes")).toBeTruthy();
+    // El badge numérico solo aparece si pendingSchedules.length > 0.
+    expect(queryByText("0")).toBeNull();
+  });
+
+  it("muestra el badge de pendientes y permite cambiar a esa vista desde el segmentado", async () => {
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [],
       pendingSchedules: [pendingOne],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { getByText, findByLabelText, queryByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByText("1")).toBeTruthy();
+
+    fireEvent.press(getByText("📋 Pendientes"));
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (Sin fecha, schedule-2)"),
+    ).toBeTruthy();
+    // Al cambiar de vista, la agenda del día deja de mostrarse.
+    expect(queryByText("No hay turnos para este día.")).toBeNull();
+  });
+
+  it("muestra un estado vacío propio en la vista de pendientes", () => {
+    const { getByText, findByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByText("📋 Pendientes"));
+
+    expect(findByText("No hay turnos pendientes sin fecha.")).toBeTruthy();
+  });
+
+  it("marca los turnos prioritarios con una insignia", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [{ ...scheduledOne, isPriority: true }],
+      pendingSchedules: [],
       isLoading: false,
       error: null,
       reload: jest.fn(async () => Promise.resolve()),
@@ -200,7 +244,7 @@ describe("ScheduleDayViewScreen", () => {
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
-    expect(await findByText("Pendientes (sin fecha)")).toBeTruthy();
+    expect(await findByText("⭐ Prioritario")).toBeTruthy();
   });
 
   it("navega al día anterior y siguiente con las flechas", () => {

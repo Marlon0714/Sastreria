@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   Alert,
   Pressable,
@@ -80,8 +80,11 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       price: undefined,
       operarioId: undefined,
       notes: "",
+      isPriority: false,
     },
   });
+
+  const dateValue = useWatch({ control, name: "date" });
 
   useEffect(() => {
     setDisplaySchedule(schedule);
@@ -97,8 +100,17 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       price: schedule.price,
       operarioId: schedule.operarioId,
       notes: schedule.notes ?? "",
+      isPriority: schedule.isPriority,
     });
   }, [schedule, reset]);
+
+  // "Prioritario" solo tiene sentido para turnos sin fecha (para ordenar
+  // dentro de "Pendientes") — si se le asigna fecha, deja de aplicar.
+  useEffect(() => {
+    if (dateValue) {
+      setValue("isPriority", false);
+    }
+  }, [dateValue, setValue]);
 
   const handleMarkReady = async (): Promise<void> => {
     const updated = await statusActions.markReady();
@@ -240,6 +252,24 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             )}
           />
         </View>
+      ) : null}
+
+      {!dateValue ? (
+        <Controller
+          control={control}
+          name="isPriority"
+          render={({ field: { onChange, value } }) => (
+            <Pressable
+              accessibilityLabel="Prioritario"
+              style={styles.timeToggle}
+              onPress={() => onChange(!value)}
+            >
+              <Text style={styles.timeToggleText}>
+                {value ? "☑" : "☐"} Prioritario
+              </Text>
+            </Pressable>
+          )}
+        />
       ) : null}
 
       <View style={styles.fieldGroup}>

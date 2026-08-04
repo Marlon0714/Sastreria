@@ -18,6 +18,13 @@ import { useScheduleDayView } from "../hooks/useScheduleDayView";
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, "ScheduleDayView">;
 
+type ActiveView = "dia" | "pendientes";
+
+const VIEWS: { key: ActiveView; icon: string; label: string }[] = [
+  { key: "dia", icon: "📅", label: "Día" },
+  { key: "pendientes", icon: "📋", label: "Pendientes" },
+];
+
 const STATUS_LABELS: Record<ScheduleStatus, string> = {
   pendiente: "Pendiente",
   agendado: "Agendado",
@@ -36,6 +43,7 @@ const STATUS_COLORS: Record<ScheduleStatus, { bg: string; text: string }> = {
 
 export default function ScheduleDayViewScreen({ navigation }: Props) {
   const [selectedDate, setSelectedDate] = useState(todayDateString());
+  const [activeView, setActiveView] = useState<ActiveView>("dia");
   const { dateSchedules, pendingSchedules, isLoading, error, reload } =
     useScheduleDayView(selectedDate);
   const clientRepository = useClientRepository();
@@ -83,12 +91,19 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
       >
         <View style={styles.cardHeader}>
           <Text style={styles.cardDate}>{dateLabel}</Text>
-          <View
-            style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}
-          >
-            <Text style={[styles.statusText, { color: statusColor.text }]}>
-              {STATUS_LABELS[item.status]}
-            </Text>
+          <View style={styles.cardBadges}>
+            {item.isPriority ? (
+              <View style={styles.priorityBadge}>
+                <Text style={styles.priorityBadgeText}>⭐ Prioritario</Text>
+              </View>
+            ) : null}
+            <View
+              style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}
+            >
+              <Text style={[styles.statusText, { color: statusColor.text }]}>
+                {STATUS_LABELS[item.status]}
+              </Text>
+            </View>
           </View>
         </View>
         <Text style={styles.cardClient}>{clientLabel(item)}</Text>
@@ -113,71 +128,123 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityLabel="Día anterior"
-          style={styles.navButton}
-          onPress={() =>
-            setSelectedDate((current) => shiftDateString(current, -1))
-          }
-        >
-          <Text style={styles.navButtonText}>‹</Text>
-        </Pressable>
-
-        <View style={styles.dateSelector}>
-          <ScheduleDateTimePickerField
-            mode="date"
-            value={selectedDate}
-            onChange={(value) => {
-              if (value) setSelectedDate(value);
-            }}
-            placeholder="Elegir fecha"
-            accessibilityLabel="Elegir fecha"
-            allowClear={false}
-          />
+      <View style={styles.segmentedWrapper}>
+        <View style={styles.segmented}>
+          {VIEWS.map((view) => {
+            const isActive = view.key === activeView;
+            return (
+              <Pressable
+                key={view.key}
+                style={[styles.segment, isActive && styles.segmentActive]}
+                onPress={() => setActiveView(view.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    isActive && styles.segmentTextActive,
+                  ]}
+                >
+                  {view.icon} {view.label}
+                </Text>
+                {view.key === "pendientes" && pendingSchedules.length > 0 ? (
+                  <View
+                    style={[
+                      styles.badge,
+                      isActive ? styles.badgeActive : styles.badgeInactive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        isActive && styles.badgeTextActive,
+                      ]}
+                    >
+                      {pendingSchedules.length}
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
         </View>
-
-        <Pressable
-          accessibilityLabel="Día siguiente"
-          style={styles.navButton}
-          onPress={() =>
-            setSelectedDate((current) => shiftDateString(current, 1))
-          }
-        >
-          <Text style={styles.navButtonText}>›</Text>
-        </Pressable>
       </View>
 
-      {selectedDate !== todayDateString() ? (
-        <Pressable
-          accessibilityLabel="Ir a hoy"
-          style={styles.todayButton}
-          onPress={() => setSelectedDate(todayDateString())}
-        >
-          <Text style={styles.todayButtonText}>Ir a hoy</Text>
-        </Pressable>
+      {activeView === "dia" ? (
+        <>
+          <View style={styles.header}>
+            <Pressable
+              accessibilityLabel="Día anterior"
+              style={styles.navButton}
+              onPress={() =>
+                setSelectedDate((current) => shiftDateString(current, -1))
+              }
+            >
+              <Text style={styles.navButtonText}>‹</Text>
+            </Pressable>
+
+            <View style={styles.dateSelector}>
+              <ScheduleDateTimePickerField
+                mode="date"
+                value={selectedDate}
+                onChange={(value) => {
+                  if (value) setSelectedDate(value);
+                }}
+                placeholder="Elegir fecha"
+                accessibilityLabel="Elegir fecha"
+                allowClear={false}
+              />
+            </View>
+
+            <Pressable
+              accessibilityLabel="Día siguiente"
+              style={styles.navButton}
+              onPress={() =>
+                setSelectedDate((current) => shiftDateString(current, 1))
+              }
+            >
+              <Text style={styles.navButtonText}>›</Text>
+            </Pressable>
+          </View>
+
+          {selectedDate !== todayDateString() ? (
+            <Pressable
+              accessibilityLabel="Ir a hoy"
+              style={styles.todayButton}
+              onPress={() => setSelectedDate(todayDateString())}
+            >
+              <Text style={styles.todayButtonText}>Ir a hoy</Text>
+            </Pressable>
+          ) : null}
+        </>
       ) : null}
 
       <ScrollView contentContainerStyle={styles.listContent}>
-        {pendingSchedules.length > 0 ? (
+        {activeView === "dia" ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Pendientes (sin fecha)</Text>
-            {pendingSchedules.map((item) => renderCard(item, "Sin fecha"))}
+            <Text style={styles.sectionTitle}>
+              {formatDateForDisplay(selectedDate)}
+            </Text>
+            {dateSchedules.length === 0 ? (
+              <Text style={styles.emptyText}>No hay turnos para este día.</Text>
+            ) : (
+              dateSchedules.map((item) =>
+                renderCard(item, item.time ?? "Sin hora"),
+              )
+            )}
           </View>
-        ) : null}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {formatDateForDisplay(selectedDate)}
-          </Text>
-          {dateSchedules.length === 0 ? (
-            <Text style={styles.emptyText}>No hay turnos para este día.</Text>
-          ) : (
-            dateSchedules.map((item) =>
-              renderCard(item, item.time ?? "Sin hora"),
-            )
-          )}
-        </View>
+        ) : (
+          <View style={styles.section}>
+            {pendingSchedules.length === 0 ? (
+              <Text style={styles.emptyText}>
+                No hay turnos pendientes sin fecha.
+              </Text>
+            ) : (
+              pendingSchedules.map((item) => renderCard(item, "Sin fecha"))
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <Pressable
@@ -195,6 +262,67 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+  },
+  segmentedWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  segmented: {
+    flexDirection: "row",
+    backgroundColor: "#e2e8f0",
+    borderRadius: 12,
+    padding: 3,
+    gap: 2,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  segmentActive: {
+    backgroundColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#64748b",
+  },
+  segmentTextActive: {
+    color: "#0f766e",
+    fontWeight: "700",
+  },
+  badge: {
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  badgeActive: {
+    backgroundColor: "#ccfbf1",
+  },
+  badgeInactive: {
+    backgroundColor: "#cbd5e1",
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748b",
+  },
+  badgeTextActive: {
+    color: "#0f766e",
   },
   header: {
     flexDirection: "row",
@@ -262,6 +390,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#0f172a",
   },
+  cardBadges: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   cardClient: {
     fontSize: 16,
     color: "#334155",
@@ -278,6 +411,17 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  priorityBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    backgroundColor: "#fef3c7",
+  },
+  priorityBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#92400e",
   },
   fabButton: {
     position: "absolute",
