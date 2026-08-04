@@ -7,6 +7,7 @@ import type {
   SacoMeasurement,
 } from "../../features/clients/domain/types";
 import type { PricingService } from "../../features/pricing/domain/pricingService";
+import type { ScheduleEvent } from "../../features/schedule/domain/events";
 import type { Schedule } from "../../features/schedule/domain/types";
 import type { TallaTemplate } from "../../features/tallas/domain/types";
 import type { SyncTransport } from "./SyncTransport";
@@ -23,6 +24,7 @@ import type {
   SyncChalecoQueueItem,
   SyncTallaTemplateQueueItem,
   SyncScheduleQueueItem,
+  SyncScheduleEventQueueItem,
   SyncDeleteQueueItem,
 } from "./types";
 
@@ -75,6 +77,11 @@ export class SupabaseSyncTransport implements SyncTransport {
             case "schedule":
               await this.syncSchedule(
                 (item as SyncScheduleQueueItem).payload,
+              );
+              break;
+            case "schedule_event":
+              await this.syncScheduleEvent(
+                (item as SyncScheduleEventQueueItem).payload,
               );
               break;
             case "delete_log":
@@ -286,17 +293,40 @@ export class SupabaseSyncTransport implements SyncTransport {
   }
 
   async syncSchedule(schedule: Schedule): Promise<SyncTransportAttemptResult> {
-    // TODO(Fase 3, N-076): agregar price/operario_id/ready_at/delivered_at
-    // una vez exista la migración v19 en Supabase (ver plan Bloque 1).
+    // Requiere la migración v19 aplicada en Supabase (columnas nuevas +
+    // CHECK de status actualizado) — ver SUPABASE_MIGRATIONS.md.
     return this.upsertSynced("schedules", {
       id: schedule.id,
       date: schedule.date ?? null,
       time: schedule.time ?? null,
+      price: schedule.price ?? null,
+      operario_id: schedule.operarioId ?? null,
       client_id: schedule.clientId,
       notes: schedule.notes ?? null,
       status: schedule.status,
+      ready_at: schedule.readyAt ?? null,
+      delivered_at: schedule.deliveredAt ?? null,
       created_at: schedule.createdAt,
       updated_at: schedule.updatedAt,
+    });
+  }
+
+  async syncScheduleEvent(
+    event: ScheduleEvent,
+  ): Promise<SyncTransportAttemptResult> {
+    // Requiere la tabla schedule_events creada en Supabase — ver
+    // SUPABASE_MIGRATIONS.md v19. Es create-only: siempre es un INSERT
+    // nuevo (el id es estable y el contenido nunca cambia), pero se usa
+    // upsertSynced igual que las demás entidades para reintentos idempotentes.
+    return this.upsertSynced("schedule_events", {
+      id: event.id,
+      schedule_id: event.scheduleId,
+      actor_id: event.actorId,
+      actor_display_name: event.actorDisplayName,
+      action: event.action,
+      changes: event.changes ?? null,
+      identity_verified: event.identityVerified,
+      created_at: event.createdAt,
     });
   }
 

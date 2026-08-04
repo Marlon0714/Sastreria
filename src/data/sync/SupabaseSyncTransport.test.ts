@@ -176,6 +176,19 @@ const baseSchedule = {
   syncStatus: "pending" as const,
 };
 
+const baseScheduleEvent = {
+  id: "event-1",
+  scheduleId: "schedule-1",
+  actorId: "user-1",
+  actorDisplayName: "María Gómez",
+  action: "created" as const,
+  changes: undefined,
+  identityVerified: true,
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  syncStatus: "pending" as const,
+};
+
 const baseDeleteLog = {
   id: "del-1",
   entityType: "client" as const,
@@ -466,6 +479,37 @@ describe("SupabaseSyncTransport", () => {
       const transport = new SupabaseSyncTransport();
 
       const result = await transport.syncSchedule(baseSchedule);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+  });
+
+  describe("syncScheduleEvent", () => {
+    it("upserts to 'schedule_events' table on success", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncScheduleEvent(baseScheduleEvent);
+
+      expect(mockFrom).toHaveBeenCalledWith("schedule_events");
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sync_status: "synced",
+          id: "event-1",
+          schedule_id: "schedule-1",
+          actor_id: "user-1",
+          actor_display_name: "María Gómez",
+          action: "created",
+          identity_verified: true,
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("returns failed outcome on Supabase failure", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncScheduleEvent(baseScheduleEvent);
       expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
     });
   });
