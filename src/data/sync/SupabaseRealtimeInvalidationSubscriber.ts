@@ -2,6 +2,14 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { getSupabaseClient } from "../supabase/client";
 
+// "profiles" queda deliberadamente FUERA de esta lista: postgres_changes lee
+// directo del WAL y entrega el payload completo de la fila por websocket,
+// sin respetar el REVOKE SELECT (pin_hash) de v18_profiles_roles (ese revoke
+// solo protege SELECT/REST). Suscribirse a esta tabla filtraría el pin_hash
+// hasheado a cualquier cliente autenticado inspeccionando el tráfico de red.
+// profiles_cache se sigue refrescando igual vía el pull normal en cada
+// bootstrap/foreground/reconexión (SyncLifecycleController/App.tsx), solo
+// se pierde el "push" instantáneo mientras la app está abierta.
 type InvalidationTable =
   | "clients"
   | "camisa_measurements"
@@ -13,7 +21,6 @@ type InvalidationTable =
   | "talla_templates"
   | "schedules"
   | "schedule_events"
-  | "profiles"
   | "sync_delete_log";
 
 const SYNC_TABLES: readonly InvalidationTable[] = [
@@ -27,7 +34,6 @@ const SYNC_TABLES: readonly InvalidationTable[] = [
   "talla_templates",
   "schedules",
   "schedule_events",
-  "profiles",
   "sync_delete_log",
 ];
 

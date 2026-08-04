@@ -434,6 +434,8 @@ Para la cuenta de la tablet compartida: mismo flujo pero `is_shared_device = tru
 
 **Importante:** correr esto en Supabase ANTES de instalar un build que incluya este código — sin la tabla `profiles`, `getProfile()` falla silenciosamente (retorna `null`) y ningún usuario tiene rol ni identidad más allá del login binario previo.
 
+**⚠️ Seguridad (detectado 2026-08-04, QA previa a la build de Bloque 1): NO habilitar Supabase Realtime para `profiles`.** El `REVOKE SELECT (pin_hash)` de arriba solo protege consultas `SELECT`/REST — Supabase Realtime (`postgres_changes`) lee directo del WAL de Postgres y entrega la fila completa por websocket a cualquier cliente suscrito a esa tabla, sin respetar revokes a nivel de columna. Si en el Dashboard de Supabase (Database → Replication) `profiles` llegara a estar marcada para Realtime, cualquier INSERT/UPDATE sobre esa tabla filtraría el `pin_hash` (ya hasheado con bcrypt, pero igual innecesario exponerlo) a todos los clientes conectados. El código de la app (`SupabaseRealtimeInvalidationSubscriber.ts`) ya NO se suscribe a `profiles` por este motivo — pero conviene confirmar también en el Dashboard que la tabla no esté habilitada para Realtime, como segunda capa.
+
 ---
 
 ### v19_schedule_redesign — script consolidado, Supabase pendiente (Fases 1-3 del Bloque 1, N-077)
