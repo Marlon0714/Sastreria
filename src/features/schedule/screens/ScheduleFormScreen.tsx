@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 import type { ScheduleStackParamList } from "../../../navigation/types";
-import { LoadingView } from "../../../shared/components";
+import { ErrorView, LoadingView } from "../../../shared/components";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
@@ -56,7 +56,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     scheduleId,
     identityGate,
   );
-  const { deleteSchedule, isDeleting } = useDeleteSchedule();
+  const { deleteSchedule, isDeleting } = useDeleteSchedule(identityGate);
   const statusActions = useScheduleStatusActions(scheduleId ?? "", identityGate);
   const [displaySchedule, setDisplaySchedule] = useState<Schedule | null>(
     null,
@@ -165,6 +165,16 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
   if (isLoading) {
     return <LoadingView message="Cargando turno..." />;
+  }
+
+  if (scheduleId && !schedule) {
+    return (
+      <ErrorView
+        message="Este turno ya no existe o no se pudo cargar."
+        retryLabel="Volver"
+        onRetry={() => navigation.goBack()}
+      />
+    );
   }
 
   return (
@@ -369,7 +379,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
           {isCorrectionOpen ? (
             <View style={styles.correctionRow}>
-              {CORRECTION_STATUS_OPTIONS.map((status) => (
+              {CORRECTION_STATUS_OPTIONS.filter(
+                (status) => status !== displaySchedule.status,
+              ).map((status) => (
                 <Pressable
                   key={status}
                   accessibilityLabel={`Corregir a ${STATUS_LABELS[status]}`}

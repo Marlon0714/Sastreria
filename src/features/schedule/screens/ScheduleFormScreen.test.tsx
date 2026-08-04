@@ -288,6 +288,32 @@ describe("ScheduleFormScreen", () => {
     expect(getByLabelText("Eliminar turno")).toBeTruthy();
   });
 
+  it("muestra 'no encontrado' en vez del formulario si el turno ya no existe", () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: "No se pudo cargar el turno.",
+      submit: jest.fn(async () => Promise.resolve(null)),
+    });
+    const goBack = jest.fn();
+
+    const { getByText, queryByLabelText } = render(
+      <ScheduleFormScreen
+        {...buildProps(jest.fn(), goBack, "id-inexistente")}
+      />,
+    );
+
+    expect(
+      getByText("Este turno ya no existe o no se pudo cargar."),
+    ).toBeTruthy();
+    expect(queryByLabelText("Eliminar turno")).toBeNull();
+    expect(queryByLabelText("Guardar turno")).toBeNull();
+
+    fireEvent.press(getByText("Volver"));
+    expect(goBack).toHaveBeenCalled();
+  });
+
   it("deletes the schedule after confirming and navigates back", async () => {
     mockUseScheduleForm.mockReturnValue({
       schedule,
@@ -440,6 +466,25 @@ describe("ScheduleFormScreen", () => {
         expect(applyCorrection).toHaveBeenCalledWith("pendiente");
       });
       expect(await findByText("Estado: Pendiente")).toBeTruthy();
+    });
+
+    it("no ofrece el estado actual como opción de corrección manual", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "agendado" },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+      });
+
+      const { getByLabelText, queryByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Corrección manual de estado"));
+
+      expect(queryByLabelText("Corregir a Agendado")).toBeNull();
+      expect(getByLabelText("Corregir a Pendiente")).toBeTruthy();
     });
   });
 });
