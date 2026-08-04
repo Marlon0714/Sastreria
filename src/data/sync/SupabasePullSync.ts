@@ -157,13 +157,33 @@ interface TallaTemplateRow {
 
 interface ScheduleRow {
   id: string;
-  date: string;
-  time: string;
+  date: string | null;
+  time: string | null;
+  price: number | null;
+  operario_id: string | null;
   client_id: string;
   notes: string | null;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status:
+    | "pendiente"
+    | "agendado"
+    | "en_proceso"
+    | "listo_para_entregar"
+    | "entregado";
+  ready_at: string | null;
+  delivered_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface ScheduleEventRow {
+  id: string;
+  schedule_id: string;
+  actor_id: string;
+  actor_display_name: string;
+  action: string;
+  changes: string | null;
+  identity_verified: boolean;
+  created_at: string;
 }
 
 interface DeleteLogRow {
@@ -211,6 +231,7 @@ export class SupabasePullSync {
     await this.pullChalecoMeasurementsIncremental();
     await this.pullTallaTemplatesIncremental();
     await this.pullSchedulesIncremental();
+    await this.pullScheduleEventsIncremental();
     await this.pullDeleteLogIncremental();
   }
 
@@ -862,7 +883,9 @@ export class SupabasePullSync {
     const supabase = getSupabaseClient();
     let query = supabase
       .from("schedules")
-      .select("id, date, time, client_id, notes, status, created_at, updated_at")
+      .select(
+        "id, date, time, price, operario_id, client_id, notes, status, ready_at, delivered_at, created_at, updated_at",
+      )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
       .limit(this.batchSize);
@@ -886,24 +909,32 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO schedules
-            (id, date, time, client_id, notes, status, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+            (id, date, time, price, operario_id, client_id, notes, status, ready_at, delivered_at, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
-            date        = excluded.date,
-            time        = excluded.time,
-            client_id   = excluded.client_id,
-            notes       = excluded.notes,
-            status      = excluded.status,
-            updated_at  = excluded.updated_at,
-            sync_status = 'synced'
+            date          = excluded.date,
+            time          = excluded.time,
+            price         = excluded.price,
+            operario_id   = excluded.operario_id,
+            client_id     = excluded.client_id,
+            notes         = excluded.notes,
+            status        = excluded.status,
+            ready_at      = excluded.ready_at,
+            delivered_at  = excluded.delivered_at,
+            updated_at    = excluded.updated_at,
+            sync_status   = 'synced'
           WHERE excluded.updated_at >= schedules.updated_at;
           `,
           row.id,
           row.date,
           row.time,
+          row.price,
+          row.operario_id,
           row.client_id,
           row.notes ?? null,
           row.status,
+          row.ready_at,
+          row.delivered_at,
           row.created_at,
           row.updated_at,
         );
@@ -913,6 +944,68 @@ export class SupabasePullSync {
     const nextCursor = getLastCursor(rows, (row) => row.updated_at);
     if (nextCursor) {
       await this.checkpointRepository.advanceCursor("schedules", nextCursor);
+    }
+  }
+
+  private async pullScheduleEventsIncremental(): Promise<void> {
+    const cursor = await this.checkpointRepository.getCursor(
+      "schedule_events",
+    );
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("schedule_events")
+      .select(
+        "id, schedule_id, actor_id, actor_display_name, action, changes, identity_verified, created_at",
+      )
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(this.batchSize);
+
+    // schedule_events es append-only: no tiene updated_at propio, se usa
+    // created_at como cursor (nunca cambia una vez insertado).
+    query = this.applyCursorFilter(query, cursor, "created_at");
+
+    const { data, error } = await query;
+    const db = getDatabase();
+
+    if (error) {
+      throw new Error(
+        `[pull] schedule_events incremental fetch failed: ${error.code}`,
+      );
+    }
+
+    const rows = (data ?? []) as unknown as ScheduleEventRow[];
+    if (!rows.length) {
+      return;
+    }
+
+    await db.withTransactionAsync(async () => {
+      for (const row of rows) {
+        await db.runAsync(
+          `
+          INSERT INTO schedule_events
+            (id, schedule_id, actor_id, actor_display_name, action, changes, identity_verified, created_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          ON CONFLICT(id) DO NOTHING;
+          `,
+          row.id,
+          row.schedule_id,
+          row.actor_id,
+          row.actor_display_name,
+          row.action,
+          row.changes ?? null,
+          row.identity_verified ? 1 : 0,
+          row.created_at,
+        );
+      }
+    });
+
+    const nextCursor = getLastCursor(rows, (row) => row.created_at);
+    if (nextCursor) {
+      await this.checkpointRepository.advanceCursor(
+        "schedule_events",
+        nextCursor,
+      );
     }
   }
 
@@ -1017,7 +1110,7 @@ export class SupabasePullSync {
   private applyCursorFilter<TQuery>(
     query: TQuery,
     cursor: SyncCursor | null,
-    timestampColumn: "updated_at" | "deleted_at",
+    timestampColumn: "updated_at" | "deleted_at" | "created_at",
   ): TQuery {
     if (!cursor) {
       return query;
