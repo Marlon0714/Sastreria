@@ -1,7 +1,8 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,15 +14,32 @@ import {
 } from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
+import { findDuplicateByName } from "../../../shared/utils/textSearch";
+import type { Client } from "../domain/types";
 import type { CreateClientSchemaInput } from "../domain/schemas";
+import { useClientRepository } from "../hooks/ClientsDependenciesProvider";
 import { useCreateClient } from "../hooks/useCreateClient";
 
 type Props = NativeStackScreenProps<ClientsStackParamList, "ClientCreate">;
 
 export default function ClientCreateScreen({ navigation }: Props) {
   const { isSubmitting, error, createClient, validate } = useCreateClient();
+  const clientRepository = useClientRepository();
+  const [existingClients, setExistingClients] = useState<Client[]>([]);
   const [showPhone2, setShowPhone2] = useState(false);
   const [showPhone3, setShowPhone3] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    clientRepository.findAll().then((result) => {
+      if (!cancelled) {
+        setExistingClients(result);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientRepository]);
 
   const {
     control,
@@ -67,10 +85,42 @@ export default function ClientCreateScreen({ navigation }: Props) {
       return;
     }
 
-    const createdClient = await createClient(values, reset);
-    if (createdClient) {
-      navigation.replace("ClientDetail", { clientId: createdClient.id });
+    const proceedCreate = async (): Promise<void> => {
+      const createdClient = await createClient(values, reset);
+      if (createdClient) {
+        navigation.replace("ClientDetail", { clientId: createdClient.id });
+      }
+    };
+
+    const duplicate = findDuplicateByName(
+      existingClients,
+      values.firstName,
+      values.lastName,
+    );
+
+    if (duplicate) {
+      Alert.alert(
+        "Cliente existente",
+        `Ya existe un cliente con este nombre${
+          duplicate.phone ? `: ${duplicate.phone}` : ""
+        }. ¿Es la misma persona?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Ver cliente existente",
+            onPress: () =>
+              navigation.replace("ClientDetail", { clientId: duplicate.id }),
+          },
+          {
+            text: "Crear de todos modos",
+            onPress: () => void proceedCreate(),
+          },
+        ],
+      );
+      return;
     }
+
+    await proceedCreate();
   });
 
   return (
