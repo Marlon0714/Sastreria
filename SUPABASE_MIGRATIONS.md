@@ -473,6 +473,8 @@ CREATE POLICY "authenticated all schedule_events" ON schedule_events
 
 **Fase 4 (2026-08-04): sin cambios nuevos en Supabase.** El espejo local `profiles_cache` (picker de operario + selección offline de identidad) lee de la tabla `profiles` que ya existe desde el Bloque 0 (`v18_profiles_roles`) — la policy `authenticated read profiles` ya permite el pull, `updated_at` ya existe para el cursor, y `pin_hash` sigue sin exponerse (nunca se selecciona). Solo hubo migración local (`v20_profiles_cache` en `migrations.ts`) y código de la app.
 
+**Fase 8 (2026-08-04): sin cambios nuevos en Supabase.** El datetimepicker nativo y la vista día-por-día son 100% cliente (componente de UI + queries locales ya existentes, `getByDate`/`getWithoutDate`) — no tocan el esquema. Con esto se cierran las 9 fases del Bloque 1 en código. **El SQL de la sección anterior (`v19_schedule_redesign`) sigue sin ejecutarse en Supabase** — sigue siendo el único bloqueante real antes de instalar cualquier build con este código, junto con la decisión (todavía no tomada) de cuándo gastar la build de EAS que el datetimepicker nativo necesita para probarse en dispositivo.
+
 ---
 
 ## Notas
