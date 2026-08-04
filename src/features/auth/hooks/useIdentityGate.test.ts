@@ -183,6 +183,49 @@ describe("useIdentityGate", () => {
     expect(result.current.isPinPromptVisible).toBe(true);
   });
 
+  it("muestra un error de conexión (no 'PIN incorrecto') si el RPC falla", async () => {
+    useSyncStatusStore.getState().setConnectivity("online");
+    useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: "network error" },
+    });
+    const { result } = renderHook(() => useIdentityGate());
+
+    act(() => {
+      void result.current.requireIdentity();
+    });
+
+    await act(async () => {
+      await result.current.submitPin("1234");
+    });
+
+    expect(result.current.pinError).toBe(
+      "No se pudo verificar el PIN. Revisa tu conexión e intenta de nuevo.",
+    );
+    expect(result.current.isPinPromptVisible).toBe(true);
+  });
+
+  it("muestra un error de conexión (no 'PIN incorrecto') si el RPC lanza una excepción", async () => {
+    useSyncStatusStore.getState().setConnectivity("online");
+    useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
+    mockRpc.mockRejectedValue(new Error("network error"));
+    const { result } = renderHook(() => useIdentityGate());
+
+    act(() => {
+      void result.current.requireIdentity();
+    });
+
+    await act(async () => {
+      await result.current.submitPin("1234");
+    });
+
+    expect(result.current.pinError).toBe(
+      "No se pudo verificar el PIN. Revisa tu conexión e intenta de nuevo.",
+    );
+    expect(result.current.isPinPromptVisible).toBe(true);
+  });
+
   it("resuelve a null si se cancela el prompt de PIN", async () => {
     useSyncStatusStore.getState().setConnectivity("online");
     useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);

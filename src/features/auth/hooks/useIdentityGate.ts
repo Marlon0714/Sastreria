@@ -143,29 +143,42 @@ export function useIdentityGate(): UseIdentityGateResult {
 
   const submitPin = useCallback(
     async (pin: string): Promise<void> => {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.rpc("resolve_operario_by_pin", {
-        candidate_pin: pin,
-      });
+      try {
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase.rpc("resolve_operario_by_pin", {
+          candidate_pin: pin,
+        });
 
-      const row = (data as ResolveOperarioByPinRow[] | null)?.[0];
+        if (error) {
+          setPinError(
+            "No se pudo verificar el PIN. Revisa tu conexión e intenta de nuevo.",
+          );
+          return;
+        }
 
-      if (error || !row) {
-        setPinError("PIN incorrecto. Intenta de nuevo.");
-        return;
+        const row = (data as ResolveOperarioByPinRow[] | null)?.[0];
+
+        if (!row) {
+          setPinError("PIN incorrecto. Intenta de nuevo.");
+          return;
+        }
+
+        const resolvedProfile: Profile = {
+          id: row.id,
+          displayName: row.display_name,
+          role: row.role,
+          isSharedDevice: false,
+        };
+
+        setResolvedActor(resolvedProfile);
+        isPinPromptVisibleRef.current = false;
+        setIsPinPromptVisible(false);
+        resolveAllPending({ profile: resolvedProfile, verified: true });
+      } catch {
+        setPinError(
+          "No se pudo verificar el PIN. Revisa tu conexión e intenta de nuevo.",
+        );
       }
-
-      const resolvedProfile: Profile = {
-        id: row.id,
-        displayName: row.display_name,
-        role: row.role,
-        isSharedDevice: false,
-      };
-
-      setResolvedActor(resolvedProfile);
-      isPinPromptVisibleRef.current = false;
-      setIsPinPromptVisible(false);
-      resolveAllPending({ profile: resolvedProfile, verified: true });
     },
     [setResolvedActor, resolveAllPending],
   );
