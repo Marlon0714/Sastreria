@@ -210,7 +210,8 @@ interface DeleteQueueRow {
     | "pantalon_measurement"
     | "client_talla"
     | "pricing_service"
-    | "schedule";
+    | "schedule"
+    | "talla_template";
   entity_id: string;
   deleted_at: string;
   sync_status: "pending" | "synced" | "error";

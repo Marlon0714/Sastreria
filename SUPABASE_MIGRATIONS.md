@@ -552,6 +552,34 @@ ALTER TABLE schedules ADD COLUMN IF NOT EXISTS is_priority BOOLEAN NOT NULL DEFA
 
 ---
 
+### v22_talla_template_delete_sync (2026-08-04)
+
+**Contexto:** QA de flujos completos de la app (N-077 en adelante) — borrar una plantilla de talla (`TallaTemplateRepositoryImpl.delete()`) nunca escribía en `sync_delete_log`, así que el borrado nunca se propagaba a Supabase ni a otros dispositivos: la plantilla "borrada" seguía viva en la nube y reaparecía en un reinstall. Se corrigió el código para que `delete()` sí registre el borrado (mismo patrón que `pricing_service`/`client_talla`), pero **el CHECK de `sync_delete_log.entity_type` en Supabase no permite `'talla_template'` todavía**.
+
+```sql
+ALTER TABLE sync_delete_log DROP CONSTRAINT IF EXISTS sync_delete_log_entity_type_check;
+ALTER TABLE sync_delete_log
+  ADD CONSTRAINT sync_delete_log_entity_type_check
+  CHECK (entity_type IN ('client', 'camisa_measurement', 'pantalon_measurement', 'client_talla', 'pricing_service', 'schedule', 'talla_template'));
+```
+
+**Importante:** correr esto en Supabase antes de instalar el próximo build — sin esto, el primer intento de borrar una plantilla de talla falla con `23514 check_violation` y el registro queda atascado en `sync_delete_log` con `sync_status='error'` para siempre.
+
+**Nota aparte, opcional (no bloquea nada):** al revisar el borrado de clientes se confirmó que `saco_measurements`/`chaleco_measurements` no tienen `ON DELETE CASCADE` en su FK a `clients` (a diferencia de `client_tallas`, que sí la tiene). El código ya borra estas filas explícitamente antes de borrar el cliente (tanto local como en la nube), así que esto no es un bug activo — pero si quieres una segunda capa de seguridad a nivel de base de datos (por si algún día se borra un cliente directo por SQL, sin pasar por la app), puedes correr:
+```sql
+ALTER TABLE saco_measurements DROP CONSTRAINT IF EXISTS saco_measurements_client_id_fkey;
+ALTER TABLE saco_measurements
+  ADD CONSTRAINT saco_measurements_client_id_fkey
+  FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE;
+
+ALTER TABLE chaleco_measurements DROP CONSTRAINT IF EXISTS chaleco_measurements_client_id_fkey;
+ALTER TABLE chaleco_measurements
+  ADD CONSTRAINT chaleco_measurements_client_id_fkey
+  FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE;
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

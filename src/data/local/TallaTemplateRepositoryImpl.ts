@@ -195,6 +195,24 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
 
   async delete(id: string): Promise<void> {
     const db = getDatabase();
-    await db.runAsync(`DELETE FROM talla_templates WHERE id = ?;`, id);
+    const nowIso = new Date().toISOString();
+    const deleteLogId = generateDomainUuid();
+
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(`DELETE FROM talla_templates WHERE id = ?;`, id);
+      await db.runAsync(
+        `
+        INSERT INTO sync_delete_log (id, entity_type, entity_id, deleted_at, sync_status)
+        VALUES (?, ?, ?, ?, ?);
+        `,
+        deleteLogId,
+        "talla_template",
+        id,
+        nowIso,
+        "pending",
+      );
+    });
+
+    notifyWriteCommitted(this.options);
   }
 }

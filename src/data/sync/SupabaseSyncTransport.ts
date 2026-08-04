@@ -407,6 +407,22 @@ export class SupabaseSyncTransport implements SyncTransport {
         return this.toAttemptFailure(pantalonError.code, pantalonError.message);
       }
 
+      const { error: sacoError } = await supabase
+        .from("saco_measurements")
+        .delete()
+        .eq("client_id", entry.entityId);
+      if (sacoError) {
+        return this.toAttemptFailure(sacoError.code, sacoError.message);
+      }
+
+      const { error: chalecoError } = await supabase
+        .from("chaleco_measurements")
+        .delete()
+        .eq("client_id", entry.entityId);
+      if (chalecoError) {
+        return this.toAttemptFailure(chalecoError.code, chalecoError.message);
+      }
+
       const { error: scheduleError } = await supabase
         .from("schedules")
         .delete()
@@ -473,6 +489,17 @@ export class SupabaseSyncTransport implements SyncTransport {
     if (entry.entityType === "schedule") {
       const { error } = await supabase
         .from("schedules")
+        .delete()
+        .eq("id", entry.entityId);
+      if (error) {
+        return this.toAttemptFailure(error.code, error.message);
+      }
+      return null;
+    }
+
+    if (entry.entityType === "talla_template") {
+      const { error } = await supabase
+        .from("talla_templates")
         .delete()
         .eq("id", entry.entityId);
       if (error) {

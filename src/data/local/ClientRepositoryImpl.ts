@@ -250,6 +250,14 @@ export class ClientRepositoryImpl implements ClientRepository {
         `DELETE FROM pantalon_measurements WHERE client_id = ?;`,
         id,
       );
+      await db.runAsync(
+        `DELETE FROM saco_measurements WHERE client_id = ?;`,
+        id,
+      );
+      await db.runAsync(
+        `DELETE FROM chaleco_measurements WHERE client_id = ?;`,
+        id,
+      );
       await db.runAsync(`DELETE FROM client_tallas WHERE client_id = ?;`, id);
       await db.runAsync(`DELETE FROM schedules WHERE client_id = ?;`, id);
       await db.runAsync(`DELETE FROM clients WHERE id = ?;`, id);

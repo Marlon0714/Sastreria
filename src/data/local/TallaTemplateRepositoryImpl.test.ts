@@ -7,6 +7,8 @@ const mockGetAllAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown[]>>();
 const mockGetFirstAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown | null>>();
+const mockWithTransactionAsync =
+  jest.fn<(callback: () => Promise<void>) => Promise<void>>();
 
 const mockDatabase = {
   runAsync: (sql: string, ...params: unknown[]) => mockRunAsync(sql, ...params),
@@ -14,6 +16,8 @@ const mockDatabase = {
     mockGetAllAsync(sql, ...params) as Promise<T[]>,
   getFirstAsync: <T>(sql: string, ...params: unknown[]) =>
     mockGetFirstAsync(sql, ...params) as Promise<T | null>,
+  withTransactionAsync: (callback: () => Promise<void>) =>
+    mockWithTransactionAsync(callback),
 };
 
 jest.mock("./database", () => ({
@@ -57,6 +61,9 @@ const baseRow = {
 describe("TallaTemplateRepositoryImpl", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockWithTransactionAsync.mockImplementation(async (callback) => {
+      await callback();
+    });
   });
 
   it("findAll retorna plantillas mapeadas", async () => {
@@ -66,6 +73,27 @@ describe("TallaTemplateRepositoryImpl", () => {
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe("Molde estándar");
     expect(result[0].talleDelantero).toBe(43);
+  });
+
+  it("delete elimina la plantilla y registra entrada en sync_delete_log dentro de una transacción", async () => {
+    mockRunAsync.mockResolvedValue(undefined);
+    const repo = new TallaTemplateRepositoryImpl();
+
+    await repo.delete(baseRow.id);
+
+    expect(mockWithTransactionAsync).toHaveBeenCalledTimes(1);
+    expect(mockRunAsync).toHaveBeenCalledTimes(2);
+
+    const [deleteSql, deleteParam] = mockRunAsync.mock.calls[0] ?? [];
+    expect(deleteSql).toContain("DELETE FROM talla_templates WHERE id = ?");
+    expect(deleteParam).toBe(baseRow.id);
+
+    const [insertSql, ...insertParams] = mockRunAsync.mock.calls[1] ?? [];
+    expect(insertSql).toContain("INSERT INTO sync_delete_log");
+    expect(insertParams[0]).toBe("550e8400-e29b-41d4-a716-446655440000");
+    expect(insertParams[1]).toBe("talla_template");
+    expect(insertParams[2]).toBe(baseRow.id);
+    expect(insertParams[4]).toBe("pending");
   });
 
   describe("onWriteCommitted", () => {
@@ -91,14 +119,14 @@ describe("TallaTemplateRepositoryImpl", () => {
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
     });
 
-    it("NO se llama después de delete() (fuera de alcance por ahora)", async () => {
-      mockRunAsync.mockResolvedValueOnce(undefined);
+    it("se llama una vez después de delete()", async () => {
+      mockRunAsync.mockResolvedValue(undefined);
       const onWriteCommitted = jest.fn<() => void>();
       const repo = new TallaTemplateRepositoryImpl({ onWriteCommitted });
 
       await repo.delete(baseRow.id);
 
-      expect(onWriteCommitted).not.toHaveBeenCalled();
+      expect(onWriteCommitted).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -827,6 +827,16 @@ describe("SupabasePullSync", () => {
       sqlStatements.some((sql) => sql.includes("DELETE FROM schedules")),
     ).toBe(true);
     expect(
+      sqlStatements.some((sql) =>
+        sql.includes("DELETE FROM saco_measurements WHERE client_id = ?"),
+      ),
+    ).toBe(true);
+    expect(
+      sqlStatements.some((sql) =>
+        sql.includes("DELETE FROM chaleco_measurements WHERE client_id = ?"),
+      ),
+    ).toBe(true);
+    expect(
       sqlStatements.some((sql) => sql.includes("UPDATE sync_delete_log")),
     ).toBe(true);
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
@@ -835,6 +845,39 @@ describe("SupabasePullSync", () => {
         id: "del-1",
         updatedAt: "2026-05-01T11:00:00.000Z",
       },
+    );
+  });
+
+  it("applies talla_template delete by id when entity_type is talla_template", async () => {
+    mockQueryResults.sync_delete_log.push({
+      data: [
+        {
+          id: "del-7",
+          entity_type: "talla_template",
+          entity_id: "template-99",
+          deleted_at: "2026-08-04T14:00:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const sqlStatements = mockRunAsync.mock.calls.map((call) => String(call[0]));
+    expect(
+      sqlStatements.some((sql) =>
+        sql.includes("DELETE FROM talla_templates WHERE id = ?"),
+      ),
+    ).toBe(true);
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "sync_delete_log",
+      { id: "del-7", updatedAt: "2026-08-04T14:00:00.000Z" },
     );
   });
 

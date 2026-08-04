@@ -13,7 +13,8 @@ type DeleteEntityType =
   | "pantalon_measurement"
   | "client_talla"
   | "pricing_service"
-  | "schedule";
+  | "schedule"
+  | "talla_template";
 
 interface ClientRow {
   id: string;
@@ -1131,6 +1132,14 @@ export class SupabasePullSync {
             row.entity_id,
           );
           await db.runAsync(
+            `DELETE FROM saco_measurements WHERE client_id = ?;`,
+            row.entity_id,
+          );
+          await db.runAsync(
+            `DELETE FROM chaleco_measurements WHERE client_id = ?;`,
+            row.entity_id,
+          );
+          await db.runAsync(
             `DELETE FROM schedules WHERE client_id = ?;`,
             row.entity_id,
           );
@@ -1168,6 +1177,13 @@ export class SupabasePullSync {
         if (row.entity_type === "schedule") {
           await db.runAsync(
             `DELETE FROM schedules WHERE id = ?;`,
+            row.entity_id,
+          );
+        }
+
+        if (row.entity_type === "talla_template") {
+          await db.runAsync(
+            `DELETE FROM talla_templates WHERE id = ?;`,
             row.entity_id,
           );
         }

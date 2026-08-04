@@ -560,12 +560,14 @@ describe("SupabaseSyncTransport", () => {
       expect(result).toEqual({ outcome: "synced" });
       // Log upsert
       expect(mockFrom).toHaveBeenCalledWith("sync_delete_log");
-      // Cascade deletes: camisa, pantalon, schedules, client
+      // Cascade deletes: camisa, pantalon, saco, chaleco, schedules, client
       expect(mockFrom).toHaveBeenCalledWith("camisa_measurements");
       expect(mockFrom).toHaveBeenCalledWith("pantalon_measurements");
+      expect(mockFrom).toHaveBeenCalledWith("saco_measurements");
+      expect(mockFrom).toHaveBeenCalledWith("chaleco_measurements");
       expect(mockFrom).toHaveBeenCalledWith("schedules");
       expect(mockFrom).toHaveBeenCalledWith("clients");
-      expect(mockDelete).toHaveBeenCalledTimes(4);
+      expect(mockDelete).toHaveBeenCalledTimes(6);
     });
 
     it("skips audit log and proceeds with cloud delete when sync_delete_log upsert fails with 42501 (RLS)", async () => {
@@ -576,7 +578,7 @@ describe("SupabaseSyncTransport", () => {
       const result = await transport.syncDeleteLogEntry(baseDeleteLog);
       // Despite audit log failure, cloud deletes should proceed and succeed
       expect(result).toEqual({ outcome: "synced" });
-      expect(mockDelete).toHaveBeenCalledTimes(4);
+      expect(mockDelete).toHaveBeenCalledTimes(6);
     });
 
     it("returns failed when sync_delete_log upsert fails with a non-infra error", async () => {
@@ -602,7 +604,35 @@ describe("SupabaseSyncTransport", () => {
       mockEq
         .mockResolvedValueOnce({ error: null }) // camisa ok
         .mockResolvedValueOnce({ error: null }) // pantalon ok
+        .mockResolvedValueOnce({ error: null }) // saco ok
+        .mockResolvedValueOnce({ error: null }) // chaleco ok
+        .mockResolvedValueOnce({ error: null }) // schedule ok
         .mockResolvedValueOnce({ error: { code: "23503" } }); // client fails
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncDeleteLogEntry(baseDeleteLog);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "23503" });
+    });
+
+    it("returns failed when cascade saco delete fails", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq
+        .mockResolvedValueOnce({ error: null }) // camisa ok
+        .mockResolvedValueOnce({ error: null }) // pantalon ok
+        .mockResolvedValueOnce({ error: { code: "23503" } }); // saco fails
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncDeleteLogEntry(baseDeleteLog);
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "23503" });
+    });
+
+    it("returns failed when cascade chaleco delete fails", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq
+        .mockResolvedValueOnce({ error: null }) // camisa ok
+        .mockResolvedValueOnce({ error: null }) // pantalon ok
+        .mockResolvedValueOnce({ error: null }) // saco ok
+        .mockResolvedValueOnce({ error: { code: "23503" } }); // chaleco fails
       const transport = new SupabaseSyncTransport();
 
       const result = await transport.syncDeleteLogEntry(baseDeleteLog);
@@ -676,6 +706,24 @@ describe("SupabaseSyncTransport", () => {
 
       expect(result).toEqual({ outcome: "synced" });
       expect(mockFrom).toHaveBeenCalledWith("schedules");
+      expect(mockFrom).not.toHaveBeenCalledWith("clients");
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it("deletes only talla_templates when entityType is talla_template", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const tallaTemplateDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "talla_template" as const,
+        entityId: "template-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(tallaTemplateDeleteLog);
+
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockFrom).toHaveBeenCalledWith("talla_templates");
       expect(mockFrom).not.toHaveBeenCalledWith("clients");
       expect(mockDelete).toHaveBeenCalledTimes(1);
     });
