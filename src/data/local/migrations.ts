@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 19;
+const TARGET_SCHEMA_VERSION = 20;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -399,6 +399,28 @@ const MIGRATIONS: readonly Migration[] = [
       );
       `,
       `CREATE INDEX IF NOT EXISTS idx_schedule_events_schedule_id ON schedule_events (schedule_id);`,
+    ],
+  },
+  {
+    // Bloque 1 Fase 4 (N-077): espejo local de solo lectura de `profiles`
+    // (Supabase), para que el picker de "operario asignado" funcione sin
+    // internet. Pull-only — la app nunca crea/edita perfiles, así que no
+    // pasa por el motor de sync de push (sin fila en sync_delete_log, sin
+    // SyncEntityType propio). Nunca incluye pin_hash (ni siquiera se
+    // selecciona desde Supabase, ver SupabasePullSync.pullProfilesIncremental).
+    version: 20,
+    name: "v20_profiles_cache",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS profiles_cache (
+        id TEXT PRIMARY KEY NOT NULL,
+        display_name TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('owner', 'operario')),
+        is_shared_device INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_profiles_cache_is_shared_device ON profiles_cache (is_shared_device);`,
     ],
   },
 ];
