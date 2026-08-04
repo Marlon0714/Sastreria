@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -11,7 +12,12 @@ import {
 
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
-import { normalizePhone, normalizeText } from "../../../shared/utils/textSearch";
+import { normalizeDigitsInput } from "../../../shared/domain/textPatterns";
+import {
+  findDuplicateByName,
+  normalizePhone,
+  normalizeText,
+} from "../../../shared/utils/textSearch";
 
 interface ClientPickerFieldProps {
   value: string;
@@ -29,6 +35,13 @@ export function ClientPickerField({
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [isAddingClient, setIsAddingClient] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [addClientError, setAddClientError] = useState<string | null>(null);
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +86,76 @@ export function ClientPickerField({
     });
   }, [clients, searchTerm]);
 
+  const resetAddClientState = (): void => {
+    setIsAddingClient(false);
+    setNewFirstName("");
+    setNewLastName("");
+    setNewPhone("");
+    setAddClientError(null);
+  };
+
+  const closePicker = (): void => {
+    setSearchTerm("");
+    resetAddClientState();
+    setIsOpen(false);
+  };
+
+  const createNewClient = async (): Promise<void> => {
+    setIsCreatingClient(true);
+    setAddClientError(null);
+    try {
+      const created = await clientRepository.create({
+        firstName: newFirstName.trim(),
+        lastName: newLastName.trim(),
+        phone: newPhone.trim() ? normalizeDigitsInput(newPhone.trim()) : "",
+      });
+      setClients((prev) => [...prev, created]);
+      onChange(created.id);
+      closePicker();
+    } catch {
+      setAddClientError("No se pudo crear el cliente. Intenta nuevamente.");
+    } finally {
+      setIsCreatingClient(false);
+    }
+  };
+
+  const handleSaveNewClient = (): void => {
+    const firstName = newFirstName.trim();
+    const lastName = newLastName.trim();
+
+    if (!firstName || !lastName) {
+      setAddClientError("Nombre y apellido son obligatorios.");
+      return;
+    }
+
+    const duplicate = findDuplicateByName(clients, firstName, lastName);
+    if (duplicate) {
+      Alert.alert(
+        "Cliente existente",
+        `Ya existe un cliente con este nombre${
+          duplicate.phone ? `: ${duplicate.phone}` : ""
+        }. ¿Es la misma persona?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Usar este cliente",
+            onPress: () => {
+              onChange(duplicate.id);
+              closePicker();
+            },
+          },
+          {
+            text: "Crear de todos modos",
+            onPress: () => void createNewClient(),
+          },
+        ],
+      );
+      return;
+    }
+
+    void createNewClient();
+  };
+
   if (isLoading) {
     return <ActivityIndicator accessibilityLabel="Cargando clientes" />;
   }
@@ -94,6 +177,63 @@ export function ClientPickerField({
         {errorMessage ? (
           <Text style={styles.errorText}>{errorMessage}</Text>
         ) : null}
+      </View>
+    );
+  }
+
+  if (isAddingClient) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.addClientTitle}>Cliente nuevo</Text>
+
+        <TextInput
+          accessibilityLabel="Nombre del cliente nuevo"
+          placeholder="Nombre"
+          value={newFirstName}
+          onChangeText={setNewFirstName}
+          style={styles.searchInput}
+          autoFocus
+        />
+        <TextInput
+          accessibilityLabel="Apellido del cliente nuevo"
+          placeholder="Apellido"
+          value={newLastName}
+          onChangeText={setNewLastName}
+          style={styles.searchInput}
+        />
+        <TextInput
+          accessibilityLabel="Teléfono del cliente nuevo"
+          placeholder="Teléfono (opcional)"
+          value={newPhone}
+          onChangeText={setNewPhone}
+          keyboardType="phone-pad"
+          style={styles.searchInput}
+        />
+
+        {addClientError ? (
+          <Text style={styles.errorText}>{addClientError}</Text>
+        ) : null}
+
+        <Pressable
+          accessibilityLabel="Guardar cliente nuevo"
+          style={[
+            styles.saveNewClientButton,
+            isCreatingClient ? styles.disabledButton : null,
+          ]}
+          onPress={handleSaveNewClient}
+          disabled={isCreatingClient}
+        >
+          <Text style={styles.saveNewClientButtonText}>
+            {isCreatingClient ? "Guardando..." : "Guardar cliente nuevo"}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel="Cancelar cliente nuevo"
+          style={styles.cancelButton}
+          onPress={resetAddClientState}
+        >
+          <Text style={styles.cancelButtonText}>Cancelar</Text>
+        </Pressable>
       </View>
     );
   }
@@ -121,23 +261,32 @@ export function ClientPickerField({
             style={styles.option}
             onPress={() => {
               onChange(item.id);
-              setSearchTerm("");
-              setIsOpen(false);
+              closePicker();
             }}
           >
             <Text style={styles.optionText}>
               {item.firstName} {item.lastName}
             </Text>
+            {item.phone ? (
+              <Text style={styles.optionSubtext}>{item.phone}</Text>
+            ) : null}
           </Pressable>
         )}
       />
       <Pressable
+        accessibilityLabel="Crear cliente nuevo"
+        style={styles.addClientButton}
+        onPress={() => {
+          setNewFirstName(searchTerm.trim());
+          setIsAddingClient(true);
+        }}
+      >
+        <Text style={styles.addClientButtonText}>+ Crear cliente nuevo</Text>
+      </Pressable>
+      <Pressable
         accessibilityLabel="Cancelar selección de cliente"
         style={styles.cancelButton}
-        onPress={() => {
-          setSearchTerm("");
-          setIsOpen(false);
-        }}
+        onPress={closePicker}
       >
         <Text style={styles.cancelButtonText}>Cancelar</Text>
       </Pressable>
@@ -190,11 +339,46 @@ const styles = StyleSheet.create({
   optionText: {
     color: "#0f172a",
   },
+  optionSubtext: {
+    color: "#64748b",
+    fontSize: 12,
+    marginTop: 2,
+  },
   emptyText: {
     textAlign: "center",
     color: "#64748b",
     fontSize: 13,
     padding: 16,
+  },
+  addClientButton: {
+    borderWidth: 1,
+    borderColor: "#0f766e",
+    borderStyle: "dashed",
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  addClientButtonText: {
+    color: "#0f766e",
+    fontWeight: "600",
+  },
+  addClientTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  saveNewClientButton: {
+    backgroundColor: "#0f766e",
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  saveNewClientButtonText: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   cancelButton: {
     alignItems: "center",
