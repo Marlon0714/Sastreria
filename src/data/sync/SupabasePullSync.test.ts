@@ -27,6 +27,8 @@ const mockQueryResults: Record<string, MockQueryResult[]> = {
   chaleco_measurements: [],
   talla_templates: [],
   schedules: [],
+  schedule_events: [],
+  profiles: [],
   sync_delete_log: [],
 };
 
@@ -40,6 +42,8 @@ const mockOrCalls: Record<string, string[]> = {
   chaleco_measurements: [],
   talla_templates: [],
   schedules: [],
+  schedule_events: [],
+  profiles: [],
   sync_delete_log: [],
 };
 
@@ -100,6 +104,8 @@ describe("SupabasePullSync", () => {
     mockQueryResults.chaleco_measurements = [];
     mockQueryResults.talla_templates = [];
     mockQueryResults.schedules = [];
+    mockQueryResults.schedule_events = [];
+    mockQueryResults.profiles = [];
     mockQueryResults.sync_delete_log = [];
     mockOrCalls.clients = [];
     mockOrCalls.camisa_measurements = [];
@@ -110,6 +116,8 @@ describe("SupabasePullSync", () => {
     mockOrCalls.chaleco_measurements = [];
     mockOrCalls.talla_templates = [];
     mockOrCalls.schedules = [];
+    mockOrCalls.schedule_events = [];
+    mockOrCalls.profiles = [];
     mockOrCalls.sync_delete_log = [];
     mockRunAsync.mockReset();
     mockWithTransactionAsync.mockClear();
@@ -416,6 +424,79 @@ describe("SupabasePullSync", () => {
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
       "schedules",
       { id: "schedule-1", updatedAt: "2026-08-01T10:05:00.000Z" },
+    );
+  });
+
+  it("applies schedule_events incremental upserts using created_at as cursor", async () => {
+    mockQueryResults.schedule_events.push({
+      data: [
+        {
+          id: "event-1",
+          schedule_id: "schedule-1",
+          actor_id: "user-1",
+          actor_display_name: "María Gómez",
+          action: "created",
+          changes: null,
+          identity_verified: true,
+          created_at: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const eventCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO schedule_events"),
+    );
+    expect(eventCalls).toHaveLength(1);
+    const [, ...params] = eventCalls[0] ?? [];
+    expect(params).toContain("event-1");
+    expect(params).toContain("María Gómez");
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "schedule_events",
+      { id: "event-1", updatedAt: "2026-08-01T10:05:00.000Z" },
+    );
+  });
+
+  it("applies profiles incremental upserts into profiles_cache and advances checkpoint", async () => {
+    mockQueryResults.profiles.push({
+      data: [
+        {
+          id: "user-1",
+          display_name: "María Gómez",
+          role: "operario",
+          is_shared_device: false,
+          updated_at: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const profileCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO profiles_cache"),
+    );
+    expect(profileCalls).toHaveLength(1);
+    const [, ...params] = profileCalls[0] ?? [];
+    expect(params).toContain("user-1");
+    expect(params).toContain("María Gómez");
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "profiles",
+      { id: "user-1", updatedAt: "2026-08-01T10:05:00.000Z" },
     );
   });
 

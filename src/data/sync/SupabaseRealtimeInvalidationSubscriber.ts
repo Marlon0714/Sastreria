@@ -13,6 +13,7 @@ type InvalidationTable =
   | "talla_templates"
   | "schedules"
   | "schedule_events"
+  | "profiles"
   | "sync_delete_log";
 
 const SYNC_TABLES: readonly InvalidationTable[] = [
@@ -26,6 +27,7 @@ const SYNC_TABLES: readonly InvalidationTable[] = [
   "talla_templates",
   "schedules",
   "schedule_events",
+  "profiles",
   "sync_delete_log",
 ];
 

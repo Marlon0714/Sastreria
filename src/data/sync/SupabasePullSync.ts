@@ -186,6 +186,14 @@ interface ScheduleEventRow {
   created_at: string;
 }
 
+interface ProfileRow {
+  id: string;
+  display_name: string;
+  role: "owner" | "operario";
+  is_shared_device: boolean;
+  updated_at: string;
+}
+
 interface DeleteLogRow {
   id: string;
   entity_type: DeleteEntityType;
@@ -232,6 +240,7 @@ export class SupabasePullSync {
     await this.pullTallaTemplatesIncremental();
     await this.pullSchedulesIncremental();
     await this.pullScheduleEventsIncremental();
+    await this.pullProfilesIncremental();
     await this.pullDeleteLogIncremental();
   }
 
@@ -1006,6 +1015,65 @@ export class SupabasePullSync {
         "schedule_events",
         nextCursor,
       );
+    }
+  }
+
+  /**
+   * Espejo local de solo lectura de `profiles` — nunca selecciona `pin_hash`
+   * (ni siquiera podría: está revocado a nivel de columna para `authenticated`,
+   * ver SUPABASE_MIGRATIONS.md v18). Alimenta el picker de "operario asignado"
+   * y la selección offline de identidad en useIdentityGate.
+   */
+  private async pullProfilesIncremental(): Promise<void> {
+    const cursor = await this.checkpointRepository.getCursor("profiles");
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("profiles")
+      .select("id, display_name, role, is_shared_device, updated_at")
+      .order("updated_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(this.batchSize);
+
+    query = this.applyCursorFilter(query, cursor, "updated_at");
+
+    const { data, error } = await query;
+    const db = getDatabase();
+
+    if (error) {
+      throw new Error(`[pull] profiles incremental fetch failed: ${error.code}`);
+    }
+
+    const rows = (data ?? []) as unknown as ProfileRow[];
+    if (!rows.length) {
+      return;
+    }
+
+    await db.withTransactionAsync(async () => {
+      for (const row of rows) {
+        await db.runAsync(
+          `
+          INSERT INTO profiles_cache
+            (id, display_name, role, is_shared_device, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            display_name     = excluded.display_name,
+            role              = excluded.role,
+            is_shared_device  = excluded.is_shared_device,
+            updated_at        = excluded.updated_at
+          WHERE excluded.updated_at >= profiles_cache.updated_at;
+          `,
+          row.id,
+          row.display_name,
+          row.role,
+          row.is_shared_device ? 1 : 0,
+          row.updated_at,
+        );
+      }
+    });
+
+    const nextCursor = getLastCursor(rows, (row) => row.updated_at);
+    if (nextCursor) {
+      await this.checkpointRepository.advanceCursor("profiles", nextCursor);
     }
   }
 

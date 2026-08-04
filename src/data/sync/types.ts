@@ -38,6 +38,7 @@ export type SyncCheckpointScope =
   | "talla_templates"
   | "schedules"
   | "schedule_events"
+  | "profiles"
   | "sync_delete_log";
 
 export interface SyncCursor {
