@@ -196,6 +196,41 @@ describe("SupabasePullSync", () => {
     });
   });
 
+  it("incluye phones y cedula al insertar un cliente traído de Supabase", async () => {
+    mockQueryResults.clients.push({
+      data: [
+        {
+          id: "c-3",
+          first_name: "Juan",
+          last_name: "Pérez",
+          phone: "3009998877",
+          phones: JSON.stringify(["3101234567"]),
+          cedula: "1020304050",
+          notes: null,
+          created_at: "2026-05-01T10:00:00.000Z",
+          updated_at: "2026-05-01T10:00:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const clientCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO clients"),
+    );
+    expect(clientCalls).toHaveLength(1);
+    const [, ...params] = clientCalls[0] ?? [];
+    expect(params).toContain(JSON.stringify(["3101234567"]));
+    expect(params).toContain("1020304050");
+  });
+
   it("applies camisa incremental upserts including audit trail and advances checkpoint", async () => {
     mockQueryResults.camisa_measurements.push({
       data: [

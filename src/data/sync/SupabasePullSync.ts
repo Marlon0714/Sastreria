@@ -20,6 +20,8 @@ interface ClientRow {
   first_name: string;
   last_name: string;
   phone: string;
+  phones: string | null;
+  cedula: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -252,7 +254,9 @@ export class SupabasePullSync {
     const supabase = getSupabaseClient();
     let query = supabase
       .from("clients")
-      .select("id, first_name, last_name, phone, notes, created_at, updated_at")
+      .select(
+        "id, first_name, last_name, phone, phones, cedula, notes, created_at, updated_at",
+      )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
       .limit(this.batchSize);
@@ -276,12 +280,14 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO clients
-            (id, first_name, last_name, phone, notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'synced')
+            (id, first_name, last_name, phone, phones, cedula, notes, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             first_name  = excluded.first_name,
             last_name   = excluded.last_name,
             phone       = excluded.phone,
+            phones      = excluded.phones,
+            cedula      = excluded.cedula,
             notes       = excluded.notes,
             updated_at  = excluded.updated_at,
             sync_status = 'synced'
@@ -291,6 +297,8 @@ export class SupabasePullSync {
           row.first_name,
           row.last_name,
           row.phone,
+          row.phones ?? null,
+          row.cedula ?? null,
           row.notes ?? null,
           row.created_at,
           row.updated_at,

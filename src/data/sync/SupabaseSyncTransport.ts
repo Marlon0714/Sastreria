@@ -129,6 +129,11 @@ export class SupabaseSyncTransport implements SyncTransport {
       first_name: client.firstName,
       last_name: client.lastName,
       phone: client.phone,
+      phones:
+        client.phones && client.phones.length > 0
+          ? JSON.stringify(client.phones)
+          : null,
+      cedula: client.cedula ?? null,
       notes: client.notes,
       created_at: client.createdAt,
       updated_at: client.updatedAt,

@@ -230,6 +230,37 @@ describe("SupabaseSyncTransport", () => {
       );
     });
 
+    it("incluye phones (como JSON) y cedula en el upsert", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncClient({
+        ...baseClient,
+        phones: ["3101234567", "6011234567"],
+        cedula: "1020304050",
+      });
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phones: JSON.stringify(["3101234567", "6011234567"]),
+          cedula: "1020304050",
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("envía phones/cedula como null cuando no hay valores", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncClient(baseClient);
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({ phones: null, cedula: null }),
+        { onConflict: "id" },
+      );
+    });
+
     it("returns failed outcome (no PII) when Supabase returns an error", async () => {
       mockUpsert.mockResolvedValueOnce({ error: { code: "23505" } });
       const transport = new SupabaseSyncTransport();

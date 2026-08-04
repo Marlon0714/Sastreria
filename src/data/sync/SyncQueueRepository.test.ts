@@ -187,6 +187,47 @@ describe("SyncQueueRepository", () => {
     expect(deleteParams).toEqual(["pending", "error", 1]);
   });
 
+  it("mapea phones (JSON) y cedula del cliente en el payload de la cola", async () => {
+    mockGetAllAsync
+      .mockResolvedValueOnce([
+        {
+          id: "c-3",
+          first_name: "Juan",
+          last_name: "Pérez",
+          phone: "3009998877",
+          phones: JSON.stringify(["3101234567", "6011234567"]),
+          cedula: "1020304050",
+          notes: null,
+          created_at: "2026-04-30T08:00:00.000Z",
+          updated_at: "2026-04-30T10:00:00.000Z",
+          sync_status: "pending",
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const repository = new SyncQueueRepository();
+    const items = await repository.getPendingItems(10);
+
+    expect(items).toHaveLength(1);
+    const clientItem = items[0] as unknown as {
+      payload: Record<string, unknown>;
+    };
+    expect(clientItem.payload.phones).toEqual([
+      "3101234567",
+      "6011234567",
+    ]);
+    expect(clientItem.payload.cedula).toBe("1020304050");
+  });
+
   it("marks client row as synced without mutating updated_at", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 

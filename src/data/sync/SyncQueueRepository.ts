@@ -21,6 +21,8 @@ interface ClientQueueRow {
   first_name: string;
   last_name: string;
   phone: string;
+  phones: string | null;
+  cedula: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -218,6 +220,17 @@ interface PendingCountRow {
   total: number;
 }
 
+function parseClientQueuePhones(value: string | null): string[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(value) as string[];
+  } catch {
+    return undefined;
+  }
+}
+
 function toClientQueueItem(row: ClientQueueRow): SyncClientQueueItem {
   return {
     entityType: "client",
@@ -230,6 +243,8 @@ function toClientQueueItem(row: ClientQueueRow): SyncClientQueueItem {
       firstName: row.first_name,
       lastName: row.last_name,
       phone: row.phone,
+      phones: parseClientQueuePhones(row.phones),
+      cedula: row.cedula ?? undefined,
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -550,6 +565,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         first_name,
         last_name,
         phone,
+        phones,
+        cedula,
         notes,
         created_at,
         updated_at,
