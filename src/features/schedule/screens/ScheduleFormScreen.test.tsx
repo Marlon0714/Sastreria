@@ -31,6 +31,21 @@ jest.mock("../hooks/useDeleteSchedule", () => ({
   useDeleteSchedule: () => mockUseDeleteSchedule(),
 }));
 
+interface UseScheduleStatusActionsResult {
+  isProcessing: boolean;
+  error: string | null;
+  markReady: () => Promise<Schedule | null>;
+  markDelivered: () => Promise<Schedule | null>;
+  applyCorrection: (newStatus: Schedule["status"]) => Promise<Schedule | null>;
+}
+
+const mockUseScheduleStatusActions =
+  jest.fn<() => UseScheduleStatusActionsResult>();
+
+jest.mock("../hooks/useScheduleStatusActions", () => ({
+  useScheduleStatusActions: () => mockUseScheduleStatusActions(),
+}));
+
 jest.mock("../components/ClientPickerField", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
   const { Text, TextInput, View } = jest.requireActual(
@@ -83,6 +98,10 @@ jest.mock("../components/OperarioPickerField", () => {
   };
 });
 
+jest.mock("../components/ScheduleHistoryList", () => ({
+  ScheduleHistoryList: () => null,
+}));
+
 type ScreenProps = React.ComponentProps<typeof ScheduleFormScreen>;
 
 function buildProps(
@@ -120,6 +139,13 @@ describe("ScheduleFormScreen", () => {
       isDeleting: false,
       error: null,
       deleteSchedule: jest.fn(async () => Promise.resolve(true)),
+    });
+    mockUseScheduleStatusActions.mockReturnValue({
+      isProcessing: false,
+      error: null,
+      markReady: jest.fn(async () => Promise.resolve(null)),
+      markDelivered: jest.fn(async () => Promise.resolve(null)),
+      applyCorrection: jest.fn(async () => Promise.resolve(null)),
     });
   });
 
@@ -271,6 +297,124 @@ describe("ScheduleFormScreen", () => {
     });
     await waitFor(() => {
       expect(goBack).toHaveBeenCalled();
+    });
+  });
+
+  describe("acciones de estado manual", () => {
+    it("muestra ambos botones cuando el turno está en un estado no terminal", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "agendado" },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      expect(getByLabelText("Marcar listo para entregar")).toBeTruthy();
+      expect(getByLabelText("Marcar entregado")).toBeTruthy();
+    });
+
+    it("oculta ambos botones cuando ya está entregado", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "entregado" },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+      });
+
+      const { queryByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
+      expect(queryByLabelText("Marcar entregado")).toBeNull();
+    });
+
+    it("oculta solo 'Marcar listo' cuando ya está en listo_para_entregar (pero permite entregar directo)", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "listo_para_entregar" },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+      });
+
+      const { queryByLabelText, getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
+      expect(getByLabelText("Marcar entregado")).toBeTruthy();
+    });
+
+    it("al marcar listo, actualiza el badge de estado en pantalla", async () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "en_proceso" },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+      });
+      const markReady = jest.fn(async () =>
+        Promise.resolve({ ...schedule, status: "listo_para_entregar" as const }),
+      );
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: false,
+        error: null,
+        markReady,
+        markDelivered: jest.fn(async () => Promise.resolve(null)),
+        applyCorrection: jest.fn(async () => Promise.resolve(null)),
+      });
+
+      const { getByLabelText, findByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar listo para entregar"));
+
+      expect(await findByText("Estado: Listo para entregar")).toBeTruthy();
+      expect(markReady).toHaveBeenCalledTimes(1);
+    });
+
+    it("corrección manual pide confirmación antes de aplicar el nuevo estado", async () => {
+      jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+        const confirm = buttons?.find((b) => b.text === "Confirmar");
+        void confirm?.onPress?.();
+      });
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "entregado" },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+      });
+      const applyCorrection = jest.fn(async () =>
+        Promise.resolve({ ...schedule, status: "pendiente" as const }),
+      );
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: false,
+        error: null,
+        markReady: jest.fn(async () => Promise.resolve(null)),
+        markDelivered: jest.fn(async () => Promise.resolve(null)),
+        applyCorrection,
+      });
+
+      const { getByLabelText, findByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Corrección manual de estado"));
+      fireEvent.press(getByLabelText("Corregir a Pendiente"));
+
+      await waitFor(() => {
+        expect(applyCorrection).toHaveBeenCalledWith("pendiente");
+      });
+      expect(await findByText("Estado: Pendiente")).toBeTruthy();
     });
   });
 });
