@@ -14,6 +14,9 @@ import {
 
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import { LoadingView } from "../../../shared/components";
+import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
+import { PinPromptModal } from "../../auth/components/PinPromptModal";
+import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
 import { ClientPickerField } from "../components/ClientPickerField";
 import { OperarioPickerField } from "../components/OperarioPickerField";
 import {
@@ -37,8 +40,11 @@ const STATUS_LABELS: Record<ScheduleStatus, string> = {
 
 export default function ScheduleFormScreen({ navigation, route }: Props) {
   const { scheduleId } = route.params;
-  const { schedule, isLoading, isSubmitting, error, submit } =
-    useScheduleForm(scheduleId);
+  const identityGate = useIdentityGate();
+  const { schedule, isLoading, isSubmitting, error, submit } = useScheduleForm(
+    scheduleId,
+    identityGate,
+  );
   const { deleteSchedule, isDeleting } = useDeleteSchedule();
 
   const {
@@ -244,6 +250,20 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           </Text>
         </Pressable>
       ) : null}
+
+      <PinPromptModal
+        visible={identityGate.isPinPromptVisible}
+        error={identityGate.pinError}
+        onSubmit={(pin) => void identityGate.submitPin(pin)}
+        onCancel={identityGate.cancelPinPrompt}
+      />
+      <OfflineActorPickerModal
+        visible={identityGate.isOfflineActorPickerVisible}
+        operarios={identityGate.offlineOperarios}
+        isLoading={identityGate.isLoadingOfflineOperarios}
+        onSelect={identityGate.submitOfflineActor}
+        onCancel={identityGate.cancelOfflineActorPicker}
+      />
     </ScrollView>
   );
 }
