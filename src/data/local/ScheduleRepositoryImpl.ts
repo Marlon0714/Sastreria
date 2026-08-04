@@ -4,8 +4,13 @@ import {
   type WriteCommittedOptions,
 } from "./writeCommitted";
 import type { ScheduleRepository } from "../../features/schedule/domain/repository";
+import {
+  deriveScheduleStatus,
+  isStickyStatus,
+} from "../../features/schedule/domain/statusDerivation";
 import type {
   Schedule,
+  ScheduleStatus,
   CreateScheduleDTO,
   UpdateScheduleDTO,
 } from "../../features/schedule/domain/types";
@@ -13,11 +18,15 @@ import { generateDomainUuid } from "../../features/clients/domain/types";
 
 interface ScheduleRow {
   id: string;
-  date: string;
-  time: string;
   client_id: string;
+  date: string | null;
+  time: string | null;
+  price: number | null;
+  operario_id: string | null;
   notes: string | null;
   status: string;
+  ready_at: string | null;
+  delivered_at: string | null;
   created_at: string;
   updated_at: string;
   sync_status: "pending" | "synced" | "error";
@@ -26,11 +35,15 @@ interface ScheduleRow {
 function mapRow(row: ScheduleRow): Schedule {
   return {
     id: row.id,
-    date: row.date,
-    time: row.time,
     clientId: row.client_id,
+    date: row.date ?? undefined,
+    time: row.time ?? undefined,
+    price: row.price ?? undefined,
+    operarioId: row.operario_id ?? undefined,
     notes: row.notes ?? undefined,
-    status: row.status as Schedule["status"],
+    status: row.status as ScheduleStatus,
+    readyAt: row.ready_at ?? undefined,
+    deliveredAt: row.delivered_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     syncStatus: row.sync_status,
@@ -75,29 +88,43 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     return rows.map(mapRow);
   }
 
+  async getWithoutDate(): Promise<Schedule[]> {
+    const db = getDatabase();
+    const rows = await db.getAllAsync<ScheduleRow>(
+      "SELECT * FROM schedules WHERE date IS NULL ORDER BY created_at ASC",
+    );
+    return rows.map(mapRow);
+  }
+
   async create(data: CreateScheduleDTO): Promise<Schedule> {
     const db = getDatabase();
     const now = new Date().toISOString();
     const schedule: Schedule = {
       id: generateDomainUuid(),
+      clientId: data.clientId,
       date: data.date,
       time: data.time,
-      clientId: data.clientId,
+      price: data.price,
+      operarioId: data.operarioId,
       notes: data.notes,
-      status: data.status,
+      status: deriveScheduleStatus(data),
       createdAt: now,
       updatedAt: now,
       syncStatus: "pending",
     };
     await db.runAsync(
-      `INSERT INTO schedules (id, date, time, client_id, notes, status, created_at, updated_at, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO schedules (id, client_id, date, time, price, operario_id, notes, status, ready_at, delivered_at, created_at, updated_at, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       schedule.id,
-      schedule.date,
-      schedule.time,
       schedule.clientId,
+      schedule.date ?? null,
+      schedule.time ?? null,
+      schedule.price ?? null,
+      schedule.operarioId ?? null,
       schedule.notes ?? null,
       schedule.status,
+      schedule.readyAt ?? null,
+      schedule.deliveredAt ?? null,
       schedule.createdAt,
       schedule.updatedAt,
       schedule.syncStatus,
@@ -107,26 +134,73 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
   }
 
   async update(id: string, data: UpdateScheduleDTO): Promise<Schedule> {
-    const db = getDatabase();
-    const now = new Date().toISOString();
     const existing = await this.getById(id);
     if (!existing) throw new Error("Turno no encontrado");
-    const updated: Schedule = {
+
+    const merged = { ...existing, ...data };
+    const status = isStickyStatus(existing.status)
+      ? existing.status
+      : deriveScheduleStatus(merged);
+
+    return this.persistUpdate({ ...merged, status });
+  }
+
+  async markReady(id: string): Promise<Schedule> {
+    const existing = await this.getById(id);
+    if (!existing) throw new Error("Turno no encontrado");
+
+    return this.persistUpdate({
       ...existing,
-      ...data,
-      updatedAt: now,
+      status: "listo_para_entregar",
+      readyAt: new Date().toISOString(),
+    });
+  }
+
+  async markDelivered(id: string): Promise<Schedule> {
+    const existing = await this.getById(id);
+    if (!existing) throw new Error("Turno no encontrado");
+
+    return this.persistUpdate({
+      ...existing,
+      status: "entregado",
+      deliveredAt: new Date().toISOString(),
+    });
+  }
+
+  async applyManualCorrection(
+    id: string,
+    newStatus: ScheduleStatus,
+  ): Promise<Schedule> {
+    const existing = await this.getById(id);
+    if (!existing) throw new Error("Turno no encontrado");
+
+    return this.persistUpdate({ ...existing, status: newStatus });
+  }
+
+  private async persistUpdate(
+    next: Omit<Schedule, "updatedAt" | "syncStatus">,
+  ): Promise<Schedule> {
+    const db = getDatabase();
+    const updated: Schedule = {
+      ...next,
+      updatedAt: new Date().toISOString(),
       syncStatus: "pending",
     };
+
     await db.runAsync(
-      `UPDATE schedules SET date = ?, time = ?, client_id = ?, notes = ?, status = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
-      updated.date,
-      updated.time,
+      `UPDATE schedules SET client_id = ?, date = ?, time = ?, price = ?, operario_id = ?, notes = ?, status = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
       updated.clientId,
+      updated.date ?? null,
+      updated.time ?? null,
+      updated.price ?? null,
+      updated.operarioId ?? null,
       updated.notes ?? null,
       updated.status,
+      updated.readyAt ?? null,
+      updated.deliveredAt ?? null,
       updated.updatedAt,
       updated.syncStatus,
-      id,
+      updated.id,
     );
     notifyWriteCommitted(this.options);
     return updated;

@@ -47,11 +47,15 @@ jest.mock("../../features/clients/domain/types", () => ({
 
 const baseRow = {
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  client_id: "11111111-1111-4111-8111-111111111111",
   date: "2026-08-10",
   time: "14:30",
-  client_id: "11111111-1111-4111-8111-111111111111",
+  price: null,
+  operario_id: null,
   notes: "Ajuste de traje",
-  status: "pending" as const,
+  status: "agendado" as const,
+  ready_at: null,
+  delivered_at: null,
   created_at: "2026-08-01T10:00:00.000Z",
   updated_at: "2026-08-01T10:00:00.000Z",
   sync_status: "pending" as const,
@@ -86,11 +90,15 @@ describe("ScheduleRepositoryImpl", () => {
     expect(result).toEqual([
       {
         id: baseRow.id,
+        clientId: baseRow.client_id,
         date: baseRow.date,
         time: baseRow.time,
-        clientId: baseRow.client_id,
+        price: undefined,
+        operarioId: undefined,
         notes: baseRow.notes,
         status: baseRow.status,
+        readyAt: undefined,
+        deliveredAt: undefined,
         createdAt: baseRow.created_at,
         updatedAt: baseRow.updated_at,
         syncStatus: baseRow.sync_status,
@@ -133,56 +141,164 @@ describe("ScheduleRepositoryImpl", () => {
     expect(clientId).toBe(baseRow.client_id);
   });
 
-  it("create inserta con syncStatus pending y notifica onWriteCommitted", async () => {
-    mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
-    mockRunAsync.mockResolvedValueOnce({});
-    const onWriteCommitted = jest.fn<() => void>();
-    const repository = new ScheduleRepositoryImpl({ onWriteCommitted });
-
-    const result = await repository.create({
-      date: "2026-08-10",
-      time: "14:30",
-      clientId: baseRow.client_id,
-      notes: "Ajuste de traje",
-      status: "pending",
-    });
-
-    expect(result).toEqual({
-      id: baseRow.id,
-      date: "2026-08-10",
-      time: "14:30",
-      clientId: baseRow.client_id,
-      notes: "Ajuste de traje",
-      status: "pending",
-      createdAt: "2026-08-01T10:00:00.000Z",
-      updatedAt: "2026-08-01T10:00:00.000Z",
-      syncStatus: "pending",
-    });
-    expect(onWriteCommitted).toHaveBeenCalledTimes(1);
-  });
-
-  it("update lanza error si el turno no existe", async () => {
-    mockGetFirstAsync.mockResolvedValueOnce(null);
+  it("getWithoutDate filtra los turnos sin fecha", async () => {
+    mockGetAllAsync.mockResolvedValueOnce([{ ...baseRow, date: null }]);
     const repository = new ScheduleRepositoryImpl();
 
-    await expect(
-      repository.update("nope", { status: "confirmed" }),
-    ).rejects.toThrow("Turno no encontrado");
+    const result = await repository.getWithoutDate();
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.date).toBeUndefined();
+    const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("WHERE date IS NULL");
   });
 
-  it("update conserva campos no enviados y notifica onWriteCommitted", async () => {
-    mockGetFirstAsync.mockResolvedValueOnce(baseRow);
-    mockRunAsync.mockResolvedValueOnce({});
-    const onWriteCommitted = jest.fn<() => void>();
-    const repository = new ScheduleRepositoryImpl({ onWriteCommitted });
+  describe("create", () => {
+    it("deriva status 'pendiente' sin fecha ni operario y notifica onWriteCommitted", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const onWriteCommitted = jest.fn<() => void>();
+      const repository = new ScheduleRepositoryImpl({ onWriteCommitted });
 
-    const result = await repository.update(baseRow.id, {
-      status: "confirmed",
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+        notes: "Ajuste de traje",
+      });
+
+      expect(result).toEqual({
+        id: baseRow.id,
+        clientId: baseRow.client_id,
+        date: undefined,
+        time: undefined,
+        price: undefined,
+        operarioId: undefined,
+        notes: "Ajuste de traje",
+        status: "pendiente",
+        readyAt: undefined,
+        deliveredAt: undefined,
+        createdAt: "2026-08-01T10:00:00.000Z",
+        updatedAt: "2026-08-01T10:00:00.000Z",
+        syncStatus: "pending",
+      });
+      expect(onWriteCommitted).toHaveBeenCalledTimes(1);
     });
 
-    expect(result.status).toBe("confirmed");
-    expect(result.date).toBe(baseRow.date);
-    expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    it("deriva status 'agendado' con fecha", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+        date: "2026-08-10",
+      });
+
+      expect(result.status).toBe("agendado");
+    });
+
+    it("deriva status 'en_proceso' con operario asignado", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+        operarioId: "op-1",
+      });
+
+      expect(result.status).toBe("en_proceso");
+    });
+  });
+
+  describe("update", () => {
+    it("lanza error si el turno no existe", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      const repository = new ScheduleRepositoryImpl();
+
+      await expect(
+        repository.update("nope", { date: "2026-08-11" }),
+      ).rejects.toThrow("Turno no encontrado");
+    });
+
+    it("recalcula status automáticamente y conserva campos no enviados", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ ...baseRow, status: "pendiente", date: null });
+      mockRunAsync.mockResolvedValueOnce({});
+      const onWriteCommitted = jest.fn<() => void>();
+      const repository = new ScheduleRepositoryImpl({ onWriteCommitted });
+
+      const result = await repository.update(baseRow.id, {
+        date: "2026-08-12",
+      });
+
+      expect(result.status).toBe("agendado");
+      expect(result.date).toBe("2026-08-12");
+      expect(result.notes).toBe(baseRow.notes);
+      expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+
+    it("no recalcula status si ya está en un estado pegajoso", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "entregado",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, {
+        operarioId: "op-2",
+      });
+
+      expect(result.status).toBe("entregado");
+    });
+  });
+
+  describe("markReady", () => {
+    it("fija status listo_para_entregar y readyAt", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow);
+      mockRunAsync.mockResolvedValueOnce({});
+      const onWriteCommitted = jest.fn<() => void>();
+      const repository = new ScheduleRepositoryImpl({ onWriteCommitted });
+
+      const result = await repository.markReady(baseRow.id);
+
+      expect(result.status).toBe("listo_para_entregar");
+      expect(result.readyAt).toBe("2026-08-01T10:00:00.000Z");
+      expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("markDelivered", () => {
+    it("fija status entregado y deliveredAt desde cualquier estado previo", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "pendiente",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.markDelivered(baseRow.id);
+
+      expect(result.status).toBe("entregado");
+      expect(result.deliveredAt).toBe("2026-08-01T10:00:00.000Z");
+    });
+  });
+
+  describe("applyManualCorrection", () => {
+    it("fija el status elegido sin ninguna regla", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "entregado",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.applyManualCorrection(
+        baseRow.id,
+        "pendiente",
+      );
+
+      expect(result.status).toBe("pendiente");
+    });
   });
 
   it("delete borra el turno y registra entrada en sync_delete_log dentro de una transacción", async () => {
