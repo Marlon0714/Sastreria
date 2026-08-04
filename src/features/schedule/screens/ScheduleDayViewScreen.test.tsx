@@ -248,7 +248,9 @@ describe("ScheduleDayViewScreen", () => {
       <ScheduleDayViewScreen {...buildProps(navigate)} />,
     );
 
-    fireEvent.press(await findByLabelText("Ver turno de Ana Torres"));
+    fireEvent.press(
+      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    );
     expect(navigate).toHaveBeenCalledWith("ScheduleForm", {
       scheduleId: scheduledOne.id,
     });

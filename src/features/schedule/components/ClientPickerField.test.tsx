@@ -103,7 +103,7 @@ describe("ClientPickerField", () => {
     expect(getByText("Juan Pérez")).toBeTruthy();
     expect(queryByText("Ana Torres")).toBeNull();
 
-    fireEvent.press(getByLabelText("Elegir a Juan Pérez"));
+    fireEvent.press(getByLabelText("Elegir a Juan Pérez (3009998877)"));
 
     expect(onChange).toHaveBeenCalledWith(clients[1]!.id);
   });

@@ -75,7 +75,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     return (
       <Pressable
         key={item.id}
-        accessibilityLabel={`Ver turno de ${clientLabel(item)}`}
+        accessibilityLabel={`Ver turno de ${clientLabel(item)} (${dateLabel}, ${item.id})`}
         style={styles.card}
         onPress={() =>
           navigation.navigate("ScheduleForm", { scheduleId: item.id })

@@ -257,7 +257,9 @@ export function ClientPickerField({
         }
         renderItem={({ item }) => (
           <Pressable
-            accessibilityLabel={`Elegir a ${item.firstName} ${item.lastName}`}
+            accessibilityLabel={`Elegir a ${item.firstName} ${item.lastName} (${
+              item.phone || item.id
+            })`}
             style={styles.option}
             onPress={() => {
               onChange(item.id);
