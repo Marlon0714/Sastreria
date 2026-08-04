@@ -142,6 +142,7 @@ export default function ClientCreateScreen({ navigation }: Props) {
                 value={value}
                 onChangeText={onChange}
                 placeholder="Ej. Ana"
+                placeholderTextColor="#94a3b8"
               />
             )}
           />
@@ -161,6 +162,7 @@ export default function ClientCreateScreen({ navigation }: Props) {
                 value={value}
                 onChangeText={onChange}
                 placeholder="Ej. Torres"
+                placeholderTextColor="#94a3b8"
               />
             )}
           />
@@ -181,6 +183,7 @@ export default function ClientCreateScreen({ navigation }: Props) {
                 onChangeText={onChange}
                 keyboardType="phone-pad"
                 placeholder="Ej. 3001234567"
+                placeholderTextColor="#94a3b8"
               />
             )}
           />
@@ -216,6 +219,7 @@ export default function ClientCreateScreen({ navigation }: Props) {
                   onChangeText={onChange}
                   keyboardType="phone-pad"
                   placeholder="Ej. 3101234567"
+                  placeholderTextColor="#94a3b8"
                 />
               )}
             />
@@ -249,6 +253,7 @@ export default function ClientCreateScreen({ navigation }: Props) {
                   onChangeText={onChange}
                   keyboardType="phone-pad"
                   placeholder="Ej. 6011234567"
+                  placeholderTextColor="#94a3b8"
                 />
               )}
             />
@@ -283,6 +288,7 @@ export default function ClientCreateScreen({ navigation }: Props) {
                 onChangeText={onChange}
                 keyboardType="number-pad"
                 placeholder="Ej. 1020304050"
+                placeholderTextColor="#94a3b8"
               />
             )}
           />
@@ -302,6 +308,7 @@ export default function ClientCreateScreen({ navigation }: Props) {
                 value={value}
                 onChangeText={onChange}
                 placeholder="Detalles relevantes del cliente"
+                placeholderTextColor="#94a3b8"
                 multiline
               />
             )}
@@ -392,6 +399,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: "#ffffff",
+    color: "#0f172a",
   },
   notesInput: {
     minHeight: 90,

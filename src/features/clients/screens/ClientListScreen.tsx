@@ -150,6 +150,7 @@ export default function ClientListScreen({ navigation }: Props) {
         <TextInput
           accessibilityLabel="Buscar cliente por nombre o telefono"
           placeholder="Buscar por nombre o telefono"
+          placeholderTextColor="#94a3b8"
           value={searchTerm}
           onChangeText={setSearchTerm}
           style={styles.searchInput}

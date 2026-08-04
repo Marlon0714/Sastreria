@@ -94,6 +94,7 @@ export function OperarioPickerField({
       <TextInput
         accessibilityLabel="Buscar operario"
         placeholder="Buscar por nombre"
+        placeholderTextColor="#94a3b8"
         value={searchTerm}
         onChangeText={setSearchTerm}
         style={styles.searchInput}
@@ -174,6 +175,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: "#ffffff",
+    color: "#0f172a",
   },
   clearOption: {
     paddingHorizontal: 12,

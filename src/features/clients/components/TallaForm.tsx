@@ -111,6 +111,7 @@ export default function TallaForm({
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Ej: M, 38, 40/32"
+              placeholderTextColor="#94a3b8"
               autoCapitalize="characters"
               editable={!disabled}
               accessibilityLabel="Valor de talla"
@@ -139,6 +140,7 @@ export default function TallaForm({
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Observaciones adicionales..."
+              placeholderTextColor="#94a3b8"
               multiline
               numberOfLines={3}
               editable={!disabled}

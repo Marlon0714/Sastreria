@@ -266,6 +266,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             <TextInput
               style={[styles.input, errors.price && styles.inputError]}
               placeholder="Ej: 15000"
+              placeholderTextColor="#94a3b8"
               keyboardType="numeric"
               onBlur={onBlur}
               onChangeText={(text) => {
@@ -305,6 +306,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             <TextInput
               style={[styles.input, styles.notesInput]}
               placeholder="Detalles del turno"
+              placeholderTextColor="#94a3b8"
               value={value}
               onChangeText={onChange}
               multiline
@@ -516,6 +518,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: "#ffffff",
+    color: "#0f172a",
   },
   inputError: {
     borderColor: "#ef4444",

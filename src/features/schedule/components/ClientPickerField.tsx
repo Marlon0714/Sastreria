@@ -189,6 +189,7 @@ export function ClientPickerField({
         <TextInput
           accessibilityLabel="Nombre del cliente nuevo"
           placeholder="Nombre"
+          placeholderTextColor="#94a3b8"
           value={newFirstName}
           onChangeText={setNewFirstName}
           style={styles.searchInput}
@@ -197,6 +198,7 @@ export function ClientPickerField({
         <TextInput
           accessibilityLabel="Apellido del cliente nuevo"
           placeholder="Apellido"
+          placeholderTextColor="#94a3b8"
           value={newLastName}
           onChangeText={setNewLastName}
           style={styles.searchInput}
@@ -204,6 +206,7 @@ export function ClientPickerField({
         <TextInput
           accessibilityLabel="Teléfono del cliente nuevo"
           placeholder="Teléfono (opcional)"
+          placeholderTextColor="#94a3b8"
           value={newPhone}
           onChangeText={setNewPhone}
           keyboardType="phone-pad"
@@ -243,6 +246,7 @@ export function ClientPickerField({
       <TextInput
         accessibilityLabel="Buscar cliente"
         placeholder="Buscar por nombre o telefono"
+        placeholderTextColor="#94a3b8"
         value={searchTerm}
         onChangeText={setSearchTerm}
         style={styles.searchInput}
@@ -325,6 +329,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: "#ffffff",
+    color: "#0f172a",
   },
   list: {
     maxHeight: 220,
