@@ -172,12 +172,14 @@ interface ScheduleQueueRow {
   operario_id: string | null;
   client_id: string;
   notes: string | null;
+  is_priority: number;
   status:
     | "pendiente"
     | "agendado"
     | "en_proceso"
     | "listo_para_entregar"
     | "entregado";
+  status_locked: number;
   ready_at: string | null;
   delivered_at: string | null;
   created_at: string;
@@ -454,7 +456,9 @@ function toScheduleQueueItem(row: ScheduleQueueRow): SyncScheduleQueueItem {
       operarioId: row.operario_id ?? undefined,
       clientId: row.client_id,
       notes: row.notes ?? undefined,
+      isPriority: row.is_priority === 1,
       status: row.status,
+      statusLocked: row.status_locked === 1,
       readyAt: row.ready_at ?? undefined,
       deliveredAt: row.delivered_at ?? undefined,
       createdAt: row.created_at,
@@ -766,7 +770,9 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         operario_id,
         client_id,
         notes,
+        is_priority,
         status,
+        status_locked,
         ready_at,
         delivered_at,
         created_at,

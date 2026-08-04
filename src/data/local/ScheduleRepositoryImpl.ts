@@ -24,7 +24,9 @@ interface ScheduleRow {
   price: number | null;
   operario_id: string | null;
   notes: string | null;
+  is_priority: number;
   status: string;
+  status_locked: number;
   ready_at: string | null;
   delivered_at: string | null;
   created_at: string;
@@ -41,7 +43,9 @@ function mapRow(row: ScheduleRow): Schedule {
     price: row.price ?? undefined,
     operarioId: row.operario_id ?? undefined,
     notes: row.notes ?? undefined,
+    isPriority: row.is_priority === 1,
     status: row.status as ScheduleStatus,
+    statusLocked: row.status_locked === 1,
     readyAt: row.ready_at ?? undefined,
     deliveredAt: row.delivered_at ?? undefined,
     createdAt: row.created_at,
@@ -107,14 +111,16 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       price: data.price,
       operarioId: data.operarioId,
       notes: data.notes,
+      isPriority: data.isPriority ?? false,
       status: deriveScheduleStatus(data),
+      statusLocked: false,
       createdAt: now,
       updatedAt: now,
       syncStatus: "pending",
     };
     await db.runAsync(
-      `INSERT INTO schedules (id, client_id, date, time, price, operario_id, notes, status, ready_at, delivered_at, created_at, updated_at, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO schedules (id, client_id, date, time, price, operario_id, notes, is_priority, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       schedule.id,
       schedule.clientId,
       schedule.date ?? null,
@@ -122,7 +128,9 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       schedule.price ?? null,
       schedule.operarioId ?? null,
       schedule.notes ?? null,
+      schedule.isPriority ? 1 : 0,
       schedule.status,
+      schedule.statusLocked ? 1 : 0,
       schedule.readyAt ?? null,
       schedule.deliveredAt ?? null,
       schedule.createdAt,
@@ -138,9 +146,10 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     if (!existing) throw new Error("Turno no encontrado");
 
     const merged = { ...existing, ...data };
-    const status = isStickyStatus(existing.status)
-      ? existing.status
-      : deriveScheduleStatus(merged);
+    const status =
+      existing.statusLocked || isStickyStatus(existing.status)
+        ? existing.status
+        : deriveScheduleStatus(merged);
 
     return this.persistUpdate({ ...merged, status });
   }
@@ -174,7 +183,14 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     const existing = await this.getById(id);
     if (!existing) throw new Error("Turno no encontrado");
 
-    return this.persistUpdate({ ...existing, status: newStatus });
+    // Queda "bloqueado": una corrección manual es una excepción deliberada,
+    // no debe perderse en el siguiente update() de un campo cualquiera solo
+    // porque la derivación automática (ej. operario asignado) diga otra cosa.
+    return this.persistUpdate({
+      ...existing,
+      status: newStatus,
+      statusLocked: true,
+    });
   }
 
   private async persistUpdate(
@@ -188,14 +204,16 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     };
 
     await db.runAsync(
-      `UPDATE schedules SET client_id = ?, date = ?, time = ?, price = ?, operario_id = ?, notes = ?, status = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
+      `UPDATE schedules SET client_id = ?, date = ?, time = ?, price = ?, operario_id = ?, notes = ?, is_priority = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
       updated.clientId,
       updated.date ?? null,
       updated.time ?? null,
       updated.price ?? null,
       updated.operarioId ?? null,
       updated.notes ?? null,
+      updated.isPriority ? 1 : 0,
       updated.status,
+      updated.statusLocked ? 1 : 0,
       updated.readyAt ?? null,
       updated.deliveredAt ?? null,
       updated.updatedAt,

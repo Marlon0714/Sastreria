@@ -527,7 +527,20 @@ ALTER TABLE sync_delete_log
 
 **Fase 4 (2026-08-04): sin cambios nuevos en Supabase.** El espejo local `profiles_cache` (picker de operario + selección offline de identidad) lee de la tabla `profiles` que ya existe desde el Bloque 0 (`v18_profiles_roles`) — la policy `authenticated read profiles` ya permite el pull, `updated_at` ya existe para el cursor, y `pin_hash` sigue sin exponerse (nunca se selecciona). Solo hubo migración local (`v20_profiles_cache` en `migrations.ts`) y código de la app.
 
-**Fase 8 (2026-08-04): sin cambios nuevos en Supabase.** El datetimepicker nativo y la vista día-por-día son 100% cliente (componente de UI + queries locales ya existentes, `getByDate`/`getWithoutDate`) — no tocan el esquema. Con esto se cierran las 9 fases del Bloque 1 en código. **El SQL de la sección anterior (`v19_schedule_redesign`) sigue sin ejecutarse en Supabase** — sigue siendo el único bloqueante real antes de instalar cualquier build con este código, junto con la decisión (todavía no tomada) de cuándo gastar la build de EAS que el datetimepicker nativo necesita para probarse en dispositivo.
+**Fase 8 (2026-08-04): sin cambios nuevos en Supabase.** El datetimepicker nativo y la vista día-por-día son 100% cliente (componente de UI + queries locales ya existentes, `getByDate`/`getWithoutDate`) — no tocan el esquema. Con esto se cierran las 9 fases del Bloque 1 en código.
+
+---
+
+### v21_schedule_status_lock_and_priority (2026-08-04)
+
+**Contexto:** feedback de uso real del build de prueba — corregir manualmente el status a "pendiente"/"agendado"/"en_proceso" (botón "Corrección manual") no se quedaba: el siguiente `update()` de cualquier campo (aunque no tuviera nada que ver, ej. las notas) volvía a derivar el status automáticamente, y si el operario seguía asignado, lo devolvía a "en_proceso" sin que nadie lo pidiera. Se agrega `status_locked` para marcar que el status actual viene de una corrección manual explícita, y el código deja de re-derivarlo hasta la siguiente acción explícita. De paso se agrega `is_priority`, pedido para poder marcar un turno sin fecha como más urgente que el resto de "Pendientes".
+
+```sql
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS status_locked BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS is_priority BOOLEAN NOT NULL DEFAULT false;
+```
+
+**Importante:** correr esto en Supabase antes de instalar cualquier build con este código — sin estas columnas, `syncSchedule()`/`pullSchedulesIncremental()` fallan al referenciar `status_locked`/`is_priority` (columna inexistente).
 
 ---
 

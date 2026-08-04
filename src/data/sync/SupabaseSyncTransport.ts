@@ -294,7 +294,8 @@ export class SupabaseSyncTransport implements SyncTransport {
 
   async syncSchedule(schedule: Schedule): Promise<SyncTransportAttemptResult> {
     // Requiere la migración v19 aplicada en Supabase (columnas nuevas +
-    // CHECK de status actualizado) — ver SUPABASE_MIGRATIONS.md.
+    // CHECK de status actualizado) y v21 (is_priority/status_locked) — ver
+    // SUPABASE_MIGRATIONS.md.
     return this.upsertSynced("schedules", {
       id: schedule.id,
       date: schedule.date ?? null,
@@ -303,7 +304,9 @@ export class SupabaseSyncTransport implements SyncTransport {
       operario_id: schedule.operarioId ?? null,
       client_id: schedule.clientId,
       notes: schedule.notes ?? null,
+      is_priority: schedule.isPriority,
       status: schedule.status,
+      status_locked: schedule.statusLocked,
       ready_at: schedule.readyAt ?? null,
       delivered_at: schedule.deliveredAt ?? null,
       created_at: schedule.createdAt,

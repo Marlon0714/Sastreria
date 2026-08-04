@@ -4,7 +4,8 @@ export type ScheduleDiffableField =
   | "time"
   | "price"
   | "operarioId"
-  | "notes";
+  | "notes"
+  | "isPriority";
 
 const DIFFABLE_FIELDS: readonly ScheduleDiffableField[] = [
   "clientId",
@@ -13,6 +14,7 @@ const DIFFABLE_FIELDS: readonly ScheduleDiffableField[] = [
   "price",
   "operarioId",
   "notes",
+  "isPriority",
 ];
 
 type DiffableSchedule = Partial<Record<ScheduleDiffableField, unknown>>;

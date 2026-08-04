@@ -39,7 +39,9 @@ export const scheduleSchema = z.object({
   price: z.number().nonnegative("El precio no puede ser negativo").optional(),
   operarioId: z.string().uuid("El operario es inválido").optional(),
   notes: z.string().trim().max(500).optional(),
+  isPriority: z.boolean().optional(),
   status: scheduleStatusSchema,
+  statusLocked: z.boolean(),
   readyAt: z.string().optional(),
   deliveredAt: z.string().optional(),
   createdAt: z.string(),
@@ -50,6 +52,7 @@ export const scheduleSchema = z.object({
 export const createScheduleSchema = scheduleSchema.omit({
   id: true,
   status: true,
+  statusLocked: true,
   readyAt: true,
   deliveredAt: true,
   createdAt: true,

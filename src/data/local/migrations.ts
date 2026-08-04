@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 20;
+const TARGET_SCHEMA_VERSION = 21;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -421,6 +421,23 @@ const MIGRATIONS: readonly Migration[] = [
       );
       `,
       `CREATE INDEX IF NOT EXISTS idx_profiles_cache_is_shared_device ON profiles_cache (is_shared_device);`,
+    ],
+  },
+  {
+    // Feedback de uso real (2026-08-04): corregir manualmente el status a
+    // "pendiente"/"agendado"/"en_proceso" no se quedaba — el siguiente
+    // update() de cualquier campo volvía a derivar el status automáticamente
+    // (ej. si el operario seguía asignado, volvía a "en_proceso" solo por
+    // eso). `status_locked` marca que el status actual viene de una
+    // corrección manual explícita, para que update() deje de re-derivarlo
+    // hasta la próxima acción explícita (markReady/markDelivered/otra
+    // corrección). `is_priority` es un campo nuevo del usuario: marca un
+    // turno sin fecha como más urgente que el resto de "Pendientes".
+    version: 21,
+    name: "v21_schedule_status_lock_and_priority",
+    statements: [
+      `ALTER TABLE schedules ADD COLUMN status_locked INTEGER NOT NULL DEFAULT 0;`,
+      `ALTER TABLE schedules ADD COLUMN is_priority INTEGER NOT NULL DEFAULT 0;`,
     ],
   },
 ];

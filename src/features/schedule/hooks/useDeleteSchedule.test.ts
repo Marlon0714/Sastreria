@@ -54,7 +54,9 @@ function makeIdentityGate(
 const existingSchedule: Schedule = {
   id: "schedule-1",
   clientId: "client-1",
+  isPriority: false,
   status: "agendado",
+  statusLocked: false,
   createdAt: "2026-08-01T10:00:00.000Z",
   updatedAt: "2026-08-01T10:00:00.000Z",
   syncStatus: "pending",

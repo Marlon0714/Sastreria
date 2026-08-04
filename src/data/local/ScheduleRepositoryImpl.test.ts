@@ -53,7 +53,9 @@ const baseRow = {
   price: null,
   operario_id: null,
   notes: "Ajuste de traje",
+  is_priority: 0,
   status: "agendado" as const,
+  status_locked: 0,
   ready_at: null,
   delivered_at: null,
   created_at: "2026-08-01T10:00:00.000Z",
@@ -96,7 +98,9 @@ describe("ScheduleRepositoryImpl", () => {
         price: undefined,
         operarioId: undefined,
         notes: baseRow.notes,
+        isPriority: false,
         status: baseRow.status,
+        statusLocked: false,
         readyAt: undefined,
         deliveredAt: undefined,
         createdAt: baseRow.created_at,
@@ -173,7 +177,9 @@ describe("ScheduleRepositoryImpl", () => {
         price: undefined,
         operarioId: undefined,
         notes: "Ajuste de traje",
+        isPriority: false,
         status: "pendiente",
+        statusLocked: false,
         readyAt: undefined,
         deliveredAt: undefined,
         createdAt: "2026-08-01T10:00:00.000Z",
@@ -207,6 +213,20 @@ describe("ScheduleRepositoryImpl", () => {
       });
 
       expect(result.status).toBe("en_proceso");
+    });
+
+    it("nace sin statusLocked, y con isPriority según lo enviado", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+        isPriority: true,
+      });
+
+      expect(result.statusLocked).toBe(false);
+      expect(result.isPriority).toBe(true);
     });
   });
 
@@ -249,6 +269,42 @@ describe("ScheduleRepositoryImpl", () => {
       });
 
       expect(result.status).toBe("entregado");
+    });
+
+    it("no recalcula status si quedó bloqueado por una corrección manual, aunque el operario siga asignado", async () => {
+      // Regresión: antes de status_locked, corregir a "pendiente" con un
+      // operario todavía asignado se revertía a "en_proceso" en el próximo
+      // update() de cualquier campo, aunque no tuviera nada que ver.
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "pendiente",
+        status_locked: 1,
+        operario_id: "op-1",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, {
+        notes: "Nota sin relación con el estado",
+      });
+
+      expect(result.status).toBe("pendiente");
+      expect(result.statusLocked).toBe(true);
+    });
+
+    it("conserva isPriority si no se envía, y lo actualiza si se envía", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        is_priority: 1,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, {
+        isPriority: false,
+      });
+
+      expect(result.isPriority).toBe(false);
     });
   });
 
@@ -298,6 +354,26 @@ describe("ScheduleRepositoryImpl", () => {
       );
 
       expect(result.status).toBe("pendiente");
+    });
+
+    it("deja el turno con statusLocked=true para que no se re-derive en el próximo update()", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "entregado",
+        operario_id: "op-1",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.applyManualCorrection(
+        baseRow.id,
+        "pendiente",
+      );
+
+      expect(result.statusLocked).toBe(true);
+      const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("status_locked = ?");
+      expect(params).toContain(1);
     });
   });
 

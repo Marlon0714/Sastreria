@@ -14,7 +14,13 @@ export interface Schedule extends BaseEntity {
   price?: number;
   operarioId?: string;
   notes?: string;
+  isPriority: boolean; // marca turnos sin hora como más urgentes dentro de "Pendientes"
   status: ScheduleStatus;
+  // true tras una corrección manual (applyManualCorrection) — evita que el
+  // siguiente update() re-derive el status automáticamente solo porque
+  // sigue habiendo operario/fecha asignados. Se resetea únicamente al crear
+  // un turno nuevo; no hay acción explícita para "desbloquearlo" todavía.
+  statusLocked: boolean;
   readyAt?: string; // timestamp automático al marcar "listo_para_entregar"
   deliveredAt?: string; // timestamp automático al marcar "entregado"
 }
@@ -26,6 +32,7 @@ export interface CreateScheduleDTO {
   price?: number;
   operarioId?: string;
   notes?: string;
+  isPriority?: boolean;
 }
 
 export interface UpdateScheduleDTO {
@@ -35,4 +42,5 @@ export interface UpdateScheduleDTO {
   price?: number;
   operarioId?: string;
   notes?: string;
+  isPriority?: boolean;
 }
