@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import ScheduleDayViewScreen from "../features/schedule/screens/ScheduleDayViewScreen";
 import ScheduleFormScreen from "../features/schedule/screens/ScheduleFormScreen";
-import ScheduleListScreen from "../features/schedule/screens/ScheduleListScreen";
 import type { ScheduleStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<ScheduleStackParamList>();
@@ -10,8 +10,8 @@ export default function ScheduleStackNavigator() {
   return (
     <Stack.Navigator>
       <Stack.Screen
-        name="ScheduleList"
-        component={ScheduleListScreen}
+        name="ScheduleDayView"
+        component={ScheduleDayViewScreen}
         options={{ title: "Agenda" }}
       />
       <Stack.Screen

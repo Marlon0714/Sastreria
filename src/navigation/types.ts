@@ -49,7 +49,7 @@ export type ClientsStackParamList = {
 };
 
 export type ScheduleStackParamList = {
-  ScheduleList: undefined;
+  ScheduleDayView: undefined;
   ScheduleForm: { scheduleId?: string };
 };
 
