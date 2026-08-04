@@ -98,6 +98,30 @@ jest.mock("../components/OperarioPickerField", () => {
   };
 });
 
+jest.mock("../components/ScheduleDateTimePickerField", () => {
+  const ReactModule = jest.requireActual("react") as typeof import("react");
+  const { TextInput } = jest.requireActual(
+    "react-native",
+  ) as typeof import("react-native");
+
+  return {
+    ScheduleDateTimePickerField: ({
+      value,
+      onChange,
+      accessibilityLabel,
+    }: {
+      value?: string;
+      onChange: (value: string | undefined) => void;
+      accessibilityLabel: string;
+    }) =>
+      ReactModule.createElement(TextInput, {
+        accessibilityLabel,
+        value: value ?? "",
+        onChangeText: (text: string) => onChange(text === "" ? undefined : text),
+      }),
+  };
+});
+
 jest.mock("../components/ScheduleHistoryList", () => ({
   ScheduleHistoryList: () => null,
 }));
@@ -199,8 +223,9 @@ describe("ScheduleFormScreen", () => {
       <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
     );
 
-    fireEvent.changeText(getByPlaceholderText("AAAA-MM-DD"), "2026-08-10");
-    fireEvent.changeText(getByPlaceholderText("HH:MM"), "14:30");
+    fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
+    fireEvent.press(getByLabelText("Con hora específica"));
+    fireEvent.changeText(getByLabelText("Hora"), "14:30");
     fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
     fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "50000");
     fireEvent.press(getByLabelText("Guardar turno"));

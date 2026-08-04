@@ -19,6 +19,7 @@ import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
 import { ClientPickerField } from "../components/ClientPickerField";
 import { OperarioPickerField } from "../components/OperarioPickerField";
+import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleHistoryList } from "../components/ScheduleHistoryList";
 import {
   createScheduleSchema,
@@ -62,17 +63,19 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   );
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
+  const [hasTime, setHasTime] = useState(false);
 
   const {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CreateScheduleSchemaInput, unknown, CreateScheduleSchemaOutput>({
     resolver: zodResolver(createScheduleSchema),
     defaultValues: {
-      date: "",
-      time: "",
+      date: undefined,
+      time: undefined,
       clientId: "",
       price: undefined,
       operarioId: undefined,
@@ -86,9 +89,10 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!schedule) return;
+    setHasTime(!!schedule.time);
     reset({
-      date: schedule.date ?? "",
-      time: schedule.time ?? "",
+      date: schedule.date,
+      time: schedule.time,
       clientId: schedule.clientId,
       price: schedule.price,
       operarioId: schedule.operarioId,
@@ -179,37 +183,54 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           control={control}
           name="date"
           render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={[styles.input, errors.date && styles.inputError]}
-              placeholder="AAAA-MM-DD"
+            <ScheduleDateTimePickerField
+              mode="date"
               value={value}
-              onChangeText={onChange}
+              onChange={onChange}
+              placeholder="Sin fecha"
+              accessibilityLabel="Fecha"
+              errorMessage={errors.date?.message}
             />
           )}
         />
-        {errors.date ? (
-          <Text style={styles.errorText}>{errors.date.message}</Text>
-        ) : null}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Hora (opcional)</Text>
-        <Controller
-          control={control}
-          name="time"
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={[styles.input, errors.time && styles.inputError]}
-              placeholder="HH:MM"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-        {errors.time ? (
-          <Text style={styles.errorText}>{errors.time.message}</Text>
-        ) : null}
-      </View>
+      <Pressable
+        accessibilityLabel="Con hora específica"
+        style={styles.timeToggle}
+        onPress={() => {
+          const next = !hasTime;
+          setHasTime(next);
+          if (!next) {
+            setValue("time", undefined);
+          }
+        }}
+      >
+        <Text style={styles.timeToggleText}>
+          {hasTime ? "☑" : "☐"} Con hora específica
+        </Text>
+      </Pressable>
+
+      {hasTime ? (
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Hora</Text>
+          <Controller
+            control={control}
+            name="time"
+            render={({ field: { onChange, value } }) => (
+              <ScheduleDateTimePickerField
+                mode="time"
+                value={value}
+                onChange={onChange}
+                placeholder="Sin hora"
+                accessibilityLabel="Hora"
+                allowClear={false}
+                errorMessage={errors.time?.message}
+              />
+            )}
+          />
+        </View>
+      ) : null}
 
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>Cliente</Text>
@@ -424,6 +445,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#0f172a",
+  },
+  timeToggle: {
+    paddingVertical: 4,
+  },
+  timeToggleText: {
+    fontSize: 14,
+    color: "#334155",
+    fontWeight: "600",
   },
   statusActionsGroup: {
     gap: 8,
