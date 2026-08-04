@@ -92,6 +92,7 @@ describe("SyncQueueRepository", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: "del-1",
@@ -118,7 +119,7 @@ describe("SyncQueueRepository", () => {
     expect(camisaItem.payload.changedBy).toBe("modista-1");
     expect(camisaItem.payload.changedAt).toBe("2026-04-30T08:59:00.000Z");
 
-    expect(mockGetAllAsync).toHaveBeenCalledTimes(10);
+    expect(mockGetAllAsync).toHaveBeenCalledTimes(11);
     const [clientSql, ...clientParams] = mockGetAllAsync.mock.calls[0] ?? [];
     const [camisaSql, ...camisaParams] = mockGetAllAsync.mock.calls[1] ?? [];
     const [pantalonSql, ...pantalonParams] =
@@ -131,7 +132,9 @@ describe("SyncQueueRepository", () => {
       mockGetAllAsync.mock.calls[7] ?? [];
     const [scheduleSql, ...scheduleParams] =
       mockGetAllAsync.mock.calls[8] ?? [];
-    const [deleteSql, ...deleteParams] = mockGetAllAsync.mock.calls[9] ?? [];
+    const [scheduleEventSql, ...scheduleEventParams] =
+      mockGetAllAsync.mock.calls[9] ?? [];
+    const [deleteSql, ...deleteParams] = mockGetAllAsync.mock.calls[10] ?? [];
 
     expect(clientSql).toContain("FROM clients");
     expect(clientSql).toContain("sync_status IN (?, ?)");
@@ -174,6 +177,10 @@ describe("SyncQueueRepository", () => {
     expect(scheduleSql).toContain("FROM schedules");
     expect(scheduleSql).toContain("sync_status IN (?, ?)");
     expect(scheduleParams).toEqual(["pending", "error", 1]);
+
+    expect(scheduleEventSql).toContain("FROM schedule_events");
+    expect(scheduleEventSql).toContain("sync_status IN (?, ?)");
+    expect(scheduleEventParams).toEqual(["pending", "error", 1]);
 
     expect(deleteSql).toContain("FROM sync_delete_log");
     expect(deleteSql).toContain("sync_status IN (?, ?)");
@@ -297,6 +304,19 @@ describe("SyncQueueRepository", () => {
     expect(id).toBe("schedule-1");
   });
 
+  it("marks schedule_event row as synced without mutating timestamp", async () => {
+    mockRunAsync.mockResolvedValueOnce({});
+
+    const repository = new SyncQueueRepository();
+    await repository.markAsSynced("schedule_event", "event-1");
+
+    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("UPDATE schedule_events");
+    expect(sql).not.toContain("updated_at");
+    expect(status).toBe("synced");
+    expect(id).toBe("event-1");
+  });
+
   it("marks delete_log row as synced without mutating timestamp", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
@@ -324,7 +344,7 @@ describe("SyncQueueRepository", () => {
   });
 
   it("throws when fetching pending items fails", async () => {
-    // Las 10 queries de getPendingItems corren en paralelo (Promise.all), así
+    // Las 11 queries de getPendingItems corren en paralelo (Promise.all), así
     // que todas se disparan aunque la primera falle — solo el await conjunto
     // rechaza de inmediato con el primer error.
     mockGetAllAsync.mockRejectedValueOnce(new Error("db unavailable"));
@@ -335,6 +355,6 @@ describe("SyncQueueRepository", () => {
     await expect(repository.getPendingItems(10)).rejects.toThrow(
       "db unavailable",
     );
-    expect(mockGetAllAsync).toHaveBeenCalledTimes(10);
+    expect(mockGetAllAsync).toHaveBeenCalledTimes(11);
   });
 });

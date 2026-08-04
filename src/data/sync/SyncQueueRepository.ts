@@ -1,5 +1,6 @@
 import { getDatabase } from "../local/database";
 
+import type { ScheduleEventAction } from "../../features/schedule/domain/events";
 import type {
   SyncCamisaQueueItem,
   SyncChalecoQueueItem,
@@ -10,6 +11,7 @@ import type {
   SyncPricingServiceQueueItem,
   SyncQueueItem,
   SyncSacoQueueItem,
+  SyncScheduleEventQueueItem,
   SyncScheduleQueueItem,
   SyncTallaTemplateQueueItem,
 } from "./types";
@@ -166,6 +168,8 @@ interface ScheduleQueueRow {
   id: string;
   date: string | null;
   time: string | null;
+  price: number | null;
+  operario_id: string | null;
   client_id: string;
   notes: string | null;
   status:
@@ -174,8 +178,22 @@ interface ScheduleQueueRow {
     | "en_proceso"
     | "listo_para_entregar"
     | "entregado";
+  ready_at: string | null;
+  delivered_at: string | null;
   created_at: string;
   updated_at: string;
+  sync_status: "pending" | "synced" | "error";
+}
+
+interface ScheduleEventQueueRow {
+  id: string;
+  schedule_id: string;
+  actor_id: string;
+  actor_display_name: string;
+  action: string;
+  changes: string | null;
+  identity_verified: number;
+  created_at: string;
   sync_status: "pending" | "synced" | "error";
 }
 
@@ -432,11 +450,39 @@ function toScheduleQueueItem(row: ScheduleQueueRow): SyncScheduleQueueItem {
       id: row.id,
       date: row.date ?? undefined,
       time: row.time ?? undefined,
+      price: row.price ?? undefined,
+      operarioId: row.operario_id ?? undefined,
       clientId: row.client_id,
       notes: row.notes ?? undefined,
       status: row.status,
+      readyAt: row.ready_at ?? undefined,
+      deliveredAt: row.delivered_at ?? undefined,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      syncStatus: row.sync_status,
+    },
+  };
+}
+
+function toScheduleEventQueueItem(
+  row: ScheduleEventQueueRow,
+): SyncScheduleEventQueueItem {
+  return {
+    entityType: "schedule_event",
+    id: row.id,
+    updatedAt: row.created_at, // append-only: no hay updated_at propio
+    syncStatus: row.sync_status,
+    operationType: "upsert",
+    payload: {
+      id: row.id,
+      scheduleId: row.schedule_id,
+      actorId: row.actor_id,
+      actorDisplayName: row.actor_display_name,
+      action: row.action as ScheduleEventAction,
+      changes: row.changes ?? undefined,
+      identityVerified: row.identity_verified === 1,
+      createdAt: row.created_at,
+      updatedAt: row.created_at,
       syncStatus: row.sync_status,
     },
   };
@@ -487,6 +533,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       chalecoRows,
       tallaTemplateRows,
       scheduleRows,
+      scheduleEventRows,
       deleteRows,
     ] = await Promise.all([
       db.getAllAsync<ClientQueueRow>(
@@ -715,15 +762,40 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         id,
         date,
         time,
+        price,
+        operario_id,
         client_id,
         notes,
         status,
+        ready_at,
+        delivered_at,
         created_at,
         updated_at,
         sync_status
       FROM schedules
       WHERE sync_status IN (?, ?)
       ORDER BY updated_at ASC
+      LIMIT ?;
+      `,
+        statuses[0],
+        statuses[1],
+        limit,
+      ),
+      db.getAllAsync<ScheduleEventQueueRow>(
+        `
+      SELECT
+        id,
+        schedule_id,
+        actor_id,
+        actor_display_name,
+        action,
+        changes,
+        identity_verified,
+        created_at,
+        sync_status
+      FROM schedule_events
+      WHERE sync_status IN (?, ?)
+      ORDER BY created_at ASC
       LIMIT ?;
       `,
         statuses[0],
@@ -759,6 +831,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ...chalecoRows.map(toChalecoQueueItem),
       ...tallaTemplateRows.map(toTallaTemplateQueueItem),
       ...scheduleRows.map(toScheduleQueueItem),
+      ...scheduleEventRows.map(toScheduleEventQueueItem),
       ...deleteRows.map(toDeleteQueueItem),
     ]
       .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt))
@@ -792,6 +865,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       chalecoCount,
       tallaTemplateCount,
       scheduleCount,
+      scheduleEventCount,
       deleteCount,
     ] = await Promise.all([
       countQuery("clients"),
@@ -803,6 +877,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       countQuery("chaleco_measurements"),
       countQuery("talla_templates"),
       countQuery("schedules"),
+      countQuery("schedule_events"),
       countQuery("sync_delete_log"),
     ]);
 
@@ -816,6 +891,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         chalecoCount +
         tallaTemplateCount +
         scheduleCount +
+        scheduleEventCount +
         deleteCount >
       0
     );
@@ -851,6 +927,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       chaleco_measurement: "chaleco_measurements",
       talla_template: "talla_templates",
       schedule: "schedules",
+      schedule_event: "schedule_events",
       delete_log: "sync_delete_log",
     };
     const table = tableMap[entityType];
