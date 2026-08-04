@@ -39,7 +39,7 @@ describe("ProfilesCacheRepositoryImpl", () => {
       },
     ]);
     const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
-    expect(sql).toContain("WHERE is_shared_device = 0");
+    expect(sql).toContain("WHERE is_shared_device = 0 AND role = 'operario'");
   });
 
   it("retorna una lista vacía si no hay operarios cacheados", async () => {

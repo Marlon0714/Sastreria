@@ -24,7 +24,7 @@ export class ProfilesCacheRepositoryImpl implements ProfilesCacheRepository {
     const rows = await db.getAllAsync<ProfileCacheRow>(
       `SELECT id, display_name, role, is_shared_device
        FROM profiles_cache
-       WHERE is_shared_device = 0
+       WHERE is_shared_device = 0 AND role = 'operario'
        ORDER BY display_name ASC`,
     );
     return rows.map(mapRow);
