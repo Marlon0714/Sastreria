@@ -124,14 +124,19 @@ export function useAuth(
   );
 
   const signOut = useCallback(async (): Promise<void> => {
-    setIsLoading(true);
+    setError(null);
     try {
       await repo.signOut();
       setIsAuthenticated(false);
       applyProfile(null);
       await cacheProfile(null);
-    } finally {
-      setIsLoading(false);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo cerrar sesión. Intenta de nuevo.",
+      );
+      throw err;
     }
   }, [repo, applyProfile]);
 

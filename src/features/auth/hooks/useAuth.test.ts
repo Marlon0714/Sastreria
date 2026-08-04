@@ -264,5 +264,33 @@ describe("useAuth", () => {
       expect(useIdentityStore.getState().ownProfile).toBeNull();
       expect(repo.signOut).toHaveBeenCalledTimes(1);
     });
+
+    it("mantiene la sesión y expone un error si signOut falla", async () => {
+      const repo = makeRepo({
+        hasValidSession: jest
+          .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
+          .mockResolvedValue(true),
+        getSession: jest
+          .fn<SupabaseAuthRepositoryPort["getSession"]>()
+          .mockResolvedValue({ userId: "user-1", accessToken: "token-abc" }),
+        signOut: jest
+          .fn<SupabaseAuthRepositoryPort["signOut"]>()
+          .mockRejectedValue(new Error("network error")),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+      await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+      await waitFor(() => expect(result.current.profile).toEqual(testProfile));
+
+      await act(async () => {
+        await expect(result.current.signOut()).rejects.toThrow(
+          "network error",
+        );
+      });
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.profile).toEqual(testProfile);
+      expect(useIdentityStore.getState().ownProfile).toEqual(testProfile);
+      expect(result.current.error).toBe("network error");
+    });
   });
 });

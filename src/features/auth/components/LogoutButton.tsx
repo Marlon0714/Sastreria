@@ -13,7 +13,14 @@ export function LogoutButton() {
       {
         text: "Cerrar sesión",
         style: "destructive",
-        onPress: () => void signOut(),
+        onPress: () => {
+          void signOut().catch(() => {
+            Alert.alert(
+              "No se pudo cerrar sesión",
+              "Revisa tu conexión e inténtalo de nuevo.",
+            );
+          });
+        },
       },
     ]);
   };
