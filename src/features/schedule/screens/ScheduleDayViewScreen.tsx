@@ -90,23 +90,25 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         }
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardDate}>{dateLabel}</Text>
-          <View style={styles.cardBadges}>
-            {item.isPriority ? (
-              <View style={styles.priorityBadge}>
-                <Text style={styles.priorityBadgeText}>⭐ Prioritario</Text>
-              </View>
-            ) : null}
-            <View
-              style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}
-            >
-              <Text style={[styles.statusText, { color: statusColor.text }]}>
-                {STATUS_LABELS[item.status]}
-              </Text>
-            </View>
+          <Text style={styles.cardClient} numberOfLines={1}>
+            {clientLabel(item)}
+          </Text>
+          <View
+            style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}
+          >
+            <Text style={[styles.statusText, { color: statusColor.text }]}>
+              {STATUS_LABELS[item.status]}
+            </Text>
           </View>
         </View>
-        <Text style={styles.cardClient}>{clientLabel(item)}</Text>
+        <View style={styles.cardSubRow}>
+          <Text style={styles.cardDate}>{dateLabel}</Text>
+          {item.isPriority ? (
+            <View style={styles.priorityBadge}>
+              <Text style={styles.priorityBadgeText}>⭐ Prioritario</Text>
+            </View>
+          ) : null}
+        </View>
         {item.notes ? (
           <Text style={styles.cardNotes}>{item.notes}</Text>
         ) : null}
@@ -384,20 +386,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 8,
   },
-  cardDate: {
-    fontSize: 14,
+  cardClient: {
+    flex: 1,
+    fontSize: 18,
     fontWeight: "700",
     color: "#0f172a",
   },
-  cardBadges: {
+  cardSubRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
   },
-  cardClient: {
-    fontSize: 16,
-    color: "#334155",
+  cardDate: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#64748b",
   },
   cardNotes: {
     fontSize: 13,
