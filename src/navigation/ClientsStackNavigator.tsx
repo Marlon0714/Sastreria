@@ -7,10 +7,8 @@ import ClientEditScreen from "../features/clients/screens/ClientEditScreen";
 import ClientListScreen from "../features/clients/screens/ClientListScreen";
 import MeasurementTypeSelectScreen from "../features/clients/screens/MeasurementTypeSelectScreen";
 import PantalonMeasurementDetailScreen from "../features/clients/screens/PantalonMeasurementDetailScreen";
-import SacoMeasurementCreateScreen from "../features/clients/screens/SacoMeasurementCreateScreen";
-import SacoMeasurementEditScreen from "../features/clients/screens/SacoMeasurementEditScreen";
-import ChalecoMeasurementCreateScreen from "../features/clients/screens/ChalecoMeasurementCreateScreen";
-import ChalecoMeasurementEditScreen from "../features/clients/screens/ChalecoMeasurementEditScreen";
+import SacoMeasurementDetailScreen from "../features/clients/screens/SacoMeasurementDetailScreen";
+import ChalecoMeasurementDetailScreen from "../features/clients/screens/ChalecoMeasurementDetailScreen";
 import TallasScreen from "../features/clients/screens/TallasScreen";
 import { withSwipeTabNavigation } from "./SwipeableRootScreen";
 import type { ClientsStackParamList } from "./types";
@@ -57,24 +55,14 @@ export default function ClientsStackNavigator() {
         options={{ title: "Medidas de pantalón" }}
       />
       <Stack.Screen
-        name="SacoMeasurementCreate"
-        component={SacoMeasurementCreateScreen}
+        name="SacoMeasurementDetail"
+        component={SacoMeasurementDetailScreen}
         options={{ title: "Medidas de saco" }}
       />
       <Stack.Screen
-        name="SacoMeasurementEdit"
-        component={SacoMeasurementEditScreen}
-        options={{ title: "Editar medidas de saco" }}
-      />
-      <Stack.Screen
-        name="ChalecoMeasurementCreate"
-        component={ChalecoMeasurementCreateScreen}
+        name="ChalecoMeasurementDetail"
+        component={ChalecoMeasurementDetailScreen}
         options={{ title: "Medidas de chaleco" }}
-      />
-      <Stack.Screen
-        name="ChalecoMeasurementEdit"
-        component={ChalecoMeasurementEditScreen}
-        options={{ title: "Editar medidas de chaleco" }}
       />
       <Stack.Screen
         name="Tallas"

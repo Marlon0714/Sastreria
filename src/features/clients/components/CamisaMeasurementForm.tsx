@@ -55,7 +55,7 @@ interface CamisaMeasurementFormProps {
 
 /**
  * Formulario reutilizable para medidas de camisa (16 campos + notas).
- * Compartido entre `CamisaMeasurementCreateScreen` y `CamisaMeasurementDetailScreen`.
+ * Usado por `CamisaMeasurementDetailScreen` (crea o edita según haya medidas).
  */
 export default function CamisaMeasurementForm({
   control,

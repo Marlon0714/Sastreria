@@ -37,7 +37,7 @@ interface PantalonMeasurementFormProps {
 
 /**
  * Formulario reutilizable para medidas de pantalón (7 campos + notas).
- * Compartido entre `PantalonMeasurementCreateScreen` y `PantalonMeasurementDetailScreen`.
+ * Usado por `PantalonMeasurementDetailScreen` (crea o edita según haya medidas).
  */
 export default function PantalonMeasurementForm({
   control,

@@ -27,15 +27,15 @@ const GARMENT_OPTIONS = [
     key: "saco",
     emoji: "🧥",
     label: "Saco",
-    createRoute: "SacoMeasurementCreate",
-    viewRoute: "SacoMeasurementEdit",
+    createRoute: "SacoMeasurementDetail",
+    viewRoute: "SacoMeasurementDetail",
   },
   {
     key: "chaleco",
     emoji: "🦺",
     label: "Chaleco",
-    createRoute: "ChalecoMeasurementCreate",
-    viewRoute: "ChalecoMeasurementEdit",
+    createRoute: "ChalecoMeasurementDetail",
+    viewRoute: "ChalecoMeasurementDetail",
   },
 ] as const;
 
@@ -78,14 +78,16 @@ export default function MeasurementTypeSelectScreen({
                   clientId,
                   mode,
                 });
-              } else if (routeName === "SacoMeasurementCreate") {
-                navigation.navigate("SacoMeasurementCreate", { clientId });
-              } else if (routeName === "SacoMeasurementEdit") {
-                navigation.navigate("SacoMeasurementEdit", { clientId });
-              } else if (routeName === "ChalecoMeasurementCreate") {
-                navigation.navigate("ChalecoMeasurementCreate", { clientId });
+              } else if (routeName === "SacoMeasurementDetail") {
+                navigation.navigate("SacoMeasurementDetail", {
+                  clientId,
+                  mode,
+                });
               } else {
-                navigation.navigate("ChalecoMeasurementEdit", { clientId });
+                navigation.navigate("ChalecoMeasurementDetail", {
+                  clientId,
+                  mode,
+                });
               }
             }}
           >

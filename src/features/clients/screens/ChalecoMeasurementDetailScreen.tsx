@@ -16,7 +16,7 @@ import { useUpsertChaleco } from "../hooks/useUpsertChaleco";
 
 type Props = NativeStackScreenProps<
   ClientsStackParamList,
-  "ChalecoMeasurementCreate"
+  "ChalecoMeasurementDetail"
 >;
 
 function toFormValues(

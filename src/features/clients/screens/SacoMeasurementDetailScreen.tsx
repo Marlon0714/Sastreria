@@ -16,7 +16,7 @@ import { useUpsertSaco } from "../hooks/useUpsertSaco";
 
 type Props = NativeStackScreenProps<
   ClientsStackParamList,
-  "SacoMeasurementCreate"
+  "SacoMeasurementDetail"
 >;
 
 function toFormValues(
