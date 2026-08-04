@@ -83,8 +83,8 @@ export function useCreateClient(
 
     try {
       const parsed: CreateClientSchemaOutput = createClientSchema.parse(values);
-      const phones = [values.phone2, values.phone3].filter((p): p is string =>
-        Boolean(p?.trim()),
+      const phones = [parsed.phone2, parsed.phone3].filter(
+        (p): p is string => Boolean(p),
       );
       const payload = {
         ...parsed,

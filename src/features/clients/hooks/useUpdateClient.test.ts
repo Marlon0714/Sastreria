@@ -102,6 +102,44 @@ describe("useUpdateClient", () => {
     expect(result.current.isSubmitting).toBe(false);
   });
 
+  it("normaliza phone2/phone3 (quita espacios/guiones) antes de enviarlos", async () => {
+    // Arrange
+    const updatedClient = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+    });
+    mockUpdate.mockResolvedValueOnce(updatedClient);
+
+    const values: UpdateClientSchemaInput = {
+      id: updatedClient.id,
+      firstName: "Ana",
+      lastName: "Torres",
+      phone: "3001234567",
+      phone2: "300 999-8888",
+      phone3: "  311 888 7777  ",
+      notes: "",
+    };
+
+    const { result } = renderHook(() => useUpdateClient(), {
+      wrapper: createWrapper({
+        clientRepository: mockClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
+      }),
+    });
+
+    // Act
+    await act(async () => {
+      await result.current.updateClient(values);
+    });
+
+    // Assert
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phones: ["3009998888", "3118887777"],
+      }),
+    );
+  });
+
   it("expone error cuando falla el repositorio", async () => {
     // Arrange
     mockUpdate.mockRejectedValueOnce(new Error("db error"));

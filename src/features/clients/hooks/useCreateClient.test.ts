@@ -226,6 +226,42 @@ describe("useCreateClient", () => {
     );
   });
 
+  it("createClient normaliza phone2/phone3 (quita espacios/guiones) antes de enviarlos", async () => {
+    // Arrange
+    const createdClient = clientFactory();
+    mockCreate.mockResolvedValueOnce(createdClient);
+    const resetMock: UseFormReset<CreateClientSchemaInput> = jest.fn();
+    const { result } = renderHook(() => useCreateClient(), {
+      wrapper: createWrapper({
+        clientRepository: mockClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
+      }),
+    });
+
+    // Act
+    await act(async () => {
+      await result.current.createClient(
+        {
+          firstName: "Ana",
+          lastName: "Torres",
+          phone: "3001234567",
+          phone2: "300 999-8888",
+          phone3: "  311 888 7777  ",
+          notes: "",
+        },
+        resetMock,
+      );
+    });
+
+    // Assert
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phones: ["3009998888", "3118887777"],
+      }),
+    );
+  });
+
   it("createClient con phone2 vacío no incluye phones en el DTO al repositorio", async () => {
     // Arrange
     const createdClient = clientFactory();
