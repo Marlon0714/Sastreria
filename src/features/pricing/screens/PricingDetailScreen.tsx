@@ -14,7 +14,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { PricingStackParamList } from "../../../navigation/types";
 import { usePricingDetail } from "../hooks/usePricingDetail";
 import { pricingStrings, formatPrice } from "../domain/strings";
-import { PricingServiceRepositoryImpl } from "../../../data/local/PricingServiceRepositoryImpl";
+import { getDefaultPricingServiceRepository } from "../../../data/local/pricingDependencies";
 import { LoadingView, ErrorView } from "../../../shared/components";
 
 type PricingDetailScreenRouteProp = RouteProp<
@@ -26,7 +26,7 @@ type PricingDetailScreenNavProp = NativeStackNavigationProp<
   "PricingDetail"
 >;
 
-const repo = new PricingServiceRepositoryImpl();
+const repo = getDefaultPricingServiceRepository();
 
 export default function PricingDetailScreen() {
   const route = useRoute<PricingDetailScreenRouteProp>();

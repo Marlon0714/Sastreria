@@ -1,5 +1,5 @@
 import { colors } from "../../../shared/theme/colors";
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import {
   View,
   FlatList,
@@ -8,7 +8,7 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { usePricingServices } from "../hooks/usePricingServices";
@@ -19,6 +19,7 @@ import {
   type PricingCategory,
 } from "../domain/pricingService";
 import { LoadingView, ErrorView } from "../../../shared/components";
+import { normalizeText } from "../../../shared/utils/textSearch";
 import type { PricingStackParamList } from "../../../navigation/types";
 
 type PricingListScreenNavProp = NativeStackNavigationProp<
@@ -44,18 +45,24 @@ export default function PricingListScreen() {
     useState<PricingCategory>("arreglo");
   const [query, setQuery] = useState("");
 
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
   const categoryServices = useMemo(
     () => services.filter((s) => s.category === activeCategory),
     [services, activeCategory],
   );
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeText(query);
     if (!q) return categoryServices;
     return categoryServices.filter(
       (s) =>
-        s.name.toLowerCase().includes(q) ||
-        (s.notes ?? "").toLowerCase().includes(q),
+        normalizeText(s.name).includes(q) ||
+        normalizeText(s.notes ?? "").includes(q),
     );
   }, [categoryServices, query]);
 

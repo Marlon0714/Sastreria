@@ -9,9 +9,19 @@ import { usePricingServices } from "../hooks/usePricingServices";
 
 const mockNavigate = jest.fn();
 
-jest.mock("@react-navigation/native", () => ({
-  useNavigation: () => ({ navigate: mockNavigate }),
-}));
+jest.mock("@react-navigation/native", () => {
+  const ReactModule = jest.requireActual("react") as typeof import("react");
+
+  return {
+    useNavigation: () => ({ navigate: mockNavigate }),
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      ReactModule.useEffect(() => {
+        const cleanup = effect();
+        return cleanup;
+      }, [effect]);
+    },
+  };
+});
 
 type PricingItemProps = {
   service: PricingService;
@@ -105,7 +115,8 @@ describe("PricingListScreen", () => {
 
     // Assert
     expect(getByText(pricingStrings.fetchError)).toBeTruthy();
-    expect(refreshMock).toHaveBeenCalledTimes(1);
+    // Una vez al montar (useFocusEffect) y otra al presionar "Reintentar".
+    expect(refreshMock).toHaveBeenCalledTimes(2);
   });
 
   it("filtra por categoria usando segmented control y limpia la busqueda al cambiar tab", () => {
@@ -130,6 +141,41 @@ describe("PricingListScreen", () => {
     expect(getByPlaceholderText("Buscar en confecciones...")).toBeTruthy();
     expect(getByText("Camisa completa")).toBeTruthy();
     expect(queryByText("Sin resultados")).toBeNull();
+  });
+
+  it("refresca la lista al recibir foco (ej. al volver de crear/editar/borrar)", () => {
+    // Arrange
+    const refreshMock = jest.fn(async () => undefined);
+    mockedUsePricingServices.mockReturnValue(
+      mockUsePricingServices({ refresh: refreshMock }),
+    );
+
+    // Act
+    render(<PricingListScreen />);
+
+    // Assert
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignora acentos y mayúsculas al buscar", () => {
+    // Arrange
+    mockedUsePricingServices.mockReturnValue(
+      mockUsePricingServices({
+        services: [
+          buildService({ id: "1", name: "Dobladillo Pantalón", category: "arreglo" }),
+        ],
+      }),
+    );
+    const { getByPlaceholderText, getByText } = render(<PricingListScreen />);
+
+    // Act
+    fireEvent.changeText(
+      getByPlaceholderText("Buscar en arreglos..."),
+      "pantalon",
+    );
+
+    // Assert
+    expect(getByText("Dobladillo Pantalón")).toBeTruthy();
   });
 
   it("navega a formulario con la categoria activa", () => {
