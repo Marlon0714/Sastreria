@@ -15,6 +15,7 @@ import {
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import { LoadingView } from "../../../shared/components";
 import { ClientPickerField } from "../components/ClientPickerField";
+import { OperarioPickerField } from "../components/OperarioPickerField";
 import {
   createScheduleSchema,
   type CreateScheduleSchemaInput,
@@ -52,6 +53,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       time: "",
       clientId: "",
       price: undefined,
+      operarioId: undefined,
       notes: "",
     },
   });
@@ -63,6 +65,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       time: schedule.time ?? "",
       clientId: schedule.clientId,
       price: schedule.price,
+      operarioId: schedule.operarioId,
       notes: schedule.notes ?? "",
     });
   }, [schedule, reset]);
@@ -182,6 +185,21 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         {errors.price ? (
           <Text style={styles.errorText}>{errors.price.message}</Text>
         ) : null}
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Operario asignado (opcional)</Text>
+        <Controller
+          control={control}
+          name="operarioId"
+          render={({ field: { onChange, value } }) => (
+            <OperarioPickerField
+              value={value}
+              onChange={onChange}
+              errorMessage={errors.operarioId?.message}
+            />
+          )}
+        />
       </View>
 
       <View style={styles.fieldGroup}>

@@ -1,0 +1,215 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+
+import { getDefaultProfilesCacheRepository } from "../../../data/local/profilesCacheDependencies";
+import type { Profile } from "../../auth/domain/profile";
+import { normalizeText } from "../../../shared/utils/textSearch";
+
+interface OperarioPickerFieldProps {
+  value?: string;
+  onChange: (operarioId: string | undefined) => void;
+  errorMessage?: string;
+}
+
+export function OperarioPickerField({
+  value,
+  onChange,
+  errorMessage,
+}: OperarioPickerFieldProps) {
+  const [operarios, setOperarios] = useState<Profile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const repo = getDefaultProfilesCacheRepository();
+    repo
+      .getOperarios()
+      .then((result) => {
+        if (!cancelled) {
+          setOperarios(result);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedOperario = useMemo(
+    () => operarios.find((operario) => operario.id === value) ?? null,
+    [operarios, value],
+  );
+
+  const filteredOperarios = useMemo(() => {
+    const normalizedQuery = normalizeText(searchTerm);
+    if (!normalizedQuery) {
+      return operarios;
+    }
+    return operarios.filter((operario) =>
+      normalizeText(operario.displayName).includes(normalizedQuery),
+    );
+  }, [operarios, searchTerm]);
+
+  if (isLoading) {
+    return <ActivityIndicator accessibilityLabel="Cargando operarios" />;
+  }
+
+  if (!isOpen) {
+    return (
+      <View style={styles.container}>
+        <Pressable
+          accessibilityLabel="Seleccionar operario"
+          style={[styles.selector, errorMessage ? styles.selectorError : null]}
+          onPress={() => setIsOpen(true)}
+        >
+          <Text style={styles.selectorText}>
+            {selectedOperario
+              ? selectedOperario.displayName
+              : "Sin operario asignado"}
+          </Text>
+        </Pressable>
+        {errorMessage ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        accessibilityLabel="Buscar operario"
+        placeholder="Buscar por nombre"
+        value={searchTerm}
+        onChangeText={setSearchTerm}
+        style={styles.searchInput}
+        autoFocus
+      />
+      <Pressable
+        accessibilityLabel="Quitar operario asignado"
+        style={styles.clearOption}
+        onPress={() => {
+          onChange(undefined);
+          setSearchTerm("");
+          setIsOpen(false);
+        }}
+      >
+        <Text style={styles.clearOptionText}>Sin operario asignado</Text>
+      </Pressable>
+      <FlatList
+        style={styles.list}
+        data={filteredOperarios}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No hay operarios que coincidan.</Text>
+        }
+        renderItem={({ item }) => (
+          <Pressable
+            accessibilityLabel={`Elegir a ${item.displayName}`}
+            style={styles.option}
+            onPress={() => {
+              onChange(item.id);
+              setSearchTerm("");
+              setIsOpen(false);
+            }}
+          >
+            <Text style={styles.optionText}>{item.displayName}</Text>
+          </Pressable>
+        )}
+      />
+      <Pressable
+        accessibilityLabel="Cancelar selección de operario"
+        style={styles.cancelButton}
+        onPress={() => {
+          setSearchTerm("");
+          setIsOpen(false);
+        }}
+      >
+        <Text style={styles.cancelButtonText}>Cancelar</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 6,
+  },
+  selector: {
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#ffffff",
+  },
+  selectorError: {
+    borderColor: "#ef4444",
+  },
+  selectorText: {
+    color: "#0f172a",
+  },
+  errorText: {
+    color: "#b91c1c",
+    fontSize: 13,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#ffffff",
+  },
+  clearOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  clearOptionText: {
+    color: "#64748b",
+    fontStyle: "italic",
+  },
+  list: {
+    maxHeight: 220,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 10,
+  },
+  option: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  optionText: {
+    color: "#0f172a",
+  },
+  emptyText: {
+    textAlign: "center",
+    color: "#64748b",
+    fontSize: 13,
+    padding: 16,
+  },
+  cancelButton: {
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  cancelButtonText: {
+    color: "#64748b",
+    fontWeight: "600",
+  },
+});

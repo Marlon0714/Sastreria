@@ -61,6 +61,28 @@ jest.mock("../components/ClientPickerField", () => {
   };
 });
 
+jest.mock("../components/OperarioPickerField", () => {
+  const ReactModule = jest.requireActual("react") as typeof import("react");
+  const { TextInput } = jest.requireActual(
+    "react-native",
+  ) as typeof import("react-native");
+
+  return {
+    OperarioPickerField: ({
+      value,
+      onChange,
+    }: {
+      value?: string;
+      onChange: (id: string | undefined) => void;
+    }) =>
+      ReactModule.createElement(TextInput, {
+        accessibilityLabel: "Operario",
+        value: value ?? "",
+        onChangeText: (text: string) => onChange(text === "" ? undefined : text),
+      }),
+  };
+});
+
 type ScreenProps = React.ComponentProps<typeof ScheduleFormScreen>;
 
 function buildProps(
