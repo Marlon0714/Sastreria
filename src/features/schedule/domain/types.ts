@@ -1,31 +1,38 @@
 import type { BaseEntity } from "../../../shared/domain/baseEntity";
 
 export type ScheduleStatus =
-  | "pending"
-  | "confirmed"
-  | "completed"
-  | "cancelled";
+  | "pendiente"
+  | "agendado"
+  | "en_proceso"
+  | "listo_para_entregar"
+  | "entregado";
 
 export interface Schedule extends BaseEntity {
-  date: string; // YYYY-MM-DD
-  time: string; // HH:mm
   clientId: string;
+  date?: string; // YYYY-MM-DD
+  time?: string; // HH:mm
+  price?: number;
+  operarioId?: string;
   notes?: string;
   status: ScheduleStatus;
+  readyAt?: string; // timestamp automático al marcar "listo_para_entregar"
+  deliveredAt?: string; // timestamp automático al marcar "entregado"
 }
 
 export interface CreateScheduleDTO {
-  date: string;
-  time: string;
   clientId: string;
+  date?: string;
+  time?: string;
+  price?: number;
+  operarioId?: string;
   notes?: string;
-  status: ScheduleStatus;
 }
 
 export interface UpdateScheduleDTO {
+  clientId?: string;
   date?: string;
   time?: string;
-  clientId?: string;
+  price?: number;
+  operarioId?: string;
   notes?: string;
-  status?: ScheduleStatus;
 }

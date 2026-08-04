@@ -6,7 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 14;
+const TARGET_SCHEMA_VERSION = 19;
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -337,6 +337,68 @@ const MIGRATIONS: readonly Migration[] = [
       `,
       `CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);`,
       `CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);`,
+    ],
+  },
+  {
+    // Bloque 1 (N-076): date/time pasan a opcionales y status cambia de
+    // valores placeholder a los 5 estados de negocio reales. SQLite no
+    // permite quitar NOT NULL ni cambiar un CHECK con ALTER TABLE — primera
+    // vez en el proyecto que se usa el patrón "recrear tabla" (crear nueva,
+    // copiar datos con mapeo defensivo de valores viejos, dropear vieja,
+    // renombrar). Ver SUPABASE_MIGRATIONS.md v19 para el equivalente en Postgres.
+    version: 19,
+    name: "v19_schedule_redesign",
+    statements: [
+      `
+      CREATE TABLE schedules_new (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        date TEXT,
+        time TEXT,
+        price REAL,
+        operario_id TEXT,
+        notes TEXT,
+        status TEXT NOT NULL CHECK (status IN ('pendiente', 'agendado', 'en_proceso', 'listo_para_entregar', 'entregado')),
+        ready_at TEXT,
+        delivered_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `
+      INSERT INTO schedules_new (id, client_id, date, time, status, notes, created_at, updated_at, sync_status)
+      SELECT id, client_id, date, time,
+        CASE status
+          WHEN 'pending' THEN 'pendiente'
+          WHEN 'confirmed' THEN 'agendado'
+          WHEN 'completed' THEN 'entregado'
+          WHEN 'cancelled' THEN 'pendiente'
+          ELSE 'pendiente'
+        END,
+        notes, created_at, updated_at, sync_status
+      FROM schedules;
+      `,
+      `DROP TABLE schedules;`,
+      `ALTER TABLE schedules_new RENAME TO schedules;`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_operario_id ON schedules (operario_id);`,
+      `
+      CREATE TABLE IF NOT EXISTS schedule_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        schedule_id TEXT NOT NULL,
+        actor_id TEXT NOT NULL,
+        actor_display_name TEXT NOT NULL,
+        action TEXT NOT NULL CHECK (action IN ('created', 'updated', 'status_auto', 'status_manual', 'status_manual_correction', 'deleted')),
+        changes TEXT,
+        identity_verified INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_schedule_events_schedule_id ON schedule_events (schedule_id);`,
     ],
   },
 ];
