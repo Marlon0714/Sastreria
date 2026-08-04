@@ -72,9 +72,26 @@ export function useIdentityGate(): UseIdentityGateResult {
   const [offlineOperarios, setOfflineOperarios] = useState<Profile[]>([]);
   const [isLoadingOfflineOperarios, setIsLoadingOfflineOperarios] =
     useState(false);
-  const pendingResolveRef = useRef<PendingResolve | null>(null);
+  // Cola, no un solo slot: si `requireIdentity()` se llama más de una vez
+  // mientras ya hay un prompt/selector abierto (ej. doble tap), todas las
+  // llamadas se suman a la misma espera en vez de que la última pise a la
+  // anterior — de lo contrario la primera nunca se resuelve y queda
+  // colgada para siempre.
+  const pendingResolversRef = useRef<PendingResolve[]>([]);
+  const isPinPromptVisibleRef = useRef(false);
+  const isOfflineActorPickerVisibleRef = useRef(false);
+
+  const resolveAllPending = useCallback(
+    (identity: ResolvedIdentity | null): void => {
+      const resolvers = pendingResolversRef.current;
+      pendingResolversRef.current = [];
+      resolvers.forEach((resolve) => resolve(identity));
+    },
+    [],
+  );
 
   const openOfflineActorPicker = useCallback((): Promise<ResolvedIdentity | null> => {
+    isOfflineActorPickerVisibleRef.current = true;
     setIsOfflineActorPickerVisible(true);
     setIsLoadingOfflineOperarios(true);
 
@@ -85,7 +102,7 @@ export function useIdentityGate(): UseIdentityGateResult {
       .finally(() => setIsLoadingOfflineOperarios(false));
 
     return new Promise((resolve) => {
-      pendingResolveRef.current = resolve;
+      pendingResolversRef.current.push(resolve);
     });
   }, []);
 
@@ -102,15 +119,25 @@ export function useIdentityGate(): UseIdentityGateResult {
       return Promise.resolve({ profile: resolvedActor, verified: true });
     }
 
+    // Ya hay un prompt/selector abierto esperando respuesta: no abrir uno
+    // nuevo (ni re-disparar la carga de operarios offline), solo unirse a
+    // la misma espera.
+    if (isPinPromptVisibleRef.current || isOfflineActorPickerVisibleRef.current) {
+      return new Promise((resolve) => {
+        pendingResolversRef.current.push(resolve);
+      });
+    }
+
     if (useSyncStatusStore.getState().connectivity === "offline") {
       return openOfflineActorPicker();
     }
 
     setPinError(null);
+    isPinPromptVisibleRef.current = true;
     setIsPinPromptVisible(true);
 
     return new Promise((resolve) => {
-      pendingResolveRef.current = resolve;
+      pendingResolversRef.current.push(resolve);
     });
   }, [ownProfile, resolvedActor, openOfflineActorPicker]);
 
@@ -136,30 +163,33 @@ export function useIdentityGate(): UseIdentityGateResult {
       };
 
       setResolvedActor(resolvedProfile);
+      isPinPromptVisibleRef.current = false;
       setIsPinPromptVisible(false);
-      pendingResolveRef.current?.({ profile: resolvedProfile, verified: true });
-      pendingResolveRef.current = null;
+      resolveAllPending({ profile: resolvedProfile, verified: true });
     },
-    [setResolvedActor],
+    [setResolvedActor, resolveAllPending],
   );
 
   const cancelPinPrompt = useCallback((): void => {
+    isPinPromptVisibleRef.current = false;
     setIsPinPromptVisible(false);
-    pendingResolveRef.current?.(null);
-    pendingResolveRef.current = null;
-  }, []);
+    resolveAllPending(null);
+  }, [resolveAllPending]);
 
-  const submitOfflineActor = useCallback((profile: Profile): void => {
-    setIsOfflineActorPickerVisible(false);
-    pendingResolveRef.current?.({ profile, verified: false });
-    pendingResolveRef.current = null;
-  }, []);
+  const submitOfflineActor = useCallback(
+    (profile: Profile): void => {
+      isOfflineActorPickerVisibleRef.current = false;
+      setIsOfflineActorPickerVisible(false);
+      resolveAllPending({ profile, verified: false });
+    },
+    [resolveAllPending],
+  );
 
   const cancelOfflineActorPicker = useCallback((): void => {
+    isOfflineActorPickerVisibleRef.current = false;
     setIsOfflineActorPickerVisible(false);
-    pendingResolveRef.current?.(null);
-    pendingResolveRef.current = null;
-  }, []);
+    resolveAllPending(null);
+  }, [resolveAllPending]);
 
   const releaseIdentity = useCallback((): void => {
     if (ownProfile?.isSharedDevice) {

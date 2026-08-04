@@ -125,6 +125,46 @@ describe("useIdentityGate", () => {
     });
   });
 
+  it("una segunda llamada mientras el PIN ya está abierto se une a la misma espera en vez de quedar colgada", async () => {
+    useSyncStatusStore.getState().setConnectivity("online");
+    useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
+    mockRpc.mockResolvedValue({
+      data: [{ id: "user-2", display_name: "Juan Pérez", role: "operario" }],
+      error: null,
+    });
+    const { result } = renderHook(() => useIdentityGate());
+
+    let firstPromise: Promise<unknown>;
+    let secondPromise: Promise<unknown>;
+    act(() => {
+      firstPromise = result.current.requireIdentity();
+      secondPromise = result.current.requireIdentity();
+    });
+
+    expect(result.current.isPinPromptVisible).toBe(true);
+
+    await act(async () => {
+      await result.current.submitPin("1234");
+    });
+
+    const [firstResolved, secondResolved] = await Promise.all([
+      firstPromise!,
+      secondPromise!,
+    ]);
+
+    const expected = {
+      profile: {
+        id: "user-2",
+        displayName: "Juan Pérez",
+        role: "operario",
+        isSharedDevice: false,
+      },
+      verified: true,
+    };
+    expect(firstResolved).toEqual(expected);
+    expect(secondResolved).toEqual(expected);
+  });
+
   it("muestra error y mantiene el modal abierto si el PIN no coincide con ningún operario", async () => {
     useSyncStatusStore.getState().setConnectivity("online");
     useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
@@ -215,6 +255,44 @@ describe("useIdentityGate", () => {
       expect(result.current.isOfflineActorPickerVisible).toBe(false);
       // No se cachea como resolvedActor: cada acción offline vuelve a preguntar.
       expect(useIdentityStore.getState().resolvedActor).toBeNull();
+    });
+
+    it("una segunda llamada mientras el selector offline ya está abierto se une a la misma espera, sin recargar la lista", async () => {
+      useSyncStatusStore.getState().setConnectivity("offline");
+      useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
+      const operario = {
+        id: "op-1",
+        displayName: "Juan Pérez",
+        role: "operario" as const,
+        isSharedDevice: false,
+      };
+      mockGetOperarios.mockResolvedValue([operario]);
+      const { result } = renderHook(() => useIdentityGate());
+
+      let firstPromise: Promise<unknown>;
+      let secondPromise: Promise<unknown>;
+      act(() => {
+        firstPromise = result.current.requireIdentity();
+        secondPromise = result.current.requireIdentity();
+      });
+      await waitFor(() =>
+        expect(result.current.isLoadingOfflineOperarios).toBe(false),
+      );
+
+      expect(mockGetOperarios).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        result.current.submitOfflineActor(operario);
+      });
+
+      const [firstResolved, secondResolved] = await Promise.all([
+        firstPromise!,
+        secondPromise!,
+      ]);
+
+      const expected = { profile: operario, verified: false };
+      expect(firstResolved).toEqual(expected);
+      expect(secondResolved).toEqual(expected);
     });
 
     it("resuelve a null si se cancela el selector offline", async () => {
