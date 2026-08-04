@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
 import { type Control, type FieldErrors, useForm } from "react-hook-form";
@@ -575,7 +576,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   required: {
-    color: "#ef4444",
+    color: colors.danger,
   },
   nameInput: {
     borderWidth: 1.5,
@@ -589,11 +590,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
   inputError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   errorText: {
     fontSize: 12,
-    color: "#ef4444",
+    color: colors.danger,
   },
   gridWrapper: {
     gap: 12,
@@ -622,7 +623,7 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   saveBtn: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
@@ -633,7 +634,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   deleteBtn: {
-    backgroundColor: "#fee2e2",
+    backgroundColor: colors.dangerSoft,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
@@ -641,7 +642,7 @@ const styles = StyleSheet.create({
     borderColor: "#fca5a5",
   },
   deleteBtnText: {
-    color: "#dc2626",
+    color: colors.danger,
     fontWeight: "600",
     fontSize: 15,
   },

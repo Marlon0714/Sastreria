@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback } from "react";
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
     color: "#0f172a",
   },
   primaryButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
@@ -205,32 +206,32 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   secondaryButtonBlock: {
-    borderColor: "#0f766e",
+    borderColor: colors.primary,
     borderWidth: 1,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
   },
   secondaryButtonText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "700",
   },
   deleteButton: {
-    borderColor: "#b91c1c",
+    borderColor: colors.danger,
     borderWidth: 1,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
   },
   deleteButtonText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontWeight: "700",
   },
   deleteButtonDisabled: {
     opacity: 0.6,
   },
   deleteErrorText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontSize: 13,
   },
   tallasCard: {
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
   },
   tallasButton: {
-    borderColor: "#0f766e",
+    borderColor: colors.primary,
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 8,
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tallasButtonText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "600",
     fontSize: 14,
   },

@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import React from "react";
 import {
   View,
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   required: {
-    color: "#ef4444",
+    color: colors.danger,
   },
   categoryRow: {
     flexDirection: "row",
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   categoryChipActive: {
-    borderColor: "#1e40af",
+    borderColor: colors.primary,
     backgroundColor: "#dbeafe",
   },
   categoryChipText: {
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   categoryChipTextActive: {
-    color: "#1e40af",
+    color: colors.primary,
     fontWeight: "700",
   },
   input: {
@@ -245,15 +246,15 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   inputError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   errorText: {
     fontSize: 12,
-    color: "#ef4444",
+    color: colors.danger,
     marginTop: 2,
   },
   saveButton: {
-    backgroundColor: "#1e40af",
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#93c5fd",
   },
   saveButtonPressed: {
-    backgroundColor: "#1e3a8a",
+    backgroundColor: colors.primaryPressed,
   },
   saveButtonText: {
     color: "#ffffff",

@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useState } from "react";
@@ -251,12 +252,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   errorBanner: {
-    backgroundColor: "#fee2e2",
+    backgroundColor: colors.dangerSoft,
     padding: 10,
     borderRadius: 8,
   },
   errorBannerText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontSize: 14,
   },
   card: {
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
   tallaValue: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#0f766e",
+    color: colors.primary,
   },
   tallaNotes: {
     fontSize: 13,
@@ -301,31 +302,31 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   editButton: {
-    borderColor: "#0f766e",
+    borderColor: colors.primary,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   editButtonText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "600",
     fontSize: 14,
   },
   deleteButton: {
-    borderColor: "#b91c1c",
+    borderColor: colors.danger,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   deleteButtonText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontWeight: "600",
     fontSize: 14,
   },
   addButton: {
-    borderColor: "#0f766e",
+    borderColor: colors.primary,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   addButtonText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "600",
     fontSize: 14,
   },
@@ -355,7 +356,7 @@ const styles = StyleSheet.create({
     color: "#0f172a",
   },
   modalError: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontSize: 13,
   },
   modalActions: {
@@ -377,7 +378,7 @@ const styles = StyleSheet.create({
   },
   modalSaveButton: {
     flex: 1,
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",

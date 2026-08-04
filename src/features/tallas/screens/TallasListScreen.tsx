@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback } from "react";
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
     color: "#1e293b",
   },
   addBtn: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,

@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -159,13 +160,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   selectorError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   selectorText: {
     color: "#0f172a",
   },
   errorText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontSize: 13,
   },
   searchInput: {

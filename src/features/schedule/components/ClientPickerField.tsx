@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -313,13 +314,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   selectorError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   selectorText: {
     color: "#0f172a",
   },
   errorText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontSize: 13,
   },
   searchInput: {
@@ -359,14 +360,14 @@ const styles = StyleSheet.create({
   },
   addClientButton: {
     borderWidth: 1,
-    borderColor: "#0f766e",
+    borderColor: colors.primary,
     borderStyle: "dashed",
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: "center",
   },
   addClientButtonText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "600",
   },
   addClientTitle: {
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
     color: "#0f172a",
   },
   saveNewClientButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",

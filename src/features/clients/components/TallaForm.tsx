@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 import {
   ScrollView,
@@ -182,8 +183,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   chipSelected: {
-    backgroundColor: "#0f766e",
-    borderColor: "#0f766e",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipText: {
     fontSize: 14,
@@ -218,6 +219,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    color: "#b91c1c",
+    color: colors.danger,
   },
 });

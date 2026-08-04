@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Alert, Pressable, StyleSheet } from "react-native";
 
@@ -23,7 +24,7 @@ export function LogoutButton() {
       style={styles.button}
       onPress={handlePress}
     >
-      <Ionicons name="log-out-outline" size={22} color="#0f766e" />
+      <Ionicons name="log-out-outline" size={22} color={colors.primary} />
     </Pressable>
   );
 }

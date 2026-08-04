@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import React from "react";
 import { Pressable, View, Text, StyleSheet } from "react-native";
 import type { PricingService } from "../domain/pricingService";
@@ -74,7 +75,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1e40af",
+    color: colors.primary,
   },
   chevron: {
     fontSize: 20,

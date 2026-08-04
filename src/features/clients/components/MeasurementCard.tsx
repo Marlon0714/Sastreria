@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import {
   Controller,
   type Control,
@@ -117,7 +118,7 @@ const styles = StyleSheet.create({
   },
   cardError: {
     borderWidth: 1,
-    borderColor: "#dc2626",
+    borderColor: colors.danger,
   },
   label: {
     fontSize: 11,
@@ -158,6 +159,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 11,
-    color: "#b91c1c",
+    color: colors.danger,
   },
 });

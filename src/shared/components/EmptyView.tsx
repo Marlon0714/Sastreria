@@ -1,3 +1,4 @@
+import { colors } from "../../shared/theme/colors";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 interface EmptyViewProps {
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   primaryButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 10,

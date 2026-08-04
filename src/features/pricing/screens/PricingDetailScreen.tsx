@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import React from "react";
 import {
   View,
@@ -138,11 +139,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
   headerCard: {
-    backgroundColor: "#1e40af",
+    backgroundColor: colors.primary,
     borderRadius: 16,
     padding: 24,
     gap: 6,
-    shadowColor: "#1e40af",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -194,14 +195,14 @@ const styles = StyleSheet.create({
     color: "#1e293b",
   },
   editButton: {
-    backgroundColor: "#1e40af",
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 8,
   },
   editButtonPressed: {
-    backgroundColor: "#1e3a8a",
+    backgroundColor: colors.primaryPressed,
   },
   editButtonText: {
     color: "#ffffff",
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fef2f2",
   },
   deleteButtonText: {
-    color: "#dc2626",
+    color: colors.danger,
     fontSize: 15,
     fontWeight: "600",
   },

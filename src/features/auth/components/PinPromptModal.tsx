@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useState } from "react";
 import {
   Modal,
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
   },
   error: {
     fontSize: 13,
-    color: "#ef4444",
+    color: colors.danger,
     textAlign: "center",
     marginTop: 12,
   },

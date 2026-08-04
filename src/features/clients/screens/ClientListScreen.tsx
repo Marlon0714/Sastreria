@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -142,7 +143,7 @@ export default function ClientListScreen({ navigation }: Props) {
     <View style={styles.container}>
       {isRefreshing && (
         <View style={styles.refreshBanner}>
-          <ActivityIndicator size="small" color="#0f766e" />
+          <ActivityIndicator size="small" color={colors.primary} />
           <Text style={styles.refreshText}>Actualizando...</Text>
         </View>
       )}
@@ -279,13 +280,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 8,
-    backgroundColor: "#ccfbf1",
+    backgroundColor: colors.primarySoft,
     borderBottomWidth: 1,
     borderBottomColor: "#99f6e4",
   },
   refreshText: {
     fontSize: 13,
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "600",
   },
   listContent: {
@@ -321,8 +322,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   filterButtonActive: {
-    borderColor: "#0f766e",
-    backgroundColor: "#ccfbf1",
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   filterButtonText: {
     color: "#334155",
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   filterButtonTextActive: {
-    color: "#115e59",
+    color: colors.primaryPressed,
   },
   noResultsText: {
     textAlign: "center",
@@ -349,13 +350,13 @@ const styles = StyleSheet.create({
   },
   loadMoreButton: {
     borderWidth: 1,
-    borderColor: "#0f766e",
+    borderColor: colors.primary,
     borderRadius: 999,
     paddingHorizontal: 20,
     paddingVertical: 8,
   },
   loadMoreButtonText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "700",
     fontSize: 13,
   },
@@ -406,13 +407,13 @@ const styles = StyleSheet.create({
     color: "#0e7490",
   },
   syncBadgeTextError: {
-    color: "#b91c1c",
+    color: colors.danger,
   },
   fabButton: {
     position: "absolute",
     right: 16,
     bottom: 16,
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 999,

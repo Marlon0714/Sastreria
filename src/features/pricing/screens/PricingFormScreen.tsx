@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Alert, ScrollView } from "react-native";
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     fontSize: 13,
-    color: "#b91c1c",
+    color: colors.danger,
   },
   categoryHint: {
     backgroundColor: "#dbeafe",
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
   categoryHintText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1e40af",
+    color: colors.primary,
   },
   formCard: {
     backgroundColor: "#ffffff",

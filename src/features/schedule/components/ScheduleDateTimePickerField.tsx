@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import DateTimePicker, {
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   selectorError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   selectorText: {
     color: "#0f172a",
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   errorText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontSize: 13,
   },
 });

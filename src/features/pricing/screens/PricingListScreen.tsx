@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import React, { useState, useMemo } from "react";
 import {
   View,
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   segmentTextActive: {
-    color: "#1e40af",
+    color: colors.primary,
     fontWeight: "700",
   },
   badge: {
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   badgeTextActive: {
-    color: "#1e40af",
+    color: colors.primary,
   },
   searchWrapper: {
     paddingHorizontal: 16,
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     fontSize: 13,
-    color: "#b91c1c",
+    color: colors.danger,
   },
   emptyState: {
     flex: 1,
@@ -385,7 +386,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#1e40af",
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -395,7 +396,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabPressed: {
-    backgroundColor: "#1e3a8a",
+    backgroundColor: colors.primaryPressed,
     transform: [{ scale: 0.96 }],
   },
   fabIcon: {

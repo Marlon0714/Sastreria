@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import {
   Controller,
   type Control,
@@ -128,6 +129,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    color: "#b91c1c",
+    color: colors.danger,
   },
 });

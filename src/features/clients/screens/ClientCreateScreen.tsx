@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addPhoneBtnText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "600",
     fontSize: 14,
   },
@@ -406,12 +407,12 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   errorText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontSize: 13,
   },
   submitButton: {
     marginTop: 8,
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",

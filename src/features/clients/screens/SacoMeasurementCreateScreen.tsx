@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback } from "react";
 import { useForm } from "react-hook-form";
@@ -66,10 +67,10 @@ export default function SacoMeasurementCreateScreen({
 
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 16 },
-  errorBanner: { backgroundColor: "#fee2e2", padding: 8, borderRadius: 6 },
-  errorBannerText: { color: "#b91c1c" },
+  errorBanner: { backgroundColor: colors.dangerSoft, padding: 8, borderRadius: 6 },
+  errorBannerText: { color: colors.danger },
   submitButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",

@@ -27,6 +27,7 @@ import {
   type CreateScheduleSchemaOutput,
 } from "../domain/schemas";
 import type { Schedule, ScheduleStatus } from "../domain/types";
+import { colors } from "../../../shared/theme/colors";
 import { useDeleteSchedule } from "../hooks/useDeleteSchedule";
 import { useScheduleForm } from "../hooks/useScheduleForm";
 import { useScheduleStatusActions } from "../hooks/useScheduleStatusActions";
@@ -475,37 +476,37 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 14,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.background,
   },
   fieldGroup: {
     gap: 8,
   },
   label: {
     fontSize: 14,
-    color: "#334155",
+    color: colors.textSecondary,
     fontWeight: "600",
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0f172a",
+    color: colors.textPrimary,
   },
   timeToggle: {
     paddingVertical: 4,
   },
   timeToggleText: {
     fontSize: 14,
-    color: "#334155",
+    color: colors.textSecondary,
     fontWeight: "600",
   },
   statusActionsGroup: {
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
+    borderTopColor: colors.border,
     paddingTop: 14,
   },
   statusActionButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   correctionToggleText: {
-    color: "#b45309",
+    color: colors.warning,
     fontWeight: "600",
     fontSize: 13,
   },
@@ -533,32 +534,32 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#fbbf24",
-    backgroundColor: "#fffbeb",
+    borderColor: colors.warning,
+    backgroundColor: colors.warningSoft,
   },
   correctionChipText: {
-    color: "#92400e",
+    color: colors.warning,
     fontWeight: "600",
     fontSize: 13,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: colors.borderStrong,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: "#ffffff",
-    color: "#0f172a",
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
   },
   inputError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   notesInput: {
     minHeight: 90,
     textAlignVertical: "top",
   },
   errorText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontSize: 13,
   },
   statusBadge: {
@@ -566,16 +567,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "#ccfbf1",
+    backgroundColor: colors.primarySoft,
   },
   statusBadgeText: {
-    color: "#115e59",
+    color: colors.primaryPressed,
     fontWeight: "700",
     fontSize: 13,
   },
   saveButton: {
     marginTop: 8,
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
@@ -585,14 +586,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   deleteButton: {
-    borderColor: "#b91c1c",
+    borderColor: colors.danger,
     borderWidth: 1,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
   },
   deleteButtonText: {
-    color: "#b91c1c",
+    color: colors.danger,
     fontWeight: "700",
   },
   buttonDisabled: {

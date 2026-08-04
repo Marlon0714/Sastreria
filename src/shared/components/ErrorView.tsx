@@ -1,3 +1,4 @@
+import { colors } from "../../shared/theme/colors";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 interface ErrorViewProps {
@@ -34,18 +35,18 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: "#b91c1c",
+    color: colors.danger,
     textAlign: "center",
   },
   secondaryButton: {
-    borderColor: "#0f766e",
+    borderColor: colors.primary,
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
   },
   secondaryButtonText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "700",
   },
 });

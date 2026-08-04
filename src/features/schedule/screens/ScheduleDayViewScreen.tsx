@@ -14,6 +14,7 @@ import {
   todayDateString,
 } from "../domain/dateUtils";
 import type { Schedule, ScheduleStatus } from "../domain/types";
+import { colors } from "../../../shared/theme/colors";
 import { useScheduleDayView } from "../hooks/useScheduleDayView";
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, "ScheduleDayView">;
@@ -33,12 +34,14 @@ const STATUS_LABELS: Record<ScheduleStatus, string> = {
   entregado: "Entregado",
 };
 
+// Progresión visual del flujo: neutral -> azul (agendado) -> ámbar (en
+// proceso) -> verde claro (listo) -> verde sólido (entregado, el final).
 const STATUS_COLORS: Record<ScheduleStatus, { bg: string; text: string }> = {
-  pendiente: { bg: "#fef9c3", text: "#854d0e" },
-  agendado: { bg: "#dbeafe", text: "#1e40af" },
-  en_proceso: { bg: "#fde68a", text: "#92400e" },
-  listo_para_entregar: { bg: "#dcfce7", text: "#166534" },
-  entregado: { bg: "#e2e8f0", text: "#334155" },
+  pendiente: { bg: "#f1f5f9", text: colors.textMuted },
+  agendado: { bg: colors.primarySoft, text: colors.primary },
+  en_proceso: { bg: colors.warningSoft, text: colors.warning },
+  listo_para_entregar: { bg: colors.successSoft, text: colors.success },
+  entregado: { bg: colors.success, text: "#ffffff" },
 };
 
 export default function ScheduleDayViewScreen({ navigation }: Props) {
@@ -263,7 +266,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.background,
   },
   segmentedWrapper: {
     paddingHorizontal: 16,
@@ -272,7 +275,7 @@ const styles = StyleSheet.create({
   },
   segmented: {
     flexDirection: "row",
-    backgroundColor: "#e2e8f0",
+    backgroundColor: colors.border,
     borderRadius: 12,
     padding: 3,
     gap: 2,
@@ -298,10 +301,10 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#64748b",
+    color: colors.textMuted,
   },
   segmentTextActive: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "700",
   },
   badge: {
@@ -313,18 +316,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   badgeActive: {
-    backgroundColor: "#ccfbf1",
+    backgroundColor: colors.primarySoft,
   },
   badgeInactive: {
-    backgroundColor: "#cbd5e1",
+    backgroundColor: colors.borderStrong,
   },
   badgeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#64748b",
+    color: colors.textMuted,
   },
   badgeTextActive: {
-    color: "#0f766e",
+    color: colors.primary,
   },
   header: {
     flexDirection: "row",
@@ -339,7 +342,7 @@ const styles = StyleSheet.create({
   },
   navButtonText: {
     fontSize: 22,
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "700",
   },
   dateSelector: {
@@ -350,7 +353,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   todayButtonText: {
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "600",
     fontSize: 13,
   },
@@ -366,21 +369,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0f172a",
+    color: colors.textPrimary,
     textTransform: "capitalize",
   },
   emptyText: {
-    color: "#64748b",
+    color: colors.textMuted,
     fontSize: 13,
     fontStyle: "italic",
   },
   card: {
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     gap: 6,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: colors.border,
   },
   cardHeader: {
     flexDirection: "row",
@@ -392,7 +395,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: "700",
-    color: "#0f172a",
+    color: colors.textPrimary,
   },
   cardSubRow: {
     flexDirection: "row",
@@ -402,11 +405,11 @@ const styles = StyleSheet.create({
   cardDate: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#64748b",
+    color: colors.textMuted,
   },
   cardNotes: {
     fontSize: 13,
-    color: "#64748b",
+    color: colors.textMuted,
   },
   statusBadge: {
     borderRadius: 999,
@@ -421,18 +424,18 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 3,
-    backgroundColor: "#fef3c7",
+    backgroundColor: colors.dangerSoft,
   },
   priorityBadgeText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#92400e",
+    color: colors.danger,
   },
   fabButton: {
     position: "absolute",
     right: 16,
     bottom: 16,
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 999,

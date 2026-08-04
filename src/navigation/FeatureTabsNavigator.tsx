@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
 import type { Role } from "../features/auth/domain/profile";
+import { colors } from "../shared/theme/colors";
 import { useIdentityStore } from "../shared/state/identityStore";
 import ClientsStackNavigator from "./ClientsStackNavigator";
 import PricingStackNavigator from "./PricingStackNavigator";
@@ -85,8 +86,8 @@ export default function FeatureTabsNavigator() {
       initialRouteName="ClientsTab"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#0f766e",
-        tabBarInactiveTintColor: "#64748b",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
       }}
     >
       {visibleTabs.map((tab) => (
