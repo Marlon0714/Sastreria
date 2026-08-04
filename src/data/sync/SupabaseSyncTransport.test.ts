@@ -170,7 +170,7 @@ const baseSchedule = {
   time: "14:30",
   clientId: "c-1",
   notes: "Ajuste de traje",
-  status: "pending" as const,
+  status: "pendiente" as const,
   createdAt: "2026-08-01T10:00:00.000Z",
   updatedAt: "2026-08-01T10:00:00.000Z",
   syncStatus: "pending" as const,
@@ -455,7 +455,7 @@ describe("SupabaseSyncTransport", () => {
           date: "2026-08-10",
           time: "14:30",
           client_id: "c-1",
-          status: "pending",
+          status: "pendiente",
         }),
         { onConflict: "id" },
       );

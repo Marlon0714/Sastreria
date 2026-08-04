@@ -164,11 +164,16 @@ interface TallaTemplateQueueRow {
 
 interface ScheduleQueueRow {
   id: string;
-  date: string;
-  time: string;
+  date: string | null;
+  time: string | null;
   client_id: string;
   notes: string | null;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status:
+    | "pendiente"
+    | "agendado"
+    | "en_proceso"
+    | "listo_para_entregar"
+    | "entregado";
   created_at: string;
   updated_at: string;
   sync_status: "pending" | "synced" | "error";
@@ -425,8 +430,8 @@ function toScheduleQueueItem(row: ScheduleQueueRow): SyncScheduleQueueItem {
     operationType: "upsert",
     payload: {
       id: row.id,
-      date: row.date,
-      time: row.time,
+      date: row.date ?? undefined,
+      time: row.time ?? undefined,
       clientId: row.client_id,
       notes: row.notes ?? undefined,
       status: row.status,

@@ -286,10 +286,12 @@ export class SupabaseSyncTransport implements SyncTransport {
   }
 
   async syncSchedule(schedule: Schedule): Promise<SyncTransportAttemptResult> {
+    // TODO(Fase 3, N-076): agregar price/operario_id/ready_at/delivered_at
+    // una vez exista la migración v19 en Supabase (ver plan Bloque 1).
     return this.upsertSynced("schedules", {
       id: schedule.id,
-      date: schedule.date,
-      time: schedule.time,
+      date: schedule.date ?? null,
+      time: schedule.time ?? null,
       client_id: schedule.clientId,
       notes: schedule.notes ?? null,
       status: schedule.status,

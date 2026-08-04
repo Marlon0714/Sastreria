@@ -143,7 +143,7 @@ const scheduleItem: SyncQueueItem = {
     time: "14:30",
     clientId: "c-1",
     notes: undefined,
-    status: "pending",
+    status: "pendiente",
     createdAt: "2026-08-01T09:20:00.000Z",
     updatedAt: "2026-08-01T09:20:00.000Z",
     syncStatus: "pending",
