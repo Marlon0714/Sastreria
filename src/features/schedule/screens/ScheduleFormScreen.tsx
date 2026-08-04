@@ -18,6 +18,7 @@ import { ClientPickerField } from "../components/ClientPickerField";
 import {
   createScheduleSchema,
   type CreateScheduleSchemaInput,
+  type CreateScheduleSchemaOutput,
 } from "../domain/schemas";
 import type { ScheduleStatus } from "../domain/types";
 import { useDeleteSchedule } from "../hooks/useDeleteSchedule";
@@ -25,18 +26,12 @@ import { useScheduleForm } from "../hooks/useScheduleForm";
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, "ScheduleForm">;
 
-const STATUS_OPTIONS: ScheduleStatus[] = [
-  "pending",
-  "confirmed",
-  "completed",
-  "cancelled",
-];
-
 const STATUS_LABELS: Record<ScheduleStatus, string> = {
-  pending: "Pendiente",
-  confirmed: "Confirmado",
-  completed: "Completado",
-  cancelled: "Cancelado",
+  pendiente: "Pendiente",
+  agendado: "Agendado",
+  en_proceso: "En proceso",
+  listo_para_entregar: "Listo para entregar",
+  entregado: "Entregado",
 };
 
 export default function ScheduleFormScreen({ navigation, route }: Props) {
@@ -50,25 +45,25 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<CreateScheduleSchemaInput>({
+  } = useForm<CreateScheduleSchemaInput, unknown, CreateScheduleSchemaOutput>({
     resolver: zodResolver(createScheduleSchema),
     defaultValues: {
       date: "",
       time: "",
       clientId: "",
+      price: undefined,
       notes: "",
-      status: "pending",
     },
   });
 
   useEffect(() => {
     if (!schedule) return;
     reset({
-      date: schedule.date,
-      time: schedule.time,
+      date: schedule.date ?? "",
+      time: schedule.time ?? "",
       clientId: schedule.clientId,
+      price: schedule.price,
       notes: schedule.notes ?? "",
-      status: schedule.status,
     });
   }, [schedule, reset]);
 
@@ -104,8 +99,16 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {schedule ? (
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusBadgeText}>
+            Estado: {STATUS_LABELS[schedule.status]}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Fecha</Text>
+        <Text style={styles.label}>Fecha (opcional)</Text>
         <Controller
           control={control}
           name="date"
@@ -124,7 +127,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Hora</Text>
+        <Text style={styles.label}>Hora (opcional)</Text>
         <Controller
           control={control}
           name="time"
@@ -158,38 +161,27 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Estado</Text>
+        <Text style={styles.label}>Precio (opcional)</Text>
         <Controller
           control={control}
-          name="status"
-          render={({ field: { onChange, value } }) => (
-            <View style={styles.statusRow}>
-              {STATUS_OPTIONS.map((status) => {
-                const isActive = value === status;
-                return (
-                  <Pressable
-                    key={status}
-                    accessibilityLabel={`Estado ${STATUS_LABELS[status]}`}
-                    style={[
-                      styles.statusChip,
-                      isActive ? styles.statusChipActive : null,
-                    ]}
-                    onPress={() => onChange(status)}
-                  >
-                    <Text
-                      style={[
-                        styles.statusChipText,
-                        isActive ? styles.statusChipTextActive : null,
-                      ]}
-                    >
-                      {STATUS_LABELS[status]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+          name="price"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              style={[styles.input, errors.price && styles.inputError]}
+              placeholder="Ej: 15000"
+              keyboardType="numeric"
+              onBlur={onBlur}
+              onChangeText={(text) => {
+                const digitsOnly = text.replace(/[^0-9.]/g, "");
+                onChange(digitsOnly === "" ? undefined : parseFloat(digitsOnly));
+              }}
+              value={value === undefined ? "" : String(value)}
+            />
           )}
         />
+        {errors.price ? (
+          <Text style={styles.errorText}>{errors.price.message}</Text>
+        ) : null}
       </View>
 
       <View style={styles.fieldGroup}>
@@ -271,30 +263,17 @@ const styles = StyleSheet.create({
     color: "#b91c1c",
     fontSize: 13,
   },
-  statusRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  statusChip: {
+  statusBadge: {
+    alignSelf: "flex-start",
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    backgroundColor: "#ffffff",
-  },
-  statusChipActive: {
-    borderColor: "#0f766e",
     backgroundColor: "#ccfbf1",
   },
-  statusChipText: {
-    color: "#334155",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  statusChipTextActive: {
+  statusBadgeText: {
     color: "#115e59",
+    fontWeight: "700",
+    fontSize: 13,
   },
   saveButton: {
     marginTop: 8,

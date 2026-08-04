@@ -13,17 +13,19 @@ import type { Schedule, ScheduleStatus } from "../domain/types";
 type Props = NativeStackScreenProps<ScheduleStackParamList, "ScheduleList">;
 
 const STATUS_LABELS: Record<ScheduleStatus, string> = {
-  pending: "Pendiente",
-  confirmed: "Confirmado",
-  completed: "Completado",
-  cancelled: "Cancelado",
+  pendiente: "Pendiente",
+  agendado: "Agendado",
+  en_proceso: "En proceso",
+  listo_para_entregar: "Listo para entregar",
+  entregado: "Entregado",
 };
 
 const STATUS_COLORS: Record<ScheduleStatus, { bg: string; text: string }> = {
-  pending: { bg: "#fef9c3", text: "#854d0e" },
-  confirmed: { bg: "#dbeafe", text: "#1e40af" },
-  completed: { bg: "#dcfce7", text: "#166534" },
-  cancelled: { bg: "#fee2e2", text: "#991b1b" },
+  pendiente: { bg: "#fef9c3", text: "#854d0e" },
+  agendado: { bg: "#dbeafe", text: "#1e40af" },
+  en_proceso: { bg: "#fde68a", text: "#92400e" },
+  listo_para_entregar: { bg: "#dcfce7", text: "#166534" },
+  entregado: { bg: "#e2e8f0", text: "#334155" },
 };
 
 export default function ScheduleListScreen({ navigation }: Props) {
@@ -86,18 +88,21 @@ export default function ScheduleListScreen({ navigation }: Props) {
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => {
           const statusColor = STATUS_COLORS[item.status];
+          const dateLabel = item.date
+            ? item.time
+              ? `${item.date} · ${item.time}`
+              : item.date
+            : "Sin fecha";
           return (
             <Pressable
-              accessibilityLabel={`Ver turno de ${clientLabel(item)} el ${item.date}`}
+              accessibilityLabel={`Ver turno de ${clientLabel(item)} el ${item.date ?? "sin fecha"}`}
               style={styles.card}
               onPress={() =>
                 navigation.navigate("ScheduleForm", { scheduleId: item.id })
               }
             >
               <View style={styles.cardHeader}>
-                <Text style={styles.cardDate}>
-                  {item.date} · {item.time}
-                </Text>
+                <Text style={styles.cardDate}>{dateLabel}</Text>
                 <View
                   style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}
                 >

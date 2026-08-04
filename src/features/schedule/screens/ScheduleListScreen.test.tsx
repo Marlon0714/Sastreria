@@ -71,7 +71,7 @@ const schedule: Schedule = {
   time: "14:30",
   clientId: client.id,
   notes: "Ajuste de traje",
-  status: "pending",
+  status: "agendado",
   createdAt: "2026-08-01T10:00:00.000Z",
   updatedAt: "2026-08-01T10:00:00.000Z",
   syncStatus: "pending",
@@ -156,7 +156,7 @@ describe("ScheduleListScreen", () => {
       "Ver turno de Ana Torres el 2026-08-10",
     );
     expect(getByText("Ana Torres")).toBeTruthy();
-    expect(getByText("Pendiente")).toBeTruthy();
+    expect(getByText("Agendado")).toBeTruthy();
 
     fireEvent.press(card);
     expect(navigate).toHaveBeenCalledWith("ScheduleForm", {

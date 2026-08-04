@@ -23,7 +23,7 @@ const baseSchedule: Schedule = {
   time: "14:30",
   clientId: "22222222-2222-4222-8222-222222222222",
   notes: "Ajuste de traje",
-  status: "pending",
+  status: "agendado",
   createdAt: "2026-08-01T10:00:00.000Z",
   updatedAt: "2026-08-01T10:00:00.000Z",
   syncStatus: "pending",
@@ -34,7 +34,6 @@ const input: CreateScheduleDTO = {
   time: "14:30",
   clientId: "22222222-2222-4222-8222-222222222222",
   notes: "Ajuste de traje",
-  status: "pending",
 };
 
 describe("useScheduleForm", () => {
@@ -81,7 +80,7 @@ describe("useScheduleForm", () => {
 
   it("submit updates the schedule when scheduleId is provided", async () => {
     mockGetById.mockResolvedValueOnce(baseSchedule);
-    mockUpdate.mockResolvedValueOnce({ ...baseSchedule, status: "confirmed" });
+    mockUpdate.mockResolvedValueOnce({ ...baseSchedule, status: "en_proceso" });
     const { result } = renderHook(() => useScheduleForm(baseSchedule.id));
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -92,7 +91,7 @@ describe("useScheduleForm", () => {
     });
 
     expect(mockUpdate).toHaveBeenCalledWith(baseSchedule.id, input);
-    expect(submitted).toMatchObject({ status: "confirmed" });
+    expect(submitted).toMatchObject({ status: "en_proceso" });
   });
 
   it("submit sets an error and returns null when it fails", async () => {

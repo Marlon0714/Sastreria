@@ -33,7 +33,7 @@ jest.mock("../hooks/useDeleteSchedule", () => ({
 
 jest.mock("../components/ClientPickerField", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
-  const { TextInput } = jest.requireActual(
+  const { Text, TextInput, View } = jest.requireActual(
     "react-native",
   ) as typeof import("react-native");
 
@@ -41,15 +41,23 @@ jest.mock("../components/ClientPickerField", () => {
     ClientPickerField: ({
       value,
       onChange,
+      errorMessage,
     }: {
       value: string;
       onChange: (id: string) => void;
+      errorMessage?: string;
     }) =>
-      ReactModule.createElement(TextInput, {
-        accessibilityLabel: "Cliente",
-        value,
-        onChangeText: onChange,
-      }),
+      ReactModule.createElement(View, null, [
+        ReactModule.createElement(TextInput, {
+          key: "input",
+          accessibilityLabel: "Cliente",
+          value,
+          onChangeText: onChange,
+        }),
+        errorMessage
+          ? ReactModule.createElement(Text, { key: "error" }, errorMessage)
+          : null,
+      ]),
   };
 });
 
@@ -76,7 +84,7 @@ const schedule: Schedule = {
   time: "14:30",
   clientId: "22222222-2222-4222-8222-222222222222",
   notes: "Ajuste de traje",
-  status: "pending",
+  status: "agendado",
   createdAt: "2026-08-01T10:00:00.000Z",
   updatedAt: "2026-08-01T10:00:00.000Z",
   syncStatus: "pending",
@@ -128,7 +136,7 @@ describe("ScheduleFormScreen", () => {
     expect(getByText("Cargando turno...")).toBeTruthy();
   });
 
-  it("submits valid values and navigates back on success", async () => {
+  it("submits valid values (fecha/hora opcionales) y navega hacia atrás", async () => {
     const submit = jest.fn(async () => Promise.resolve(schedule));
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
@@ -139,14 +147,14 @@ describe("ScheduleFormScreen", () => {
     });
     const goBack = jest.fn();
 
-    const { getByPlaceholderText, getByLabelText, getByText } = render(
+    const { getByPlaceholderText, getByLabelText } = render(
       <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
     );
 
     fireEvent.changeText(getByPlaceholderText("AAAA-MM-DD"), "2026-08-10");
     fireEvent.changeText(getByPlaceholderText("HH:MM"), "14:30");
     fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
-    fireEvent.press(getByText("Confirmado"));
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "50000");
     fireEvent.press(getByLabelText("Guardar turno"));
 
     await waitFor(() => {
@@ -155,7 +163,7 @@ describe("ScheduleFormScreen", () => {
           date: "2026-08-10",
           time: "14:30",
           clientId: schedule.clientId,
-          status: "confirmed",
+          price: 50000,
         }),
       );
     });
@@ -164,7 +172,7 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
-  it("shows validation errors when required fields are invalid", async () => {
+  it("permite guardar sin fecha/hora, pero exige cliente", async () => {
     const submit = jest.fn(async () => Promise.resolve(null));
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
@@ -180,13 +188,11 @@ describe("ScheduleFormScreen", () => {
 
     fireEvent.press(getByLabelText("Guardar turno"));
 
-    expect(
-      await findByText("La fecha debe tener el formato AAAA-MM-DD"),
-    ).toBeTruthy();
+    expect(await findByText("El cliente es inválido")).toBeTruthy();
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it("pre-fills fields and shows the delete button in edit mode", async () => {
+  it("pre-fills fields, muestra el estado y el botón de eliminar en modo edición", async () => {
     mockUseScheduleForm.mockReturnValue({
       schedule,
       isLoading: false,
@@ -195,7 +201,7 @@ describe("ScheduleFormScreen", () => {
       submit: jest.fn(async () => Promise.resolve(schedule)),
     });
 
-    const { getByLabelText, getByDisplayValue } = render(
+    const { getByLabelText, getByDisplayValue, getByText } = render(
       <ScheduleFormScreen
         {...buildProps(jest.fn(), jest.fn(), schedule.id)}
       />,
@@ -205,6 +211,7 @@ describe("ScheduleFormScreen", () => {
       expect(getByDisplayValue("2026-08-10")).toBeTruthy();
     });
     expect(getByDisplayValue("14:30")).toBeTruthy();
+    expect(getByText("Estado: Agendado")).toBeTruthy();
     expect(getByLabelText("Eliminar turno")).toBeTruthy();
   });
 
