@@ -292,6 +292,7 @@ function makeMockTransport(): jest.Mocked<SyncTransport> {
     ),
     syncTallaTemplate: jest.fn(async () => Promise.resolve(syncedResult())),
     syncSchedule: jest.fn(async () => Promise.resolve(syncedResult())),
+    syncScheduleEvent: jest.fn(async () => Promise.resolve(syncedResult())),
     syncDeleteLogEntry: jest.fn(async () => Promise.resolve(syncedResult())),
     syncAll: jest.fn(async () => Promise.resolve()),
   };

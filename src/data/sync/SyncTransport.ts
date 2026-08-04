@@ -7,6 +7,7 @@ import type {
   SacoMeasurement,
 } from "../../features/clients/domain/types";
 import type { PricingService } from "../../features/pricing/domain/pricingService";
+import type { ScheduleEvent } from "../../features/schedule/domain/events";
 import type { Schedule } from "../../features/schedule/domain/types";
 import type { TallaTemplate } from "../../features/tallas/domain/types";
 import type {
@@ -22,6 +23,7 @@ import type {
   SyncChalecoQueueItem,
   SyncTallaTemplateQueueItem,
   SyncScheduleQueueItem,
+  SyncScheduleEventQueueItem,
   SyncDeleteQueueItem,
 } from "./types";
 
@@ -47,6 +49,9 @@ export interface SyncTransport {
     template: TallaTemplate,
   ): Promise<SyncTransportAttemptResult>;
   syncSchedule(schedule: Schedule): Promise<SyncTransportAttemptResult>;
+  syncScheduleEvent(
+    event: ScheduleEvent,
+  ): Promise<SyncTransportAttemptResult>;
   syncDeleteLogEntry(
     entry: SyncDeleteLogEntry,
   ): Promise<SyncTransportAttemptResult>;
@@ -106,6 +111,12 @@ export class NoopSyncTransport implements SyncTransport {
     return Promise.resolve({ outcome: "deferred_local_only" });
   }
 
+  async syncScheduleEvent(
+    _event: ScheduleEvent,
+  ): Promise<SyncTransportAttemptResult> {
+    return Promise.resolve({ outcome: "deferred_local_only" });
+  }
+
   async syncDeleteLogEntry(
     _entry: SyncDeleteLogEntry,
   ): Promise<SyncTransportAttemptResult> {
@@ -158,6 +169,11 @@ export class NoopSyncTransport implements SyncTransport {
             case "schedule":
               await this.syncSchedule(
                 (item as SyncScheduleQueueItem).payload,
+              );
+              break;
+            case "schedule_event":
+              await this.syncScheduleEvent(
+                (item as SyncScheduleEventQueueItem).payload,
               );
               break;
             case "delete_log":

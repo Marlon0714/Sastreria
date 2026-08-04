@@ -7,6 +7,7 @@ import type {
   SacoMeasurement,
 } from "../../features/clients/domain/types";
 import type { PricingService } from "../../features/pricing/domain/pricingService";
+import type { ScheduleEvent } from "../../features/schedule/domain/events";
 import type { Schedule } from "../../features/schedule/domain/types";
 import type { TallaTemplate } from "../../features/tallas/domain/types";
 import type { SyncStatus } from "../../shared/domain/baseEntity";
@@ -21,6 +22,7 @@ export type SyncEntityType =
   | "chaleco_measurement"
   | "talla_template"
   | "schedule"
+  | "schedule_event"
   | "delete_log";
 
 export type SyncOperationType = "upsert" | "delete";
@@ -35,6 +37,7 @@ export type SyncCheckpointScope =
   | "chaleco_measurements"
   | "talla_templates"
   | "schedules"
+  | "schedule_events"
   | "sync_delete_log";
 
 export interface SyncCursor {
@@ -143,6 +146,11 @@ export interface SyncScheduleQueueItem extends SyncQueueItemBase {
   payload: Schedule;
 }
 
+export interface SyncScheduleEventQueueItem extends SyncQueueItemBase {
+  entityType: "schedule_event";
+  payload: ScheduleEvent;
+}
+
 export interface SyncDeleteQueueItem extends SyncQueueItemBase {
   entityType: "delete_log";
   operationType: "delete";
@@ -159,6 +167,7 @@ export type SyncQueueItem =
   | SyncChalecoQueueItem
   | SyncTallaTemplateQueueItem
   | SyncScheduleQueueItem
+  | SyncScheduleEventQueueItem
   | SyncDeleteQueueItem;
 
 export interface RetryPolicy {
