@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { LogoutButton } from "../features/auth/components/LogoutButton";
 import ScheduleDayViewScreen from "../features/schedule/screens/ScheduleDayViewScreen";
 import ScheduleFormScreen from "../features/schedule/screens/ScheduleFormScreen";
 import type { ScheduleStackParamList } from "./types";
@@ -12,7 +13,7 @@ export default function ScheduleStackNavigator() {
       <Stack.Screen
         name="ScheduleDayView"
         component={ScheduleDayViewScreen}
-        options={{ title: "Agenda" }}
+        options={{ title: "Agenda", headerRight: () => <LogoutButton /> }}
       />
       <Stack.Screen
         name="ScheduleForm"

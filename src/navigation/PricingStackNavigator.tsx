@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { LogoutButton } from "../features/auth/components/LogoutButton";
 import PricingPlaceholderScreen from "../features/pricing/screens/PricingPlaceholderScreen";
 import PricingListScreen from "../features/pricing/screens/PricingListScreen";
 import PricingDetailScreen from "../features/pricing/screens/PricingDetailScreen";
@@ -14,7 +15,7 @@ export default function PricingStackNavigator() {
       <Stack.Screen
         name="PricingList"
         component={PricingListScreen}
-        options={{ title: "Precios" }}
+        options={{ title: "Precios", headerRight: () => <LogoutButton /> }}
       />
       <Stack.Screen
         name="PricingDetail"

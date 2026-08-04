@@ -8,6 +8,9 @@ import * as ClientsDependenciesProviderModule from "../features/clients/hooks/Cl
 
 jest.mock("../features/schedule/hooks/useScheduleDayView");
 jest.mock("../features/clients/hooks/ClientsDependenciesProvider");
+jest.mock("../features/auth/components/LogoutButton", () => ({
+  LogoutButton: () => null,
+}));
 
 describe("ScheduleStackNavigator", () => {
   it("renderiza la vista día-por-día de la agenda por defecto", async () => {

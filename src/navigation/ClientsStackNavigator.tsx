@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { LogoutButton } from "../features/auth/components/LogoutButton";
 import CamisaMeasurementDetailScreen from "../features/clients/screens/CamisaMeasurementDetailScreen";
 import ClientCreateScreen from "../features/clients/screens/ClientCreateScreen";
 import ClientDetailScreen from "../features/clients/screens/ClientDetailScreen";
@@ -21,7 +22,7 @@ export default function ClientsStackNavigator() {
       <Stack.Screen
         name="ClientList"
         component={ClientListScreen}
-        options={{ title: "Clientes" }}
+        options={{ title: "Clientes", headerRight: () => <LogoutButton /> }}
       />
       <Stack.Screen
         name="ClientCreate"

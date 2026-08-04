@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { LogoutButton } from "../features/auth/components/LogoutButton";
 import { getTallasDependencies } from "../data/local/tallasDependencies";
 import { TallasDependenciesProvider } from "../features/tallas/hooks/TallasDependenciesProvider";
 import TallasListScreen from "../features/tallas/screens/TallasListScreen";
@@ -16,7 +17,7 @@ export default function TallasStackNavigator() {
         <Stack.Screen
           name="TallasList"
           component={TallasListScreen}
-          options={{ title: "Tallas" }}
+          options={{ title: "Tallas", headerRight: () => <LogoutButton /> }}
         />
         <Stack.Screen
           name="TallaForm"
