@@ -141,7 +141,7 @@ describe("useAuth", () => {
     it("usa el perfil cacheado en SecureStore si getProfile falla", async () => {
       secureStoreData.set(
         "sastreria_cached_profile",
-        JSON.stringify(testProfile),
+        JSON.stringify({ profile: testProfile, cachedAt: Date.now() }),
       );
       const repo = makeRepo({
         hasValidSession: jest
@@ -159,6 +159,53 @@ describe("useAuth", () => {
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       expect(result.current.profile).toEqual(testProfile);
+    });
+
+    it("ignora el perfil cacheado si ya venció el TTL de confianza offline", async () => {
+      const seventyThreeHoursAgo = Date.now() - 73 * 60 * 60 * 1000;
+      secureStoreData.set(
+        "sastreria_cached_profile",
+        JSON.stringify({ profile: testProfile, cachedAt: seventyThreeHoursAgo }),
+      );
+      const repo = makeRepo({
+        hasValidSession: jest
+          .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
+          .mockResolvedValue(true),
+        getSession: jest
+          .fn<SupabaseAuthRepositoryPort["getSession"]>()
+          .mockResolvedValue({ userId: "user-1", accessToken: "token-abc" }),
+        getProfile: jest
+          .fn<SupabaseAuthRepositoryPort["getProfile"]>()
+          .mockRejectedValue(new Error("network error")),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.profile).toBeNull();
+    });
+
+    it("ignora un perfil cacheado en formato viejo (sin cachedAt)", async () => {
+      secureStoreData.set(
+        "sastreria_cached_profile",
+        JSON.stringify(testProfile),
+      );
+      const repo = makeRepo({
+        hasValidSession: jest
+          .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
+          .mockResolvedValue(true),
+        getSession: jest
+          .fn<SupabaseAuthRepositoryPort["getSession"]>()
+          .mockResolvedValue({ userId: "user-1", accessToken: "token-abc" }),
+        getProfile: jest
+          .fn<SupabaseAuthRepositoryPort["getProfile"]>()
+          .mockRejectedValue(new Error("network error")),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.profile).toBeNull();
     });
   });
 
@@ -181,8 +228,17 @@ describe("useAuth", () => {
       );
       expect(mockSetItemAsync).toHaveBeenCalledWith(
         "sastreria_cached_profile",
-        JSON.stringify(testProfile),
+        expect.any(String),
       );
+      const [, cachedRaw] = mockSetItemAsync.mock.calls.find(
+        ([key]) => key === "sastreria_cached_profile",
+      ) as [string, string];
+      const cachedEntry = JSON.parse(cachedRaw) as {
+        profile: unknown;
+        cachedAt: number;
+      };
+      expect(cachedEntry.profile).toEqual(testProfile);
+      expect(typeof cachedEntry.cachedAt).toBe("number");
     });
 
     it("guarda mensaje de error cuando las credenciales son incorrectas", async () => {

@@ -8,6 +8,12 @@ import { useIdentityStore } from "../../../shared/state/identityStore";
 import type { Profile } from "../domain/profile";
 
 const PROFILE_CACHE_KEY = "sastreria_cached_profile";
+// Cuánto se confía en el perfil cacheado sin conexión antes de dejar de
+// usarlo. Sin este límite, un cambio de `is_shared_device` hecho en Supabase
+// (ej. el dispositivo pasa a ser la tablet compartida del mostrador) nunca
+// se aplicaría en un dispositivo que se quede sin red indefinidamente: el
+// gate de PIN se seguiría saltando para siempre con el valor viejo cacheado.
+const PROFILE_CACHE_TTL_MS = 72 * 60 * 60 * 1000; // 72h
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -21,12 +27,32 @@ interface UseAuthResult extends AuthState {
   signOut: () => Promise<void>;
 }
 
+interface CachedProfileEntry {
+  profile: Profile;
+  cachedAt: number;
+}
+
 const defaultRepo = new SupabaseAuthRepository();
 
 async function loadCachedProfile(): Promise<Profile | null> {
   try {
     const raw = await SecureStore.getItemAsync(PROFILE_CACHE_KEY);
-    return raw ? (JSON.parse(raw) as Profile) : null;
+    if (!raw) {
+      return null;
+    }
+
+    const entry = JSON.parse(raw) as Partial<CachedProfileEntry>;
+    if (typeof entry.cachedAt !== "number" || !entry.profile) {
+      // Formato viejo (perfil crudo sin `cachedAt`) o dato corrupto: se trata
+      // como vencido en vez de confiar en él indefinidamente.
+      return null;
+    }
+
+    if (Date.now() - entry.cachedAt > PROFILE_CACHE_TTL_MS) {
+      return null;
+    }
+
+    return entry.profile;
   } catch {
     return null;
   }
@@ -35,7 +61,8 @@ async function loadCachedProfile(): Promise<Profile | null> {
 async function cacheProfile(profile: Profile | null): Promise<void> {
   try {
     if (profile) {
-      await SecureStore.setItemAsync(PROFILE_CACHE_KEY, JSON.stringify(profile));
+      const entry: CachedProfileEntry = { profile, cachedAt: Date.now() };
+      await SecureStore.setItemAsync(PROFILE_CACHE_KEY, JSON.stringify(entry));
     } else {
       await SecureStore.deleteItemAsync(PROFILE_CACHE_KEY);
     }
