@@ -12,16 +12,18 @@ import SacoMeasurementEditScreen from "../features/clients/screens/SacoMeasureme
 import ChalecoMeasurementCreateScreen from "../features/clients/screens/ChalecoMeasurementCreateScreen";
 import ChalecoMeasurementEditScreen from "../features/clients/screens/ChalecoMeasurementEditScreen";
 import TallasScreen from "../features/clients/screens/TallasScreen";
+import { withSwipeTabNavigation } from "./SwipeableRootScreen";
 import type { ClientsStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<ClientsStackParamList>();
+const SwipeableClientListScreen = withSwipeTabNavigation(ClientListScreen);
 
 export default function ClientsStackNavigator() {
   return (
     <Stack.Navigator initialRouteName="ClientList">
       <Stack.Screen
         name="ClientList"
-        component={ClientListScreen}
+        component={SwipeableClientListScreen}
         options={{ title: "Clientes", headerRight: () => <LogoutButton /> }}
       />
       <Stack.Screen

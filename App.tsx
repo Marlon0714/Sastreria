@@ -1,6 +1,7 @@
 import "react-native-url-polyfill/auto";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import {
   getClientsDependencies,
@@ -145,23 +146,27 @@ export default function App() {
 
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
+      <GestureHandlerRootView style={styles.flex}>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </GestureHandlerRootView>
     );
   }
 
   if (!isReady || !clientsDependencies) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.message}>Preparando aplicación...</Text>
-      </View>
+      <GestureHandlerRootView style={styles.flex}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.message}>Preparando aplicación...</Text>
+        </View>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <>
+    <GestureHandlerRootView style={styles.flex}>
       <ClientsDependenciesProvider dependencies={clientsDependencies}>
         <RootNavigator />
       </ClientsDependenciesProvider>
@@ -171,11 +176,14 @@ export default function App() {
           <LogViewer />
         </>
       ) : null}
-    </>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   centered: {
     flex: 1,
     alignItems: "center",

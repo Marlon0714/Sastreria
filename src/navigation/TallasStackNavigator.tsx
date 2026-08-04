@@ -5,9 +5,11 @@ import { getTallasDependencies } from "../data/local/tallasDependencies";
 import { TallasDependenciesProvider } from "../features/tallas/hooks/TallasDependenciesProvider";
 import TallasListScreen from "../features/tallas/screens/TallasListScreen";
 import TallaFormScreen from "../features/tallas/screens/TallaFormScreen";
+import { withSwipeTabNavigation } from "./SwipeableRootScreen";
 import type { TallasStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<TallasStackParamList>();
+const SwipeableTallasListScreen = withSwipeTabNavigation(TallasListScreen);
 
 export default function TallasStackNavigator() {
   const deps = useMemo(() => getTallasDependencies(), []);
@@ -16,7 +18,7 @@ export default function TallasStackNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: true }}>
         <Stack.Screen
           name="TallasList"
-          component={TallasListScreen}
+          component={SwipeableTallasListScreen}
           options={{ title: "Tallas", headerRight: () => <LogoutButton /> }}
         />
         <Stack.Screen
