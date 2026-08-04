@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { ResolvedIdentity } from "../../auth/hooks/useIdentityGate";
+import { getDefaultScheduleEventRepository } from "../../../data/local/scheduleEventDependencies";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
+import { diffScheduleFields } from "../domain/changeDiff";
 import type { CreateScheduleDTO, Schedule } from "../domain/types";
+
+/**
+ * Subconjunto de `useIdentityGate()` que necesita este hook — inyectado
+ * desde la pantalla, que es dueña de la única instancia de `useIdentityGate`
+ * por pantalla (y de los modales de PIN/selector offline).
+ */
+export interface ScheduleIdentityGate {
+  requireIdentity: () => Promise<ResolvedIdentity | null>;
+  releaseIdentity: () => void;
+}
 
 interface UseScheduleFormResult {
   schedule: Schedule | null;
@@ -11,8 +24,12 @@ interface UseScheduleFormResult {
   submit: (values: CreateScheduleDTO) => Promise<Schedule | null>;
 }
 
-export function useScheduleForm(scheduleId?: string): UseScheduleFormResult {
+export function useScheduleForm(
+  scheduleId: string | undefined,
+  identityGate: ScheduleIdentityGate,
+): UseScheduleFormResult {
   const repo = useMemo(() => getDefaultScheduleRepository(), []);
+  const eventRepo = useMemo(() => getDefaultScheduleEventRepository(), []);
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(!!scheduleId);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -54,10 +71,62 @@ export function useScheduleForm(scheduleId?: string): UseScheduleFormResult {
       setError(null);
       setIsSubmitting(true);
       try {
-        if (scheduleId) {
-          return await repo.update(scheduleId, values);
+        const identity = await identityGate.requireIdentity();
+        if (!identity) {
+          setError("No se pudo confirmar tu identidad. Intenta de nuevo.");
+          return null;
         }
-        return await repo.create(values);
+
+        if (scheduleId) {
+          const before = schedule;
+          const updated = await repo.update(scheduleId, values);
+
+          if (before) {
+            const fieldChanges = diffScheduleFields(before, updated);
+            if (Object.keys(fieldChanges).length > 0) {
+              await eventRepo.create({
+                scheduleId: updated.id,
+                actorId: identity.profile.id,
+                actorDisplayName: identity.profile.displayName,
+                action: "updated",
+                changes: JSON.stringify(fieldChanges),
+                identityVerified: identity.verified,
+              });
+            }
+
+            if (before.status !== updated.status) {
+              await eventRepo.create({
+                scheduleId: updated.id,
+                actorId: identity.profile.id,
+                actorDisplayName: identity.profile.displayName,
+                action: "status_auto",
+                changes: JSON.stringify({
+                  status: { before: before.status, after: updated.status },
+                }),
+                identityVerified: identity.verified,
+              });
+            }
+          }
+
+          identityGate.releaseIdentity();
+          return updated;
+        }
+
+        const created = await repo.create(values);
+        const fieldChanges = diffScheduleFields({}, created);
+        await eventRepo.create({
+          scheduleId: created.id,
+          actorId: identity.profile.id,
+          actorDisplayName: identity.profile.displayName,
+          action: "created",
+          changes:
+            Object.keys(fieldChanges).length > 0
+              ? JSON.stringify(fieldChanges)
+              : undefined,
+          identityVerified: identity.verified,
+        });
+        identityGate.releaseIdentity();
+        return created;
       } catch {
         setError(
           scheduleId
@@ -69,7 +138,7 @@ export function useScheduleForm(scheduleId?: string): UseScheduleFormResult {
         setIsSubmitting(false);
       }
     },
-    [repo, scheduleId],
+    [repo, eventRepo, scheduleId, schedule, identityGate],
   );
 
   return { schedule, isLoading, isSubmitting, error, submit };
