@@ -434,6 +434,45 @@ Para la cuenta de la tablet compartida: mismo flujo pero `is_shared_device = tru
 
 ---
 
+### v19_schedule_redesign — SOLO SQLite por ahora, Supabase pendiente (Fase 1-2 del Bloque 1, N-076)
+
+**Contexto:** Rediseño de la Agenda — `date`/`time` pasan a opcionales, `status` cambia de valores placeholder (`pending/confirmed/completed/cancelled`) a los 5 estados de negocio reales (`pendiente/agendado/en_proceso/listo_para_entregar/entregado`), y se agregan `price`/`operario_id`/`ready_at`/`delivered_at` + la tabla `schedule_events` (historial append-only). El lado **SQLite ya está aplicado** (migración `v19_schedule_redesign` en `migrations.ts`, patrón "recrear tabla" — primera vez en el proyecto, ver comentario en el código). El lado **Supabase todavía NO se ha migrado** — queda pendiente para cuando se complete el wiring de sync de estas dos entidades (Fase 3 del plan de Bloque 1).
+
+**Riesgo interino, aceptado por ahora:** mientras Supabase siga en el esquema viejo (`v17_schedules`), el pull incremental de `schedules` seguiría insertando valores de `status` viejos que violarían el nuevo `CHECK` local. Se confirmó con el usuario que **no hay datos reales de Agenda en producción todavía** (ningún build con esta feature salió a un dispositivo real), así que este riesgo es teórico por ahora — pero **no se debe habilitar sync real de `schedule` en un build hasta correr el SQL siguiente en Supabase**:
+
+```sql
+-- Pendiente de ejecutar cuando se complete la Fase 3 del Bloque 1:
+ALTER TABLE schedules ALTER COLUMN date DROP NOT NULL;
+ALTER TABLE schedules ALTER COLUMN time DROP NOT NULL;
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS price NUMERIC;
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS operario_id UUID REFERENCES profiles (id);
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ;
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
+
+ALTER TABLE schedules DROP CONSTRAINT IF EXISTS schedules_status_check;
+ALTER TABLE schedules
+  ADD CONSTRAINT schedules_status_check
+  CHECK (status IN ('pendiente', 'agendado', 'en_proceso', 'listo_para_entregar', 'entregado'));
+
+CREATE TABLE IF NOT EXISTS schedule_events (
+  id TEXT PRIMARY KEY,
+  schedule_id TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  actor_display_name TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('created', 'updated', 'status_auto', 'status_manual', 'status_manual_correction', 'deleted')),
+  changes TEXT,
+  identity_verified BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL,
+  sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
+);
+ALTER TABLE schedule_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated all schedule_events" ON schedule_events
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- schedule_events NO se agrega a sync_delete_log: nunca se borra desde la app.
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
