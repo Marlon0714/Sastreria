@@ -77,7 +77,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
   async getByDate(date: string): Promise<Schedule[]> {
     const db = getDatabase();
     const rows = await db.getAllAsync<ScheduleRow>(
-      "SELECT * FROM schedules WHERE date = ? ORDER BY time ASC",
+      "SELECT * FROM schedules WHERE date = ? ORDER BY is_priority DESC, time ASC",
       date,
     );
     return rows.map(mapRow);
@@ -95,7 +95,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
   async getWithoutDate(): Promise<Schedule[]> {
     const db = getDatabase();
     const rows = await db.getAllAsync<ScheduleRow>(
-      "SELECT * FROM schedules WHERE date IS NULL ORDER BY is_priority DESC, created_at ASC",
+      "SELECT * FROM schedules WHERE date IS NULL ORDER BY created_at ASC",
     );
     return rows.map(mapRow);
   }

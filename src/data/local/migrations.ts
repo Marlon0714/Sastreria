@@ -432,7 +432,7 @@ const MIGRATIONS: readonly Migration[] = [
     // corrección manual explícita, para que update() deje de re-derivarlo
     // hasta la próxima acción explícita (markReady/markDelivered/otra
     // corrección). `is_priority` es un campo nuevo del usuario: marca un
-    // turno sin fecha como más urgente que el resto de "Pendientes".
+    // turno ya agendado (con fecha) como más urgente que el resto del día.
     version: 21,
     name: "v21_schedule_status_lock_and_priority",
     statements: [

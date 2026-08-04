@@ -247,7 +247,7 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
-  it("el checkbox 'Prioritario' solo se ofrece sin fecha, y se limpia si se asigna una", () => {
+  it("el checkbox 'Prioritario' solo se ofrece con fecha, y se limpia si se quita", () => {
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
       isLoading: false,
@@ -260,14 +260,18 @@ describe("ScheduleFormScreen", () => {
       <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
     );
 
-    expect(getByLabelText("Prioritario")).toBeTruthy();
+    expect(queryByLabelText("Prioritario")).toBeNull();
 
     fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
+
+    expect(getByLabelText("Prioritario")).toBeTruthy();
+
+    fireEvent.changeText(getByLabelText("Fecha"), "");
 
     expect(queryByLabelText("Prioritario")).toBeNull();
   });
 
-  it("envía isPriority=true si se marca el checkbox sin fecha", async () => {
+  it("envía isPriority=true si se marca el checkbox con fecha", async () => {
     const submit = jest.fn(async () => Promise.resolve(schedule));
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
@@ -282,12 +286,13 @@ describe("ScheduleFormScreen", () => {
     );
 
     fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+    fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
     fireEvent.press(getByLabelText("Prioritario"));
     fireEvent.press(getByLabelText("Guardar turno"));
 
     await waitFor(() => {
       expect(submit).toHaveBeenCalledWith(
-        expect.objectContaining({ isPriority: true }),
+        expect.objectContaining({ isPriority: true, date: "2026-08-10" }),
       );
     });
   });

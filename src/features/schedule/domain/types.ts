@@ -14,7 +14,7 @@ export interface Schedule extends BaseEntity {
   price?: number;
   operarioId?: string;
   notes?: string;
-  isPriority: boolean; // marca turnos sin hora como más urgentes dentro de "Pendientes"
+  isPriority: boolean; // marca un turno ya agendado (con fecha) como más urgente que el resto del día
   status: ScheduleStatus;
   // true tras una corrección manual (applyManualCorrection) — evita que el
   // siguiente update() re-derive el status automáticamente solo porque

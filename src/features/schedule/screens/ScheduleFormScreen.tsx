@@ -104,10 +104,10 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     });
   }, [schedule, reset]);
 
-  // "Prioritario" solo tiene sentido para turnos sin fecha (para ordenar
-  // dentro de "Pendientes") — si se le asigna fecha, deja de aplicar.
+  // "Prioritario" solo tiene sentido para turnos ya agendados (con fecha) —
+  // si se le quita la fecha, deja de aplicar.
   useEffect(() => {
-    if (dateValue) {
+    if (!dateValue) {
       setValue("isPriority", false);
     }
   }, [dateValue, setValue]);
@@ -254,7 +254,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         </View>
       ) : null}
 
-      {!dateValue ? (
+      {dateValue ? (
         <Controller
           control={control}
           name="isPriority"

@@ -121,7 +121,7 @@ describe("ScheduleRepositoryImpl", () => {
     expect(result).toBeNull();
   });
 
-  it("getByDate filtra por fecha exacta", async () => {
+  it("getByDate filtra por fecha exacta y ordena los prioritarios primero", async () => {
     mockGetAllAsync.mockResolvedValueOnce([baseRow]);
     const repository = new ScheduleRepositoryImpl();
 
@@ -130,6 +130,7 @@ describe("ScheduleRepositoryImpl", () => {
     expect(result).toHaveLength(1);
     const [sql, date] = mockGetAllAsync.mock.calls[0] ?? [];
     expect(sql).toContain("WHERE date = ?");
+    expect(sql).toContain("ORDER BY is_priority DESC, time ASC");
     expect(date).toBe("2026-08-10");
   });
 

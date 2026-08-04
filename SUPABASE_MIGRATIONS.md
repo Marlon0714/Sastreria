@@ -533,7 +533,7 @@ ALTER TABLE sync_delete_log
 
 ### v21_schedule_status_lock_and_priority (2026-08-04)
 
-**Contexto:** feedback de uso real del build de prueba — corregir manualmente el status a "pendiente"/"agendado"/"en_proceso" (botón "Corrección manual") no se quedaba: el siguiente `update()` de cualquier campo (aunque no tuviera nada que ver, ej. las notas) volvía a derivar el status automáticamente, y si el operario seguía asignado, lo devolvía a "en_proceso" sin que nadie lo pidiera. Se agrega `status_locked` para marcar que el status actual viene de una corrección manual explícita, y el código deja de re-derivarlo hasta la siguiente acción explícita. De paso se agrega `is_priority`, pedido para poder marcar un turno sin fecha como más urgente que el resto de "Pendientes".
+**Contexto:** feedback de uso real del build de prueba — corregir manualmente el status a "pendiente"/"agendado"/"en_proceso" (botón "Corrección manual") no se quedaba: el siguiente `update()` de cualquier campo (aunque no tuviera nada que ver, ej. las notas) volvía a derivar el status automáticamente, y si el operario seguía asignado, lo devolvía a "en_proceso" sin que nadie lo pidiera. Se agrega `status_locked` para marcar que el status actual viene de una corrección manual explícita, y el código deja de re-derivarlo hasta la siguiente acción explícita. De paso se agrega `is_priority`, pedido para marcar un turno ya agendado (con fecha) como más urgente que el resto del día — no aplica a los turnos "Pendientes" (sin fecha), que es justo lo contrario de lo que se documentó en el primer intento de esta migración.
 
 ```sql
 ALTER TABLE schedules ADD COLUMN IF NOT EXISTS status_locked BOOLEAN NOT NULL DEFAULT false;
