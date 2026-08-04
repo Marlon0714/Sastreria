@@ -434,14 +434,14 @@ Para la cuenta de la tablet compartida: mismo flujo pero `is_shared_device = tru
 
 ---
 
-### v19_schedule_redesign — SOLO SQLite por ahora, Supabase pendiente (Fase 1-2 del Bloque 1, N-076)
+### v19_schedule_redesign — SOLO SQLite por ahora, Supabase pendiente (Fases 1-3 del Bloque 1, N-077)
 
-**Contexto:** Rediseño de la Agenda — `date`/`time` pasan a opcionales, `status` cambia de valores placeholder (`pending/confirmed/completed/cancelled`) a los 5 estados de negocio reales (`pendiente/agendado/en_proceso/listo_para_entregar/entregado`), y se agregan `price`/`operario_id`/`ready_at`/`delivered_at` + la tabla `schedule_events` (historial append-only). El lado **SQLite ya está aplicado** (migración `v19_schedule_redesign` en `migrations.ts`, patrón "recrear tabla" — primera vez en el proyecto, ver comentario en el código). El lado **Supabase todavía NO se ha migrado** — queda pendiente para cuando se complete el wiring de sync de estas dos entidades (Fase 3 del plan de Bloque 1).
+**Contexto:** Rediseño de la Agenda — `date`/`time` pasan a opcionales, `status` cambia de valores placeholder (`pending/confirmed/completed/cancelled`) a los 5 estados de negocio reales (`pendiente/agendado/en_proceso/listo_para_entregar/entregado`), y se agregan `price`/`operario_id`/`ready_at`/`delivered_at` + la tabla `schedule_events` (historial append-only). El lado **SQLite ya está aplicado** (migración `v19_schedule_redesign` en `migrations.ts`, patrón "recrear tabla" — primera vez en el proyecto) y el **motor de sync ya está completamente cableado** en la app (Fase 3: `schedule` con las columnas nuevas + `schedule_event` como entidad nueva create-only, en los 6 archivos de siempre + el subscriber de realtime). El lado **Supabase todavía NO se ha migrado** — el SQL de abajo sigue sin ejecutarse.
 
-**Riesgo interino, aceptado por ahora:** mientras Supabase siga en el esquema viejo (`v17_schedules`), el pull incremental de `schedules` seguiría insertando valores de `status` viejos que violarían el nuevo `CHECK` local. Se confirmó con el usuario que **no hay datos reales de Agenda en producción todavía** (ningún build con esta feature salió a un dispositivo real), así que este riesgo es teórico por ahora — pero **no se debe habilitar sync real de `schedule` en un build hasta correr el SQL siguiente en Supabase**:
+**Riesgo real ahora que el sync está cableado:** con el código de sync ya activo, si se instala un build con este código apuntando a un Supabase sin esta migración, cualquier intento de sincronizar un turno fallará (`schedules` no tiene las columnas nuevas, o el `CHECK` de `status` en Supabase sigue esperando los valores viejos) y `schedule_events` fallará directo con `relation "schedule_events" does not exist`. Se confirmó con el usuario que **no hay datos reales de Agenda en producción todavía** (ningún build con esta feature salió a un dispositivo real), así que no hay riesgo de pérdida de datos — pero **no se debe instalar ningún build con este código hasta correr el SQL siguiente en Supabase**:
 
 ```sql
--- Pendiente de ejecutar cuando se complete la Fase 3 del Bloque 1:
+-- Pendiente de ejecutar ANTES de instalar cualquier build con este código:
 ALTER TABLE schedules ALTER COLUMN date DROP NOT NULL;
 ALTER TABLE schedules ALTER COLUMN time DROP NOT NULL;
 ALTER TABLE schedules ADD COLUMN IF NOT EXISTS price NUMERIC;
