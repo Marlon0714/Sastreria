@@ -1,9 +1,23 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import RootNavigator from "./RootNavigator";
 import { useIdentityStore } from "../shared/state/identityStore";
 import { useSyncStatusStore } from "../shared/state/syncStatusStore";
+
+const TEST_SAFE_AREA_METRICS = {
+  frame: { x: 0, y: 0, width: 375, height: 812 },
+  insets: { top: 0, left: 0, right: 0, bottom: 0 },
+};
+
+function renderRootNavigator() {
+  return render(
+    <SafeAreaProvider initialMetrics={TEST_SAFE_AREA_METRICS}>
+      <RootNavigator />
+    </SafeAreaProvider>,
+  );
+}
 
 jest.mock("../features/pricing/hooks/usePricingServices", () => ({
   usePricingServices: () => ({
@@ -67,12 +81,12 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: false,
     });
 
-    const { getByText, queryByText } = render(<RootNavigator />);
+    const { getByTestId, queryByTestId } = renderRootNavigator();
 
-    expect(queryByText("Clientes")).toBeNull();
-    expect(queryByText("Tallas")).toBeNull();
-    expect(getByText("Agenda")).toBeTruthy();
-    expect(getByText("Precios")).toBeTruthy();
+    expect(queryByTestId("tab-ClientsTab")).toBeNull();
+    expect(queryByTestId("tab-TallasTab")).toBeNull();
+    expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
+    expect(getByTestId("tab-PricingTab")).toBeTruthy();
   });
 
   it("muestra todas las tabs en la tablet compartida sin importar su role", () => {
@@ -83,12 +97,12 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: true,
     });
 
-    const { getByText } = render(<RootNavigator />);
+    const { getByTestId } = renderRootNavigator();
 
-    expect(getByText("Clientes")).toBeTruthy();
-    expect(getByText("Tallas")).toBeTruthy();
-    expect(getByText("Agenda")).toBeTruthy();
-    expect(getByText("Precios")).toBeTruthy();
+    expect(getByTestId("tab-ClientsTab")).toBeTruthy();
+    expect(getByTestId("tab-TallasTab")).toBeTruthy();
+    expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
+    expect(getByTestId("tab-PricingTab")).toBeTruthy();
   });
 
   it("muestra todas las tabs para el dueño", () => {
@@ -99,38 +113,38 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: false,
     });
 
-    const { getByText } = render(<RootNavigator />);
+    const { getByTestId } = renderRootNavigator();
 
-    expect(getByText("Clientes")).toBeTruthy();
-    expect(getByText("Tallas")).toBeTruthy();
-    expect(getByText("Agenda")).toBeTruthy();
-    expect(getByText("Precios")).toBeTruthy();
+    expect(getByTestId("tab-ClientsTab")).toBeTruthy();
+    expect(getByTestId("tab-TallasTab")).toBeTruthy();
+    expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
+    expect(getByTestId("tab-PricingTab")).toBeTruthy();
   });
 
   it("mantiene accesible clients y muestra placeholders al cambiar de tab", async () => {
     // Arrange
-    const { findByText, getByText } = render(<RootNavigator />);
+    const { findByText, getByText, getByTestId } = renderRootNavigator();
 
     // Assert
-    expect(getByText("Clientes")).toBeTruthy();
-    expect(getByText("Agenda")).toBeTruthy();
-    expect(getByText("Precios")).toBeTruthy();
+    expect(getByTestId("tab-ClientsTab")).toBeTruthy();
+    expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
+    expect(getByTestId("tab-PricingTab")).toBeTruthy();
     expect(getByText("Pantalla clientes")).toBeTruthy();
 
     // Act
-    fireEvent.press(getByText("Agenda"));
+    fireEvent.press(getByTestId("tab-ScheduleTab"));
 
     // Assert
     expect(await findByText("Pantalla agenda")).toBeTruthy();
 
     // Act
-    fireEvent.press(getByText("Precios"));
+    fireEvent.press(getByTestId("tab-PricingTab"));
 
     // Assert - pricing ya tiene pantalla real, verificamos que el tab carga
     expect(await findByText("Sin arreglos aún")).toBeTruthy();
 
     // Act
-    fireEvent.press(getByText("Clientes"));
+    fireEvent.press(getByTestId("tab-ClientsTab"));
 
     // Assert
     expect(await findByText("Pantalla clientes")).toBeTruthy();
@@ -139,7 +153,7 @@ describe("RootNavigator tabs composition", () => {
   it("muestra banner global en modo local-only", () => {
     useSyncStatusStore.getState().setMode("local-only");
 
-    const { getByTestId, getByText } = render(<RootNavigator />);
+    const { getByTestId, getByText } = renderRootNavigator();
 
     expect(getByTestId("sync-status-banner")).toBeTruthy();
     expect(
@@ -154,7 +168,7 @@ describe("RootNavigator tabs composition", () => {
     useSyncStatusStore.getState().setConnectivity("offline");
     useSyncStatusStore.getState().setHasPending(true);
 
-    const { getByTestId, getByText } = render(<RootNavigator />);
+    const { getByTestId, getByText } = renderRootNavigator();
 
     expect(getByTestId("sync-status-banner")).toBeTruthy();
     expect(
@@ -169,7 +183,7 @@ describe("RootNavigator tabs composition", () => {
     useSyncStatusStore.getState().setHasPending(true);
 
     // Act
-    const { getByTestId, getByText } = render(<RootNavigator />);
+    const { getByTestId, getByText } = renderRootNavigator();
 
     // Assert
     expect(getByTestId("sync-status-banner")).toBeTruthy();
@@ -183,7 +197,7 @@ describe("RootNavigator tabs composition", () => {
     useSyncStatusStore.getState().setHasPending(false);
 
     // Act
-    const { queryByTestId } = render(<RootNavigator />);
+    const { queryByTestId } = renderRootNavigator();
 
     // Assert
     expect(queryByTestId("sync-status-banner")).toBeNull();

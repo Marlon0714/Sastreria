@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { Role } from "../features/auth/domain/profile";
 import { colors } from "../shared/theme/colors";
@@ -11,7 +13,7 @@ import ScheduleStackNavigator from "./ScheduleStackNavigator";
 import TallasStackNavigator from "./TallasStackNavigator";
 import type { RootTabParamList } from "./types";
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
+const Tab = createMaterialTopTabNavigator<RootTabParamList>();
 
 type TabName = keyof RootTabParamList;
 
@@ -86,6 +88,8 @@ function isTabVisibleForRole(
   return TAB_ROLES[tab].includes(role);
 }
 
+const TAB_BAR_HEIGHT = 56;
+
 export default function FeatureTabsNavigator() {
   const role = useIdentityStore((state) => state.ownProfile?.role ?? null);
   const isSharedDevice = useIdentityStore(
@@ -94,14 +98,29 @@ export default function FeatureTabsNavigator() {
   const visibleTabs = ALL_TABS.filter((tab) =>
     isTabVisibleForRole(tab.name, role, isSharedDevice),
   );
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 8);
 
   return (
     <Tab.Navigator
       initialRouteName={visibleTabs[0]?.name}
+      tabBarPosition="bottom"
       screenOptions={{
-        headerShown: false,
+        swipeEnabled: true,
+        animationEnabled: true,
+        tabBarShowIcon: true,
+        tabBarShowLabel: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarPressColor: "transparent",
+        tabBarPressOpacity: 0.7,
+        tabBarIndicatorStyle: styles.hiddenIndicator,
+        tabBarStyle: [
+          styles.tabBar,
+          { height: TAB_BAR_HEIGHT + bottomPadding, paddingBottom: bottomPadding },
+        ],
+        tabBarLabelStyle: styles.tabBarLabel,
+        tabBarItemStyle: styles.tabBarItem,
       }}
     >
       {visibleTabs.map((tab) => (
@@ -110,10 +129,11 @@ export default function FeatureTabsNavigator() {
           name={tab.name}
           component={tab.component}
           options={{
-            tabBarLabel: tab.label,
             title: tab.title,
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name={tab.icon} size={size} color={color} />
+            tabBarLabel: tab.label,
+            tabBarButtonTestID: `tab-${tab.name}`,
+            tabBarIcon: ({ color }) => (
+              <Ionicons name={tab.icon} size={22} color={color} />
             ),
           }}
         />
@@ -121,3 +141,26 @@ export default function FeatureTabsNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  tabBarItem: {
+    flexDirection: "column",
+    justifyContent: "center",
+  },
+  tabBarLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "none",
+    marginTop: 2,
+  },
+  hiddenIndicator: {
+    height: 0,
+  },
+});

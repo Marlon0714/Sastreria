@@ -5,11 +5,11 @@ import PricingPlaceholderScreen from "../features/pricing/screens/PricingPlaceho
 import PricingListScreen from "../features/pricing/screens/PricingListScreen";
 import PricingDetailScreen from "../features/pricing/screens/PricingDetailScreen";
 import PricingFormScreen from "../features/pricing/screens/PricingFormScreen";
-import { withSwipeTabNavigation } from "./SwipeableRootScreen";
+import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { PricingStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<PricingStackParamList>();
-const SwipeablePricingListScreen = withSwipeTabNavigation(PricingListScreen);
+const SwipeablePricingListScreen = withTabSwipeLock(PricingListScreen);
 
 export default function PricingStackNavigator() {
   return (

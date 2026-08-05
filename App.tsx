@@ -2,6 +2,7 @@ import "react-native-url-polyfill/auto";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import {
   getClientsDependencies,
@@ -167,15 +168,17 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={styles.flex}>
-      <ClientsDependenciesProvider dependencies={clientsDependencies}>
-        <RootNavigator />
-      </ClientsDependenciesProvider>
-      {debugModeUnlocked ? (
-        <>
-          <LogViewerToggle />
-          <LogViewer />
-        </>
-      ) : null}
+      <SafeAreaProvider>
+        <ClientsDependenciesProvider dependencies={clientsDependencies}>
+          <RootNavigator />
+        </ClientsDependenciesProvider>
+        {debugModeUnlocked ? (
+          <>
+            <LogViewerToggle />
+            <LogViewer />
+          </>
+        ) : null}
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

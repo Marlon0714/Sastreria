@@ -10,11 +10,11 @@ import PantalonMeasurementDetailScreen from "../features/clients/screens/Pantalo
 import SacoMeasurementDetailScreen from "../features/clients/screens/SacoMeasurementDetailScreen";
 import ChalecoMeasurementDetailScreen from "../features/clients/screens/ChalecoMeasurementDetailScreen";
 import TallasScreen from "../features/clients/screens/TallasScreen";
-import { withSwipeTabNavigation } from "./SwipeableRootScreen";
+import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { ClientsStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<ClientsStackParamList>();
-const SwipeableClientListScreen = withSwipeTabNavigation(ClientListScreen);
+const SwipeableClientListScreen = withTabSwipeLock(ClientListScreen);
 
 export default function ClientsStackNavigator() {
   return (
