@@ -76,6 +76,22 @@ describe("ScheduleHistoryList", () => {
     ).toBeTruthy();
   });
 
+  it("formatea el diff de isPriority con etiqueta y valores legibles", async () => {
+    const priorityEvent: ScheduleEvent = {
+      ...statusEvent,
+      id: "event-3",
+      action: "updated",
+      changes: JSON.stringify({ isPriority: { before: false, after: true } }),
+    };
+    mockGetByScheduleId.mockResolvedValueOnce([priorityEvent]);
+
+    const { findByText } = render(
+      <ScheduleHistoryList scheduleId="schedule-1" refreshToken={0} />,
+    );
+
+    expect(await findByText("Prioridad: No → Sí")).toBeTruthy();
+  });
+
   it("marca los eventos sin verificar (PIN offline)", async () => {
     mockGetByScheduleId.mockResolvedValueOnce([statusEvent]);
 

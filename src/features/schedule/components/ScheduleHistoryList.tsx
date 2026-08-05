@@ -40,6 +40,7 @@ const FIELD_LABELS: Record<string, string> = {
   operarioId: "Operario",
   notes: "Notas",
   status: "Estado",
+  isPriority: "Prioridad",
 };
 
 function formatValue(field: string, value: unknown): string {
@@ -48,6 +49,9 @@ function formatValue(field: string, value: unknown): string {
   }
   if (field === "status") {
     return STATUS_LABELS[value as ScheduleStatus] ?? String(value);
+  }
+  if (typeof value === "boolean") {
+    return value ? "Sí" : "No";
   }
   return String(value);
 }
