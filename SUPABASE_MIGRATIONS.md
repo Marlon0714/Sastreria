@@ -681,6 +681,18 @@ Para la tablet compartida (`is_shared_device = true`) se sigue usando el `INSERT
 
 ---
 
+### v24_schedule_category (2026-08-05)
+
+**Contexto:** pedido del dueño — separar la Agenda de arreglos de una agenda de confecciones, con el mismo patrón de segmentado que ya usa Precios (un turno categorizado, no una entidad/tabla aparte). Mismo cambio que `v22_schedule_category` en SQLite local, aplicado ahora a Supabase.
+
+```sql
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'arreglo';
+```
+
+**Importante:** correr esto en Supabase ANTES de instalar el próximo build — sin esta columna, `syncSchedule()`/`pullSchedulesIncremental()` fallan al referenciar `category` (columna inexistente).
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
