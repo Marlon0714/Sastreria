@@ -37,7 +37,7 @@ const ALL_TABS: TabConfig[] = [
     name: "TallasTab",
     component: TallasStackNavigator,
     label: "Tallas",
-    icon: "resize",
+    icon: "shirt",
   },
   {
     name: "ScheduleTab",
