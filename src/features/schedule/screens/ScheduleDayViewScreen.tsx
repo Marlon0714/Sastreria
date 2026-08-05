@@ -1,5 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -186,12 +187,13 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
                 setSelectedDate((current) => shiftDateString(current, -1))
               }
             >
-              <Text style={styles.navButtonText}>‹</Text>
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
             </Pressable>
 
             <View style={styles.dateSelector}>
               <ScheduleDateTimePickerField
                 mode="date"
+                variant="dayNavigator"
                 value={selectedDate}
                 onChange={(value) => {
                   if (value) setSelectedDate(value);
@@ -209,7 +211,11 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
                 setSelectedDate((current) => shiftDateString(current, 1))
               }
             >
-              <Text style={styles.navButtonText}>›</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.primary}
+              />
             </Pressable>
           </View>
 
@@ -337,13 +343,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   navButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  navButtonText: {
-    fontSize: 22,
-    color: colors.primary,
-    fontWeight: "700",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primarySoft,
   },
   dateSelector: {
     flex: 1,

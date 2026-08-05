@@ -6,6 +6,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 
 type PickerMode = "date" | "time";
+type PickerVariant = "field" | "dayNavigator";
 
 interface ScheduleDateTimePickerFieldProps {
   mode: PickerMode;
@@ -16,6 +17,13 @@ interface ScheduleDateTimePickerFieldProps {
   accessibilityLabel: string;
   allowClear?: boolean;
   errorMessage?: string;
+  /**
+   * "field" (por defecto): look de campo de formulario, para usarse junto a
+   * otros inputs (ej. ScheduleFormScreen). "dayNavigator": look de botón
+   * destacado sin borde, para el selector de día de ScheduleDayViewScreen —
+   * ahí la fecha es el elemento principal de la pantalla, no un campo más.
+   */
+  variant?: PickerVariant;
 }
 
 function parseValue(mode: PickerMode, value?: string): Date {
@@ -48,13 +56,33 @@ function formatValue(mode: PickerMode, date: Date): string {
   return `${hours}:${minutes}`;
 }
 
-function formatDisplay(mode: PickerMode, value?: string): string | null {
+function capitalize(text: string): string {
+  return text.length > 0 ? text[0]!.toUpperCase() + text.slice(1) : text;
+}
+
+function formatDisplay(
+  mode: PickerMode,
+  variant: PickerVariant,
+  value?: string,
+): string | null {
   if (!value) {
     return null;
   }
 
   if (mode === "date") {
-    return parseValue("date", value).toLocaleDateString("es-CO", {
+    const date = parseValue("date", value);
+
+    if (variant === "dayNavigator") {
+      return capitalize(
+        date.toLocaleDateString("es-CO", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        }),
+      );
+    }
+
+    return date.toLocaleDateString("es-CO", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -72,6 +100,7 @@ export function ScheduleDateTimePickerField({
   accessibilityLabel,
   allowClear = true,
   errorMessage,
+  variant = "field",
 }: ScheduleDateTimePickerFieldProps) {
   const [isPickerVisible, setIsPickerVisible] = useState(false);
 
@@ -88,17 +117,25 @@ export function ScheduleDateTimePickerField({
     }
   };
 
-  const displayValue = formatDisplay(mode, value);
+  const displayValue = formatDisplay(mode, variant, value);
+  const isDayNavigator = variant === "dayNavigator";
 
   return (
     <View style={styles.container}>
       <View style={styles.row}>
         <Pressable
           accessibilityLabel={accessibilityLabel}
-          style={[styles.selector, errorMessage ? styles.selectorError : null]}
+          style={[
+            isDayNavigator ? styles.selectorDayNavigator : styles.selector,
+            errorMessage ? styles.selectorError : null,
+          ]}
           onPress={() => setIsPickerVisible(true)}
         >
-          <Text style={styles.selectorText}>
+          <Text
+            style={
+              isDayNavigator ? styles.selectorTextDayNavigator : styles.selectorText
+            }
+          >
             {displayValue ?? placeholder}
           </Text>
         </Pressable>
@@ -150,6 +187,19 @@ const styles = StyleSheet.create({
   },
   selectorText: {
     color: "#0f172a",
+  },
+  selectorDayNavigator: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.primarySoft,
+  },
+  selectorTextDayNavigator: {
+    color: colors.primary,
+    fontSize: 17,
+    fontWeight: "700",
   },
   clearButton: {
     paddingHorizontal: 10,

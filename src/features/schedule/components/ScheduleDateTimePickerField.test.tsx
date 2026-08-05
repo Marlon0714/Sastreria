@@ -91,6 +91,21 @@ describe("ScheduleDateTimePickerField", () => {
       expect(onChange).toHaveBeenCalledWith(undefined);
     });
 
+    it("con variant='dayNavigator' muestra un formato más descriptivo (día de semana)", () => {
+      const { getByText } = render(
+        <ScheduleDateTimePickerField
+          mode="date"
+          variant="dayNavigator"
+          value="2026-08-10"
+          onChange={jest.fn()}
+          placeholder="Sin fecha"
+          accessibilityLabel="Fecha"
+        />,
+      );
+
+      expect(getByText("Lun, 10 de ago")).toBeTruthy();
+    });
+
     it("no muestra el botón de quitar cuando allowClear=false", () => {
       const { queryByLabelText } = render(
         <ScheduleDateTimePickerField
