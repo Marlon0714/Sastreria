@@ -699,20 +699,27 @@ ALTER TABLE schedules ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'a
 
 ```sql
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated all clients" ON clients;
 CREATE POLICY "authenticated all clients" ON clients FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 ALTER TABLE camisa_measurements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated all camisa_measurements" ON camisa_measurements;
 CREATE POLICY "authenticated all camisa_measurements" ON camisa_measurements FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 ALTER TABLE pantalon_measurements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated all pantalon_measurements" ON pantalon_measurements;
 CREATE POLICY "authenticated all pantalon_measurements" ON pantalon_measurements FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 ALTER TABLE saco_measurements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated all saco_measurements" ON saco_measurements;
 CREATE POLICY "authenticated all saco_measurements" ON saco_measurements FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 ALTER TABLE chaleco_measurements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated all chaleco_measurements" ON chaleco_measurements;
 CREATE POLICY "authenticated all chaleco_measurements" ON chaleco_measurements FOR ALL TO authenticated USING (true) WITH CHECK (true);
 ```
+
+**Nota de idempotencia (2026-08-05):** `CREATE POLICY` no soporta `IF NOT EXISTS` en Postgres — si la política ya existe (ej. de una corrida anterior parcial), falla con `42710` y el SQL Editor de Supabase corta ahí la ejecución completa, dejando sin correr todo lo que viga después en el mismo script (incluidas v26/v27/v28 si estaban pegadas en el mismo bloque). Por eso cada `CREATE POLICY` va precedido de `DROP POLICY IF EXISTS` — así el script se puede correr las veces que sea sin fallar. `DROP POLICY` no borra datos, solo la regla de acceso, que se vuelve a crear en la siguiente línea.
 
 **Importante:** corre esto en Supabase **cuanto antes**, sin esperar al próximo build — es un hueco de exposición de datos activo en producción, no depende de ninguna versión de la app. No requiere reinstalar nada.
 
