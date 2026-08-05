@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import {
@@ -7,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -217,7 +219,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         </View>
       ) : null}
 
-      <View style={styles.fieldGroup}>
+      <View style={styles.card}>
         <Text style={styles.label}>Categoría</Text>
         <Controller
           control={control}
@@ -254,136 +256,150 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         />
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Fecha (opcional)</Text>
-        <Controller
-          control={control}
-          name="date"
-          render={({ field: { onChange, value } }) => (
-            <ScheduleDateTimePickerField
-              mode="date"
-              value={value}
-              onChange={onChange}
-              placeholder="Sin fecha"
-              accessibilityLabel="Fecha"
-              errorMessage={errors.date?.message}
-            />
-          )}
-        />
-      </View>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Cuándo</Text>
 
-      <Pressable
-        accessibilityLabel="Con hora específica"
-        style={styles.timeToggle}
-        onPress={() => {
-          const next = !hasTime;
-          setHasTime(next);
-          if (!next) {
-            setValue("time", undefined);
-          }
-        }}
-      >
-        <Text style={styles.timeToggleText}>
-          {hasTime ? "☑" : "☐"} Con hora específica
-        </Text>
-      </Pressable>
-
-      {hasTime ? (
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Hora</Text>
+          <Text style={styles.label}>Fecha (opcional)</Text>
           <Controller
             control={control}
-            name="time"
+            name="date"
             render={({ field: { onChange, value } }) => (
               <ScheduleDateTimePickerField
-                mode="time"
+                mode="date"
                 value={value}
                 onChange={onChange}
-                placeholder="Sin hora"
-                accessibilityLabel="Hora"
-                allowClear={false}
-                errorMessage={errors.time?.message}
+                placeholder="Sin fecha"
+                accessibilityLabel="Fecha"
+                errorMessage={errors.date?.message}
               />
             )}
           />
         </View>
-      ) : null}
 
-      {dateValue ? (
-        <Controller
-          control={control}
-          name="isPriority"
-          render={({ field: { onChange, value } }) => (
-            <Pressable
-              accessibilityLabel="Prioritario"
-              style={styles.timeToggle}
-              onPress={() => onChange(!value)}
-            >
-              <Text style={styles.timeToggleText}>
-                {value ? "☑" : "☐"} Prioritario
-              </Text>
-            </Pressable>
-          )}
-        />
-      ) : null}
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>Con hora específica</Text>
+          <Switch
+            accessibilityLabel="Con hora específica"
+            value={hasTime}
+            onValueChange={(next) => {
+              setHasTime(next);
+              if (!next) {
+                setValue("time", undefined);
+              }
+            }}
+            trackColor={{ false: colors.border, true: colors.primarySoft }}
+            thumbColor={hasTime ? colors.primary : "#f4f3f4"}
+          />
+        </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Cliente</Text>
-        <Controller
-          control={control}
-          name="clientId"
-          render={({ field: { onChange, value } }) => (
-            <ClientPickerField
-              value={value}
-              onChange={onChange}
-              errorMessage={errors.clientId?.message}
+        {hasTime ? (
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Hora</Text>
+            <Controller
+              control={control}
+              name="time"
+              render={({ field: { onChange, value } }) => (
+                <ScheduleDateTimePickerField
+                  mode="time"
+                  value={value}
+                  onChange={onChange}
+                  placeholder="Sin hora"
+                  accessibilityLabel="Hora"
+                  allowClear={false}
+                  errorMessage={errors.time?.message}
+                />
+              )}
             />
-          )}
-        />
-      </View>
+          </View>
+        ) : null}
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Precio (opcional)</Text>
-        <Controller
-          control={control}
-          name="price"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              style={[styles.input, errors.price && styles.inputError]}
-              placeholder="Ej: 15000"
-              placeholderTextColor="#94a3b8"
-              keyboardType="numeric"
-              onBlur={onBlur}
-              onChangeText={(text) => {
-                const digitsOnly = text.replace(/[^0-9.]/g, "");
-                onChange(digitsOnly === "" ? undefined : parseFloat(digitsOnly));
-              }}
-              value={value === undefined ? "" : String(value)}
-            />
-          )}
-        />
-        {errors.price ? (
-          <Text style={styles.errorText}>{errors.price.message}</Text>
+        {dateValue ? (
+          <Controller
+            control={control}
+            name="isPriority"
+            render={({ field: { onChange, value } }) => (
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>⭐ Prioritario</Text>
+                <Switch
+                  accessibilityLabel="Prioritario"
+                  value={!!value}
+                  onValueChange={onChange}
+                  trackColor={{
+                    false: colors.border,
+                    true: colors.dangerSoft,
+                  }}
+                  thumbColor={value ? colors.danger : "#f4f3f4"}
+                />
+              </View>
+            )}
+          />
         ) : null}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Operario asignado (opcional)</Text>
-        <Controller
-          control={control}
-          name="operarioId"
-          render={({ field: { onChange, value } }) => (
-            <OperarioPickerField
-              value={value}
-              onChange={onChange}
-              errorMessage={errors.operarioId?.message}
-            />
-          )}
-        />
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Detalles</Text>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Cliente</Text>
+          <Controller
+            control={control}
+            name="clientId"
+            render={({ field: { onChange, value } }) => (
+              <ClientPickerField
+                value={value}
+                onChange={onChange}
+                errorMessage={errors.clientId?.message}
+              />
+            )}
+          />
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Precio (opcional)</Text>
+          <Controller
+            control={control}
+            name="price"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                style={[styles.input, errors.price && styles.inputError]}
+                placeholder="Ej: 15000"
+                placeholderTextColor={colors.textPlaceholder}
+                keyboardType="numeric"
+                onBlur={onBlur}
+                onChangeText={(text) => {
+                  const digitsOnly = text.replace(/[^0-9.]/g, "");
+                  onChange(
+                    digitsOnly === "" ? undefined : parseFloat(digitsOnly),
+                  );
+                }}
+                value={value === undefined ? "" : String(value)}
+              />
+            )}
+          />
+          {errors.price ? (
+            <Text style={styles.errorText}>{errors.price.message}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Operario asignado (opcional)</Text>
+          <Controller
+            control={control}
+            name="operarioId"
+            render={({ field: { onChange, value } }) => (
+              <OperarioPickerField
+                value={value}
+                onChange={onChange}
+                errorMessage={errors.operarioId?.message}
+              />
+            )}
+          />
+        </View>
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Notas (opcional)</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Notas</Text>
         <Controller
           control={control}
           name="notes"
@@ -391,7 +407,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             <TextInput
               style={[styles.input, styles.notesInput]}
               placeholder="Detalles del turno"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
               value={value}
               onChangeText={onChange}
               multiline
@@ -404,17 +420,22 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
       <Pressable
         accessibilityLabel="Guardar turno"
-        style={[styles.saveButton, isSubmitting ? styles.buttonDisabled : null]}
+        style={({ pressed }) => [
+          styles.saveButton,
+          isSubmitting ? styles.buttonDisabled : null,
+          pressed && !isSubmitting ? styles.saveButtonPressed : null,
+        ]}
         onPress={() => void onSubmit()}
         disabled={isSubmitting}
       >
+        <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         <Text style={styles.saveButtonText}>
           {isSubmitting ? "Guardando..." : "Guardar turno"}
         </Text>
       </Pressable>
 
       {scheduleId && displaySchedule ? (
-        <View style={styles.statusActionsGroup}>
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>Estado del turno</Text>
 
           {statusActions.error ? (
@@ -432,6 +453,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
               onPress={() => void handleMarkReady()}
               disabled={statusActions.isProcessing}
             >
+              <Ionicons name="bag-check-outline" size={18} color="#ffffff" />
               <Text style={styles.statusActionButtonText}>
                 Marcar listo para entregar
               </Text>
@@ -448,6 +470,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
               onPress={() => void handleMarkDelivered()}
               disabled={statusActions.isProcessing}
             >
+              <Ionicons name="checkmark-done" size={18} color="#ffffff" />
               <Text style={styles.statusActionButtonText}>
                 Marcar entregado
               </Text>
@@ -493,6 +516,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           onPress={onDelete}
           disabled={isDeleting}
         >
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
           <Text style={styles.deleteButtonText}>
             {isDeleting ? "Eliminando..." : "Eliminar turno"}
           </Text>
@@ -529,8 +553,28 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    gap: 14,
+    gap: 16,
     backgroundColor: colors.background,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   fieldGroup: {
     gap: 8,
@@ -545,10 +589,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.textPrimary,
   },
-  timeToggle: {
-    paddingVertical: 4,
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  timeToggleText: {
+  switchLabel: {
     fontSize: 14,
     color: colors.textSecondary,
     fontWeight: "600",
@@ -579,13 +625,10 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: "700",
   },
-  statusActionsGroup: {
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 14,
-  },
   statusActionButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
@@ -624,11 +667,12 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    backgroundColor: colors.background,
     color: colors.textPrimary,
   },
   inputError: {
@@ -655,20 +699,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   saveButton: {
-    marginTop: 8,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 4,
     backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 15,
     alignItems: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  saveButtonPressed: {
+    backgroundColor: colors.primaryPressed,
   },
   saveButtonText: {
     color: "#ffffff",
     fontWeight: "700",
+    fontSize: 16,
   },
   deleteButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
     borderColor: colors.danger,
-    borderWidth: 1,
-    borderRadius: 10,
+    borderWidth: 1.5,
+    borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },

@@ -228,7 +228,7 @@ describe("ScheduleFormScreen", () => {
     );
 
     fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
-    fireEvent.press(getByLabelText("Con hora específica"));
+    fireEvent(getByLabelText("Con hora específica"), "valueChange", true);
     fireEvent.changeText(getByLabelText("Hora"), "14:30");
     fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
     fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "50000");
@@ -324,7 +324,7 @@ describe("ScheduleFormScreen", () => {
 
     fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
     fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
-    fireEvent.press(getByLabelText("Prioritario"));
+    fireEvent(getByLabelText("Prioritario"), "valueChange", true);
     fireEvent.press(getByLabelText("Guardar turno"));
 
     await waitFor(() => {
