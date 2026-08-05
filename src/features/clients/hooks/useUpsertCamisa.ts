@@ -75,11 +75,11 @@ function mapValidationErrors(
     largo: fieldErrors.largo?.[0]
       ? { type: "zod", message: fieldErrors.largo[0] }
       : undefined,
-    largoManga: fieldErrors.largoManga?.[0]
-      ? { type: "zod", message: fieldErrors.largoManga[0] }
+    mangaLarga: fieldErrors.mangaLarga?.[0]
+      ? { type: "zod", message: fieldErrors.mangaLarga[0] }
       : undefined,
-    anchoManga: fieldErrors.anchoManga?.[0]
-      ? { type: "zod", message: fieldErrors.anchoManga[0] }
+    mangaCorta: fieldErrors.mangaCorta?.[0]
+      ? { type: "zod", message: fieldErrors.mangaCorta[0] }
       : undefined,
     escote: fieldErrors.escote?.[0]
       ? { type: "zod", message: fieldErrors.escote[0] }

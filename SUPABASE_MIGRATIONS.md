@@ -776,6 +776,26 @@ UPDATE talla_templates SET pecho_ajustado = pecho, cintura_ajustado = cintura, b
 
 ---
 
+### v28_manga_larga_corta (2026-08-05)
+
+**Contexto:** aclaración del dueño sobre la manga — pasa a tener 2 variantes de largo (Largo manga larga / Largo manga corta) en vez de un solo "largo manga"; "ancho manga" queda deprecado sin reemplazo directo (brazo y puño, que ya existían, cubren ese rol). Se migra el valor viejo de `largo_manga` a `manga_larga`.
+
+```sql
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS manga_larga REAL;
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS manga_corta REAL;
+UPDATE camisa_measurements SET manga_larga = largo_manga;
+
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS manga_larga REAL;
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS manga_corta REAL;
+UPDATE saco_measurements SET manga_larga = largo_manga;
+
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS manga_larga REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS manga_corta REAL;
+UPDATE talla_templates SET manga_larga = largo_manga WHERE type IN ('camisa', 'saco');
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

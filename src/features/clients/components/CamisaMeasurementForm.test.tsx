@@ -46,8 +46,8 @@ describe("CamisaMeasurementForm", () => {
     expect(getByLabelText("Pecho ajustado (cm)")).toBeTruthy();
     expect(getByLabelText("Pecho ancho (cm)")).toBeTruthy();
     expect(getByLabelText("Largo (cm)")).toBeTruthy();
-    expect(getByLabelText("Largo manga (cm)")).toBeTruthy();
-    expect(getByLabelText("Ancho manga (cm)")).toBeTruthy();
+    expect(getByLabelText("Largo manga larga (cm)")).toBeTruthy();
+    expect(getByLabelText("Largo manga corta (cm)")).toBeTruthy();
     expect(getByLabelText("Escote (cm)")).toBeTruthy();
     expect(getByLabelText("Cuello normal (cm)")).toBeTruthy();
     expect(getByLabelText("Cuello cruce (cm)")).toBeTruthy();

@@ -18,8 +18,8 @@ export interface CamisaFormValues {
   baseAjustado: string;
   baseAncho: string;
   hombro: string;
-  largoManga: string;
-  anchoManga: string;
+  mangaLarga: string;
+  mangaCorta: string;
   brazo: string;
   puno: string;
   distancia: string;
@@ -42,8 +42,8 @@ export const CAMISA_FORM_DEFAULTS: CamisaFormValues = {
   baseAjustado: "",
   baseAncho: "",
   hombro: "",
-  largoManga: "",
-  anchoManga: "",
+  mangaLarga: "",
+  mangaCorta: "",
   brazo: "",
   puno: "",
   distancia: "",
@@ -150,17 +150,17 @@ export default function CamisaMeasurementForm({
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="largoManga"
-        label="Largo manga (cm)"
+        name="mangaLarga"
+        label="Largo manga larga (cm)"
         control={control}
-        errorMessage={errors.largoManga?.message}
+        errorMessage={errors.mangaLarga?.message}
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="anchoManga"
-        label="Ancho manga (cm)"
+        name="mangaCorta"
+        label="Largo manga corta (cm)"
         control={control}
-        errorMessage={errors.anchoManga?.message}
+        errorMessage={errors.mangaCorta?.message}
         disabled={disabled}
       />
       <MeasurementNumberField

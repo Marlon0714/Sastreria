@@ -33,8 +33,8 @@ interface TallaTemplateRow {
   base_ajustado: number | null;
   base_ancho: number | null;
   largo: number | null;
-  largo_manga: number | null;
-  ancho_manga: number | null;
+  manga_larga: number | null;
+  manga_corta: number | null;
   escote: number | null;
   cuello_normal: number | null;
   cuello_cruce: number | null;
@@ -71,8 +71,8 @@ function mapRow(row: TallaTemplateRow): TallaTemplate {
     baseAjustado: row.base_ajustado,
     baseAncho: row.base_ancho,
     largo: row.largo,
-    largoManga: row.largo_manga,
-    anchoManga: row.ancho_manga,
+    mangaLarga: row.manga_larga,
+    mangaCorta: row.manga_corta,
     escote: row.escote,
     cuelloNormal: row.cuello_normal,
     cuelloCruce: row.cuello_cruce,
@@ -123,7 +123,7 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
         id, name, type,
         espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
         pecho_ajustado, pecho_ancho, cintura, cintura_ajustado, cintura_ancho,
-        base, base_ajustado, base_ancho, largo, largo_manga, ancho_manga,
+        base, base_ajustado, base_ancho, largo, manga_larga, manga_corta,
         escote, cuello_normal, cuello_cruce, brazo, puno, entrepierna, tiro, pierna, rodilla, bota,
         notes, created_at, updated_at, sync_status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
@@ -145,8 +145,8 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       n(dto.baseAjustado),
       n(dto.baseAncho),
       n(dto.largo),
-      n(dto.largoManga),
-      n(dto.anchoManga),
+      n(dto.mangaLarga),
+      n(dto.mangaCorta),
       n(dto.escote),
       n(dto.cuelloNormal),
       n(dto.cuelloCruce),
@@ -181,7 +181,7 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
         pecho_ajustado = ?, pecho_ancho = ?,
         cintura = ?, cintura_ajustado = ?, cintura_ancho = ?,
         base = ?, base_ajustado = ?, base_ancho = ?,
-        largo = ?, largo_manga = ?, ancho_manga = ?, escote = ?,
+        largo = ?, manga_larga = ?, manga_corta = ?, escote = ?,
         cuello_normal = ?, cuello_cruce = ?,
         brazo = ?, puno = ?, entrepierna = ?, tiro = ?, pierna = ?, rodilla = ?, bota = ?,
         notes = ?, updated_at = ?, sync_status = 'pending'
@@ -202,8 +202,8 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       n(dto.baseAjustado),
       n(dto.baseAncho),
       n(dto.largo),
-      n(dto.largoManga),
-      n(dto.anchoManga),
+      n(dto.mangaLarga),
+      n(dto.mangaCorta),
       n(dto.escote),
       n(dto.cuelloNormal),
       n(dto.cuelloCruce),

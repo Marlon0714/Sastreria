@@ -5,7 +5,7 @@ import { type CamisaFormValues } from "./CamisaMeasurementForm";
 import { MeasurementCard } from "./MeasurementCard";
 import { MeasurementNotesField } from "./MeasurementFields";
 import { MeasurementGridSection } from "./MeasurementGridSection";
-import { MeasurementPairCard } from "./MeasurementPairCard";
+import { MeasurementGroupCard } from "./MeasurementGroupCard";
 
 interface CamisaMeasurementGridProps {
   control: Control<CamisaFormValues>;
@@ -53,54 +53,60 @@ export default function CamisaMeasurementGrid({
           errorMessage={errors.largo?.message}
           disabled={disabled}
         />
-        <MeasurementPairCard
+        <MeasurementGroupCard
           title="Pecho"
-          first={{
-            name: "pechoAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Pecho ajustado (cm)",
-            errorMessage: errors.pechoAjustado?.message,
-          }}
-          second={{
-            name: "pechoAncho",
-            label: "Ancho",
-            accessibilityLabel: "Pecho ancho (cm)",
-            errorMessage: errors.pechoAncho?.message,
-          }}
+          fields={[
+            {
+              name: "pechoAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Pecho ajustado (cm)",
+              errorMessage: errors.pechoAjustado?.message,
+            },
+            {
+              name: "pechoAncho",
+              label: "Ancho",
+              accessibilityLabel: "Pecho ancho (cm)",
+              errorMessage: errors.pechoAncho?.message,
+            },
+          ]}
           control={control}
           disabled={disabled}
         />
-        <MeasurementPairCard
+        <MeasurementGroupCard
           title="Cintura"
-          first={{
-            name: "cinturaAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Cintura ajustado (cm)",
-            errorMessage: errors.cinturaAjustado?.message,
-          }}
-          second={{
-            name: "cinturaAncho",
-            label: "Ancho",
-            accessibilityLabel: "Cintura ancho (cm)",
-            errorMessage: errors.cinturaAncho?.message,
-          }}
+          fields={[
+            {
+              name: "cinturaAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Cintura ajustado (cm)",
+              errorMessage: errors.cinturaAjustado?.message,
+            },
+            {
+              name: "cinturaAncho",
+              label: "Ancho",
+              accessibilityLabel: "Cintura ancho (cm)",
+              errorMessage: errors.cinturaAncho?.message,
+            },
+          ]}
           control={control}
           disabled={disabled}
         />
-        <MeasurementPairCard
+        <MeasurementGroupCard
           title="Base"
-          first={{
-            name: "baseAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Base ajustado (cm)",
-            errorMessage: errors.baseAjustado?.message,
-          }}
-          second={{
-            name: "baseAncho",
-            label: "Ancho",
-            accessibilityLabel: "Base ancho (cm)",
-            errorMessage: errors.baseAncho?.message,
-          }}
+          fields={[
+            {
+              name: "baseAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Base ajustado (cm)",
+              errorMessage: errors.baseAjustado?.message,
+            },
+            {
+              name: "baseAncho",
+              label: "Ancho",
+              accessibilityLabel: "Base ancho (cm)",
+              errorMessage: errors.baseAncho?.message,
+            },
+          ]}
           control={control}
           disabled={disabled}
         />
@@ -112,36 +118,35 @@ export default function CamisaMeasurementGrid({
           errorMessage={errors.hombro?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="largoManga"
-          label="Largo manga"
-          accessibilityLabel="Largo manga (cm)"
+        <MeasurementGroupCard
+          title="Manga"
+          fields={[
+            {
+              name: "mangaLarga",
+              label: "Largo manga larga",
+              accessibilityLabel: "Largo manga larga (cm)",
+              errorMessage: errors.mangaLarga?.message,
+            },
+            {
+              name: "mangaCorta",
+              label: "Largo manga corta",
+              accessibilityLabel: "Largo manga corta (cm)",
+              errorMessage: errors.mangaCorta?.message,
+            },
+            {
+              name: "brazo",
+              label: "Brazo",
+              accessibilityLabel: "Brazo (cm)",
+              errorMessage: errors.brazo?.message,
+            },
+            {
+              name: "puno",
+              label: "Puño",
+              accessibilityLabel: "Puño (cm)",
+              errorMessage: errors.puno?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.largoManga?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="anchoManga"
-          label="Ancho manga"
-          accessibilityLabel="Ancho manga (cm)"
-          control={control}
-          errorMessage={errors.anchoManga?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="brazo"
-          label="Brazo"
-          accessibilityLabel="Brazo (cm)"
-          control={control}
-          errorMessage={errors.brazo?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="puno"
-          label="Puño"
-          accessibilityLabel="Puño (cm)"
-          control={control}
-          errorMessage={errors.puno?.message}
           disabled={disabled}
         />
         <MeasurementCard
@@ -168,20 +173,22 @@ export default function CamisaMeasurementGrid({
           errorMessage={errors.escote?.message}
           disabled={disabled}
         />
-        <MeasurementPairCard
+        <MeasurementGroupCard
           title="Cuello"
-          first={{
-            name: "cuelloNormal",
-            label: "Normal",
-            accessibilityLabel: "Cuello normal (cm)",
-            errorMessage: errors.cuelloNormal?.message,
-          }}
-          second={{
-            name: "cuelloCruce",
-            label: "Cruce",
-            accessibilityLabel: "Cuello cruce (cm)",
-            errorMessage: errors.cuelloCruce?.message,
-          }}
+          fields={[
+            {
+              name: "cuelloNormal",
+              label: "Normal",
+              accessibilityLabel: "Cuello normal (cm)",
+              errorMessage: errors.cuelloNormal?.message,
+            },
+            {
+              name: "cuelloCruce",
+              label: "Cruce",
+              accessibilityLabel: "Cuello cruce (cm)",
+              errorMessage: errors.cuelloCruce?.message,
+            },
+          ]}
           control={control}
           disabled={disabled}
         />

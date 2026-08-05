@@ -36,8 +36,8 @@ export interface TallaTemplate extends BaseEntity {
   baseAjustado: number | null;
   baseAncho: number | null;
   largo: number | null;
-  largoManga: number | null;
-  anchoManga: number | null;
+  mangaLarga: number | null;
+  mangaCorta: number | null;
   escote: number | null;
   cuelloNormal: number | null;
   cuelloCruce: number | null;
@@ -70,8 +70,8 @@ export interface CreateTallaTemplateDTO {
   baseAjustado?: number | null;
   baseAncho?: number | null;
   largo?: number | null;
-  largoManga?: number | null;
-  anchoManga?: number | null;
+  mangaLarga?: number | null;
+  mangaCorta?: number | null;
   escote?: number | null;
   cuelloNormal?: number | null;
   cuelloCruce?: number | null;

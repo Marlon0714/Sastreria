@@ -45,8 +45,8 @@ interface CamisaQueueRow {
   base_ajustado: number | null;
   base_ancho: number | null;
   largo: number | null;
-  largo_manga: number | null;
-  ancho_manga: number | null;
+  manga_larga: number | null;
+  manga_corta: number | null;
   escote: number | null;
   cuello_normal: number | null;
   cuello_cruce: number | null;
@@ -117,8 +117,8 @@ interface SacoQueueRow {
   base_ajustado: number | null;
   base_ancho: number | null;
   largo: number | null;
-  largo_manga: number | null;
-  ancho_manga: number | null;
+  manga_larga: number | null;
+  manga_corta: number | null;
   escote: number | null;
   cuello_normal: number | null;
   cuello_cruce: number | null;
@@ -168,8 +168,8 @@ interface TallaTemplateQueueRow {
   base_ajustado: number | null;
   base_ancho: number | null;
   largo: number | null;
-  largo_manga: number | null;
-  ancho_manga: number | null;
+  manga_larga: number | null;
+  manga_corta: number | null;
   escote: number | null;
   cuello_normal: number | null;
   cuello_cruce: number | null;
@@ -298,8 +298,8 @@ function toCamisaQueueItem(row: CamisaQueueRow): SyncCamisaQueueItem {
       baseAjustado: row.base_ajustado,
       baseAncho: row.base_ancho,
       largo: row.largo,
-      largoManga: row.largo_manga,
-      anchoManga: row.ancho_manga,
+      mangaLarga: row.manga_larga,
+      mangaCorta: row.manga_corta,
       escote: row.escote,
       cuelloNormal: row.cuello_normal,
       cuelloCruce: row.cuello_cruce,
@@ -408,8 +408,8 @@ function toSacoQueueItem(row: SacoQueueRow): SyncSacoQueueItem {
       baseAjustado: row.base_ajustado,
       baseAncho: row.base_ancho,
       largo: row.largo,
-      largoManga: row.largo_manga,
-      anchoManga: row.ancho_manga,
+      mangaLarga: row.manga_larga,
+      mangaCorta: row.manga_corta,
       escote: row.escote,
       cuelloNormal: row.cuello_normal,
       cuelloCruce: row.cuello_cruce,
@@ -479,8 +479,8 @@ function toTallaTemplateQueueItem(
       baseAjustado: row.base_ajustado,
       baseAncho: row.base_ancho,
       largo: row.largo,
-      largoManga: row.largo_manga,
-      anchoManga: row.ancho_manga,
+      mangaLarga: row.manga_larga,
+      mangaCorta: row.manga_corta,
       escote: row.escote,
       cuelloNormal: row.cuello_normal,
       cuelloCruce: row.cuello_cruce,
@@ -639,8 +639,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         base_ajustado,
         base_ancho,
         largo,
-        largo_manga,
-        ancho_manga,
+        manga_larga,
+        manga_corta,
         escote,
         cuello_normal,
         cuello_cruce,
@@ -747,8 +747,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         base_ajustado,
         base_ancho,
         largo,
-        largo_manga,
-        ancho_manga,
+        manga_larga,
+        manga_corta,
         escote,
         cuello_normal,
         cuello_cruce,
@@ -816,8 +816,8 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         base_ajustado,
         base_ancho,
         largo,
-        largo_manga,
-        ancho_manga,
+        manga_larga,
+        manga_corta,
         escote,
         cuello_normal,
         cuello_cruce,

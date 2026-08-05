@@ -56,8 +56,8 @@ export interface CamisaMeasurement extends BaseEntity {
   baseAjustado: number | null;
   baseAncho: number | null;
   largo: number | null;
-  largoManga: number | null;
-  anchoManga: number | null;
+  mangaLarga: number | null;
+  mangaCorta: number | null;
   escote: number | null;
   cuelloNormal: number | null;
   cuelloCruce: number | null;
@@ -83,8 +83,8 @@ export interface UpsertCamisaDTO {
   baseAjustado?: number | null;
   baseAncho?: number | null;
   largo?: number | null;
-  largoManga?: number | null;
-  anchoManga?: number | null;
+  mangaLarga?: number | null;
+  mangaCorta?: number | null;
   escote?: number | null;
   cuelloNormal?: number | null;
   cuelloCruce?: number | null;
@@ -142,8 +142,8 @@ export interface SacoMeasurement extends BaseEntity {
   baseAjustado: number | null;
   baseAncho: number | null;
   largo: number | null;
-  largoManga: number | null;
-  anchoManga: number | null;
+  mangaLarga: number | null;
+  mangaCorta: number | null;
   escote: number | null;
   cuelloNormal: number | null;
   cuelloCruce: number | null;
@@ -167,8 +167,8 @@ export interface UpsertSacoDTO {
   baseAjustado?: number | null;
   baseAncho?: number | null;
   largo?: number | null;
-  largoManga?: number | null;
-  anchoManga?: number | null;
+  mangaLarga?: number | null;
+  mangaCorta?: number | null;
   escote?: number | null;
   cuelloNormal?: number | null;
   cuelloCruce?: number | null;

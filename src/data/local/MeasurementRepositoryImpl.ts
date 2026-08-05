@@ -32,8 +32,8 @@ interface SacoMeasurementRow {
   base_ajustado: number | null;
   base_ancho: number | null;
   largo: number | null;
-  largo_manga: number | null;
-  ancho_manga: number | null;
+  manga_larga: number | null;
+  manga_corta: number | null;
   escote: number | null;
   cuello_normal: number | null;
   cuello_cruce: number | null;
@@ -80,8 +80,8 @@ function mapSacoRow(row: SacoMeasurementRow): SacoMeasurement {
     baseAjustado: row.base_ajustado,
     baseAncho: row.base_ancho,
     largo: row.largo,
-    largoManga: row.largo_manga,
-    anchoManga: row.ancho_manga,
+    mangaLarga: row.manga_larga,
+    mangaCorta: row.manga_corta,
     escote: row.escote,
     cuelloNormal: row.cuello_normal,
     cuelloCruce: row.cuello_cruce,
@@ -133,8 +133,8 @@ interface CamisaMeasurementRow {
   base_ajustado: number | null;
   base_ancho: number | null;
   largo: number | null;
-  largo_manga: number | null;
-  ancho_manga: number | null;
+  manga_larga: number | null;
+  manga_corta: number | null;
   escote: number | null;
   cuello_normal: number | null;
   cuello_cruce: number | null;
@@ -212,8 +212,8 @@ function mapCamisaRow(row: CamisaMeasurementRow): CamisaMeasurement {
     baseAjustado: row.base_ajustado,
     baseAncho: row.base_ancho,
     largo: row.largo,
-    largoManga: row.largo_manga,
-    anchoManga: row.ancho_manga,
+    mangaLarga: row.manga_larga,
+    mangaCorta: row.manga_corta,
     escote: row.escote,
     cuelloNormal: row.cuello_normal,
     cuelloCruce: row.cuello_cruce,
@@ -274,8 +274,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       baseAjustado: normalizeNullableNumber(input.baseAjustado),
       baseAncho: normalizeNullableNumber(input.baseAncho),
       largo: normalizeNullableNumber(input.largo),
-      largoManga: normalizeNullableNumber(input.largoManga),
-      anchoManga: normalizeNullableNumber(input.anchoManga),
+      mangaLarga: normalizeNullableNumber(input.mangaLarga),
+      mangaCorta: normalizeNullableNumber(input.mangaCorta),
       escote: normalizeNullableNumber(input.escote),
       cuelloNormal: normalizeNullableNumber(input.cuelloNormal),
       cuelloCruce: normalizeNullableNumber(input.cuelloCruce),
@@ -292,7 +292,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         INSERT INTO saco_measurements (
           id, client_id, espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
           pecho_ajustado, pecho_ancho, cintura_ajustado, cintura_ancho, base_ajustado, base_ancho,
-          largo, largo_manga, ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, notes,
+          largo, manga_larga, manga_corta, escote, cuello_normal, cuello_cruce, brazo, puno, notes,
           created_at, updated_at, sync_status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(client_id) DO UPDATE SET
@@ -309,8 +309,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
           base_ajustado = excluded.base_ajustado,
           base_ancho = excluded.base_ancho,
           largo = excluded.largo,
-          largo_manga = excluded.largo_manga,
-          ancho_manga = excluded.ancho_manga,
+          manga_larga = excluded.manga_larga,
+          manga_corta = excluded.manga_corta,
           escote = excluded.escote,
           cuello_normal = excluded.cuello_normal,
           cuello_cruce = excluded.cuello_cruce,
@@ -335,8 +335,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       sacoMeasurement.baseAjustado,
       sacoMeasurement.baseAncho,
       sacoMeasurement.largo,
-      sacoMeasurement.largoManga,
-      sacoMeasurement.anchoManga,
+      sacoMeasurement.mangaLarga,
+      sacoMeasurement.mangaCorta,
       sacoMeasurement.escote,
       sacoMeasurement.cuelloNormal,
       sacoMeasurement.cuelloCruce,
@@ -445,7 +445,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         SELECT
           id, client_id, espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
           pecho_ajustado, pecho_ancho, cintura_ajustado, cintura_ancho, base_ajustado, base_ancho,
-          largo, largo_manga, ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, notes,
+          largo, manga_larga, manga_corta, escote, cuello_normal, cuello_cruce, brazo, puno, notes,
           created_at, updated_at, sync_status
         FROM saco_measurements
         WHERE client_id = ?
@@ -502,8 +502,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       baseAjustado: normalizeNullableNumber(input.baseAjustado),
       baseAncho: normalizeNullableNumber(input.baseAncho),
       largo: normalizeNullableNumber(input.largo),
-      largoManga: normalizeNullableNumber(input.largoManga),
-      anchoManga: normalizeNullableNumber(input.anchoManga),
+      mangaLarga: normalizeNullableNumber(input.mangaLarga),
+      mangaCorta: normalizeNullableNumber(input.mangaCorta),
       escote: normalizeNullableNumber(input.escote),
       cuelloNormal: normalizeNullableNumber(input.cuelloNormal),
       cuelloCruce: normalizeNullableNumber(input.cuelloCruce),
@@ -535,8 +535,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         base_ajustado,
         base_ancho,
         largo,
-        largo_manga,
-        ancho_manga,
+        manga_larga,
+        manga_corta,
         escote,
         cuello_normal,
         cuello_cruce,
@@ -563,8 +563,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         base_ajustado = excluded.base_ajustado,
         base_ancho = excluded.base_ancho,
         largo = excluded.largo,
-        largo_manga = excluded.largo_manga,
-        ancho_manga = excluded.ancho_manga,
+        manga_larga = excluded.manga_larga,
+        manga_corta = excluded.manga_corta,
         escote = excluded.escote,
         cuello_normal = excluded.cuello_normal,
         cuello_cruce = excluded.cuello_cruce,
@@ -591,8 +591,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       camisaMeasurement.baseAjustado,
       camisaMeasurement.baseAncho,
       camisaMeasurement.largo,
-      camisaMeasurement.largoManga,
-      camisaMeasurement.anchoManga,
+      camisaMeasurement.mangaLarga,
+      camisaMeasurement.mangaCorta,
       camisaMeasurement.escote,
       camisaMeasurement.cuelloNormal,
       camisaMeasurement.cuelloCruce,
@@ -742,8 +742,8 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         base_ajustado,
         base_ancho,
         largo,
-        largo_manga,
-        ancho_manga,
+        manga_larga,
+        manga_corta,
         escote,
         cuello_normal,
         cuello_cruce,

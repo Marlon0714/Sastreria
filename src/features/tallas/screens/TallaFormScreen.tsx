@@ -18,7 +18,7 @@ import { ErrorView, LoadingView } from "../../../shared/components";
 import { SIZE_VALUE_PATTERN } from "../../../shared/domain/textPatterns";
 import { MeasurementCard } from "../../clients/components/MeasurementCard";
 import { MeasurementGridSection } from "../../clients/components/MeasurementGridSection";
-import { MeasurementPairCard } from "../../clients/components/MeasurementPairCard";
+import { MeasurementGroupCard } from "../../clients/components/MeasurementGroupCard";
 import type { TallaGarmentType, TallaTemplate } from "../domain/types";
 import { TALLA_GARMENT_LABELS } from "../domain/types";
 import { useTallaTemplateRepository } from "../hooks/TallasDependenciesProvider";
@@ -44,8 +44,8 @@ interface TallaFormValues {
   baseAjustado: string;
   baseAncho: string;
   largo: string;
-  largoManga: string;
-  anchoManga: string;
+  mangaLarga: string;
+  mangaCorta: string;
   escote: string;
   cuelloNormal: string;
   cuelloCruce: string;
@@ -77,8 +77,8 @@ const DEFAULTS: TallaFormValues = {
   baseAjustado: "",
   baseAncho: "",
   largo: "",
-  largoManga: "",
-  anchoManga: "",
+  mangaLarga: "",
+  mangaCorta: "",
   escote: "",
   cuelloNormal: "",
   cuelloCruce: "",
@@ -111,8 +111,8 @@ function toFormValues(t: TallaTemplate): TallaFormValues {
     baseAjustado: s(t.baseAjustado),
     baseAncho: s(t.baseAncho),
     largo: s(t.largo),
-    largoManga: s(t.largoManga),
-    anchoManga: s(t.anchoManga),
+    mangaLarga: s(t.mangaLarga),
+    mangaCorta: s(t.mangaCorta),
     escote: s(t.escote),
     cuelloNormal: s(t.cuelloNormal),
     cuelloCruce: s(t.cuelloCruce),
@@ -212,8 +212,8 @@ export default function TallaFormScreen({ navigation, route }: Props) {
       baseAjustado: parseNum(values.baseAjustado),
       baseAncho: parseNum(values.baseAncho),
       largo: parseNum(values.largo),
-      largoManga: parseNum(values.largoManga),
-      anchoManga: parseNum(values.anchoManga),
+      mangaLarga: parseNum(values.mangaLarga),
+      mangaCorta: parseNum(values.mangaCorta),
       escote: parseNum(values.escote),
       cuelloNormal: parseNum(values.cuelloNormal),
       cuelloCruce: parseNum(values.cuelloCruce),
@@ -378,52 +378,58 @@ function CamisaSacoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.largo?.message}
         />
-        <MeasurementPairCard<TallaFormValues>
+        <MeasurementGroupCard<TallaFormValues>
           title="Pecho"
-          first={{
-            name: "pechoAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Pecho ajustado (cm)",
-            errorMessage: errors.pechoAjustado?.message,
-          }}
-          second={{
-            name: "pechoAncho",
-            label: "Ancho",
-            accessibilityLabel: "Pecho ancho (cm)",
-            errorMessage: errors.pechoAncho?.message,
-          }}
+          fields={[
+            {
+              name: "pechoAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Pecho ajustado (cm)",
+              errorMessage: errors.pechoAjustado?.message,
+            },
+            {
+              name: "pechoAncho",
+              label: "Ancho",
+              accessibilityLabel: "Pecho ancho (cm)",
+              errorMessage: errors.pechoAncho?.message,
+            },
+          ]}
           control={control}
         />
-        <MeasurementPairCard<TallaFormValues>
+        <MeasurementGroupCard<TallaFormValues>
           title="Cintura"
-          first={{
-            name: "cinturaAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Cintura ajustado (cm)",
-            errorMessage: errors.cinturaAjustado?.message,
-          }}
-          second={{
-            name: "cinturaAncho",
-            label: "Ancho",
-            accessibilityLabel: "Cintura ancho (cm)",
-            errorMessage: errors.cinturaAncho?.message,
-          }}
+          fields={[
+            {
+              name: "cinturaAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Cintura ajustado (cm)",
+              errorMessage: errors.cinturaAjustado?.message,
+            },
+            {
+              name: "cinturaAncho",
+              label: "Ancho",
+              accessibilityLabel: "Cintura ancho (cm)",
+              errorMessage: errors.cinturaAncho?.message,
+            },
+          ]}
           control={control}
         />
-        <MeasurementPairCard<TallaFormValues>
+        <MeasurementGroupCard<TallaFormValues>
           title="Base"
-          first={{
-            name: "baseAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Base ajustado (cm)",
-            errorMessage: errors.baseAjustado?.message,
-          }}
-          second={{
-            name: "baseAncho",
-            label: "Ancho",
-            accessibilityLabel: "Base ancho (cm)",
-            errorMessage: errors.baseAncho?.message,
-          }}
+          fields={[
+            {
+              name: "baseAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Base ajustado (cm)",
+              errorMessage: errors.baseAjustado?.message,
+            },
+            {
+              name: "baseAncho",
+              label: "Ancho",
+              accessibilityLabel: "Base ancho (cm)",
+              errorMessage: errors.baseAncho?.message,
+            },
+          ]}
           control={control}
         />
         <MeasurementCard<TallaFormValues>
@@ -433,33 +439,35 @@ function CamisaSacoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.hombro?.message}
         />
-        <MeasurementCard<TallaFormValues>
-          name="largoManga"
-          label="Largo manga"
-          accessibilityLabel="Largo manga (cm)"
+        <MeasurementGroupCard<TallaFormValues>
+          title="Manga"
+          fields={[
+            {
+              name: "mangaLarga",
+              label: "Largo manga larga",
+              accessibilityLabel: "Largo manga larga (cm)",
+              errorMessage: errors.mangaLarga?.message,
+            },
+            {
+              name: "mangaCorta",
+              label: "Largo manga corta",
+              accessibilityLabel: "Largo manga corta (cm)",
+              errorMessage: errors.mangaCorta?.message,
+            },
+            {
+              name: "brazo",
+              label: "Brazo",
+              accessibilityLabel: "Brazo (cm)",
+              errorMessage: errors.brazo?.message,
+            },
+            {
+              name: "puno",
+              label: "Puño",
+              accessibilityLabel: "Puño (cm)",
+              errorMessage: errors.puno?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.largoManga?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="anchoManga"
-          label="Ancho manga"
-          accessibilityLabel="Ancho manga (cm)"
-          control={control}
-          errorMessage={errors.anchoManga?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="brazo"
-          label="Brazo"
-          accessibilityLabel="Brazo (cm)"
-          control={control}
-          errorMessage={errors.brazo?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="puno"
-          label="Puño"
-          accessibilityLabel="Puño (cm)"
-          control={control}
-          errorMessage={errors.puno?.message}
         />
         <MeasurementCard<TallaFormValues>
           name="distancia"
@@ -482,20 +490,22 @@ function CamisaSacoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.escote?.message}
         />
-        <MeasurementPairCard<TallaFormValues>
+        <MeasurementGroupCard<TallaFormValues>
           title="Cuello"
-          first={{
-            name: "cuelloNormal",
-            label: "Normal",
-            accessibilityLabel: "Cuello normal (cm)",
-            errorMessage: errors.cuelloNormal?.message,
-          }}
-          second={{
-            name: "cuelloCruce",
-            label: "Cruce",
-            accessibilityLabel: "Cuello cruce (cm)",
-            errorMessage: errors.cuelloCruce?.message,
-          }}
+          fields={[
+            {
+              name: "cuelloNormal",
+              label: "Normal",
+              accessibilityLabel: "Cuello normal (cm)",
+              errorMessage: errors.cuelloNormal?.message,
+            },
+            {
+              name: "cuelloCruce",
+              label: "Cruce",
+              accessibilityLabel: "Cuello cruce (cm)",
+              errorMessage: errors.cuelloCruce?.message,
+            },
+          ]}
           control={control}
         />
       </MeasurementGridSection>
@@ -593,52 +603,58 @@ function ChalecoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.largo?.message}
         />
-        <MeasurementPairCard<TallaFormValues>
+        <MeasurementGroupCard<TallaFormValues>
           title="Pecho"
-          first={{
-            name: "pechoAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Pecho ajustado (cm)",
-            errorMessage: errors.pechoAjustado?.message,
-          }}
-          second={{
-            name: "pechoAncho",
-            label: "Ancho",
-            accessibilityLabel: "Pecho ancho (cm)",
-            errorMessage: errors.pechoAncho?.message,
-          }}
+          fields={[
+            {
+              name: "pechoAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Pecho ajustado (cm)",
+              errorMessage: errors.pechoAjustado?.message,
+            },
+            {
+              name: "pechoAncho",
+              label: "Ancho",
+              accessibilityLabel: "Pecho ancho (cm)",
+              errorMessage: errors.pechoAncho?.message,
+            },
+          ]}
           control={control}
         />
-        <MeasurementPairCard<TallaFormValues>
+        <MeasurementGroupCard<TallaFormValues>
           title="Cintura"
-          first={{
-            name: "cinturaAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Cintura ajustado (cm)",
-            errorMessage: errors.cinturaAjustado?.message,
-          }}
-          second={{
-            name: "cinturaAncho",
-            label: "Ancho",
-            accessibilityLabel: "Cintura ancho (cm)",
-            errorMessage: errors.cinturaAncho?.message,
-          }}
+          fields={[
+            {
+              name: "cinturaAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Cintura ajustado (cm)",
+              errorMessage: errors.cinturaAjustado?.message,
+            },
+            {
+              name: "cinturaAncho",
+              label: "Ancho",
+              accessibilityLabel: "Cintura ancho (cm)",
+              errorMessage: errors.cinturaAncho?.message,
+            },
+          ]}
           control={control}
         />
-        <MeasurementPairCard<TallaFormValues>
+        <MeasurementGroupCard<TallaFormValues>
           title="Base"
-          first={{
-            name: "baseAjustado",
-            label: "Ajustado",
-            accessibilityLabel: "Base ajustado (cm)",
-            errorMessage: errors.baseAjustado?.message,
-          }}
-          second={{
-            name: "baseAncho",
-            label: "Ancho",
-            accessibilityLabel: "Base ancho (cm)",
-            errorMessage: errors.baseAncho?.message,
-          }}
+          fields={[
+            {
+              name: "baseAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Base ajustado (cm)",
+              errorMessage: errors.baseAjustado?.message,
+            },
+            {
+              name: "baseAncho",
+              label: "Ancho",
+              accessibilityLabel: "Base ancho (cm)",
+              errorMessage: errors.baseAncho?.message,
+            },
+          ]}
           control={control}
         />
         <MeasurementCard<TallaFormValues>

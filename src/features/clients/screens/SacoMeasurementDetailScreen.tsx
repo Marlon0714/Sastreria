@@ -57,10 +57,10 @@ function toFormValues(
     baseAncho:
       measurement.baseAncho != null ? String(measurement.baseAncho) : "",
     largo: measurement.largo != null ? String(measurement.largo) : "",
-    largoManga:
-      measurement.largoManga != null ? String(measurement.largoManga) : "",
-    anchoManga:
-      measurement.anchoManga != null ? String(measurement.anchoManga) : "",
+    mangaLarga:
+      measurement.mangaLarga != null ? String(measurement.mangaLarga) : "",
+    mangaCorta:
+      measurement.mangaCorta != null ? String(measurement.mangaCorta) : "",
     escote: measurement.escote != null ? String(measurement.escote) : "",
     cuelloNormal:
       measurement.cuelloNormal != null

@@ -54,8 +54,8 @@ describe("CamisaMeasurementGrid", () => {
     expect(getByLabelText("Base ajustado (cm)")).toBeTruthy();
     expect(getByLabelText("Base ancho (cm)")).toBeTruthy();
     expect(getByLabelText("Hombro (cm)")).toBeTruthy();
-    expect(getByLabelText("Largo manga (cm)")).toBeTruthy();
-    expect(getByLabelText("Ancho manga (cm)")).toBeTruthy();
+    expect(getByLabelText("Largo manga larga (cm)")).toBeTruthy();
+    expect(getByLabelText("Largo manga corta (cm)")).toBeTruthy();
     expect(getByLabelText("Brazo (cm)")).toBeTruthy();
     expect(getByLabelText("Puño (cm)")).toBeTruthy();
     expect(getByLabelText("Distancia (cm)")).toBeTruthy();

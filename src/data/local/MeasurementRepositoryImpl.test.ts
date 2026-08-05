@@ -77,8 +77,8 @@ describe("MeasurementRepositoryImpl", () => {
       base_ajustado: null,
       base_ancho: null,
       largo: 68,
-      largo_manga: null,
-      ancho_manga: null,
+      manga_larga: null,
+      manga_corta: null,
       escote: null,
       cuello_normal: null,
       cuello_cruce: null,
@@ -123,8 +123,8 @@ describe("MeasurementRepositoryImpl", () => {
       baseAjustado: null,
       baseAncho: null,
       largo: 68,
-      largoManga: null,
-      anchoManga: null,
+      mangaLarga: null,
+      mangaCorta: null,
       escote: null,
       cuelloNormal: null,
       cuelloCruce: null,
@@ -159,8 +159,8 @@ describe("MeasurementRepositoryImpl", () => {
       null, // base_ajustado
       null, // base_ancho
       68, // largo
-      null, // largo_manga
-      null, // ancho_manga
+      null, // manga_larga
+      null, // manga_corta
       null, // escote
       null, // cuello_normal
       null, // cuello_cruce
@@ -192,8 +192,8 @@ describe("MeasurementRepositoryImpl", () => {
       base_ajustado: null,
       base_ancho: null,
       largo: null,
-      largo_manga: null,
-      ancho_manga: null,
+      manga_larga: null,
+      manga_corta: null,
       escote: null,
       cuello_normal: null,
       cuello_cruce: null,
@@ -223,8 +223,8 @@ describe("MeasurementRepositoryImpl", () => {
       base_ajustado: null,
       base_ancho: null,
       largo: null,
-      largo_manga: null,
-      ancho_manga: null,
+      manga_larga: null,
+      manga_corta: null,
       escote: null,
       cuello_normal: null,
       cuello_cruce: null,
@@ -372,8 +372,8 @@ describe("MeasurementRepositoryImpl", () => {
       base_ajustado: null,
       base_ancho: null,
       largo: null,
-      largo_manga: null,
-      ancho_manga: null,
+      manga_larga: null,
+      manga_corta: null,
       escote: null,
       cuello_normal: null,
       cuello_cruce: null,
@@ -453,8 +453,8 @@ describe("MeasurementRepositoryImpl", () => {
       base_ajustado: null,
       base_ancho: null,
       largo: 68,
-      largo_manga: 60,
-      ancho_manga: null,
+      manga_larga: 60,
+      manga_corta: null,
       escote: null,
       cuello_normal: 38,
       cuello_cruce: null,

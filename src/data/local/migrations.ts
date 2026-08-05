@@ -510,6 +510,27 @@ export const MIGRATIONS: readonly Migration[] = [
         WHERE type IN ('camisa', 'saco', 'chaleco');`,
     ],
   },
+  {
+    // Pedido del dueño (2026-08-05): la manga pasa a tener 2 variantes de
+    // largo (manga larga / manga corta) en vez de un solo "largo manga";
+    // "ancho manga" queda deprecado (sin reemplazo directo, brazo y puño ya
+    // cubrían ese rol). Se migra el valor viejo de largo_manga a manga_larga.
+    version: 25,
+    name: "v25_manga_larga_corta",
+    statements: [
+      `ALTER TABLE camisa_measurements ADD COLUMN manga_larga REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN manga_corta REAL;`,
+      `UPDATE camisa_measurements SET manga_larga = largo_manga;`,
+
+      `ALTER TABLE saco_measurements ADD COLUMN manga_larga REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN manga_corta REAL;`,
+      `UPDATE saco_measurements SET manga_larga = largo_manga;`,
+
+      `ALTER TABLE talla_templates ADD COLUMN manga_larga REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN manga_corta REAL;`,
+      `UPDATE talla_templates SET manga_larga = largo_manga WHERE type IN ('camisa', 'saco');`,
+    ],
+  },
 ];
 
 interface UserVersionRow {

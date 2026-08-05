@@ -7,48 +7,50 @@ import {
 } from "react-hook-form";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
-interface MeasurementPairSubField<TFormValues extends FieldValues> {
+export interface MeasurementGroupSubField<TFormValues extends FieldValues> {
   name: Path<TFormValues>;
   label: string;
   accessibilityLabel: string;
   errorMessage?: string;
 }
 
-interface MeasurementPairCardProps<TFormValues extends FieldValues> {
+interface MeasurementGroupCardProps<TFormValues extends FieldValues> {
   title: string;
-  first: MeasurementPairSubField<TFormValues>;
-  second: MeasurementPairSubField<TFormValues>;
+  fields: MeasurementGroupSubField<TFormValues>[];
   control: Control<TFormValues>;
   disabled?: boolean;
   placeholder?: string;
 }
 
 /**
- * Tarjeta grande que agrupa dos sub-medidas independientes bajo un mismo
- * título (ej. "Pecho" con "Ajustado"/"Ancho") — a diferencia de
- * `MeasurementCard`, que es una tarjeta chica de un solo valor. Siempre
- * ocupa el ancho completo de la fila en `MeasurementGridSection` (no
- * participa del cálculo de `cardWidth`, que solo clona sobre `MeasurementCard`).
+ * Tarjeta grande que agrupa 2+ sub-medidas independientes bajo un mismo
+ * título (ej. "Pecho" con "Ajustado"/"Ancho", o "Manga" con 4 subcampos) —
+ * a diferencia de `MeasurementCard`, que es una tarjeta chica de un solo
+ * valor. Siempre ocupa el ancho completo de la fila en
+ * `MeasurementGridSection` (no participa del cálculo de `cardWidth`, que
+ * solo clona sobre `MeasurementCard`). Los subcampos envuelven de a 2 por
+ * fila cuando hay más de 2.
  */
-export function MeasurementPairCard<TFormValues extends FieldValues>({
+export function MeasurementGroupCard<TFormValues extends FieldValues>({
   title,
-  first,
-  second,
+  fields,
   control,
   disabled = false,
   placeholder = "—",
-}: MeasurementPairCardProps<TFormValues>) {
+}: MeasurementGroupCardProps<TFormValues>) {
+  const hasError = fields.some((field) => field.errorMessage);
+
   return (
     <View
       style={[
         styles.card,
         disabled ? styles.cardDisabled : styles.cardEditable,
-        first.errorMessage || second.errorMessage ? styles.cardError : undefined,
+        hasError ? styles.cardError : undefined,
       ]}
     >
       <Text style={styles.title}>{title}</Text>
       <View style={styles.subFieldsRow}>
-        {[first, second].map((sub) => (
+        {fields.map((sub) => (
           <Controller
             key={sub.name}
             control={control}
@@ -135,10 +137,12 @@ const styles = StyleSheet.create({
   },
   subFieldsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   subField: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "40%",
     gap: 2,
   },
   subLabel: {
