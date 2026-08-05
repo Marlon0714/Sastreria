@@ -6,9 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 21;
-
-const MIGRATIONS: readonly Migration[] = [
+export const MIGRATIONS: readonly Migration[] = [
   {
     version: 12,
     name: "v12_talla_templates",
@@ -457,15 +455,18 @@ interface UserVersionRow {
   user_version: number;
 }
 
+// Nota: deliberadamente NO hay una constante "TARGET_SCHEMA_VERSION" que
+// limite hasta qué versión correr. Hubo una hasta 2026-08-05 y quedó
+// desincronizada de MIGRATIONS (se agregó v22 sin subirla de 21 a 22), lo
+// que hizo que runMigrations() retornara de inmediato sin aplicar v22 en
+// cualquier dispositivo que ya estuviera en la versión 21 — bug real,
+// descubierto en producción. El filtro `migration.version <= currentVersion`
+// de abajo ya es suficiente por sí solo para no reaplicar migraciones viejas.
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   const versionRow = await db.getFirstAsync<UserVersionRow>(
     "PRAGMA user_version;",
   );
   const currentVersion = versionRow?.user_version ?? 0;
-
-  if (currentVersion >= TARGET_SCHEMA_VERSION) {
-    return;
-  }
 
   const sortedMigrations = [...MIGRATIONS].sort(
     (a, b) => a.version - b.version,
