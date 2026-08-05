@@ -196,6 +196,79 @@ describe("SupabasePullSync", () => {
     });
   });
 
+  it("une llamadas concurrentes a pullIncremental en vez de correrlas en paralelo, pero sí ejecuta la re-corrida pedida", async () => {
+    mockQueryResults.clients.push(
+      {
+        data: [
+          {
+            id: "c-1",
+            first_name: "Ana",
+            last_name: "Torres",
+            phone: "3001234567",
+            notes: null,
+            created_at: "2026-05-01T10:00:00.000Z",
+            updated_at: "2026-05-01T10:00:00.000Z",
+          },
+        ],
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: "c-2",
+            first_name: "Luis",
+            last_name: "Gómez",
+            phone: "3009998888",
+            notes: null,
+            created_at: "2026-05-01T10:05:00.000Z",
+            updated_at: "2026-05-01T10:05:00.000Z",
+          },
+        ],
+        error: null,
+      },
+    );
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+
+    let releaseFirstTransaction: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      releaseFirstTransaction = resolve;
+    });
+    mockWithTransactionAsync.mockImplementationOnce(async (task) => {
+      await gate;
+      await task();
+    });
+
+    const first = pullSync.pullIncremental();
+    const second = pullSync.pullIncremental();
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Mientras la primera transacción sigue bloqueada, la re-corrida
+    // solicitada por la segunda llamada NO debió haber arrancado todavía —
+    // si hubiera corrido en paralelo, ya se habría consumido también la
+    // segunda entrada de la cola de "clients".
+    expect(mockQueryResults.clients).toHaveLength(1);
+
+    releaseFirstTransaction();
+    await Promise.all([first, second]);
+
+    // Al liberar la primera, la re-corrida sí se ejecutó y procesó al
+    // segundo cliente.
+    expect(mockQueryResults.clients).toHaveLength(0);
+    const insertedClientIds = mockRunAsync.mock.calls
+      .filter((call) => String(call[0]).includes("INSERT INTO clients"))
+      .map((call) => call[1]);
+    expect(insertedClientIds).toEqual(["c-1", "c-2"]);
+  });
+
   it("incluye phones y cedula al insertar un cliente traído de Supabase", async () => {
     mockQueryResults.clients.push({
       data: [

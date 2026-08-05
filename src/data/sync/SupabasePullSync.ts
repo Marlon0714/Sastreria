@@ -226,6 +226,14 @@ function getLastCursor<T extends { id: string }>(
 }
 
 export class SupabasePullSync {
+  // Mismo patrón de coalescing que SyncOrchestrator (push): si varios
+  // triggers (bootstrap, foreground, realtime, network_recovered) disparan
+  // un pull casi al mismo tiempo, se unen a la corrida activa en vez de
+  // arrancar otra en paralelo — dos pulls concurrentes reprocesarían el
+  // mismo cursor y multiplicarían la carga de escritura sin necesidad.
+  private activeRunPromise: Promise<void> | null = null;
+  private rerunRequested = false;
+
   constructor(
     private readonly checkpointRepository: SyncCheckpointRepositoryPort = new SyncCheckpointRepository(),
     private readonly batchSize: number = 250,
@@ -236,6 +244,33 @@ export class SupabasePullSync {
   }
 
   async pullIncremental(): Promise<void> {
+    if (this.activeRunPromise) {
+      this.rerunRequested = true;
+      return this.activeRunPromise;
+    }
+
+    this.activeRunPromise = this.consumePullRequests();
+    return this.activeRunPromise;
+  }
+
+  private async consumePullRequests(): Promise<void> {
+    try {
+      while (true) {
+        await this.runPullOnce();
+
+        if (!this.rerunRequested) {
+          break;
+        }
+
+        this.rerunRequested = false;
+      }
+    } finally {
+      this.activeRunPromise = null;
+      this.rerunRequested = false;
+    }
+  }
+
+  private async runPullOnce(): Promise<void> {
     await this.pullClientsIncremental();
     await this.pullCamisaMeasurementsIncremental();
     await this.pullPantalonMeasurementsIncremental();
