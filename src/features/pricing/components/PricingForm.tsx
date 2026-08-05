@@ -1,4 +1,5 @@
 import { colors } from "../../../shared/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
   View,
@@ -99,7 +100,7 @@ export default function PricingForm({
             <TextInput
               style={[styles.input, errors.name && styles.inputError]}
               placeholder="Ej: Dobladillo pantalón"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
               accessibilityLabel="Nombre"
               onBlur={onBlur}
               onChangeText={onChange}
@@ -125,7 +126,7 @@ export default function PricingForm({
             <TextInput
               style={[styles.input, errors.price && styles.inputError]}
               placeholder="Ej: 15000"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
               accessibilityLabel="Precio"
               keyboardType="numeric"
               onBlur={onBlur}
@@ -152,7 +153,7 @@ export default function PricingForm({
             <TextInput
               style={[styles.input, styles.notesInput]}
               placeholder="Descripción, detalles del servicio..."
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
               multiline
               numberOfLines={3}
               onBlur={onBlur}
@@ -180,7 +181,10 @@ export default function PricingForm({
         {submitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.saveButtonText}>{pricingStrings.save}</Text>
+          <>
+            <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+            <Text style={styles.saveButtonText}>{pricingStrings.save}</Text>
+          </>
         )}
       </Pressable>
     </View>
@@ -198,7 +202,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#64748b",
+    color: colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -214,18 +218,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
+    borderColor: colors.border,
+    backgroundColor: colors.background,
     alignItems: "center",
   },
   categoryChipActive: {
     borderColor: colors.primary,
-    backgroundColor: "#dbeafe",
+    backgroundColor: colors.primarySoft,
   },
   categoryChipText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#64748b",
+    color: colors.textMuted,
   },
   categoryChipTextActive: {
     color: colors.primary,
@@ -233,13 +237,13 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    borderRadius: 10,
+    borderColor: colors.border,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#1e293b",
-    backgroundColor: "#f8fafc",
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
   },
   notesInput: {
     minHeight: 80,
@@ -254,11 +258,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   saveButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: "center",
     marginTop: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   saveButtonDisabled: {
     backgroundColor: "#93c5fd",
