@@ -232,7 +232,10 @@ export default function TallaFormScreen({ navigation, route }: Props) {
     );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Nombre */}
       <View style={styles.nameSection}>
         <Text style={styles.fieldLabel}>

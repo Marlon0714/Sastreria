@@ -205,7 +205,10 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       {displaySchedule ? (
         <View style={styles.statusBadge}>
           <Text style={styles.statusBadgeText}>

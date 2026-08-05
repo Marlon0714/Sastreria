@@ -125,7 +125,10 @@ export default function ClientEditScreen({ navigation, route }: Props) {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>Editar cliente</Text>
 
         <View style={styles.fieldGroup}>
