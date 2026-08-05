@@ -31,6 +31,8 @@ const optionalTime = z
   )
   .transform((value) => (value ? value : undefined));
 
+export const scheduleCategorySchema = z.enum(["arreglo", "confeccion"]);
+
 export const scheduleSchema = z.object({
   id: z.string().uuid(),
   clientId: z.string().uuid("El cliente es inválido"),
@@ -40,6 +42,7 @@ export const scheduleSchema = z.object({
   operarioId: z.string().uuid("El operario es inválido").optional(),
   notes: z.string().trim().max(500).optional(),
   isPriority: z.boolean().optional(),
+  category: scheduleCategorySchema.optional(),
   status: scheduleStatusSchema,
   statusLocked: z.boolean(),
   readyAt: z.string().optional(),

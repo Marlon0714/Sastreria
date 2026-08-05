@@ -168,6 +168,7 @@ interface ScheduleRow {
   client_id: string;
   notes: string | null;
   is_priority: boolean;
+  category: "arreglo" | "confeccion";
   status:
     | "pendiente"
     | "agendado"
@@ -942,7 +943,7 @@ export class SupabasePullSync {
     let query = supabase
       .from("schedules")
       .select(
-        "id, date, time, price, operario_id, client_id, notes, is_priority, status, status_locked, ready_at, delivered_at, created_at, updated_at",
+        "id, date, time, price, operario_id, client_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -967,8 +968,8 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO schedules
-            (id, date, time, price, operario_id, client_id, notes, is_priority, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+            (id, date, time, price, operario_id, client_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             date          = excluded.date,
             time          = excluded.time,
@@ -977,6 +978,7 @@ export class SupabasePullSync {
             client_id     = excluded.client_id,
             notes         = excluded.notes,
             is_priority   = excluded.is_priority,
+            category      = excluded.category,
             status        = excluded.status,
             status_locked = excluded.status_locked,
             ready_at      = excluded.ready_at,
@@ -993,6 +995,7 @@ export class SupabasePullSync {
           row.client_id,
           row.notes ?? null,
           row.is_priority ? 1 : 0,
+          row.category,
           row.status,
           row.status_locked ? 1 : 0,
           row.ready_at,

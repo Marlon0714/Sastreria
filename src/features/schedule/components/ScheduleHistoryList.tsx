@@ -3,7 +3,11 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { getDefaultScheduleEventRepository } from "../../../data/local/scheduleEventDependencies";
 import type { ScheduleEvent, ScheduleEventAction } from "../domain/events";
-import type { ScheduleStatus } from "../domain/types";
+import {
+  SCHEDULE_CATEGORY_LABELS,
+  type ScheduleCategory,
+  type ScheduleStatus,
+} from "../domain/types";
 
 interface ScheduleHistoryListProps {
   scheduleId: string;
@@ -41,6 +45,7 @@ const FIELD_LABELS: Record<string, string> = {
   notes: "Notas",
   status: "Estado",
   isPriority: "Prioridad",
+  category: "Categoría",
 };
 
 function formatValue(field: string, value: unknown): string {
@@ -49,6 +54,11 @@ function formatValue(field: string, value: unknown): string {
   }
   if (field === "status") {
     return STATUS_LABELS[value as ScheduleStatus] ?? String(value);
+  }
+  if (field === "category") {
+    return (
+      SCHEDULE_CATEGORY_LABELS[value as ScheduleCategory] ?? String(value)
+    );
   }
   if (typeof value === "boolean") {
     return value ? "Sí" : "No";

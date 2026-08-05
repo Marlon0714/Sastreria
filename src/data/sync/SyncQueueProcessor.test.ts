@@ -144,6 +144,7 @@ const scheduleItem: SyncQueueItem = {
     clientId: "c-1",
     notes: undefined,
     isPriority: false,
+    category: "arreglo",
     status: "pendiente",
     statusLocked: false,
     createdAt: "2026-08-01T09:20:00.000Z",

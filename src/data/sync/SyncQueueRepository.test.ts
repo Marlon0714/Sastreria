@@ -228,6 +228,49 @@ describe("SyncQueueRepository", () => {
     expect(clientItem.payload.cedula).toBe("1020304050");
   });
 
+  it("mapea category en el payload de la cola de schedules", async () => {
+    mockGetAllAsync
+      .mockResolvedValueOnce([]) // clients
+      .mockResolvedValueOnce([]) // camisa
+      .mockResolvedValueOnce([]) // pantalon
+      .mockResolvedValueOnce([]) // client_talla
+      .mockResolvedValueOnce([]) // pricing
+      .mockResolvedValueOnce([]) // saco
+      .mockResolvedValueOnce([]) // chaleco
+      .mockResolvedValueOnce([]) // talla_template
+      .mockResolvedValueOnce([
+        {
+          id: "schedule-1",
+          date: "2026-08-10",
+          time: "14:30",
+          price: null,
+          operario_id: null,
+          client_id: "c-1",
+          notes: null,
+          is_priority: 0,
+          category: "confeccion",
+          status: "pendiente",
+          status_locked: 0,
+          ready_at: null,
+          delivered_at: null,
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:00:00.000Z",
+          sync_status: "pending",
+        },
+      ]) // schedules
+      .mockResolvedValueOnce([]) // schedule_events
+      .mockResolvedValueOnce([]); // delete_log
+
+    const repository = new SyncQueueRepository();
+    const items = await repository.getPendingItems(10);
+
+    expect(items).toHaveLength(1);
+    const scheduleItem = items[0] as unknown as {
+      payload: Record<string, unknown>;
+    };
+    expect(scheduleItem.payload.category).toBe("confeccion");
+  });
+
   it("marks client row as synced without mutating updated_at", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 

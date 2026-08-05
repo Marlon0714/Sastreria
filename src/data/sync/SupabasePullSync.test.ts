@@ -506,6 +506,7 @@ describe("SupabasePullSync", () => {
           time: "14:30",
           client_id: "c-1",
           notes: null,
+          category: "confeccion",
           status: "pending",
           created_at: "2026-08-01T10:00:00.000Z",
           updated_at: "2026-08-01T10:05:00.000Z",
@@ -529,6 +530,7 @@ describe("SupabasePullSync", () => {
     const [, ...params] = scheduleCalls[0] ?? [];
     expect(params).toContain("2026-08-10");
     expect(params).toContain("14:30");
+    expect(params).toContain("confeccion");
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
       "schedules",
       { id: "schedule-1", updatedAt: "2026-08-01T10:05:00.000Z" },

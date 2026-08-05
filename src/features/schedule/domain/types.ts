@@ -7,6 +7,18 @@ export type ScheduleStatus =
   | "listo_para_entregar"
   | "entregado";
 
+export type ScheduleCategory = "arreglo" | "confeccion";
+
+export const SCHEDULE_CATEGORIES: readonly ScheduleCategory[] = [
+  "arreglo",
+  "confeccion",
+];
+
+export const SCHEDULE_CATEGORY_LABELS: Record<ScheduleCategory, string> = {
+  arreglo: "Arreglo",
+  confeccion: "Confección",
+};
+
 export interface Schedule extends BaseEntity {
   clientId: string;
   date?: string; // YYYY-MM-DD
@@ -15,6 +27,7 @@ export interface Schedule extends BaseEntity {
   operarioId?: string;
   notes?: string;
   isPriority: boolean; // marca un turno ya agendado (con fecha) como más urgente que el resto del día
+  category: ScheduleCategory;
   status: ScheduleStatus;
   // true tras una corrección manual (applyManualCorrection) — evita que el
   // siguiente update() re-derive el status automáticamente solo porque
@@ -33,6 +46,7 @@ export interface CreateScheduleDTO {
   operarioId?: string;
   notes?: string;
   isPriority?: boolean;
+  category?: ScheduleCategory;
 }
 
 export interface UpdateScheduleDTO {
@@ -43,4 +57,5 @@ export interface UpdateScheduleDTO {
   operarioId?: string;
   notes?: string;
   isPriority?: boolean;
+  category?: ScheduleCategory;
 }

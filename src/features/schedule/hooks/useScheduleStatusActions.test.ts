@@ -62,6 +62,7 @@ const baseSchedule: Schedule = {
   clientId: "client-1",
   date: "2026-08-10",
   isPriority: false,
+  category: "arreglo",
   status: "en_proceso",
   statusLocked: false,
   createdAt: "2026-08-01T10:00:00.000Z",

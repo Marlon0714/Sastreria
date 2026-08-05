@@ -54,6 +54,7 @@ const baseRow = {
   operario_id: null,
   notes: "Ajuste de traje",
   is_priority: 0,
+  category: "arreglo" as const,
   status: "agendado" as const,
   status_locked: 0,
   ready_at: null,
@@ -99,6 +100,7 @@ describe("ScheduleRepositoryImpl", () => {
         operarioId: undefined,
         notes: baseRow.notes,
         isPriority: false,
+        category: "arreglo",
         status: baseRow.status,
         statusLocked: false,
         readyAt: undefined,
@@ -179,6 +181,7 @@ describe("ScheduleRepositoryImpl", () => {
         operarioId: undefined,
         notes: "Ajuste de traje",
         isPriority: false,
+        category: "arreglo",
         status: "pendiente",
         statusLocked: false,
         readyAt: undefined,
@@ -214,6 +217,33 @@ describe("ScheduleRepositoryImpl", () => {
       });
 
       expect(result.status).toBe("en_proceso");
+    });
+
+    it("usa 'arreglo' como category por defecto si no se envía", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+      });
+
+      expect(result.category).toBe("arreglo");
+      const params = mockRunAsync.mock.calls[0] ?? [];
+      expect(params).toContain("arreglo");
+    });
+
+    it("respeta la category enviada (confeccion)", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+        category: "confeccion",
+      });
+
+      expect(result.category).toBe("confeccion");
     });
 
     it("nace sin statusLocked, y con isPriority según lo enviado", async () => {

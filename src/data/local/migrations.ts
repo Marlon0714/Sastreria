@@ -440,6 +440,17 @@ const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE schedules ADD COLUMN is_priority INTEGER NOT NULL DEFAULT 0;`,
     ],
   },
+  {
+    // Pedido del dueño (2026-08-05): separar la Agenda de arreglos de una
+    // agenda de confecciones, con el mismo patrón de segmentado que ya usa
+    // Precios (un solo turno, categorizado, no una entidad/tabla aparte).
+    // Todos los turnos existentes quedan como 'arreglo' por defecto.
+    version: 22,
+    name: "v22_schedule_category",
+    statements: [
+      `ALTER TABLE schedules ADD COLUMN category TEXT NOT NULL DEFAULT 'arreglo';`,
+    ],
+  },
 ];
 
 interface UserVersionRow {

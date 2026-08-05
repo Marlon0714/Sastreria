@@ -150,6 +150,7 @@ const schedule: Schedule = {
   clientId: "22222222-2222-4222-8222-222222222222",
   notes: "Ajuste de traje",
   isPriority: false,
+  category: "arreglo",
   status: "agendado",
   statusLocked: false,
   createdAt: "2026-08-01T10:00:00.000Z",

@@ -176,6 +176,7 @@ interface ScheduleQueueRow {
   client_id: string;
   notes: string | null;
   is_priority: number;
+  category: "arreglo" | "confeccion";
   status:
     | "pendiente"
     | "agendado"
@@ -476,6 +477,7 @@ function toScheduleQueueItem(row: ScheduleQueueRow): SyncScheduleQueueItem {
       clientId: row.client_id,
       notes: row.notes ?? undefined,
       isPriority: row.is_priority === 1,
+      category: row.category,
       status: row.status,
       statusLocked: row.status_locked === 1,
       readyAt: row.ready_at ?? undefined,
@@ -793,6 +795,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         client_id,
         notes,
         is_priority,
+        category,
         status,
         status_locked,
         ready_at,
