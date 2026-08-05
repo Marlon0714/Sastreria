@@ -431,7 +431,7 @@ LANGUAGE sql SECURITY DEFINER AS $$
 $$;
 ```
 
-**Flujo para dar de alta un operario nuevo** (manual, por el dueño): crear el usuario en Supabase Dashboard → Authentication → Users (correo + contraseña), copiar su UUID, y correr:
+**Flujo para dar de alta un operario nuevo** (manual, por el dueño) — **SUPERADO, ver `v23_operario_pin_integrity` más abajo**: crear el usuario en Supabase Dashboard → Authentication → Users (correo + contraseña), copiar su UUID, y correr:
 
 ```sql
 INSERT INTO profiles (id, display_name, role, is_shared_device, pin_hash)
@@ -577,6 +577,107 @@ ALTER TABLE chaleco_measurements
   ADD CONSTRAINT chaleco_measurements_client_id_fkey
   FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE;
 ```
+
+---
+
+### v23_operario_pin_integrity (2026-08-05)
+
+**Contexto:** al probar el flujo de PIN se detectó que nada impide que dos operarios terminen con el mismo PIN (el dueño los da de alta a mano con `INSERT` + `crypt()`, sin ninguna validación). Si eso pasara, `resolve_operario_by_pin` devolvía TODAS las filas que coincidieran y el código de la app (`useIdentityGate.submitPin`) tomaba silenciosamente la primera — atribuyendo la acción a la persona equivocada sin ningún aviso. Se cierra el problema en dos frentes: (1) ya no se puede crear ni cambiar un PIN que otro operario ya tenga — la base de datos lo rechaza; (2) por si alguna vez quedara un caso ambiguo (ej. datos de antes de esta migración), `resolve_operario_by_pin` deja de "adivinar": si encuentra más de una coincidencia, no resuelve a nadie (mismo comportamiento visible que un PIN incorrecto, en vez de una atribución equivocada).
+
+```sql
+-- Reemplaza el INSERT manual de la sección v18 para dar de alta un operario.
+-- Rechaza la creación si el PIN ya lo tiene otro operario.
+CREATE OR REPLACE FUNCTION create_operario_with_pin(
+  operario_id UUID,
+  operario_display_name TEXT,
+  candidate_pin TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM profiles
+    WHERE role = 'operario' AND pin_hash IS NOT NULL
+      AND pin_hash = crypt(candidate_pin, pin_hash)
+  ) THEN
+    RAISE EXCEPTION 'Ya existe un operario con ese PIN. Elige un PIN distinto.';
+  END IF;
+
+  INSERT INTO profiles (id, display_name, role, is_shared_device, pin_hash)
+  VALUES (operario_id, operario_display_name, 'operario', false, crypt(candidate_pin, gen_salt('bf')));
+END;
+$$;
+
+-- Para cambiar el PIN de un operario ya existente más adelante (mismo chequeo,
+-- excluyendo al propio operario de la comparación).
+CREATE OR REPLACE FUNCTION set_operario_pin(
+  operario_id UUID,
+  candidate_pin TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id <> operario_id AND role = 'operario' AND pin_hash IS NOT NULL
+      AND pin_hash = crypt(candidate_pin, pin_hash)
+  ) THEN
+    RAISE EXCEPTION 'Ya existe un operario con ese PIN. Elige un PIN distinto.';
+  END IF;
+
+  UPDATE profiles
+  SET pin_hash = crypt(candidate_pin, gen_salt('bf')), updated_at = now()
+  WHERE id = operario_id;
+END;
+$$;
+
+-- Reemplaza la función de v18: si hay más de una coincidencia (no debería
+-- pasar nunca gracias a las dos funciones de arriba, pero es la red de
+-- seguridad para datos previos a esta migración), no resuelve a nadie.
+CREATE OR REPLACE FUNCTION resolve_operario_by_pin(candidate_pin TEXT)
+RETURNS TABLE (id UUID, display_name TEXT, role TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  match_count INT;
+BEGIN
+  SELECT COUNT(*) INTO match_count
+  FROM profiles p
+  WHERE p.role = 'operario' AND p.pin_hash IS NOT NULL
+    AND p.pin_hash = crypt(candidate_pin, p.pin_hash);
+
+  IF match_count <> 1 THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT p.id, p.display_name, p.role FROM profiles p
+  WHERE p.role = 'operario' AND p.pin_hash IS NOT NULL
+    AND p.pin_hash = crypt(candidate_pin, p.pin_hash);
+END;
+$$;
+```
+
+**Flujo actualizado para dar de alta un operario nuevo:** crear el usuario en Supabase Dashboard → Authentication → Users (correo + contraseña), copiar su UUID, y correr:
+
+```sql
+SELECT create_operario_with_pin('<uuid-del-usuario>', 'María Gómez', '1234');
+```
+
+Si el PIN ya lo tiene otro operario, esto falla con un error legible (`Ya existe un operario con ese PIN...`) y no crea nada — a diferencia del `INSERT` manual de antes, que lo hubiera dejado pasar sin avisar. Para cambiar el PIN de alguien que ya existe:
+
+```sql
+SELECT set_operario_pin('<uuid-del-operario>', '5678');
+```
+
+Para la tablet compartida (`is_shared_device = true`) se sigue usando el `INSERT` directo de la sección v18 — no tiene PIN propio, así que no aplica ninguna de estas dos funciones.
+
+**Importante:** correr esto en Supabase antes de dar de alta el próximo operario o cambiar un PIN existente. No requiere reinstalar ningún build — la app nunca llamó `resolve_operario_by_pin` de forma distinta, el cambio es transparente para el código ya instalado.
 
 ---
 
