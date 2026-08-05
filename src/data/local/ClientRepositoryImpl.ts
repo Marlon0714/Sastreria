@@ -215,20 +215,12 @@ export class ClientRepositoryImpl implements ClientRepository {
     );
 
     if (!row) {
-      // SQLite UPDATE on a non-existent id is a no-op — return a constructed client.
-      return {
-        id: input.id,
-        firstName: input.firstName.trim(),
-        lastName: input.lastName.trim(),
-        phone: input.phone.trim(),
-        phones: input.phones?.filter(Boolean),
-        cedula: input.cedula?.trim() ?? undefined,
-        notes: input.notes?.trim() ?? null,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        syncStatus: "pending",
-        measurements: [],
-      };
+      // SQLite UPDATE on a non-existent id is a no-op — el cliente pudo
+      // haberse borrado desde otro dispositivo mientras esta pantalla
+      // estaba abierta. Antes esto retornaba un Client fabricado a partir
+      // del input, dando una falsa sensación de éxito (la pantalla navegaba
+      // "hacia atrás" como si hubiera guardado) sin haber persistido nada.
+      throw new Error("El cliente ya no existe.");
     }
 
     notifyWriteCommitted(this.options);

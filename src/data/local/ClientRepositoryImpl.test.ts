@@ -279,32 +279,27 @@ describe("ClientRepositoryImpl", () => {
     expect(onWriteCommitted).toHaveBeenCalledTimes(1);
   });
 
-  it("returns constructed client when update id does not exist", async () => {
+  it("throws instead of fabricating a client when update id does not exist", async () => {
+    // Regresión: antes, si el cliente ya no existía (ej. borrado desde otro
+    // dispositivo mientras esta pantalla estaba abierta), el UPDATE no
+    // afectaba ninguna fila pero el método igual retornaba un Client
+    // fabricado a partir del input — la pantalla lo trataba como éxito y
+    // navegaba "hacia atrás" sin haber persistido nada.
     mockRunAsync.mockResolvedValueOnce({});
     mockGetFirstAsync.mockResolvedValueOnce(null);
 
     const onWriteCommitted = jest.fn<() => void>();
     const repository = new ClientRepositoryImpl({ onWriteCommitted });
 
-    const result = await repository.update({
-      id: "99999999-9999-4999-8999-999999999999",
-      firstName: "  Laura ",
-      lastName: " Mora ",
-      phone: " 3110001111 ",
-      notes: "  ",
-    });
-
-    expect(result).toEqual({
-      id: "99999999-9999-4999-8999-999999999999",
-      firstName: "Laura",
-      lastName: "Mora",
-      phone: "3110001111",
-      notes: "",
-      createdAt: "2026-04-29T12:30:00.000Z",
-      updatedAt: "2026-04-29T12:30:00.000Z",
-      syncStatus: "pending",
-      measurements: [],
-    });
+    await expect(
+      repository.update({
+        id: "99999999-9999-4999-8999-999999999999",
+        firstName: "Laura",
+        lastName: "Mora",
+        phone: "3110001111",
+        notes: "",
+      }),
+    ).rejects.toThrow("El cliente ya no existe.");
     expect(onWriteCommitted).not.toHaveBeenCalled();
   });
 
