@@ -1,5 +1,6 @@
 import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import { type Control, type FieldErrors, useForm } from "react-hook-form";
 import {
@@ -244,7 +245,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
         <TextInput
           style={[styles.nameInput, errors.name && styles.inputError]}
           placeholder='Ej: M, 38, "Talla única"'
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.textPlaceholder}
           value={nameValue}
           onChangeText={(v) => setValue("name", v)}
           autoCapitalize="characters"
@@ -271,7 +272,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
         <TextInput
           style={styles.notesInput}
           placeholder="Observaciones opcionales..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.textPlaceholder}
           multiline
           numberOfLines={3}
           value={watch("notes")}
@@ -281,10 +282,15 @@ export default function TallaFormScreen({ navigation, route }: Props) {
 
       {/* Botones */}
       <Pressable
-        style={[styles.saveBtn, isSubmitting && styles.btnDisabled]}
+        style={({ pressed }) => [
+          styles.saveBtn,
+          isSubmitting && styles.btnDisabled,
+          pressed && !isSubmitting ? styles.saveBtnPressed : null,
+        ]}
         onPress={handleSubmit(onSubmit)}
         disabled={isSubmitting}
       >
+        <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         <Text style={styles.saveBtnText}>
           {isSubmitting ? "Guardando..." : "Guardar talla"}
         </Text>
@@ -296,6 +302,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
           onPress={onDelete}
           disabled={isSubmitting}
         >
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
           <Text style={styles.deleteBtnText}>Eliminar talla</Text>
         </Pressable>
       )}
@@ -558,23 +565,25 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     paddingBottom: 40,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.background,
   },
   nameSection: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
     padding: 16,
-    gap: 6,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   fieldLabel: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#64748b",
+    fontWeight: "700",
+    color: colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -582,15 +591,15 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   nameInput: {
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 16,
     fontWeight: "700",
-    color: "#1e293b",
-    backgroundColor: "#f8fafc",
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
   },
   inputError: {
     borderColor: colors.danger,
@@ -603,33 +612,46 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   notesSection: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
     padding: 16,
-    gap: 6,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   notesInput: {
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 14,
-    color: "#1e293b",
-    backgroundColor: "#f8fafc",
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
     minHeight: 72,
     textAlignVertical: "top",
   },
   saveBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  saveBtnPressed: {
+    backgroundColor: colors.primaryPressed,
   },
   saveBtnText: {
     color: "#ffffff",
@@ -637,12 +659,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   deleteBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: colors.dangerSoft,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#fca5a5",
+    borderWidth: 1.5,
+    borderColor: colors.danger,
   },
   deleteBtnText: {
     color: colors.danger,
