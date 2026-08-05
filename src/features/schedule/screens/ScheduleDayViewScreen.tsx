@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
+import { formatPrice } from "../../pricing/domain/strings";
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
@@ -137,6 +138,9 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         </View>
         <View style={styles.cardSubRow}>
           <Text style={styles.cardDate}>{dateLabel}</Text>
+          {item.price != null ? (
+            <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
+          ) : null}
           {item.isPriority ? (
             <View style={styles.priorityBadge}>
               <Text style={styles.priorityBadgeText}>⭐ Prioritario</Text>
@@ -211,23 +215,30 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
                 >
                   {view.icon} {view.label}
                 </Text>
-                {view.key === "pendientes" && pendingSchedules.length > 0 ? (
-                  <View
-                    style={[
-                      styles.badge,
-                      isActive ? styles.badgeActive : styles.badgeInactive,
-                    ]}
-                  >
-                    <Text
+                {(() => {
+                  const count =
+                    view.key === "pendientes"
+                      ? pendingSchedules.length
+                      : dateSchedules.length;
+                  if (count === 0) return null;
+                  return (
+                    <View
                       style={[
-                        styles.badgeText,
-                        isActive && styles.badgeTextActive,
+                        styles.badge,
+                        isActive ? styles.badgeActive : styles.badgeInactive,
                       ]}
                     >
-                      {pendingSchedules.length}
-                    </Text>
-                  </View>
-                ) : null}
+                      <Text
+                        style={[
+                          styles.badgeText,
+                          isActive && styles.badgeTextActive,
+                        ]}
+                      >
+                        {count}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </Pressable>
             );
           })}
@@ -470,6 +481,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
     color: colors.textMuted,
+  },
+  cardPrice: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textPrimary,
   },
   cardNotes: {
     fontSize: 13,

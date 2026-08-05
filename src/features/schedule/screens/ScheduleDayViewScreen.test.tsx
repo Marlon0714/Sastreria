@@ -357,4 +357,63 @@ describe("ScheduleDayViewScreen", () => {
       category: "arreglo",
     });
   });
+
+  it("muestra el precio en la card del turno cuando tiene precio", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [{ ...scheduledOne, price: 25000 }],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(await findByText("$25.000")).toBeTruthy();
+  });
+
+  it("no muestra precio en la card cuando el turno no tiene precio", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByLabelText, queryByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    ).toBeTruthy();
+    expect(queryByText(/^\$/)).toBeNull();
+  });
+
+  it("muestra el contador de turnos del día en el segmentado", () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne, { ...scheduledOne, id: "schedule-4" }],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { getByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByText("2")).toBeTruthy();
+  });
+
+  it("no muestra el contador del día cuando no hay turnos", () => {
+    const { queryByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(queryByText("0")).toBeNull();
+  });
 });
