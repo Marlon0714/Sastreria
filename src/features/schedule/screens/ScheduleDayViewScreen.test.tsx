@@ -104,6 +104,18 @@ const client: Client = {
   syncStatus: "pending",
 };
 
+const secondClient: Client = {
+  id: "client-2",
+  firstName: "Luis",
+  lastName: "Gómez",
+  phone: "3009876543",
+  notes: null,
+  measurements: [],
+  createdAt: "2026-01-01T10:00:00.000Z",
+  updatedAt: "2026-01-01T10:00:00.000Z",
+  syncStatus: "pending",
+};
+
 const scheduledOne: Schedule = {
   id: "schedule-1",
   clientId: client.id,
@@ -415,5 +427,104 @@ describe("ScheduleDayViewScreen", () => {
     );
 
     expect(queryByText("0")).toBeNull();
+  });
+
+  it("filtra los turnos del día por nombre de cliente al buscar", async () => {
+    mockFindAll.mockResolvedValue([client, secondClient]);
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [
+        scheduledOne,
+        { ...scheduledOne, id: "schedule-5", clientId: secondClient.id },
+      ],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByLabelText, getByLabelText, queryByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    ).toBeTruthy();
+    expect(
+      getByLabelText("Ver turno de Luis Gómez (14:30, schedule-5)"),
+    ).toBeTruthy();
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente en la agenda"),
+      "luis",
+    );
+
+    expect(
+      await findByLabelText("Ver turno de Luis Gómez (14:30, schedule-5)"),
+    ).toBeTruthy();
+    expect(
+      queryByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    ).toBeNull();
+  });
+
+  it("limpia la búsqueda al presionar el botón de limpiar", async () => {
+    mockFindAll.mockResolvedValue([client, secondClient]);
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [
+        scheduledOne,
+        { ...scheduledOne, id: "schedule-5", clientId: secondClient.id },
+      ],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByLabelText, getByLabelText, queryByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente en la agenda"),
+      "luis",
+    );
+    expect(
+      await findByLabelText("Ver turno de Luis Gómez (14:30, schedule-5)"),
+    ).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Limpiar búsqueda"));
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    ).toBeTruthy();
+    expect(
+      queryByLabelText("Limpiar búsqueda"),
+    ).toBeNull();
+  });
+
+  it("muestra un mensaje distinto cuando la búsqueda no tiene resultados", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByLabelText, getByLabelText, findByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    ).toBeTruthy();
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente en la agenda"),
+      "nadie",
+    );
+
+    expect(
+      await findByText("No hay turnos que coincidan con la búsqueda."),
+    ).toBeTruthy();
   });
 });

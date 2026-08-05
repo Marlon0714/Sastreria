@@ -2,13 +2,21 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
 import { formatPrice } from "../../pricing/domain/strings";
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
+import { normalizeText } from "../../../shared/utils/textSearch";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import {
   formatDateForDisplay,
@@ -73,15 +81,32 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   } = useScheduleDayView(selectedDate);
   const clientRepository = useClientRepository();
   const [clientsById, setClientsById] = useState<Record<string, Client>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const matchesSearch = useCallback(
+    (schedule: Schedule) => {
+      const normalizedQuery = normalizeText(searchTerm);
+      if (!normalizedQuery) return true;
+      const client = clientsById[schedule.clientId];
+      const label = client ? `${client.firstName} ${client.lastName}` : "";
+      return normalizeText(label).includes(normalizedQuery);
+    },
+    [searchTerm, clientsById],
+  );
 
   const dateSchedules = useMemo(
-    () => allDateSchedules.filter((item) => item.category === activeCategory),
-    [allDateSchedules, activeCategory],
+    () =>
+      allDateSchedules
+        .filter((item) => item.category === activeCategory)
+        .filter(matchesSearch),
+    [allDateSchedules, activeCategory, matchesSearch],
   );
   const pendingSchedules = useMemo(
     () =>
-      allPendingSchedules.filter((item) => item.category === activeCategory),
-    [allPendingSchedules, activeCategory],
+      allPendingSchedules
+        .filter((item) => item.category === activeCategory)
+        .filter(matchesSearch),
+    [allPendingSchedules, activeCategory, matchesSearch],
   );
 
   useFocusEffect(
@@ -195,6 +220,31 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         </View>
       </View>
 
+      <View style={styles.searchWrapper}>
+        <Ionicons
+          name="search"
+          size={16}
+          color={colors.textMuted}
+          style={styles.searchIcon}
+        />
+        <TextInput
+          accessibilityLabel="Buscar cliente en la agenda"
+          style={styles.searchInput}
+          placeholder="Buscar por cliente"
+          placeholderTextColor={colors.textMuted}
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+        />
+        {searchTerm.length > 0 ? (
+          <Pressable
+            accessibilityLabel="Limpiar búsqueda"
+            onPress={() => setSearchTerm("")}
+          >
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+
       <View style={styles.segmentedWrapper}>
         <View style={styles.segmented}>
           {VIEWS.map((view) => {
@@ -306,7 +356,11 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
               {formatDateForDisplay(selectedDate)}
             </Text>
             {dateSchedules.length === 0 ? (
-              <Text style={styles.emptyText}>No hay turnos para este día.</Text>
+              <Text style={styles.emptyText}>
+                {searchTerm
+                  ? "No hay turnos que coincidan con la búsqueda."
+                  : "No hay turnos para este día."}
+              </Text>
             ) : (
               dateSchedules.map((item) =>
                 renderCard(item, item.time ?? "Sin hora"),
@@ -317,7 +371,9 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
           <View style={styles.section}>
             {pendingSchedules.length === 0 ? (
               <Text style={styles.emptyText}>
-                No hay turnos pendientes sin fecha.
+                {searchTerm
+                  ? "No hay turnos que coincidan con la búsqueda."
+                  : "No hay turnos pendientes sin fecha."}
               </Text>
             ) : (
               pendingSchedules.map((item) => renderCard(item, "Sin fecha"))
@@ -404,6 +460,28 @@ const styles = StyleSheet.create({
   },
   badgeTextActive: {
     color: colors.primary,
+  },
+  searchWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  searchIcon: {
+    marginRight: -2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textPrimary,
+    padding: 0,
   },
   header: {
     flexDirection: "row",
