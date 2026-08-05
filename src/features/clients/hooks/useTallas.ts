@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   createTallaSchema,
@@ -12,6 +12,7 @@ import { useTallaRepository } from "./ClientsDependenciesProvider";
 export function useTallas(clientId: string): {
   tallas: ClientTalla[];
   isLoading: boolean;
+  isSubmitting: boolean;
   error: string | null;
   upsertTalla: (
     input: CreateTallaSchemaInput | UpdateTallaSchemaInput,
@@ -22,6 +23,7 @@ export function useTallas(clientId: string): {
   const repo = useTallaRepository();
   const [tallas, setTallas] = useState<ClientTalla[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -50,10 +52,21 @@ export function useTallas(clientId: string): {
     void reload();
   }, [reload]);
 
+  // Lock síncrono (no depende de que React re-renderice) para que un doble
+  // tap en "Guardar" no dispare dos upserts en paralelo — ver
+  // TallaRepositoryImpl.upsert() para por qué eso podía huerfanar una fila
+  // ya sincronizada en Supabase.
+  const isSubmittingRef = useRef(false);
+
   const upsertTalla = useCallback(
     async (
       input: CreateTallaSchemaInput | UpdateTallaSchemaInput,
     ): Promise<ClientTalla | null> => {
+      if (isSubmittingRef.current) {
+        return null;
+      }
+      isSubmittingRef.current = true;
+      setIsSubmitting(true);
       setError(null);
       try {
         let talla: ClientTalla;
@@ -86,6 +99,9 @@ export function useTallas(clientId: string): {
           }),
         );
         return null;
+      } finally {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
       }
     },
     [repo, reload],
@@ -115,5 +131,13 @@ export function useTallas(clientId: string): {
     [repo, reload],
   );
 
-  return { tallas, isLoading, error, upsertTalla, deleteTalla, reload };
+  return {
+    tallas,
+    isLoading,
+    isSubmitting,
+    error,
+    upsertTalla,
+    deleteTalla,
+    reload,
+  };
 }

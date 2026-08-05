@@ -35,8 +35,15 @@ const TALLA_ORDER: TallaType[] = ["camisa", "pantalon", "saco", "chaleco"];
 
 export default function TallasScreen({ route }: Props) {
   const { clientId } = route.params;
-  const { tallas, isLoading, error, upsertTalla, deleteTalla, reload } =
-    useTallas(clientId);
+  const {
+    tallas,
+    isLoading,
+    isSubmitting,
+    error,
+    upsertTalla,
+    deleteTalla,
+    reload,
+  } = useTallas(clientId);
 
   const [editingType, setEditingType] = useState<TallaType | null>(null);
   const [editingTalla, setEditingTalla] = useState<ClientTalla | null>(null);
@@ -232,11 +239,17 @@ export default function TallasScreen({ route }: Props) {
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </Pressable>
               <Pressable
-                style={styles.modalSaveButton}
+                style={[
+                  styles.modalSaveButton,
+                  isSubmitting ? styles.modalSaveButtonDisabled : null,
+                ]}
                 onPress={submitForm}
                 accessibilityLabel="Guardar talla"
+                disabled={isSubmitting}
               >
-                <Text style={styles.modalSaveText}>Guardar</Text>
+                <Text style={styles.modalSaveText}>
+                  {isSubmitting ? "Guardando..." : "Guardar"}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -382,6 +395,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
+  },
+  modalSaveButtonDisabled: {
+    opacity: 0.6,
   },
   modalSaveText: {
     color: "#ffffff",

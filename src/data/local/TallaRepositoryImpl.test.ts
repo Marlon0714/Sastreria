@@ -12,6 +12,7 @@ import { TallaRepositoryImpl } from "./TallaRepositoryImpl";
 interface MockDatabase {
   runAsync: (sql: string, ...params: unknown[]) => Promise<unknown>;
   getAllAsync: <T>(sql: string, ...params: unknown[]) => Promise<T[]>;
+  getFirstAsync: <T>(sql: string, ...params: unknown[]) => Promise<T | null>;
   withTransactionAsync: (callback: () => Promise<void>) => Promise<void>;
 }
 
@@ -19,6 +20,8 @@ const mockRunAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown>>();
 const mockGetAllAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown[]>>();
+const mockGetFirstAsync =
+  jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown | null>>();
 const mockWithTransactionAsync =
   jest.fn<(callback: () => Promise<void>) => Promise<void>>();
 
@@ -26,6 +29,8 @@ const mockDatabase: MockDatabase = {
   runAsync: (sql: string, ...params: unknown[]) => mockRunAsync(sql, ...params),
   getAllAsync: <T>(sql: string, ...params: unknown[]) =>
     mockGetAllAsync(sql, ...params) as Promise<T[]>,
+  getFirstAsync: <T>(sql: string, ...params: unknown[]) =>
+    mockGetFirstAsync(sql, ...params) as Promise<T | null>,
   withTransactionAsync: (callback: () => Promise<void>) =>
     mockWithTransactionAsync(callback),
 };
@@ -53,6 +58,7 @@ describe("TallaRepositoryImpl", () => {
   beforeEach(() => {
     mockRunAsync.mockReset();
     mockGetAllAsync.mockReset();
+    mockGetFirstAsync.mockReset();
     mockWithTransactionAsync.mockReset();
     mockGenerateDomainUuid.mockReset();
 
@@ -71,6 +77,7 @@ describe("TallaRepositoryImpl", () => {
   it("upsert con CreateTallaDTO crea talla nueva con syncStatus pending y query parametrizada", async () => {
     // Arrange
     const expectedId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    mockGetFirstAsync.mockResolvedValueOnce(null);
     mockRunAsync.mockResolvedValueOnce({});
     mockGetAllAsync.mockResolvedValueOnce([
       {
@@ -109,7 +116,8 @@ describe("TallaRepositoryImpl", () => {
 
     expect(mockRunAsync).toHaveBeenCalledTimes(1);
     const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
-    expect(sql).toContain("INSERT OR REPLACE INTO client_tallas");
+    expect(sql).toContain("INSERT INTO client_tallas");
+    expect(sql).toContain("ON CONFLICT(id) DO UPDATE");
     expect(sql).not.toContain("talla normal");
     expect(params[0]).toBe("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     expect(params[1]).toBe("11111111-1111-4111-8111-111111111111");
@@ -118,8 +126,51 @@ describe("TallaRepositoryImpl", () => {
     expect(params[4]).toBe("talla normal");
   });
 
+  it("upsert reutiliza el id existente (mismo client_id+type) en vez de generar uno nuevo", async () => {
+    // Regresión: antes generaba un id nuevo SIEMPRE y usaba INSERT OR
+    // REPLACE, huerfanando en Supabase la copia ya sincronizada de la fila
+    // original cada vez que se re-creaba una talla del mismo tipo (ej. por
+    // un doble tap en "Guardar").
+    const existingId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+    mockGetFirstAsync.mockResolvedValueOnce({
+      id: existingId,
+      created_at: "2026-03-01T00:00:00.000Z",
+    });
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGetAllAsync.mockResolvedValueOnce([
+      {
+        id: existingId,
+        client_id: "11111111-1111-4111-8111-111111111111",
+        type: "camisa",
+        value: "M",
+        notes: null,
+        created_at: "2026-03-01T00:00:00.000Z",
+        updated_at: "2026-05-14T10:00:00.000Z",
+        sync_status: "pending",
+      },
+    ]);
+    const repository = new TallaRepositoryImpl();
+
+    // Act — sin pasar id explícito, como cuando se crea desde el modal.
+    const result = await repository.upsert({
+      clientId: "11111111-1111-4111-8111-111111111111",
+      type: "camisa",
+      value: "M",
+    });
+
+    // Assert
+    expect(mockGenerateDomainUuid).not.toHaveBeenCalled();
+    expect(result.id).toBe(existingId);
+    expect(result.createdAt).toBe("2026-03-01T00:00:00.000Z");
+    const [, ...params] = mockRunAsync.mock.calls[0] ?? [];
+    expect(params[0]).toBe(existingId);
+  });
+
   it("upsert con UpdateTallaDTO usa el id existente y no genera uuid nuevo", async () => {
     // Arrange
+    mockGetFirstAsync.mockResolvedValueOnce({
+      created_at: "2026-04-01T00:00:00.000Z",
+    });
     mockRunAsync.mockResolvedValueOnce({});
     mockGetAllAsync.mockResolvedValueOnce([
       {
@@ -267,6 +318,7 @@ describe("TallaRepositoryImpl", () => {
   it("llama onWriteCommitted después de upsert exitoso", async () => {
     // Arrange
     const newId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    mockGetFirstAsync.mockResolvedValueOnce(null);
     mockRunAsync.mockResolvedValueOnce({});
     mockGetAllAsync.mockResolvedValueOnce([
       {
