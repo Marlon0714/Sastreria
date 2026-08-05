@@ -693,6 +693,31 @@ ALTER TABLE schedules ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'a
 
 ---
 
+### v25_clients_measurements_rls (2026-08-05) — ⚠️ SEGURIDAD, URGENTE
+
+**Contexto:** auditoría de seguridad (2026-08-05) — a diferencia de TODAS las demás tablas (`sync_delete_log`, `client_tallas`, `talla_templates`, `pricing_services`, `schedules`, `profiles`, `schedule_events`), `clients` y las 4 tablas de medidas nunca recibieron `ENABLE ROW LEVEL SECURITY`. La clave "anon"/publishable de Supabase va embebida en el bundle de la app (se puede extraer del APK) — sin RLS, cualquiera con esa clave puede leer/escribir estas tablas directo por REST (`GET /rest/v1/clients?select=*`) sin pasar por la app ni por ningún login, exponiendo nombre, teléfono y **cédula** de todos los clientes. Mismo riesgo por Realtime si alguna de estas tablas llegara a habilitarse ahí.
+
+```sql
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated all clients" ON clients FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE camisa_measurements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated all camisa_measurements" ON camisa_measurements FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE pantalon_measurements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated all pantalon_measurements" ON pantalon_measurements FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE saco_measurements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated all saco_measurements" ON saco_measurements FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE chaleco_measurements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated all chaleco_measurements" ON chaleco_measurements FOR ALL TO authenticated USING (true) WITH CHECK (true);
+```
+
+**Importante:** corre esto en Supabase **cuanto antes**, sin esperar al próximo build — es un hueco de exposición de datos activo en producción, no depende de ninguna versión de la app. No requiere reinstalar nada.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
