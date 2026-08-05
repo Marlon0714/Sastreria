@@ -44,7 +44,8 @@ interface TallaFormValues {
   cuello: string;
   brazo: string;
   puno: string;
-  // pantalon (4 extra)
+  // pantalon (5 extra)
+  entrepierna: string;
   tiro: string;
   pierna: string;
   rodilla: string;
@@ -70,6 +71,7 @@ const DEFAULTS: TallaFormValues = {
   cuello: "",
   brazo: "",
   puno: "",
+  entrepierna: "",
   tiro: "",
   pierna: "",
   rodilla: "",
@@ -97,6 +99,7 @@ function toFormValues(t: TallaTemplate): TallaFormValues {
     cuello: s(t.cuello),
     brazo: s(t.brazo),
     puno: s(t.puno),
+    entrepierna: s(t.entrepierna),
     tiro: s(t.tiro),
     pierna: s(t.pierna),
     rodilla: s(t.rodilla),
@@ -191,6 +194,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
       cuello: parseNum(values.cuello),
       brazo: parseNum(values.brazo),
       puno: parseNum(values.puno),
+      entrepierna: parseNum(values.entrepierna),
       tiro: parseNum(values.tiro),
       pierna: parseNum(values.pierna),
       rodilla: parseNum(values.rodilla),
@@ -449,27 +453,6 @@ function PantalonFields({ control, errors }: GridProps) {
     <View style={styles.gridWrapper}>
       <MeasurementGridSection title="Pantalón">
         <MeasurementCard<TallaFormValues>
-          name="cintura"
-          label="Cintura"
-          accessibilityLabel="Cintura (cm)"
-          control={control}
-          errorMessage={errors.cintura?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="tiro"
-          label="Tiro"
-          accessibilityLabel="Tiro (cm)"
-          control={control}
-          errorMessage={errors.tiro?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="base"
-          label="Cadera"
-          accessibilityLabel="Cadera (cm)"
-          control={control}
-          errorMessage={errors.base?.message}
-        />
-        <MeasurementCard<TallaFormValues>
           name="largo"
           label="Largo"
           accessibilityLabel="Largo (cm)"
@@ -477,11 +460,25 @@ function PantalonFields({ control, errors }: GridProps) {
           errorMessage={errors.largo?.message}
         />
         <MeasurementCard<TallaFormValues>
-          name="pierna"
-          label="Pierna"
-          accessibilityLabel="Pierna (cm)"
+          name="entrepierna"
+          label="Entrepierna"
+          accessibilityLabel="Entrepierna (cm)"
           control={control}
-          errorMessage={errors.pierna?.message}
+          errorMessage={errors.entrepierna?.message}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="cintura"
+          label="Cintura"
+          accessibilityLabel="Cintura (cm)"
+          control={control}
+          errorMessage={errors.cintura?.message}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="base"
+          label="Cadera"
+          accessibilityLabel="Cadera (cm)"
+          control={control}
+          errorMessage={errors.base?.message}
         />
         <MeasurementCard<TallaFormValues>
           name="rodilla"
@@ -496,6 +493,20 @@ function PantalonFields({ control, errors }: GridProps) {
           accessibilityLabel="Bota (cm)"
           control={control}
           errorMessage={errors.bota?.message}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="pierna"
+          label="Pierna"
+          accessibilityLabel="Pierna (cm)"
+          control={control}
+          errorMessage={errors.pierna?.message}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="tiro"
+          label="Tiro"
+          accessibilityLabel="Tiro (cm)"
+          control={control}
+          errorMessage={errors.tiro?.message}
         />
       </MeasurementGridSection>
     </View>

@@ -718,6 +718,17 @@ CREATE POLICY "authenticated all chaleco_measurements" ON chaleco_measurements F
 
 ---
 
+### v26_pantalon_entrepierna (2026-08-05)
+
+**Contexto:** pedido del dueño tras probar el build — faltaba la medida "entrepierna" en pantalón, tanto en medidas de cliente como en plantillas de talla.
+
+```sql
+ALTER TABLE pantalon_measurements ADD COLUMN IF NOT EXISTS entrepierna REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS entrepierna REAL;
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

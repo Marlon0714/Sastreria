@@ -91,6 +91,7 @@ export interface UpsertCamisaDTO {
 export interface PantalonMeasurement extends BaseEntity {
   clientId: string;
   largo: number | null;
+  entrepierna: number | null;
   cintura: number | null;
   base: number | null;
   tiro: number | null;
@@ -105,6 +106,7 @@ export interface PantalonMeasurement extends BaseEntity {
 export interface UpsertPantalonDTO {
   clientId: string;
   largo?: number | null;
+  entrepierna?: number | null;
   cintura?: number | null;
   base?: number | null;
   tiro?: number | null;

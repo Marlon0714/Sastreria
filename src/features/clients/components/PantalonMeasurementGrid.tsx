@@ -29,11 +29,11 @@ export default function PantalonMeasurementGrid({
           disabled={disabled}
         />
         <MeasurementCard
-          name="pierna"
-          label="Pierna"
-          accessibilityLabel="Pierna (cm)"
+          name="entrepierna"
+          label="Entrepierna"
+          accessibilityLabel="Entrepierna (cm)"
           control={control}
-          errorMessage={errors.pierna?.message}
+          errorMessage={errors.entrepierna?.message}
           disabled={disabled}
         />
         <MeasurementCard
@@ -50,6 +50,14 @@ export default function PantalonMeasurementGrid({
           accessibilityLabel="Bota (cm)"
           control={control}
           errorMessage={errors.bota?.message}
+          disabled={disabled}
+        />
+        <MeasurementCard
+          name="pierna"
+          label="Pierna"
+          accessibilityLabel="Pierna (cm)"
+          control={control}
+          errorMessage={errors.pierna?.message}
           disabled={disabled}
         />
       </MeasurementGridSection>

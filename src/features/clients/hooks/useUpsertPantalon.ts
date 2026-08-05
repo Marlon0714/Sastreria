@@ -39,6 +39,9 @@ function mapValidationErrors(
     largo: fieldErrors.largo?.[0]
       ? { type: "zod", message: fieldErrors.largo[0] }
       : undefined,
+    entrepierna: fieldErrors.entrepierna?.[0]
+      ? { type: "zod", message: fieldErrors.entrepierna[0] }
+      : undefined,
     cintura: fieldErrors.cintura?.[0]
       ? { type: "zod", message: fieldErrors.cintura[0] }
       : undefined,

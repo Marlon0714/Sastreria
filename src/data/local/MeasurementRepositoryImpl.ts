@@ -134,6 +134,7 @@ interface PantalonMeasurementRow {
   id: string;
   client_id: string;
   largo: number | null;
+  entrepierna: number | null;
   cintura: number | null;
   base: number | null;
   tiro: number | null;
@@ -210,6 +211,7 @@ function mapPantalonRow(row: PantalonMeasurementRow): PantalonMeasurement {
     id: row.id,
     clientId: row.client_id,
     largo: row.largo,
+    entrepierna: row.entrepierna,
     cintura: row.cintura,
     base: row.base,
     tiro: row.tiro,
@@ -554,6 +556,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       id,
       clientId: input.clientId,
       largo: normalizeNullableNumber(input.largo),
+      entrepierna: normalizeNullableNumber(input.entrepierna),
       cintura: normalizeNullableNumber(input.cintura),
       base: normalizeNullableNumber(input.base),
       tiro: normalizeNullableNumber(input.tiro),
@@ -574,6 +577,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         id,
         client_id,
         largo,
+        entrepierna,
         cintura,
         base,
         tiro,
@@ -586,9 +590,10 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         created_at,
         updated_at,
         sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(client_id) DO UPDATE SET
         largo = excluded.largo,
+        entrepierna = excluded.entrepierna,
         cintura = excluded.cintura,
         base = excluded.base,
         tiro = excluded.tiro,
@@ -604,6 +609,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       pantalonMeasurement.id,
       pantalonMeasurement.clientId,
       pantalonMeasurement.largo,
+      pantalonMeasurement.entrepierna,
       pantalonMeasurement.cintura,
       pantalonMeasurement.base,
       pantalonMeasurement.tiro,
@@ -694,6 +700,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         id,
         client_id,
         largo,
+        entrepierna,
         cintura,
         base,
         tiro,

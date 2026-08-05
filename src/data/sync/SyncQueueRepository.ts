@@ -60,6 +60,7 @@ interface PantalonQueueRow {
   id: string;
   client_id: string;
   largo: number | null;
+  entrepierna: number | null;
   cintura: number | null;
   base: number | null;
   tiro: number | null;
@@ -157,6 +158,7 @@ interface TallaTemplateQueueRow {
   cuello: number | null;
   brazo: number | null;
   puno: number | null;
+  entrepierna: number | null;
   tiro: number | null;
   pierna: number | null;
   rodilla: number | null;
@@ -303,6 +305,7 @@ function toPantalonQueueItem(row: PantalonQueueRow): SyncPantalonQueueItem {
       id: row.id,
       clientId: row.client_id,
       largo: row.largo,
+      entrepierna: row.entrepierna,
       cintura: row.cintura,
       base: row.base,
       tiro: row.tiro,
@@ -449,6 +452,7 @@ function toTallaTemplateQueueItem(
       cuello: row.cuello,
       brazo: row.brazo,
       puno: row.puno,
+      entrepierna: row.entrepierna,
       tiro: row.tiro,
       pierna: row.pierna,
       rodilla: row.rodilla,
@@ -625,6 +629,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         id,
         client_id,
         largo,
+        entrepierna,
         cintura,
         base,
         tiro,
@@ -767,6 +772,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         cuello,
         brazo,
         puno,
+        entrepierna,
         tiro,
         pierna,
         rodilla,

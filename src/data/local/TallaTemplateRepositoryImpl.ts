@@ -34,6 +34,7 @@ interface TallaTemplateRow {
   cuello: number | null;
   brazo: number | null;
   puno: number | null;
+  entrepierna: number | null;
   tiro: number | null;
   pierna: number | null;
   rodilla: number | null;
@@ -65,6 +66,7 @@ function mapRow(row: TallaTemplateRow): TallaTemplate {
     cuello: row.cuello,
     brazo: row.brazo,
     puno: row.puno,
+    entrepierna: row.entrepierna,
     tiro: row.tiro,
     pierna: row.pierna,
     rodilla: row.rodilla,
@@ -109,9 +111,9 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
         id, name, type,
         espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
         pecho, cintura, base, largo, largo_manga, ancho_manga,
-        escote, cuello, brazo, puno, tiro, pierna, rodilla, bota,
+        escote, cuello, brazo, puno, entrepierna, tiro, pierna, rodilla, bota,
         notes, created_at, updated_at, sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       id,
       dto.name,
       dto.type,
@@ -131,6 +133,7 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       n(dto.cuello),
       n(dto.brazo),
       n(dto.puno),
+      n(dto.entrepierna),
       n(dto.tiro),
       n(dto.pierna),
       n(dto.rodilla),
@@ -157,7 +160,7 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
         espalda = ?, hombro = ?, talle_delantero = ?, talle_trasero = ?,
         distancia = ?, separacion = ?, pecho = ?, cintura = ?, base = ?,
         largo = ?, largo_manga = ?, ancho_manga = ?, escote = ?, cuello = ?,
-        brazo = ?, puno = ?, tiro = ?, pierna = ?, rodilla = ?, bota = ?,
+        brazo = ?, puno = ?, entrepierna = ?, tiro = ?, pierna = ?, rodilla = ?, bota = ?,
         notes = ?, updated_at = ?, sync_status = 'pending'
       WHERE id = ?;`,
       dto.name ?? null,
@@ -177,6 +180,7 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       n(dto.cuello),
       n(dto.brazo),
       n(dto.puno),
+      n(dto.entrepierna),
       n(dto.tiro),
       n(dto.pierna),
       n(dto.rodilla),

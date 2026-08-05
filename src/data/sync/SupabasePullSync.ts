@@ -58,6 +58,7 @@ interface PantalonRow {
   id: string;
   client_id: string;
   largo: number | null;
+  entrepierna: number | null;
   cintura: number | null;
   base: number | null;
   tiro: number | null;
@@ -150,6 +151,7 @@ interface TallaTemplateRow {
   cuello: number | null;
   brazo: number | null;
   puno: number | null;
+  entrepierna: number | null;
   tiro: number | null;
   pierna: number | null;
   rodilla: number | null;
@@ -456,7 +458,7 @@ export class SupabasePullSync {
     let query = supabase
       .from("pantalon_measurements")
       .select(
-        "id, client_id, largo, cintura, base, tiro, pierna, rodilla, bota, " +
+        "id, client_id, largo, entrepierna, cintura, base, tiro, pierna, rodilla, bota, " +
           "changed_by, changed_at, notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
@@ -484,11 +486,12 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO pantalon_measurements
-            (id, client_id, largo, cintura, base, tiro, pierna, rodilla, bota,
+            (id, client_id, largo, entrepierna, cintura, base, tiro, pierna, rodilla, bota,
              changed_by, changed_at, notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             largo       = excluded.largo,
+            entrepierna = excluded.entrepierna,
             cintura     = excluded.cintura,
             base        = excluded.base,
             tiro        = excluded.tiro,
@@ -505,6 +508,7 @@ export class SupabasePullSync {
           row.id,
           row.client_id,
           row.largo ?? null,
+          row.entrepierna ?? null,
           row.cintura ?? null,
           row.base ?? null,
           row.tiro ?? null,
@@ -837,7 +841,7 @@ export class SupabasePullSync {
       .select(
         "id, name, type, espalda, hombro, talle_delantero, talle_trasero, " +
           "distancia, separacion, pecho, cintura, base, largo, largo_manga, " +
-          "ancho_manga, escote, cuello, brazo, puno, tiro, pierna, rodilla, bota, " +
+          "ancho_manga, escote, cuello, brazo, puno, entrepierna, tiro, pierna, rodilla, bota, " +
           "notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
@@ -867,9 +871,9 @@ export class SupabasePullSync {
           INSERT INTO talla_templates
             (id, name, type, espalda, hombro, talle_delantero, talle_trasero,
              distancia, separacion, pecho, cintura, base, largo, largo_manga,
-             ancho_manga, escote, cuello, brazo, puno, tiro, pierna, rodilla, bota,
+             ancho_manga, escote, cuello, brazo, puno, entrepierna, tiro, pierna, rodilla, bota,
              notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             name            = excluded.name,
             type            = excluded.type,
@@ -889,6 +893,7 @@ export class SupabasePullSync {
             cuello          = excluded.cuello,
             brazo           = excluded.brazo,
             puno            = excluded.puno,
+            entrepierna     = excluded.entrepierna,
             tiro            = excluded.tiro,
             pierna          = excluded.pierna,
             rodilla         = excluded.rodilla,
@@ -917,6 +922,7 @@ export class SupabasePullSync {
           row.cuello ?? null,
           row.brazo ?? null,
           row.puno ?? null,
+          row.entrepierna ?? null,
           row.tiro ?? null,
           row.pierna ?? null,
           row.rodilla ?? null,

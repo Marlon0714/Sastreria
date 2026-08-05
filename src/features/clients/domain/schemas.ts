@@ -136,6 +136,7 @@ export const upsertCamisaSchema = z.object({
 export const upsertPantalonSchema = z.object({
   clientId: z.string().uuid("El cliente es inválido"),
   largo: optionalMeasurementField.optional(),
+  entrepierna: optionalMeasurementField.optional(),
   cintura: optionalMeasurementField.optional(),
   base: optionalMeasurementField.optional(),
   tiro: optionalMeasurementField.optional(),

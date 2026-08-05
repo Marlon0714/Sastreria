@@ -8,23 +8,25 @@ import {
 
 export interface PantalonFormValues {
   largo: string;
+  entrepierna: string;
   cintura: string;
   base: string;
-  tiro: string;
-  pierna: string;
   rodilla: string;
   bota: string;
+  pierna: string;
+  tiro: string;
   notes: string;
 }
 
 export const PANTALON_FORM_DEFAULTS: PantalonFormValues = {
   largo: "",
+  entrepierna: "",
   cintura: "",
   base: "",
-  tiro: "",
-  pierna: "",
   rodilla: "",
   bota: "",
+  pierna: "",
+  tiro: "",
   notes: "",
 };
 
@@ -36,7 +38,7 @@ interface PantalonMeasurementFormProps {
 }
 
 /**
- * Formulario reutilizable para medidas de pantalón (7 campos + notas).
+ * Formulario reutilizable para medidas de pantalón (8 campos + notas).
  * Usado por `PantalonMeasurementDetailScreen` (crea o edita según haya medidas).
  */
 export default function PantalonMeasurementForm({
@@ -54,6 +56,13 @@ export default function PantalonMeasurementForm({
         disabled={disabled}
       />
       <MeasurementNumberField
+        name="entrepierna"
+        label="Entrepierna (cm)"
+        control={control}
+        errorMessage={errors.entrepierna?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
         name="cintura"
         label="Cintura (cm)"
         control={control}
@@ -68,20 +77,6 @@ export default function PantalonMeasurementForm({
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="tiro"
-        label="Tiro (cm)"
-        control={control}
-        errorMessage={errors.tiro?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
-        name="pierna"
-        label="Pierna (cm)"
-        control={control}
-        errorMessage={errors.pierna?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
         name="rodilla"
         label="Rodilla (cm)"
         control={control}
@@ -93,6 +88,20 @@ export default function PantalonMeasurementForm({
         label="Bota (cm)"
         control={control}
         errorMessage={errors.bota?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="pierna"
+        label="Pierna (cm)"
+        control={control}
+        errorMessage={errors.pierna?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="tiro"
+        label="Tiro (cm)"
+        control={control}
+        errorMessage={errors.tiro?.message}
         disabled={disabled}
       />
       <MeasurementNotesField

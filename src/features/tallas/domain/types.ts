@@ -38,6 +38,7 @@ export interface TallaTemplate extends BaseEntity {
   brazo: number | null;
   puno: number | null;
   // Pantalón
+  entrepierna: number | null;
   tiro: number | null;
   pierna: number | null;
   rodilla: number | null;
@@ -64,6 +65,7 @@ export interface CreateTallaTemplateDTO {
   cuello?: number | null;
   brazo?: number | null;
   puno?: number | null;
+  entrepierna?: number | null;
   tiro?: number | null;
   pierna?: number | null;
   rodilla?: number | null;

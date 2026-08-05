@@ -449,6 +449,17 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE schedules ADD COLUMN category TEXT NOT NULL DEFAULT 'arreglo';`,
     ],
   },
+  {
+    // Pedido del dueño (2026-08-05): agregar la medida "entrepierna" a
+    // pantalón, faltante tanto en medidas de cliente como en plantillas de
+    // talla.
+    version: 23,
+    name: "v23_pantalon_entrepierna",
+    statements: [
+      `ALTER TABLE pantalon_measurements ADD COLUMN entrepierna REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN entrepierna REAL;`,
+    ],
+  },
 ];
 
 interface UserVersionRow {

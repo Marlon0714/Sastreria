@@ -25,6 +25,8 @@ function toFormValues(
   if (!measurement) return PANTALON_FORM_DEFAULTS;
   return {
     largo: measurement.largo != null ? String(measurement.largo) : "",
+    entrepierna:
+      measurement.entrepierna != null ? String(measurement.entrepierna) : "",
     cintura: measurement.cintura != null ? String(measurement.cintura) : "",
     base: measurement.base != null ? String(measurement.base) : "",
     tiro: measurement.tiro != null ? String(measurement.tiro) : "",
