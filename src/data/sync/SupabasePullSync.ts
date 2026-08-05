@@ -1178,6 +1178,10 @@ export class SupabasePullSync {
             row.entity_id,
           );
           await db.runAsync(
+            `DELETE FROM client_tallas WHERE client_id = ?;`,
+            row.entity_id,
+          );
+          await db.runAsync(
             `DELETE FROM schedules WHERE client_id = ?;`,
             row.entity_id,
           );

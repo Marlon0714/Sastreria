@@ -912,6 +912,11 @@ describe("SupabasePullSync", () => {
       ),
     ).toBe(true);
     expect(
+      sqlStatements.some((sql) =>
+        sql.includes("DELETE FROM client_tallas WHERE client_id = ?"),
+      ),
+    ).toBe(true);
+    expect(
       sqlStatements.some((sql) => sql.includes("UPDATE sync_delete_log")),
     ).toBe(true);
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
