@@ -184,8 +184,8 @@ describe("clients schemas", () => {
         clientId: validClientId,
         espalda: "",
         hombro: "  ",
-        pecho: "92,5",
-        cintura: "70.5",
+        pechoAjustado: "92,5",
+        cinturaAjustado: "70.5",
         notes: "  Cliente nuevo  ",
       });
 
@@ -194,15 +194,15 @@ describe("clients schemas", () => {
 
       expect(result.data.espalda).toBe(null);
       expect(result.data.hombro).toBe(null);
-      expect(result.data.pecho).toBe(92.5);
-      expect(result.data.cintura).toBe(70.5);
+      expect(result.data.pechoAjustado).toBe(92.5);
+      expect(result.data.cinturaAjustado).toBe(70.5);
       expect(result.data.notes).toBe("Cliente nuevo");
     });
 
     it("fails when a measurement field is out of range", () => {
       const result = upsertCamisaSchema.safeParse({
         clientId: validClientId,
-        pecho: 9999,
+        pechoAjustado: 9999,
       });
 
       expect(result.success).toBe(false);
@@ -211,7 +211,7 @@ describe("clients schemas", () => {
     it("fails when clientId is not a uuid", () => {
       const result = upsertCamisaSchema.safeParse({
         clientId: "not-uuid",
-        pecho: 90,
+        pechoAjustado: 90,
       });
 
       expect(result.success).toBe(false);
@@ -234,14 +234,14 @@ describe("clients schemas", () => {
     it("accepts boundary value 300 and normalizes empty notes to null", () => {
       const result = upsertCamisaSchema.safeParse({
         clientId: validClientId,
-        pecho: 300,
+        pechoAjustado: 300,
         notes: "   ",
       });
 
       expect(result.success).toBe(true);
       if (!result.success) return;
 
-      expect(result.data.pecho).toBe(300);
+      expect(result.data.pechoAjustado).toBe(300);
       expect(result.data.notes ?? null).toBe(null);
     });
 

@@ -4,6 +4,7 @@ import { type ChalecoFormValues } from "./ChalecoMeasurementForm";
 import { MeasurementCard } from "./MeasurementCard";
 import { MeasurementNotesField } from "./MeasurementFields";
 import { MeasurementGridSection } from "./MeasurementGridSection";
+import { MeasurementPairCard } from "./MeasurementPairCard";
 
 interface ChalecoMeasurementGridProps {
   control: Control<ChalecoFormValues>;
@@ -43,28 +44,55 @@ export default function ChalecoMeasurementGrid({
           errorMessage={errors.largo?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="pecho"
-          label="Pecho"
-          accessibilityLabel="Pecho (cm)"
+        <MeasurementPairCard
+          title="Pecho"
+          first={{
+            name: "pechoAjustado",
+            label: "Ajustado",
+            accessibilityLabel: "Pecho ajustado (cm)",
+            errorMessage: errors.pechoAjustado?.message,
+          }}
+          second={{
+            name: "pechoAncho",
+            label: "Ancho",
+            accessibilityLabel: "Pecho ancho (cm)",
+            errorMessage: errors.pechoAncho?.message,
+          }}
           control={control}
-          errorMessage={errors.pecho?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="cintura"
-          label="Cintura"
-          accessibilityLabel="Cintura (cm)"
+        <MeasurementPairCard
+          title="Cintura"
+          first={{
+            name: "cinturaAjustado",
+            label: "Ajustado",
+            accessibilityLabel: "Cintura ajustado (cm)",
+            errorMessage: errors.cinturaAjustado?.message,
+          }}
+          second={{
+            name: "cinturaAncho",
+            label: "Ancho",
+            accessibilityLabel: "Cintura ancho (cm)",
+            errorMessage: errors.cinturaAncho?.message,
+          }}
           control={control}
-          errorMessage={errors.cintura?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="base"
-          label="Base o cadera"
-          accessibilityLabel="Base o cadera (cm)"
+        <MeasurementPairCard
+          title="Base"
+          first={{
+            name: "baseAjustado",
+            label: "Ajustado",
+            accessibilityLabel: "Base ajustado (cm)",
+            errorMessage: errors.baseAjustado?.message,
+          }}
+          second={{
+            name: "baseAncho",
+            label: "Ancho",
+            accessibilityLabel: "Base ancho (cm)",
+            errorMessage: errors.baseAncho?.message,
+          }}
           control={control}
-          errorMessage={errors.base?.message}
           disabled={disabled}
         />
         <MeasurementCard

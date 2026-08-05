@@ -38,14 +38,18 @@ interface CamisaQueueRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   changed_by: string | null;
@@ -106,14 +110,18 @@ interface SacoQueueRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   notes: string | null;
@@ -128,9 +136,12 @@ interface ChalecoQueueRow {
   espalda: number | null;
   talle_trasero: number | null;
   largo: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   escote: number | null;
   notes: string | null;
   created_at: string;
@@ -148,14 +159,20 @@ interface TallaTemplateQueueRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
   cintura: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
   base: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   entrepierna: number | null;
@@ -274,14 +291,18 @@ function toCamisaQueueItem(row: CamisaQueueRow): SyncCamisaQueueItem {
       talleTrasero: row.talle_trasero,
       distancia: row.distancia,
       separacion: row.separacion,
-      pecho: row.pecho,
-      cintura: row.cintura,
-      base: row.base,
+      pechoAjustado: row.pecho_ajustado,
+      pechoAncho: row.pecho_ancho,
+      cinturaAjustado: row.cintura_ajustado,
+      cinturaAncho: row.cintura_ancho,
+      baseAjustado: row.base_ajustado,
+      baseAncho: row.base_ancho,
       largo: row.largo,
       largoManga: row.largo_manga,
       anchoManga: row.ancho_manga,
       escote: row.escote,
-      cuello: row.cuello,
+      cuelloNormal: row.cuello_normal,
+      cuelloCruce: row.cuello_cruce,
       brazo: row.brazo,
       puno: row.puno,
       changedBy: row.changed_by,
@@ -380,14 +401,18 @@ function toSacoQueueItem(row: SacoQueueRow): SyncSacoQueueItem {
       talleTrasero: row.talle_trasero,
       distancia: row.distancia,
       separacion: row.separacion,
-      pecho: row.pecho,
-      cintura: row.cintura,
-      base: row.base,
+      pechoAjustado: row.pecho_ajustado,
+      pechoAncho: row.pecho_ancho,
+      cinturaAjustado: row.cintura_ajustado,
+      cinturaAncho: row.cintura_ancho,
+      baseAjustado: row.base_ajustado,
+      baseAncho: row.base_ancho,
       largo: row.largo,
       largoManga: row.largo_manga,
       anchoManga: row.ancho_manga,
       escote: row.escote,
-      cuello: row.cuello,
+      cuelloNormal: row.cuello_normal,
+      cuelloCruce: row.cuello_cruce,
       brazo: row.brazo,
       puno: row.puno,
       notes: row.notes,
@@ -411,9 +436,12 @@ function toChalecoQueueItem(row: ChalecoQueueRow): SyncChalecoQueueItem {
       espalda: row.espalda,
       talleTrasero: row.talle_trasero,
       largo: row.largo,
-      pecho: row.pecho,
-      cintura: row.cintura,
-      base: row.base,
+      pechoAjustado: row.pecho_ajustado,
+      pechoAncho: row.pecho_ancho,
+      cinturaAjustado: row.cintura_ajustado,
+      cinturaAncho: row.cintura_ancho,
+      baseAjustado: row.base_ajustado,
+      baseAncho: row.base_ancho,
       escote: row.escote,
       notes: row.notes,
       createdAt: row.created_at,
@@ -442,14 +470,20 @@ function toTallaTemplateQueueItem(
       talleTrasero: row.talle_trasero,
       distancia: row.distancia,
       separacion: row.separacion,
-      pecho: row.pecho,
+      pechoAjustado: row.pecho_ajustado,
+      pechoAncho: row.pecho_ancho,
       cintura: row.cintura,
+      cinturaAjustado: row.cintura_ajustado,
+      cinturaAncho: row.cintura_ancho,
       base: row.base,
+      baseAjustado: row.base_ajustado,
+      baseAncho: row.base_ancho,
       largo: row.largo,
       largoManga: row.largo_manga,
       anchoManga: row.ancho_manga,
       escote: row.escote,
-      cuello: row.cuello,
+      cuelloNormal: row.cuello_normal,
+      cuelloCruce: row.cuello_cruce,
       brazo: row.brazo,
       puno: row.puno,
       entrepierna: row.entrepierna,
@@ -598,14 +632,18 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         talle_trasero,
         distancia,
         separacion,
-        pecho,
-        cintura,
-        base,
+        pecho_ajustado,
+        pecho_ancho,
+        cintura_ajustado,
+        cintura_ancho,
+        base_ajustado,
+        base_ancho,
         largo,
         largo_manga,
         ancho_manga,
         escote,
-        cuello,
+        cuello_normal,
+        cuello_cruce,
         brazo,
         puno,
         changed_by,
@@ -702,14 +740,18 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         talle_trasero,
         distancia,
         separacion,
-        pecho,
-        cintura,
-        base,
+        pecho_ajustado,
+        pecho_ancho,
+        cintura_ajustado,
+        cintura_ancho,
+        base_ajustado,
+        base_ancho,
         largo,
         largo_manga,
         ancho_manga,
         escote,
-        cuello,
+        cuello_normal,
+        cuello_cruce,
         brazo,
         puno,
         notes,
@@ -733,9 +775,12 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         espalda,
         talle_trasero,
         largo,
-        pecho,
-        cintura,
-        base,
+        pecho_ajustado,
+        pecho_ancho,
+        cintura_ajustado,
+        cintura_ancho,
+        base_ajustado,
+        base_ancho,
         escote,
         notes,
         created_at,
@@ -762,14 +807,20 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         talle_trasero,
         distancia,
         separacion,
-        pecho,
+        pecho_ajustado,
+        pecho_ancho,
         cintura,
+        cintura_ajustado,
+        cintura_ancho,
         base,
+        base_ajustado,
+        base_ancho,
         largo,
         largo_manga,
         ancho_manga,
         escote,
-        cuello,
+        cuello_normal,
+        cuello_cruce,
         brazo,
         puno,
         entrepierna,

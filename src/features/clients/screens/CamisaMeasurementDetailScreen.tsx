@@ -36,16 +36,40 @@ function toFormValues(
       measurement.distancia != null ? String(measurement.distancia) : "",
     separacion:
       measurement.separacion != null ? String(measurement.separacion) : "",
-    pecho: measurement.pecho != null ? String(measurement.pecho) : "",
-    cintura: measurement.cintura != null ? String(measurement.cintura) : "",
-    base: measurement.base != null ? String(measurement.base) : "",
+    pechoAjustado:
+      measurement.pechoAjustado != null
+        ? String(measurement.pechoAjustado)
+        : "",
+    pechoAncho:
+      measurement.pechoAncho != null ? String(measurement.pechoAncho) : "",
+    cinturaAjustado:
+      measurement.cinturaAjustado != null
+        ? String(measurement.cinturaAjustado)
+        : "",
+    cinturaAncho:
+      measurement.cinturaAncho != null
+        ? String(measurement.cinturaAncho)
+        : "",
+    baseAjustado:
+      measurement.baseAjustado != null
+        ? String(measurement.baseAjustado)
+        : "",
+    baseAncho:
+      measurement.baseAncho != null ? String(measurement.baseAncho) : "",
     largo: measurement.largo != null ? String(measurement.largo) : "",
     largoManga:
       measurement.largoManga != null ? String(measurement.largoManga) : "",
     anchoManga:
       measurement.anchoManga != null ? String(measurement.anchoManga) : "",
     escote: measurement.escote != null ? String(measurement.escote) : "",
-    cuello: measurement.cuello != null ? String(measurement.cuello) : "",
+    cuelloNormal:
+      measurement.cuelloNormal != null
+        ? String(measurement.cuelloNormal)
+        : "",
+    cuelloCruce:
+      measurement.cuelloCruce != null
+        ? String(measurement.cuelloCruce)
+        : "",
     brazo: measurement.brazo != null ? String(measurement.brazo) : "",
     puno: measurement.puno != null ? String(measurement.puno) : "",
     notes: typeof measurement.notes === "string" ? measurement.notes : "",

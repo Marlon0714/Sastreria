@@ -460,6 +460,56 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE talla_templates ADD COLUMN entrepierna REAL;`,
     ],
   },
+  {
+    // Pedido del dueño (2026-08-05): pecho/cintura/base pasan a tener dos
+    // sub-medidas (ajustado/ancho) en camisa, saco, chaleco y sus plantillas
+    // de talla; cuello pasa a tener normal/cruce (camisa/saco/plantillas,
+    // chaleco nunca tuvo cuello). Se migra el valor viejo al primer subcampo
+    // (ajustado/normal) para no perder medidas ya tomadas; las columnas
+    // viejas quedan sin usar (no se borran).
+    version: 24,
+    name: "v24_camisa_saco_chaleco_pares",
+    statements: [
+      `ALTER TABLE camisa_measurements ADD COLUMN pecho_ajustado REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN pecho_ancho REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN cintura_ajustado REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN cintura_ancho REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN base_ajustado REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN base_ancho REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN cuello_normal REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN cuello_cruce REAL;`,
+      `UPDATE camisa_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello;`,
+
+      `ALTER TABLE saco_measurements ADD COLUMN pecho_ajustado REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN pecho_ancho REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cintura_ajustado REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cintura_ancho REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN base_ajustado REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN base_ancho REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cuello_normal REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cuello_cruce REAL;`,
+      `UPDATE saco_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello;`,
+
+      `ALTER TABLE chaleco_measurements ADD COLUMN pecho_ajustado REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN pecho_ancho REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN cintura_ajustado REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN cintura_ancho REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN base_ajustado REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN base_ancho REAL;`,
+      `UPDATE chaleco_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base;`,
+
+      `ALTER TABLE talla_templates ADD COLUMN pecho_ajustado REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN pecho_ancho REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN cintura_ajustado REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN cintura_ancho REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN base_ajustado REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN base_ancho REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN cuello_normal REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN cuello_cruce REAL;`,
+      `UPDATE talla_templates SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello
+        WHERE type IN ('camisa', 'saco', 'chaleco');`,
+    ],
+  },
 ];
 
 interface UserVersionRow {

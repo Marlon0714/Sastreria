@@ -67,14 +67,18 @@ describe("SyncQueueRepository", () => {
           talle_trasero: 41,
           distancia: 22,
           separacion: 10,
-          pecho: 98,
-          cintura: 80,
-          base: 100,
+          pecho_ajustado: 98,
+          pecho_ancho: null,
+          cintura_ajustado: 80,
+          cintura_ancho: null,
+          base_ajustado: 100,
+          base_ancho: null,
           largo: 70,
           largo_manga: 62,
           ancho_manga: 32,
           escote: 18,
-          cuello: 38,
+          cuello_normal: 38,
+          cuello_cruce: null,
           brazo: 58,
           puno: 24,
           changed_by: "modista-1",
@@ -113,7 +117,7 @@ describe("SyncQueueRepository", () => {
     const camisaItem = items[0] as unknown as {
       payload: Record<string, unknown>;
     };
-    expect(camisaItem.payload.cuello).toBe(38);
+    expect(camisaItem.payload.cuelloNormal).toBe(38);
     expect(camisaItem.payload.brazo).toBe(58);
     expect(camisaItem.payload.puno).toBe(24);
     expect(camisaItem.payload.changedBy).toBe("modista-1");
@@ -142,7 +146,7 @@ describe("SyncQueueRepository", () => {
 
     expect(camisaSql).toContain("FROM camisa_measurements");
     expect(camisaSql).toContain("sync_status IN (?, ?)");
-    expect(camisaSql).toContain("cuello");
+    expect(camisaSql).toContain("cuello_normal");
     expect(camisaSql).toContain("brazo");
     expect(camisaSql).toContain("puno");
     expect(camisaSql).toContain("changed_by");

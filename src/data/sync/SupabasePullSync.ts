@@ -37,14 +37,18 @@ interface CamisaRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   changed_by: string | null;
@@ -101,14 +105,18 @@ interface SacoRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   notes: string | null;
@@ -122,9 +130,12 @@ interface ChalecoRow {
   espalda: number | null;
   talle_trasero: number | null;
   largo: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   escote: number | null;
   notes: string | null;
   created_at: string;
@@ -141,14 +152,20 @@ interface TallaTemplateRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
   cintura: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
   base: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   entrepierna: number | null;
@@ -360,8 +377,9 @@ export class SupabasePullSync {
       .from("camisa_measurements")
       .select(
         "id, client_id, espalda, hombro, talle_delantero, talle_trasero, " +
-          "distancia, separacion, pecho, cintura, base, largo, largo_manga, " +
-          "ancho_manga, escote, cuello, brazo, puno, changed_by, changed_at, notes, created_at, updated_at",
+          "distancia, separacion, pecho_ajustado, pecho_ancho, cintura_ajustado, cintura_ancho, " +
+          "base_ajustado, base_ancho, largo, largo_manga, " +
+          "ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, changed_by, changed_at, notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -387,9 +405,10 @@ export class SupabasePullSync {
           `
           INSERT INTO camisa_measurements
             (id, client_id, espalda, hombro, talle_delantero, talle_trasero,
-             distancia, separacion, pecho, cintura, base, largo, largo_manga,
-             ancho_manga, escote, cuello, brazo, puno, changed_by, changed_at, notes, created_at, updated_at, sync_status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+             distancia, separacion, pecho_ajustado, pecho_ancho, cintura_ajustado, cintura_ancho,
+             base_ajustado, base_ancho, largo, largo_manga,
+             ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, changed_by, changed_at, notes, created_at, updated_at, sync_status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             espalda         = excluded.espalda,
             hombro          = excluded.hombro,
@@ -397,14 +416,18 @@ export class SupabasePullSync {
             talle_trasero   = excluded.talle_trasero,
             distancia       = excluded.distancia,
             separacion      = excluded.separacion,
-            pecho           = excluded.pecho,
-            cintura         = excluded.cintura,
-            base            = excluded.base,
+            pecho_ajustado  = excluded.pecho_ajustado,
+            pecho_ancho     = excluded.pecho_ancho,
+            cintura_ajustado = excluded.cintura_ajustado,
+            cintura_ancho   = excluded.cintura_ancho,
+            base_ajustado   = excluded.base_ajustado,
+            base_ancho      = excluded.base_ancho,
             largo           = excluded.largo,
             largo_manga     = excluded.largo_manga,
             ancho_manga     = excluded.ancho_manga,
             escote          = excluded.escote,
-            cuello          = excluded.cuello,
+            cuello_normal   = excluded.cuello_normal,
+            cuello_cruce    = excluded.cuello_cruce,
             brazo           = excluded.brazo,
             puno            = excluded.puno,
             changed_by      = excluded.changed_by,
@@ -422,14 +445,18 @@ export class SupabasePullSync {
           row.talle_trasero ?? null,
           row.distancia ?? null,
           row.separacion ?? null,
-          row.pecho ?? null,
-          row.cintura ?? null,
-          row.base ?? null,
+          row.pecho_ajustado ?? null,
+          row.pecho_ancho ?? null,
+          row.cintura_ajustado ?? null,
+          row.cintura_ancho ?? null,
+          row.base_ajustado ?? null,
+          row.base_ancho ?? null,
           row.largo ?? null,
           row.largo_manga ?? null,
           row.ancho_manga ?? null,
           row.escote ?? null,
-          row.cuello ?? null,
+          row.cuello_normal ?? null,
+          row.cuello_cruce ?? null,
           row.brazo ?? null,
           row.puno ?? null,
           row.changed_by ?? null,
@@ -668,8 +695,9 @@ export class SupabasePullSync {
       .from("saco_measurements")
       .select(
         "id, client_id, espalda, hombro, talle_delantero, talle_trasero, " +
-          "distancia, separacion, pecho, cintura, base, largo, largo_manga, " +
-          "ancho_manga, escote, cuello, brazo, puno, notes, created_at, updated_at",
+          "distancia, separacion, pecho_ajustado, pecho_ancho, cintura_ajustado, cintura_ancho, " +
+          "base_ajustado, base_ancho, largo, largo_manga, " +
+          "ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -695,9 +723,10 @@ export class SupabasePullSync {
           `
           INSERT INTO saco_measurements
             (id, client_id, espalda, hombro, talle_delantero, talle_trasero,
-             distancia, separacion, pecho, cintura, base, largo, largo_manga,
-             ancho_manga, escote, cuello, brazo, puno, notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+             distancia, separacion, pecho_ajustado, pecho_ancho, cintura_ajustado, cintura_ancho,
+             base_ajustado, base_ancho, largo, largo_manga,
+             ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, notes, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             espalda         = excluded.espalda,
             hombro          = excluded.hombro,
@@ -705,14 +734,18 @@ export class SupabasePullSync {
             talle_trasero   = excluded.talle_trasero,
             distancia       = excluded.distancia,
             separacion      = excluded.separacion,
-            pecho           = excluded.pecho,
-            cintura         = excluded.cintura,
-            base            = excluded.base,
+            pecho_ajustado  = excluded.pecho_ajustado,
+            pecho_ancho     = excluded.pecho_ancho,
+            cintura_ajustado = excluded.cintura_ajustado,
+            cintura_ancho   = excluded.cintura_ancho,
+            base_ajustado   = excluded.base_ajustado,
+            base_ancho      = excluded.base_ancho,
             largo           = excluded.largo,
             largo_manga     = excluded.largo_manga,
             ancho_manga     = excluded.ancho_manga,
             escote          = excluded.escote,
-            cuello          = excluded.cuello,
+            cuello_normal   = excluded.cuello_normal,
+            cuello_cruce    = excluded.cuello_cruce,
             brazo           = excluded.brazo,
             puno            = excluded.puno,
             notes           = excluded.notes,
@@ -728,14 +761,18 @@ export class SupabasePullSync {
           row.talle_trasero ?? null,
           row.distancia ?? null,
           row.separacion ?? null,
-          row.pecho ?? null,
-          row.cintura ?? null,
-          row.base ?? null,
+          row.pecho_ajustado ?? null,
+          row.pecho_ancho ?? null,
+          row.cintura_ajustado ?? null,
+          row.cintura_ancho ?? null,
+          row.base_ajustado ?? null,
+          row.base_ancho ?? null,
           row.largo ?? null,
           row.largo_manga ?? null,
           row.ancho_manga ?? null,
           row.escote ?? null,
-          row.cuello ?? null,
+          row.cuello_normal ?? null,
+          row.cuello_cruce ?? null,
           row.brazo ?? null,
           row.puno ?? null,
           row.notes ?? null,
@@ -762,7 +799,8 @@ export class SupabasePullSync {
     let query = supabase
       .from("chaleco_measurements")
       .select(
-        "id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, " +
+        "id, client_id, espalda, talle_trasero, largo, pecho_ajustado, pecho_ancho, " +
+          "cintura_ajustado, cintura_ancho, base_ajustado, base_ancho, " +
           "escote, notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
@@ -790,16 +828,20 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO chaleco_measurements
-            (id, client_id, espalda, talle_trasero, largo, pecho, cintura, base,
+            (id, client_id, espalda, talle_trasero, largo, pecho_ajustado, pecho_ancho,
+             cintura_ajustado, cintura_ancho, base_ajustado, base_ancho,
              escote, notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             espalda       = excluded.espalda,
             talle_trasero = excluded.talle_trasero,
             largo         = excluded.largo,
-            pecho         = excluded.pecho,
-            cintura       = excluded.cintura,
-            base          = excluded.base,
+            pecho_ajustado = excluded.pecho_ajustado,
+            pecho_ancho   = excluded.pecho_ancho,
+            cintura_ajustado = excluded.cintura_ajustado,
+            cintura_ancho = excluded.cintura_ancho,
+            base_ajustado = excluded.base_ajustado,
+            base_ancho    = excluded.base_ancho,
             escote        = excluded.escote,
             notes         = excluded.notes,
             updated_at    = excluded.updated_at,
@@ -811,9 +853,12 @@ export class SupabasePullSync {
           row.espalda ?? null,
           row.talle_trasero ?? null,
           row.largo ?? null,
-          row.pecho ?? null,
-          row.cintura ?? null,
-          row.base ?? null,
+          row.pecho_ajustado ?? null,
+          row.pecho_ancho ?? null,
+          row.cintura_ajustado ?? null,
+          row.cintura_ancho ?? null,
+          row.base_ajustado ?? null,
+          row.base_ancho ?? null,
           row.escote ?? null,
           row.notes ?? null,
           row.created_at,
@@ -840,8 +885,10 @@ export class SupabasePullSync {
       .from("talla_templates")
       .select(
         "id, name, type, espalda, hombro, talle_delantero, talle_trasero, " +
-          "distancia, separacion, pecho, cintura, base, largo, largo_manga, " +
-          "ancho_manga, escote, cuello, brazo, puno, entrepierna, tiro, pierna, rodilla, bota, " +
+          "distancia, separacion, pecho_ajustado, pecho_ancho, " +
+          "cintura, cintura_ajustado, cintura_ancho, base, base_ajustado, base_ancho, " +
+          "largo, largo_manga, " +
+          "ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, entrepierna, tiro, pierna, rodilla, bota, " +
           "notes, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
@@ -870,10 +917,12 @@ export class SupabasePullSync {
           `
           INSERT INTO talla_templates
             (id, name, type, espalda, hombro, talle_delantero, talle_trasero,
-             distancia, separacion, pecho, cintura, base, largo, largo_manga,
-             ancho_manga, escote, cuello, brazo, puno, entrepierna, tiro, pierna, rodilla, bota,
+             distancia, separacion, pecho_ajustado, pecho_ancho,
+             cintura, cintura_ajustado, cintura_ancho, base, base_ajustado, base_ancho,
+             largo, largo_manga,
+             ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, entrepierna, tiro, pierna, rodilla, bota,
              notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             name            = excluded.name,
             type            = excluded.type,
@@ -883,14 +932,20 @@ export class SupabasePullSync {
             talle_trasero   = excluded.talle_trasero,
             distancia       = excluded.distancia,
             separacion      = excluded.separacion,
-            pecho           = excluded.pecho,
+            pecho_ajustado  = excluded.pecho_ajustado,
+            pecho_ancho     = excluded.pecho_ancho,
             cintura         = excluded.cintura,
+            cintura_ajustado = excluded.cintura_ajustado,
+            cintura_ancho   = excluded.cintura_ancho,
             base            = excluded.base,
+            base_ajustado   = excluded.base_ajustado,
+            base_ancho      = excluded.base_ancho,
             largo           = excluded.largo,
             largo_manga     = excluded.largo_manga,
             ancho_manga     = excluded.ancho_manga,
             escote          = excluded.escote,
-            cuello          = excluded.cuello,
+            cuello_normal   = excluded.cuello_normal,
+            cuello_cruce    = excluded.cuello_cruce,
             brazo           = excluded.brazo,
             puno            = excluded.puno,
             entrepierna     = excluded.entrepierna,
@@ -912,14 +967,20 @@ export class SupabasePullSync {
           row.talle_trasero ?? null,
           row.distancia ?? null,
           row.separacion ?? null,
-          row.pecho ?? null,
+          row.pecho_ajustado ?? null,
+          row.pecho_ancho ?? null,
           row.cintura ?? null,
+          row.cintura_ajustado ?? null,
+          row.cintura_ancho ?? null,
           row.base ?? null,
+          row.base_ajustado ?? null,
+          row.base_ancho ?? null,
           row.largo ?? null,
           row.largo_manga ?? null,
           row.ancho_manga ?? null,
           row.escote ?? null,
-          row.cuello ?? null,
+          row.cuello_normal ?? null,
+          row.cuello_cruce ?? null,
           row.brazo ?? null,
           row.puno ?? null,
           row.entrepierna ?? null,

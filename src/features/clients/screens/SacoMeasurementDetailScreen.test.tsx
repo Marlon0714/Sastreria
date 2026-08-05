@@ -72,7 +72,7 @@ describe("SacoMeasurementDetailScreen", () => {
 
   it("renders view mode with edit button and pre-filled data when measurement exists", () => {
     mockUseSaco.mockReturnValue({
-      measurement: { id: "m-2", clientId: "c-2", pecho: 100, notes: null },
+      measurement: { id: "m-2", clientId: "c-2", pechoAjustado: 100, notes: null },
       isLoading: false,
       error: null,
       reload: mockReload,
@@ -88,7 +88,7 @@ describe("SacoMeasurementDetailScreen", () => {
 
   it("shows edit form when pressing edit button", async () => {
     mockUseSaco.mockReturnValue({
-      measurement: { id: "m-2", clientId: "c-2", pecho: 100, notes: null },
+      measurement: { id: "m-2", clientId: "c-2", pechoAjustado: 100, notes: null },
       isLoading: false,
       error: null,
       reload: mockReload,

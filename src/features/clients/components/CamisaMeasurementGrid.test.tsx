@@ -31,41 +31,38 @@ function Harness({ disabled = false, defaultValues = {} }: HarnessProps) {
 }
 
 describe("CamisaMeasurementGrid", () => {
-  it("renderiza los 4 títulos de sección: Torso, Largo, Manga, Cuello", () => {
+  it("renderiza el título de sección: Medidas", () => {
     // Arrange & Act
-    const { getAllByText, getByText } = render(<Harness />);
+    const { getByText } = render(<Harness />);
 
-    // "Largo" y "Cuello" aparecen como título de sección Y como label de tarjeta
-    expect(getByText("Torso")).toBeTruthy();
-    expect(getAllByText("Largo").length).toBeGreaterThanOrEqual(1);
-    expect(getByText("Manga")).toBeTruthy();
-    expect(getAllByText("Cuello").length).toBeGreaterThanOrEqual(1);
+    // Assert
+    expect(getByText("Medidas")).toBeTruthy();
   });
 
-  it("renderiza los 16 accessibilityLabels de campos numéricos", () => {
+  it("renderiza los accessibilityLabels de campos numéricos, incluyendo los pares ajustado/ancho/normal/cruce", () => {
     // Arrange & Act
     const { getByLabelText } = render(<Harness />);
 
-    // Assert — sección Torso
     expect(getByLabelText("Espalda (cm)")).toBeTruthy();
-    expect(getByLabelText("Hombro (cm)")).toBeTruthy();
-    expect(getByLabelText("Pecho (cm)")).toBeTruthy();
-    expect(getByLabelText("Cintura (cm)")).toBeTruthy();
-    expect(getByLabelText("Base (cm)")).toBeTruthy();
-    // Assert — sección Largo
     expect(getByLabelText("Talle delantero (cm)")).toBeTruthy();
     expect(getByLabelText("Talle trasero (cm)")).toBeTruthy();
     expect(getByLabelText("Largo (cm)")).toBeTruthy();
-    expect(getByLabelText("Distancia (cm)")).toBeTruthy();
-    expect(getByLabelText("Separación (cm)")).toBeTruthy();
-    // Assert — sección Manga
+    expect(getByLabelText("Pecho ajustado (cm)")).toBeTruthy();
+    expect(getByLabelText("Pecho ancho (cm)")).toBeTruthy();
+    expect(getByLabelText("Cintura ajustado (cm)")).toBeTruthy();
+    expect(getByLabelText("Cintura ancho (cm)")).toBeTruthy();
+    expect(getByLabelText("Base ajustado (cm)")).toBeTruthy();
+    expect(getByLabelText("Base ancho (cm)")).toBeTruthy();
+    expect(getByLabelText("Hombro (cm)")).toBeTruthy();
     expect(getByLabelText("Largo manga (cm)")).toBeTruthy();
     expect(getByLabelText("Ancho manga (cm)")).toBeTruthy();
     expect(getByLabelText("Brazo (cm)")).toBeTruthy();
     expect(getByLabelText("Puño (cm)")).toBeTruthy();
-    // Assert — sección Cuello
+    expect(getByLabelText("Distancia (cm)")).toBeTruthy();
+    expect(getByLabelText("Separación (cm)")).toBeTruthy();
     expect(getByLabelText("Escote (cm)")).toBeTruthy();
-    expect(getByLabelText("Cuello (cm)")).toBeTruthy();
+    expect(getByLabelText("Cuello normal (cm)")).toBeTruthy();
+    expect(getByLabelText("Cuello cruce (cm)")).toBeTruthy();
   });
 
   it("renderiza el campo de Notas", () => {
@@ -81,7 +78,7 @@ describe("CamisaMeasurementGrid", () => {
     const { getByLabelText } = render(
       <Harness
         disabled={true}
-        defaultValues={{ espalda: "42", pecho: "96" }}
+        defaultValues={{ espalda: "42", pechoAjustado: "96" }}
       />,
     );
 
@@ -90,7 +87,7 @@ describe("CamisaMeasurementGrid", () => {
     expect(espalda.props.onChangeText).toBeUndefined();
     expect(espalda.props.editable).toBeUndefined();
 
-    const pecho = getByLabelText("Pecho (cm)");
+    const pecho = getByLabelText("Pecho ajustado (cm)");
     expect(pecho.props.onChangeText).toBeUndefined();
     expect(pecho.props.editable).toBeUndefined();
   });

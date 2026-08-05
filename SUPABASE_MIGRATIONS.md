@@ -729,6 +729,53 @@ ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS entrepierna REAL;
 
 ---
 
+### v27_camisa_saco_chaleco_pares (2026-08-05)
+
+**Contexto:** pedido del dueño — pecho, cintura y base pasan a tener dos sub-medidas (Ajustado/Ancho) en camisa, saco, chaleco y sus plantillas de talla; cuello pasa a tener Normal/Cruce (camisa, saco y plantillas — chaleco nunca tuvo cuello). El valor viejo se migra al primer subcampo (Ajustado/Normal) para no perder medidas ya tomadas; las columnas viejas (`pecho`, `cintura`, `base`, `cuello`) quedan sin usar en la app pero no se borran. En `talla_templates`, `cintura`/`base` siguen sirviendo a las plantillas de pantalón sin cambios — solo se agregan las columnas nuevas al lado.
+
+```sql
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS pecho_ajustado REAL;
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS pecho_ancho REAL;
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS cintura_ajustado REAL;
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS cintura_ancho REAL;
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS base_ajustado REAL;
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS base_ancho REAL;
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS cuello_normal REAL;
+ALTER TABLE camisa_measurements ADD COLUMN IF NOT EXISTS cuello_cruce REAL;
+UPDATE camisa_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello;
+
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS pecho_ajustado REAL;
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS pecho_ancho REAL;
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS cintura_ajustado REAL;
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS cintura_ancho REAL;
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS base_ajustado REAL;
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS base_ancho REAL;
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS cuello_normal REAL;
+ALTER TABLE saco_measurements ADD COLUMN IF NOT EXISTS cuello_cruce REAL;
+UPDATE saco_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello;
+
+ALTER TABLE chaleco_measurements ADD COLUMN IF NOT EXISTS pecho_ajustado REAL;
+ALTER TABLE chaleco_measurements ADD COLUMN IF NOT EXISTS pecho_ancho REAL;
+ALTER TABLE chaleco_measurements ADD COLUMN IF NOT EXISTS cintura_ajustado REAL;
+ALTER TABLE chaleco_measurements ADD COLUMN IF NOT EXISTS cintura_ancho REAL;
+ALTER TABLE chaleco_measurements ADD COLUMN IF NOT EXISTS base_ajustado REAL;
+ALTER TABLE chaleco_measurements ADD COLUMN IF NOT EXISTS base_ancho REAL;
+UPDATE chaleco_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base;
+
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS pecho_ajustado REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS pecho_ancho REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS cintura_ajustado REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS cintura_ancho REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS base_ajustado REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS base_ancho REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS cuello_normal REAL;
+ALTER TABLE talla_templates ADD COLUMN IF NOT EXISTS cuello_cruce REAL;
+UPDATE talla_templates SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello
+  WHERE type IN ('camisa', 'saco', 'chaleco');
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

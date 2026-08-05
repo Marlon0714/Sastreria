@@ -25,14 +25,18 @@ interface SacoMeasurementRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   notes: string | null;
@@ -47,9 +51,12 @@ interface ChalecoMeasurementRow {
   espalda: number | null;
   talle_trasero: number | null;
   largo: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   escote: number | null;
   notes: string | null;
   created_at: string;
@@ -66,14 +73,18 @@ function mapSacoRow(row: SacoMeasurementRow): SacoMeasurement {
     talleTrasero: row.talle_trasero,
     distancia: row.distancia,
     separacion: row.separacion,
-    pecho: row.pecho,
-    cintura: row.cintura,
-    base: row.base,
+    pechoAjustado: row.pecho_ajustado,
+    pechoAncho: row.pecho_ancho,
+    cinturaAjustado: row.cintura_ajustado,
+    cinturaAncho: row.cintura_ancho,
+    baseAjustado: row.base_ajustado,
+    baseAncho: row.base_ancho,
     largo: row.largo,
     largoManga: row.largo_manga,
     anchoManga: row.ancho_manga,
     escote: row.escote,
-    cuello: row.cuello,
+    cuelloNormal: row.cuello_normal,
+    cuelloCruce: row.cuello_cruce,
     brazo: row.brazo,
     puno: row.puno,
     notes: row.notes,
@@ -90,9 +101,12 @@ function mapChalecoRow(row: ChalecoMeasurementRow): ChalecoMeasurement {
     espalda: row.espalda,
     talleTrasero: row.talle_trasero,
     largo: row.largo,
-    pecho: row.pecho,
-    cintura: row.cintura,
-    base: row.base,
+    pechoAjustado: row.pecho_ajustado,
+    pechoAncho: row.pecho_ancho,
+    cinturaAjustado: row.cintura_ajustado,
+    cinturaAncho: row.cintura_ancho,
+    baseAjustado: row.base_ajustado,
+    baseAncho: row.base_ancho,
     escote: row.escote,
     notes: row.notes,
     createdAt: row.created_at,
@@ -112,14 +126,18 @@ interface CamisaMeasurementRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   changed_by: string | null;
@@ -187,14 +205,18 @@ function mapCamisaRow(row: CamisaMeasurementRow): CamisaMeasurement {
     talleTrasero: row.talle_trasero,
     distancia: row.distancia,
     separacion: row.separacion,
-    pecho: row.pecho,
-    cintura: row.cintura,
-    base: row.base,
+    pechoAjustado: row.pecho_ajustado,
+    pechoAncho: row.pecho_ancho,
+    cinturaAjustado: row.cintura_ajustado,
+    cinturaAncho: row.cintura_ancho,
+    baseAjustado: row.base_ajustado,
+    baseAncho: row.base_ancho,
     largo: row.largo,
     largoManga: row.largo_manga,
     anchoManga: row.ancho_manga,
     escote: row.escote,
-    cuello: row.cuello,
+    cuelloNormal: row.cuello_normal,
+    cuelloCruce: row.cuello_cruce,
     brazo: row.brazo,
     puno: row.puno,
     changedBy: row.changed_by,
@@ -245,14 +267,18 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       talleTrasero: normalizeNullableNumber(input.talleTrasero),
       distancia: normalizeNullableNumber(input.distancia),
       separacion: normalizeNullableNumber(input.separacion),
-      pecho: normalizeNullableNumber(input.pecho),
-      cintura: normalizeNullableNumber(input.cintura),
-      base: normalizeNullableNumber(input.base),
+      pechoAjustado: normalizeNullableNumber(input.pechoAjustado),
+      pechoAncho: normalizeNullableNumber(input.pechoAncho),
+      cinturaAjustado: normalizeNullableNumber(input.cinturaAjustado),
+      cinturaAncho: normalizeNullableNumber(input.cinturaAncho),
+      baseAjustado: normalizeNullableNumber(input.baseAjustado),
+      baseAncho: normalizeNullableNumber(input.baseAncho),
       largo: normalizeNullableNumber(input.largo),
       largoManga: normalizeNullableNumber(input.largoManga),
       anchoManga: normalizeNullableNumber(input.anchoManga),
       escote: normalizeNullableNumber(input.escote),
-      cuello: normalizeNullableNumber(input.cuello),
+      cuelloNormal: normalizeNullableNumber(input.cuelloNormal),
+      cuelloCruce: normalizeNullableNumber(input.cuelloCruce),
       brazo: normalizeNullableNumber(input.brazo),
       puno: normalizeNullableNumber(input.puno),
       notes: normalizeNullableNotes(input.notes),
@@ -265,9 +291,10 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       `
         INSERT INTO saco_measurements (
           id, client_id, espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
-          pecho, cintura, base, largo, largo_manga, ancho_manga, escote, cuello, brazo, puno, notes,
+          pecho_ajustado, pecho_ancho, cintura_ajustado, cintura_ancho, base_ajustado, base_ancho,
+          largo, largo_manga, ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, notes,
           created_at, updated_at, sync_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(client_id) DO UPDATE SET
           espalda = excluded.espalda,
           hombro = excluded.hombro,
@@ -275,14 +302,18 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
           talle_trasero = excluded.talle_trasero,
           distancia = excluded.distancia,
           separacion = excluded.separacion,
-          pecho = excluded.pecho,
-          cintura = excluded.cintura,
-          base = excluded.base,
+          pecho_ajustado = excluded.pecho_ajustado,
+          pecho_ancho = excluded.pecho_ancho,
+          cintura_ajustado = excluded.cintura_ajustado,
+          cintura_ancho = excluded.cintura_ancho,
+          base_ajustado = excluded.base_ajustado,
+          base_ancho = excluded.base_ancho,
           largo = excluded.largo,
           largo_manga = excluded.largo_manga,
           ancho_manga = excluded.ancho_manga,
           escote = excluded.escote,
-          cuello = excluded.cuello,
+          cuello_normal = excluded.cuello_normal,
+          cuello_cruce = excluded.cuello_cruce,
           brazo = excluded.brazo,
           puno = excluded.puno,
           notes = excluded.notes,
@@ -297,14 +328,18 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       sacoMeasurement.talleTrasero,
       sacoMeasurement.distancia,
       sacoMeasurement.separacion,
-      sacoMeasurement.pecho,
-      sacoMeasurement.cintura,
-      sacoMeasurement.base,
+      sacoMeasurement.pechoAjustado,
+      sacoMeasurement.pechoAncho,
+      sacoMeasurement.cinturaAjustado,
+      sacoMeasurement.cinturaAncho,
+      sacoMeasurement.baseAjustado,
+      sacoMeasurement.baseAncho,
       sacoMeasurement.largo,
       sacoMeasurement.largoManga,
       sacoMeasurement.anchoManga,
       sacoMeasurement.escote,
-      sacoMeasurement.cuello,
+      sacoMeasurement.cuelloNormal,
+      sacoMeasurement.cuelloCruce,
       sacoMeasurement.brazo,
       sacoMeasurement.puno,
       sacoMeasurement.notes,
@@ -331,9 +366,12 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       espalda: normalizeNullableNumber(input.espalda),
       talleTrasero: normalizeNullableNumber(input.talleTrasero),
       largo: normalizeNullableNumber(input.largo),
-      pecho: normalizeNullableNumber(input.pecho),
-      cintura: normalizeNullableNumber(input.cintura),
-      base: normalizeNullableNumber(input.base),
+      pechoAjustado: normalizeNullableNumber(input.pechoAjustado),
+      pechoAncho: normalizeNullableNumber(input.pechoAncho),
+      cinturaAjustado: normalizeNullableNumber(input.cinturaAjustado),
+      cinturaAncho: normalizeNullableNumber(input.cinturaAncho),
+      baseAjustado: normalizeNullableNumber(input.baseAjustado),
+      baseAncho: normalizeNullableNumber(input.baseAncho),
       escote: normalizeNullableNumber(input.escote),
       notes: normalizeNullableNotes(input.notes),
       createdAt,
@@ -344,15 +382,20 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     await db.runAsync(
       `
         INSERT INTO chaleco_measurements (
-          id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, escote, notes, created_at, updated_at, sync_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, client_id, espalda, talle_trasero, largo, pecho_ajustado, pecho_ancho,
+          cintura_ajustado, cintura_ancho, base_ajustado, base_ancho, escote, notes,
+          created_at, updated_at, sync_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(client_id) DO UPDATE SET
           espalda = excluded.espalda,
           talle_trasero = excluded.talle_trasero,
           largo = excluded.largo,
-          pecho = excluded.pecho,
-          cintura = excluded.cintura,
-          base = excluded.base,
+          pecho_ajustado = excluded.pecho_ajustado,
+          pecho_ancho = excluded.pecho_ancho,
+          cintura_ajustado = excluded.cintura_ajustado,
+          cintura_ancho = excluded.cintura_ancho,
+          base_ajustado = excluded.base_ajustado,
+          base_ancho = excluded.base_ancho,
           escote = excluded.escote,
           notes = excluded.notes,
           updated_at = excluded.updated_at,
@@ -363,9 +406,12 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       chalecoMeasurement.espalda,
       chalecoMeasurement.talleTrasero,
       chalecoMeasurement.largo,
-      chalecoMeasurement.pecho,
-      chalecoMeasurement.cintura,
-      chalecoMeasurement.base,
+      chalecoMeasurement.pechoAjustado,
+      chalecoMeasurement.pechoAncho,
+      chalecoMeasurement.cinturaAjustado,
+      chalecoMeasurement.cinturaAncho,
+      chalecoMeasurement.baseAjustado,
+      chalecoMeasurement.baseAncho,
       chalecoMeasurement.escote,
       chalecoMeasurement.notes,
       chalecoMeasurement.createdAt,
@@ -396,7 +442,11 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     const db = getDatabase();
     return db.getFirstAsync<SacoMeasurementRow>(
       `
-        SELECT id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, escote, created_at, updated_at, sync_status
+        SELECT
+          id, client_id, espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
+          pecho_ajustado, pecho_ancho, cintura_ajustado, cintura_ancho, base_ajustado, base_ancho,
+          largo, largo_manga, ancho_manga, escote, cuello_normal, cuello_cruce, brazo, puno, notes,
+          created_at, updated_at, sync_status
         FROM saco_measurements
         WHERE client_id = ?
         LIMIT 1;
@@ -411,7 +461,10 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
     const db = getDatabase();
     return db.getFirstAsync<ChalecoMeasurementRow>(
       `
-        SELECT id, client_id, espalda, talle_trasero, largo, pecho, cintura, base, escote, created_at, updated_at, sync_status
+        SELECT
+          id, client_id, espalda, talle_trasero, largo, pecho_ajustado, pecho_ancho,
+          cintura_ajustado, cintura_ancho, base_ajustado, base_ancho, escote, notes,
+          created_at, updated_at, sync_status
         FROM chaleco_measurements
         WHERE client_id = ?
         LIMIT 1;
@@ -442,14 +495,18 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       talleTrasero: normalizeNullableNumber(input.talleTrasero),
       distancia: normalizeNullableNumber(input.distancia),
       separacion: normalizeNullableNumber(input.separacion),
-      pecho: normalizeNullableNumber(input.pecho),
-      cintura: normalizeNullableNumber(input.cintura),
-      base: normalizeNullableNumber(input.base),
+      pechoAjustado: normalizeNullableNumber(input.pechoAjustado),
+      pechoAncho: normalizeNullableNumber(input.pechoAncho),
+      cinturaAjustado: normalizeNullableNumber(input.cinturaAjustado),
+      cinturaAncho: normalizeNullableNumber(input.cinturaAncho),
+      baseAjustado: normalizeNullableNumber(input.baseAjustado),
+      baseAncho: normalizeNullableNumber(input.baseAncho),
       largo: normalizeNullableNumber(input.largo),
       largoManga: normalizeNullableNumber(input.largoManga),
       anchoManga: normalizeNullableNumber(input.anchoManga),
       escote: normalizeNullableNumber(input.escote),
-      cuello: normalizeNullableNumber(input.cuello),
+      cuelloNormal: normalizeNullableNumber(input.cuelloNormal),
+      cuelloCruce: normalizeNullableNumber(input.cuelloCruce),
       brazo: normalizeNullableNumber(input.brazo),
       puno: normalizeNullableNumber(input.puno),
       changedBy,
@@ -471,14 +528,18 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         talle_trasero,
         distancia,
         separacion,
-        pecho,
-        cintura,
-        base,
+        pecho_ajustado,
+        pecho_ancho,
+        cintura_ajustado,
+        cintura_ancho,
+        base_ajustado,
+        base_ancho,
         largo,
         largo_manga,
         ancho_manga,
         escote,
-        cuello,
+        cuello_normal,
+        cuello_cruce,
         brazo,
         puno,
         changed_by,
@@ -487,7 +548,7 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         created_at,
         updated_at,
         sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(client_id) DO UPDATE SET
         espalda = excluded.espalda,
         hombro = excluded.hombro,
@@ -495,14 +556,18 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         talle_trasero = excluded.talle_trasero,
         distancia = excluded.distancia,
         separacion = excluded.separacion,
-        pecho = excluded.pecho,
-        cintura = excluded.cintura,
-        base = excluded.base,
+        pecho_ajustado = excluded.pecho_ajustado,
+        pecho_ancho = excluded.pecho_ancho,
+        cintura_ajustado = excluded.cintura_ajustado,
+        cintura_ancho = excluded.cintura_ancho,
+        base_ajustado = excluded.base_ajustado,
+        base_ancho = excluded.base_ancho,
         largo = excluded.largo,
         largo_manga = excluded.largo_manga,
         ancho_manga = excluded.ancho_manga,
         escote = excluded.escote,
-        cuello = excluded.cuello,
+        cuello_normal = excluded.cuello_normal,
+        cuello_cruce = excluded.cuello_cruce,
         brazo = excluded.brazo,
         puno = excluded.puno,
         changed_by = excluded.changed_by,
@@ -519,14 +584,18 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       camisaMeasurement.talleTrasero,
       camisaMeasurement.distancia,
       camisaMeasurement.separacion,
-      camisaMeasurement.pecho,
-      camisaMeasurement.cintura,
-      camisaMeasurement.base,
+      camisaMeasurement.pechoAjustado,
+      camisaMeasurement.pechoAncho,
+      camisaMeasurement.cinturaAjustado,
+      camisaMeasurement.cinturaAncho,
+      camisaMeasurement.baseAjustado,
+      camisaMeasurement.baseAncho,
       camisaMeasurement.largo,
       camisaMeasurement.largoManga,
       camisaMeasurement.anchoManga,
       camisaMeasurement.escote,
-      camisaMeasurement.cuello,
+      camisaMeasurement.cuelloNormal,
+      camisaMeasurement.cuelloCruce,
       camisaMeasurement.brazo,
       camisaMeasurement.puno,
       camisaMeasurement.changedBy,
@@ -666,14 +735,18 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
         talle_trasero,
         distancia,
         separacion,
-        pecho,
-        cintura,
-        base,
+        pecho_ajustado,
+        pecho_ancho,
+        cintura_ajustado,
+        cintura_ancho,
+        base_ajustado,
+        base_ancho,
         largo,
         largo_manga,
         ancho_manga,
         escote,
-        cuello,
+        cuello_normal,
+        cuello_cruce,
         brazo,
         puno,
         changed_by,

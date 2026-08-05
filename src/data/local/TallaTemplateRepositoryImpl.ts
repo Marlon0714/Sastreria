@@ -24,14 +24,20 @@ interface TallaTemplateRow {
   talle_trasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
+  pecho_ajustado: number | null;
+  pecho_ancho: number | null;
   cintura: number | null;
+  cintura_ajustado: number | null;
+  cintura_ancho: number | null;
   base: number | null;
+  base_ajustado: number | null;
+  base_ancho: number | null;
   largo: number | null;
   largo_manga: number | null;
   ancho_manga: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuello_normal: number | null;
+  cuello_cruce: number | null;
   brazo: number | null;
   puno: number | null;
   entrepierna: number | null;
@@ -56,14 +62,20 @@ function mapRow(row: TallaTemplateRow): TallaTemplate {
     talleTrasero: row.talle_trasero,
     distancia: row.distancia,
     separacion: row.separacion,
-    pecho: row.pecho,
+    pechoAjustado: row.pecho_ajustado,
+    pechoAncho: row.pecho_ancho,
     cintura: row.cintura,
+    cinturaAjustado: row.cintura_ajustado,
+    cinturaAncho: row.cintura_ancho,
     base: row.base,
+    baseAjustado: row.base_ajustado,
+    baseAncho: row.base_ancho,
     largo: row.largo,
     largoManga: row.largo_manga,
     anchoManga: row.ancho_manga,
     escote: row.escote,
-    cuello: row.cuello,
+    cuelloNormal: row.cuello_normal,
+    cuelloCruce: row.cuello_cruce,
     brazo: row.brazo,
     puno: row.puno,
     entrepierna: row.entrepierna,
@@ -110,10 +122,11 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       `INSERT INTO talla_templates (
         id, name, type,
         espalda, hombro, talle_delantero, talle_trasero, distancia, separacion,
-        pecho, cintura, base, largo, largo_manga, ancho_manga,
-        escote, cuello, brazo, puno, entrepierna, tiro, pierna, rodilla, bota,
+        pecho_ajustado, pecho_ancho, cintura, cintura_ajustado, cintura_ancho,
+        base, base_ajustado, base_ancho, largo, largo_manga, ancho_manga,
+        escote, cuello_normal, cuello_cruce, brazo, puno, entrepierna, tiro, pierna, rodilla, bota,
         notes, created_at, updated_at, sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       id,
       dto.name,
       dto.type,
@@ -123,14 +136,20 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       n(dto.talleTrasero),
       n(dto.distancia),
       n(dto.separacion),
-      n(dto.pecho),
+      n(dto.pechoAjustado),
+      n(dto.pechoAncho),
       n(dto.cintura),
+      n(dto.cinturaAjustado),
+      n(dto.cinturaAncho),
       n(dto.base),
+      n(dto.baseAjustado),
+      n(dto.baseAncho),
       n(dto.largo),
       n(dto.largoManga),
       n(dto.anchoManga),
       n(dto.escote),
-      n(dto.cuello),
+      n(dto.cuelloNormal),
+      n(dto.cuelloCruce),
       n(dto.brazo),
       n(dto.puno),
       n(dto.entrepierna),
@@ -158,8 +177,12 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       `UPDATE talla_templates SET
         name = COALESCE(?, name),
         espalda = ?, hombro = ?, talle_delantero = ?, talle_trasero = ?,
-        distancia = ?, separacion = ?, pecho = ?, cintura = ?, base = ?,
-        largo = ?, largo_manga = ?, ancho_manga = ?, escote = ?, cuello = ?,
+        distancia = ?, separacion = ?,
+        pecho_ajustado = ?, pecho_ancho = ?,
+        cintura = ?, cintura_ajustado = ?, cintura_ancho = ?,
+        base = ?, base_ajustado = ?, base_ancho = ?,
+        largo = ?, largo_manga = ?, ancho_manga = ?, escote = ?,
+        cuello_normal = ?, cuello_cruce = ?,
         brazo = ?, puno = ?, entrepierna = ?, tiro = ?, pierna = ?, rodilla = ?, bota = ?,
         notes = ?, updated_at = ?, sync_status = 'pending'
       WHERE id = ?;`,
@@ -170,14 +193,20 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       n(dto.talleTrasero),
       n(dto.distancia),
       n(dto.separacion),
-      n(dto.pecho),
+      n(dto.pechoAjustado),
+      n(dto.pechoAncho),
       n(dto.cintura),
+      n(dto.cinturaAjustado),
+      n(dto.cinturaAncho),
       n(dto.base),
+      n(dto.baseAjustado),
+      n(dto.baseAncho),
       n(dto.largo),
       n(dto.largoManga),
       n(dto.anchoManga),
       n(dto.escote),
-      n(dto.cuello),
+      n(dto.cuelloNormal),
+      n(dto.cuelloCruce),
       n(dto.brazo),
       n(dto.puno),
       n(dto.entrepierna),
