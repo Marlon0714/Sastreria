@@ -14,7 +14,13 @@ import {
   shiftDateString,
   todayDateString,
 } from "../domain/dateUtils";
-import type { Schedule, ScheduleStatus } from "../domain/types";
+import {
+  SCHEDULE_CATEGORIES,
+  SCHEDULE_CATEGORY_LABELS,
+  type Schedule,
+  type ScheduleCategory,
+  type ScheduleStatus,
+} from "../domain/types";
 import { colors } from "../../../shared/theme/colors";
 import { useScheduleDayView } from "../hooks/useScheduleDayView";
 
@@ -26,6 +32,13 @@ const VIEWS: { key: ActiveView; icon: string; label: string }[] = [
   { key: "dia", icon: "📅", label: "Día" },
   { key: "pendientes", icon: "📋", label: "Pendientes" },
 ];
+
+// Mismos emojis que usa Precios para arreglo/confección, para que el
+// concepto se sienta igual en toda la app.
+const CATEGORY_ICONS: Record<ScheduleCategory, string> = {
+  arreglo: "✂️",
+  confeccion: "🧵",
+};
 
 const STATUS_LABELS: Record<ScheduleStatus, string> = {
   pendiente: "Pendiente",
@@ -48,10 +61,27 @@ const STATUS_COLORS: Record<ScheduleStatus, { bg: string; text: string }> = {
 export default function ScheduleDayViewScreen({ navigation }: Props) {
   const [selectedDate, setSelectedDate] = useState(todayDateString());
   const [activeView, setActiveView] = useState<ActiveView>("dia");
-  const { dateSchedules, pendingSchedules, isLoading, error, reload } =
-    useScheduleDayView(selectedDate);
+  const [activeCategory, setActiveCategory] =
+    useState<ScheduleCategory>("arreglo");
+  const {
+    dateSchedules: allDateSchedules,
+    pendingSchedules: allPendingSchedules,
+    isLoading,
+    error,
+    reload,
+  } = useScheduleDayView(selectedDate);
   const clientRepository = useClientRepository();
   const [clientsById, setClientsById] = useState<Record<string, Client>>({});
+
+  const dateSchedules = useMemo(
+    () => allDateSchedules.filter((item) => item.category === activeCategory),
+    [allDateSchedules, activeCategory],
+  );
+  const pendingSchedules = useMemo(
+    () =>
+      allPendingSchedules.filter((item) => item.category === activeCategory),
+    [allPendingSchedules, activeCategory],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -72,7 +102,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [clientRepository, dateSchedules, pendingSchedules]);
+  }, [clientRepository, allDateSchedules, allPendingSchedules]);
 
   const clientLabel = useMemo(
     () => (schedule: Schedule) => {
@@ -134,6 +164,33 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.segmentedWrapper}>
+        <View style={styles.segmented}>
+          {SCHEDULE_CATEGORIES.map((category) => {
+            const isActive = category === activeCategory;
+            return (
+              <Pressable
+                key={category}
+                style={[styles.segment, isActive && styles.segmentActive]}
+                onPress={() => setActiveCategory(category)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    isActive && styles.segmentTextActive,
+                  ]}
+                >
+                  {CATEGORY_ICONS[category]}{" "}
+                  {SCHEDULE_CATEGORY_LABELS[category]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       <View style={styles.segmentedWrapper}>
         <View style={styles.segmented}>
           {VIEWS.map((view) => {
@@ -261,7 +318,9 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
       <Pressable
         accessibilityLabel="Nuevo turno"
         style={styles.fabButton}
-        onPress={() => navigation.navigate("ScheduleForm", {})}
+        onPress={() =>
+          navigation.navigate("ScheduleForm", { category: activeCategory })
+        }
       >
         <Text style={styles.fabButtonText}>Nuevo turno</Text>
       </Pressable>

@@ -51,7 +51,11 @@ export type ClientsStackParamList = {
 
 export type ScheduleStackParamList = {
   ScheduleDayView: undefined;
-  ScheduleForm: { scheduleId?: string };
+  ScheduleForm: {
+    scheduleId?: string;
+    /** Preselecciona la categoría al crear un turno nuevo (según el segmento activo en la Agenda). */
+    category?: "arreglo" | "confeccion";
+  };
 };
 
 export type PricingStackParamList = {

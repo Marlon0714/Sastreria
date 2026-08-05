@@ -132,13 +132,14 @@ function buildProps(
   navigate: jest.Mock,
   goBack: jest.Mock,
   scheduleId?: string,
+  category?: "arreglo" | "confeccion",
 ): ScreenProps {
   return {
     navigation: { navigate, goBack } as unknown as ScreenProps["navigation"],
     route: {
       key: "ScheduleForm-test",
       name: "ScheduleForm",
-      params: { scheduleId },
+      params: { scheduleId, category },
     } as unknown as ScreenProps["route"],
   };
 }
@@ -245,6 +246,41 @@ describe("ScheduleFormScreen", () => {
     });
     await waitFor(() => {
       expect(goBack).toHaveBeenCalled();
+    });
+  });
+
+  it("preselecciona la categoría del segmento activo y permite cambiarla antes de guardar", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+    });
+    const goBack = jest.fn();
+
+    const { getByLabelText, getByText } = render(
+      <ScheduleFormScreen
+        {...buildProps(jest.fn(), goBack, undefined, "confeccion")}
+      />,
+    );
+
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+
+    fireEvent.press(getByLabelText("Guardar turno"));
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "confeccion" }),
+      );
+    });
+
+    fireEvent.press(getByText("✂️ Arreglo"));
+    fireEvent.press(getByLabelText("Guardar turno"));
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "arreglo" }),
+      );
     });
   });
 

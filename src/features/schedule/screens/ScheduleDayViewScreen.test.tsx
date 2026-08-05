@@ -130,6 +130,20 @@ const pendingOne: Schedule = {
   syncStatus: "pending",
 };
 
+const confeccionOne: Schedule = {
+  id: "schedule-3",
+  clientId: client.id,
+  date: "2026-08-15",
+  time: "09:00",
+  isPriority: false,
+  category: "confeccion",
+  status: "agendado",
+  statusLocked: false,
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  syncStatus: "pending",
+};
+
 describe("ScheduleDayViewScreen", () => {
   beforeEach(() => {
     mockUseScheduleDayView.mockReset();
@@ -284,6 +298,39 @@ describe("ScheduleDayViewScreen", () => {
     expect(mockUseScheduleDayView).toHaveBeenLastCalledWith("2026-08-20");
   });
 
+  it("filtra los turnos por categoría y el FAB crea uno con la categoría activa", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne, confeccionOne],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+    const navigate = jest.fn();
+
+    const { getByText, queryByText, findByLabelText, getByLabelText } =
+      render(<ScheduleDayViewScreen {...buildProps(navigate)} />);
+
+    // Por defecto (Arreglo) solo se ve el turno de arreglo.
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    ).toBeTruthy();
+    expect(
+      queryByText("Ver turno de Ana Torres (09:00, schedule-3)"),
+    ).toBeNull();
+
+    fireEvent.press(getByText("🧵 Confección"));
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (09:00, schedule-3)"),
+    ).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Nuevo turno"));
+    expect(navigate).toHaveBeenCalledWith("ScheduleForm", {
+      category: "confeccion",
+    });
+  });
+
   it("navega al formulario al presionar un turno, y al FAB para uno nuevo", async () => {
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [scheduledOne],
@@ -306,6 +353,8 @@ describe("ScheduleDayViewScreen", () => {
     });
 
     fireEvent.press(getByLabelText("Nuevo turno"));
-    expect(navigate).toHaveBeenCalledWith("ScheduleForm", {});
+    expect(navigate).toHaveBeenCalledWith("ScheduleForm", {
+      category: "arreglo",
+    });
   });
 });

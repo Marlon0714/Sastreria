@@ -26,7 +26,13 @@ import {
   type CreateScheduleSchemaInput,
   type CreateScheduleSchemaOutput,
 } from "../domain/schemas";
-import type { Schedule, ScheduleStatus } from "../domain/types";
+import {
+  SCHEDULE_CATEGORIES,
+  SCHEDULE_CATEGORY_LABELS,
+  type Schedule,
+  type ScheduleCategory,
+  type ScheduleStatus,
+} from "../domain/types";
 import { colors } from "../../../shared/theme/colors";
 import { useDeleteSchedule } from "../hooks/useDeleteSchedule";
 import { useScheduleForm } from "../hooks/useScheduleForm";
@@ -42,6 +48,12 @@ const STATUS_LABELS: Record<ScheduleStatus, string> = {
   entregado: "Entregado",
 };
 
+// Mismos emojis que usa Precios para arreglo/confección.
+const CATEGORY_ICONS: Record<ScheduleCategory, string> = {
+  arreglo: "✂️",
+  confeccion: "🧵",
+};
+
 const CORRECTION_STATUS_OPTIONS: ScheduleStatus[] = [
   "pendiente",
   "agendado",
@@ -51,7 +63,7 @@ const CORRECTION_STATUS_OPTIONS: ScheduleStatus[] = [
 ];
 
 export default function ScheduleFormScreen({ navigation, route }: Props) {
-  const { scheduleId } = route.params;
+  const { scheduleId, category: categoryParam } = route.params;
   const identityGate = useIdentityGate();
   const { schedule, isLoading, isSubmitting, error, submit } = useScheduleForm(
     scheduleId,
@@ -82,6 +94,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       operarioId: undefined,
       notes: "",
       isPriority: false,
+      category: categoryParam ?? "arreglo",
     },
   });
 
@@ -102,6 +115,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       operarioId: schedule.operarioId,
       notes: schedule.notes ?? "",
       isPriority: schedule.isPriority,
+      category: schedule.category,
     });
   }, [schedule, reset]);
 
@@ -199,6 +213,43 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           </Text>
         </View>
       ) : null}
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Categoría</Text>
+        <Controller
+          control={control}
+          name="category"
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.categoryRow}>
+              {SCHEDULE_CATEGORIES.map((category) => {
+                const isActive = value === category;
+                return (
+                  <Pressable
+                    key={category}
+                    style={[
+                      styles.categoryChip,
+                      isActive && styles.categoryChipActive,
+                    ]}
+                    onPress={() => onChange(category)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isActive }}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryChipText,
+                        isActive && styles.categoryChipTextActive,
+                      ]}
+                    >
+                      {CATEGORY_ICONS[category]}{" "}
+                      {SCHEDULE_CATEGORY_LABELS[category]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        />
+      </View>
 
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>Fecha (opcional)</Text>
@@ -498,6 +549,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     fontWeight: "600",
+  },
+  categoryRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  categoryChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+  },
+  categoryChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.textMuted,
+  },
+  categoryChipTextActive: {
+    color: colors.primary,
+    fontWeight: "700",
   },
   statusActionsGroup: {
     gap: 8,
