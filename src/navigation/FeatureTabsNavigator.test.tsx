@@ -59,7 +59,7 @@ describe("RootNavigator tabs composition", () => {
     useIdentityStore.getState().reset();
   });
 
-  it("muestra todas las tabs para un operario (punto de partida amplio confirmado)", () => {
+  it("restringe a un operario en su propio dispositivo a solo Agenda y Precios", () => {
     useIdentityStore.getState().setOwnProfile({
       id: "user-1",
       displayName: "María Gómez",
@@ -67,9 +67,42 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: false,
     });
 
+    const { getByText, queryByText } = render(<RootNavigator />);
+
+    expect(queryByText("Clientes")).toBeNull();
+    expect(queryByText("Tallas")).toBeNull();
+    expect(getByText("Agenda")).toBeTruthy();
+    expect(getByText("Precios")).toBeTruthy();
+  });
+
+  it("muestra todas las tabs en la tablet compartida sin importar su role", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "tablet-1",
+      displayName: "Tablet mostrador",
+      role: "operario",
+      isSharedDevice: true,
+    });
+
     const { getByText } = render(<RootNavigator />);
 
     expect(getByText("Clientes")).toBeTruthy();
+    expect(getByText("Tallas")).toBeTruthy();
+    expect(getByText("Agenda")).toBeTruthy();
+    expect(getByText("Precios")).toBeTruthy();
+  });
+
+  it("muestra todas las tabs para el dueño", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "owner-1",
+      displayName: "Dueño",
+      role: "owner",
+      isSharedDevice: false,
+    });
+
+    const { getByText } = render(<RootNavigator />);
+
+    expect(getByText("Clientes")).toBeTruthy();
+    expect(getByText("Tallas")).toBeTruthy();
     expect(getByText("Agenda")).toBeTruthy();
     expect(getByText("Precios")).toBeTruthy();
   });

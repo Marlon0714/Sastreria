@@ -54,21 +54,32 @@ const ALL_TABS: TabConfig[] = [
 ];
 
 /**
- * Roles que pueden ver cada tab. Punto de partida confirmado (2026-08-03):
- * ambos roles ven todas las tabs por ahora — restringir después es cambiar
- * esta tabla, no rediseñar la navegación.
+ * Roles que pueden ver cada tab. Confirmado (2026-08-05): un operario en su
+ * propio dispositivo solo ve Agenda y Precios; Clientes/Tallas quedan
+ * reservadas al dueño.
  */
 const TAB_ROLES: Record<TabName, Role[]> = {
-  ClientsTab: ["owner", "operario"],
-  TallasTab: ["owner", "operario"],
+  ClientsTab: ["owner"],
+  TallasTab: ["owner"],
   ScheduleTab: ["owner", "operario"],
   PricingTab: ["owner", "operario"],
 };
 
-function isTabVisibleForRole(tab: TabName, role: Role | null): boolean {
+function isTabVisibleForRole(
+  tab: TabName,
+  role: Role | null,
+  isSharedDevice: boolean,
+): boolean {
   // Sin perfil resuelto (ej. modo local-only sin Supabase configurado) no se
   // oculta nada, para no romper el bypass offline ya existente.
   if (!role) {
+    return true;
+  }
+
+  // La tablet del mostrador la usan varias personas para tareas distintas
+  // (agendar, tomar medidas, cobrar) — restringir por el role de SU cuenta
+  // (siempre "operario") la dejaría sin Clientes/Tallas sin sentido alguno.
+  if (isSharedDevice) {
     return true;
   }
 
@@ -77,13 +88,16 @@ function isTabVisibleForRole(tab: TabName, role: Role | null): boolean {
 
 export default function FeatureTabsNavigator() {
   const role = useIdentityStore((state) => state.ownProfile?.role ?? null);
+  const isSharedDevice = useIdentityStore(
+    (state) => state.ownProfile?.isSharedDevice ?? false,
+  );
   const visibleTabs = ALL_TABS.filter((tab) =>
-    isTabVisibleForRole(tab.name, role),
+    isTabVisibleForRole(tab.name, role, isSharedDevice),
   );
 
   return (
     <Tab.Navigator
-      initialRouteName="ClientsTab"
+      initialRouteName={visibleTabs[0]?.name}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
