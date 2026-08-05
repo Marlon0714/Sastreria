@@ -2,8 +2,8 @@ import { colors } from "../../../shared/theme/colors";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -112,27 +112,26 @@ export function OperarioPickerField({
       >
         <Text style={styles.clearOptionText}>Sin operario asignado</Text>
       </Pressable>
-      <FlatList
-        style={styles.list}
-        data={filteredOperarios}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={
+      <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+        {filteredOperarios.length === 0 ? (
           <Text style={styles.emptyText}>No hay operarios que coincidan.</Text>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityLabel={`Elegir a ${item.displayName}`}
-            style={styles.option}
-            onPress={() => {
-              onChange(item.id);
-              setSearchTerm("");
-              setIsOpen(false);
-            }}
-          >
-            <Text style={styles.optionText}>{item.displayName}</Text>
-          </Pressable>
+        ) : (
+          filteredOperarios.map((item) => (
+            <Pressable
+              key={item.id}
+              accessibilityLabel={`Elegir a ${item.displayName}`}
+              style={styles.option}
+              onPress={() => {
+                onChange(item.id);
+                setSearchTerm("");
+                setIsOpen(false);
+              }}
+            >
+              <Text style={styles.optionText}>{item.displayName}</Text>
+            </Pressable>
+          ))
         )}
-      />
+      </ScrollView>
       <Pressable
         accessibilityLabel="Cancelar selección de operario"
         style={styles.cancelButton}

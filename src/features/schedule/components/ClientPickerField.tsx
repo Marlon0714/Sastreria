@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -253,33 +253,32 @@ export function ClientPickerField({
         style={styles.searchInput}
         autoFocus
       />
-      <FlatList
-        style={styles.list}
-        data={filteredClients}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={
+      <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+        {filteredClients.length === 0 ? (
           <Text style={styles.emptyText}>No hay clientes que coincidan.</Text>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityLabel={`Elegir a ${item.firstName} ${item.lastName} (${
-              item.phone || item.id
-            })`}
-            style={styles.option}
-            onPress={() => {
-              onChange(item.id);
-              closePicker();
-            }}
-          >
-            <Text style={styles.optionText}>
-              {item.firstName} {item.lastName}
-            </Text>
-            {item.phone ? (
-              <Text style={styles.optionSubtext}>{item.phone}</Text>
-            ) : null}
-          </Pressable>
+        ) : (
+          filteredClients.map((item) => (
+            <Pressable
+              key={item.id}
+              accessibilityLabel={`Elegir a ${item.firstName} ${item.lastName} (${
+                item.phone || item.id
+              })`}
+              style={styles.option}
+              onPress={() => {
+                onChange(item.id);
+                closePicker();
+              }}
+            >
+              <Text style={styles.optionText}>
+                {item.firstName} {item.lastName}
+              </Text>
+              {item.phone ? (
+                <Text style={styles.optionSubtext}>{item.phone}</Text>
+              ) : null}
+            </Pressable>
+          ))
         )}
-      />
+      </ScrollView>
       <Pressable
         accessibilityLabel="Crear cliente nuevo"
         style={styles.addClientButton}
