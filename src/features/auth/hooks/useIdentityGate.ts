@@ -36,14 +36,15 @@ interface UseIdentityGateResult {
    */
   requireIdentity: () => Promise<ResolvedIdentity | null>;
   /**
-   * Marca como terminada la acción que consumió la identidad resuelta por
-   * PIN. En dispositivo compartido, cada PIN vale para UNA sola acción: se
-   * debe llamar justo después de completarla (ej. al guardar el cambio de
-   * estado) para que la siguiente acción — sea de la misma persona o de
-   * otra que tome la tablet después — vuelva a pedir PIN. Evita que dos
-   * trabajadores consecutivos en la misma tablet queden atribuidos al
-   * mismo PIN sin darse cuenta. No hace nada en cuentas personales (ahí no
-   * hay ambigüedad que resolver, la identidad dura toda la sesión).
+   * Libera la identidad resuelta por PIN. En dispositivo compartido, un PIN
+   * vale para TODA la visita a la pantalla que lo pidió (todas sus acciones:
+   * guardar, marcar listo/entregado, corregir, eliminar) — se debe llamar al
+   * SALIR de esa pantalla (unmount), no después de cada acción individual,
+   * para no pedir el mismo PIN varias veces en una sola visita. Evita que
+   * dos trabajadores consecutivos en la misma tablet (que abren la pantalla
+   * por separado) queden atribuidos al mismo PIN sin darse cuenta. No hace
+   * nada en cuentas personales (ahí no hay ambigüedad que resolver, la
+   * identidad dura toda la sesión).
    */
   releaseIdentity: () => void;
   isPinPromptVisible: boolean;

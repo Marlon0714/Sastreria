@@ -148,9 +148,6 @@ export function useScheduleForm(
         );
         return null;
       } finally {
-        if (identity) {
-          identityGate.releaseIdentity();
-        }
         setIsSubmitting(false);
         isSubmittingRef.current = false;
       }

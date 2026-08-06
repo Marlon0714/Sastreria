@@ -80,6 +80,21 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [hasTime, setHasTime] = useState(false);
 
+  // En dispositivo compartido, el PIN identifica a quien hace TODAS las
+  // acciones de esta visita a la pantalla (guardar, marcar listo/entregado,
+  // corregir, eliminar) — se pide una sola vez al entrar, no en cada botón.
+  // Se libera recién al salir de la pantalla, para que la próxima persona
+  // que la abra (para este turno u otro) tenga que volver a identificarse.
+  useEffect(() => {
+    return () => {
+      identityGate.releaseIdentity();
+    };
+    // Depender del objeto `identityGate` completo (nuevo en cada render, ver
+    // useIdentityGate()) haría correr este efecto —y su cleanup— en cada
+    // render en vez de solo al desmontar. `releaseIdentity` sí es estable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityGate.releaseIdentity]);
+
   const {
     control,
     handleSubmit,

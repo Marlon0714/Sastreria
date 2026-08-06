@@ -55,9 +55,6 @@ export function useDeleteSchedule(
       setError("No se pudo eliminar el turno. Intenta nuevamente.");
       return false;
     } finally {
-      if (identity) {
-        identityGate.releaseIdentity();
-      }
       setIsDeleting(false);
       isRunningRef.current = false;
     }

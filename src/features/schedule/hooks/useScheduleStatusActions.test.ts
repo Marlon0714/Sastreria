@@ -111,7 +111,9 @@ describe("useScheduleStatusActions", () => {
           identityVerified: true,
         }),
       );
-      expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
+      // La liberación de identidad ahora es responsabilidad de la pantalla
+      // (al desmontar), no de este hook — un PIN vale para toda la visita.
+      expect(identityGate.releaseIdentity).not.toHaveBeenCalled();
     });
   });
 
@@ -205,7 +207,7 @@ describe("useScheduleStatusActions", () => {
     );
   });
 
-  it("libera la identidad aunque falle la creación del evento tras una mutación exitosa", async () => {
+  it("no libera la identidad si falla la creación del evento tras una mutación exitosa (la pantalla lo hace al salir)", async () => {
     mockMarkReady.mockResolvedValueOnce({
       ...baseSchedule,
       status: "listo_para_entregar",
@@ -222,7 +224,7 @@ describe("useScheduleStatusActions", () => {
     });
 
     expect(resolved).toBeNull();
-    expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
+    expect(identityGate.releaseIdentity).not.toHaveBeenCalled();
   });
 
   it("ignora una segunda acción concurrente mientras la primera sigue en curso", async () => {
