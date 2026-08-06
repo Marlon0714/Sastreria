@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.danger,
   },
   gridWrapper: {

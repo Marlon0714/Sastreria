@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 11,
+    fontSize: 12,
     textTransform: "uppercase",
     fontWeight: "bold",
     color: "#475569",

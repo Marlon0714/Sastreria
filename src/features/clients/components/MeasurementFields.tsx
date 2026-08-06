@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.danger,
   },
 });

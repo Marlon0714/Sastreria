@@ -393,9 +393,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   cardTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },

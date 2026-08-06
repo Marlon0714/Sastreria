@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.danger,
   },
 });

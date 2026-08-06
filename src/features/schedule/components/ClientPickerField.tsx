@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   },
   optionSubtext: {
     color: "#64748b",
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 2,
   },
   addClientButton: {

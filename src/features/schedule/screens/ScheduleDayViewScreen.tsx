@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.borderStrong,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     color: colors.textMuted,
   },
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   priorityBadge: {
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerSoft,
   },
   priorityBadgeText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
     color: colors.danger,
   },

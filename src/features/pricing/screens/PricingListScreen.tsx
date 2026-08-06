@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     color: "#64748b",
   },
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
   },
   resultsCount: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#64748b",
     paddingLeft: 4,
   },

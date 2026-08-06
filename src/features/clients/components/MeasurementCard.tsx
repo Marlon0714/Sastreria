@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
   },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     color: colors.textMuted,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     color: colors.textPlaceholder,
   },
   unit: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textPlaceholder,
     marginBottom: 4,
   },
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   errorText: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.danger,
   },
 });

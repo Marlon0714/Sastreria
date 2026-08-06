@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   },
   loadMoreCountText: {
     color: "#94a3b8",
-    fontSize: 12,
+    fontSize: 13,
   },
   loadMoreButton: {
     borderWidth: 1,
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     borderColor: "#fca5a5",
   },
   syncBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
   },
   syncBadgeTextPending: {

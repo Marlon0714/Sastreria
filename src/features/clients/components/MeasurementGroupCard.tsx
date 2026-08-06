@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
   },
   title: {
-    fontSize: 11,
+    fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     color: colors.textMuted,
@@ -144,9 +144,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexBasis: "40%",
     gap: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   subLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
     fontWeight: "600",
   },
@@ -169,7 +174,7 @@ const styles = StyleSheet.create({
     color: colors.textPlaceholder,
   },
   unit: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textPlaceholder,
     marginBottom: 3,
   },
@@ -180,7 +185,7 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   errorText: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.danger,
   },
 });

@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   syncBadgeText: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#e0f2fe",
   },
   card: {
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     color: "#64748b",
     textTransform: "uppercase",

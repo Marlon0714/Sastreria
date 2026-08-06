@@ -185,12 +185,12 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
   },
   fieldError: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.danger,
     marginTop: 4,
   },
   togglePassword: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#6366f1",
     marginTop: 6,
     textAlign: "right",

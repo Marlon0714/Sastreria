@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   unverifiedBadge: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     color: "#92400e",
     backgroundColor: "#fef3c7",
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   eventMeta: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#64748b",
   },
   eventChange: {
