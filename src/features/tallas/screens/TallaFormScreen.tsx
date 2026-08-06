@@ -1,4 +1,6 @@
+import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import { type Control, type FieldErrors, useForm } from "react-hook-form";
 import {
@@ -13,8 +15,10 @@ import {
 
 import type { TallasStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
+import { SIZE_VALUE_PATTERN } from "../../../shared/domain/textPatterns";
 import { MeasurementCard } from "../../clients/components/MeasurementCard";
 import { MeasurementGridSection } from "../../clients/components/MeasurementGridSection";
+import { MeasurementGroupCard } from "../../clients/components/MeasurementGroupCard";
 import type { TallaGarmentType, TallaTemplate } from "../domain/types";
 import { TALLA_GARMENT_LABELS } from "../domain/types";
 import { useTallaTemplateRepository } from "../hooks/TallasDependenciesProvider";
@@ -24,24 +28,31 @@ type Props = NativeStackScreenProps<TallasStackParamList, "TallaForm">;
 
 interface TallaFormValues {
   name: string;
-  // camisa / saco (16 fields)
+  // camisa / saco (20 fields)
   espalda: string;
   hombro: string;
   talleDelantero: string;
   talleTrasero: string;
   distancia: string;
   separacion: string;
-  pecho: string;
+  pechoAjustado: string;
+  pechoAncho: string;
   cintura: string;
+  cinturaAjustado: string;
+  cinturaAncho: string;
   base: string;
+  baseAjustado: string;
+  baseAncho: string;
   largo: string;
-  largoManga: string;
-  anchoManga: string;
+  mangaLarga: string;
+  mangaCorta: string;
   escote: string;
-  cuello: string;
+  cuelloNormal: string;
+  cuelloCruce: string;
   brazo: string;
   puno: string;
-  // pantalon (4 extra)
+  // pantalon (5 extra)
+  entrepierna: string;
   tiro: string;
   pierna: string;
   rodilla: string;
@@ -57,16 +68,23 @@ const DEFAULTS: TallaFormValues = {
   talleTrasero: "",
   distancia: "",
   separacion: "",
-  pecho: "",
+  pechoAjustado: "",
+  pechoAncho: "",
   cintura: "",
+  cinturaAjustado: "",
+  cinturaAncho: "",
   base: "",
+  baseAjustado: "",
+  baseAncho: "",
   largo: "",
-  largoManga: "",
-  anchoManga: "",
+  mangaLarga: "",
+  mangaCorta: "",
   escote: "",
-  cuello: "",
+  cuelloNormal: "",
+  cuelloCruce: "",
   brazo: "",
   puno: "",
+  entrepierna: "",
   tiro: "",
   pierna: "",
   rodilla: "",
@@ -84,16 +102,23 @@ function toFormValues(t: TallaTemplate): TallaFormValues {
     talleTrasero: s(t.talleTrasero),
     distancia: s(t.distancia),
     separacion: s(t.separacion),
-    pecho: s(t.pecho),
+    pechoAjustado: s(t.pechoAjustado),
+    pechoAncho: s(t.pechoAncho),
     cintura: s(t.cintura),
+    cinturaAjustado: s(t.cinturaAjustado),
+    cinturaAncho: s(t.cinturaAncho),
     base: s(t.base),
+    baseAjustado: s(t.baseAjustado),
+    baseAncho: s(t.baseAncho),
     largo: s(t.largo),
-    largoManga: s(t.largoManga),
-    anchoManga: s(t.anchoManga),
+    mangaLarga: s(t.mangaLarga),
+    mangaCorta: s(t.mangaCorta),
     escote: s(t.escote),
-    cuello: s(t.cuello),
+    cuelloNormal: s(t.cuelloNormal),
+    cuelloCruce: s(t.cuelloCruce),
     brazo: s(t.brazo),
     puno: s(t.puno),
+    entrepierna: s(t.entrepierna),
     tiro: s(t.tiro),
     pierna: s(t.pierna),
     rodilla: s(t.rodilla),
@@ -164,6 +189,13 @@ export default function TallaFormScreen({ navigation, route }: Props) {
       Alert.alert("Campo requerido", "El nombre de la talla es obligatorio.");
       return;
     }
+    if (!SIZE_VALUE_PATTERN.test(name)) {
+      Alert.alert(
+        "Formato inválido",
+        'El nombre de la talla solo puede contener letras, números, espacios, "/" y "-".',
+      );
+      return;
+    }
     const nums = {
       espalda: parseNum(values.espalda),
       hombro: parseNum(values.hombro),
@@ -171,16 +203,23 @@ export default function TallaFormScreen({ navigation, route }: Props) {
       talleTrasero: parseNum(values.talleTrasero),
       distancia: parseNum(values.distancia),
       separacion: parseNum(values.separacion),
-      pecho: parseNum(values.pecho),
+      pechoAjustado: parseNum(values.pechoAjustado),
+      pechoAncho: parseNum(values.pechoAncho),
       cintura: parseNum(values.cintura),
+      cinturaAjustado: parseNum(values.cinturaAjustado),
+      cinturaAncho: parseNum(values.cinturaAncho),
       base: parseNum(values.base),
+      baseAjustado: parseNum(values.baseAjustado),
+      baseAncho: parseNum(values.baseAncho),
       largo: parseNum(values.largo),
-      largoManga: parseNum(values.largoManga),
-      anchoManga: parseNum(values.anchoManga),
+      mangaLarga: parseNum(values.mangaLarga),
+      mangaCorta: parseNum(values.mangaCorta),
       escote: parseNum(values.escote),
-      cuello: parseNum(values.cuello),
+      cuelloNormal: parseNum(values.cuelloNormal),
+      cuelloCruce: parseNum(values.cuelloCruce),
       brazo: parseNum(values.brazo),
       puno: parseNum(values.puno),
+      entrepierna: parseNum(values.entrepierna),
       tiro: parseNum(values.tiro),
       pierna: parseNum(values.pierna),
       rodilla: parseNum(values.rodilla),
@@ -223,7 +262,10 @@ export default function TallaFormScreen({ navigation, route }: Props) {
     );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Nombre */}
       <View style={styles.nameSection}>
         <Text style={styles.fieldLabel}>
@@ -232,7 +274,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
         <TextInput
           style={[styles.nameInput, errors.name && styles.inputError]}
           placeholder='Ej: M, 38, "Talla única"'
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.textPlaceholder}
           value={nameValue}
           onChangeText={(v) => setValue("name", v)}
           autoCapitalize="characters"
@@ -259,7 +301,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
         <TextInput
           style={styles.notesInput}
           placeholder="Observaciones opcionales..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.textPlaceholder}
           multiline
           numberOfLines={3}
           value={watch("notes")}
@@ -269,10 +311,15 @@ export default function TallaFormScreen({ navigation, route }: Props) {
 
       {/* Botones */}
       <Pressable
-        style={[styles.saveBtn, isSubmitting && styles.btnDisabled]}
+        style={({ pressed }) => [
+          styles.saveBtn,
+          isSubmitting && styles.btnDisabled,
+          pressed && !isSubmitting ? styles.saveBtnPressed : null,
+        ]}
         onPress={handleSubmit(onSubmit)}
         disabled={isSubmitting}
       >
+        <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         <Text style={styles.saveBtnText}>
           {isSubmitting ? "Guardando..." : "Guardar talla"}
         </Text>
@@ -284,6 +331,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
           onPress={onDelete}
           disabled={isSubmitting}
         >
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
           <Text style={styles.deleteBtnText}>Eliminar talla</Text>
         </Pressable>
       )}
@@ -301,7 +349,7 @@ type GridProps = {
 function CamisaSacoFields({ control, errors }: GridProps) {
   return (
     <View style={styles.gridWrapper}>
-      <MeasurementGridSection title="Torso">
+      <MeasurementGridSection title="Medidas">
         <MeasurementCard<TallaFormValues>
           name="espalda"
           label="Espalda"
@@ -309,36 +357,6 @@ function CamisaSacoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.espalda?.message}
         />
-        <MeasurementCard<TallaFormValues>
-          name="hombro"
-          label="Hombro"
-          accessibilityLabel="Hombro (cm)"
-          control={control}
-          errorMessage={errors.hombro?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="pecho"
-          label="Pecho"
-          accessibilityLabel="Pecho (cm)"
-          control={control}
-          errorMessage={errors.pecho?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="cintura"
-          label="Cintura"
-          accessibilityLabel="Cintura (cm)"
-          control={control}
-          errorMessage={errors.cintura?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="base"
-          label="Base o cadera"
-          accessibilityLabel="Base o cadera (cm)"
-          control={control}
-          errorMessage={errors.base?.message}
-        />
-      </MeasurementGridSection>
-      <MeasurementGridSection title="Largo">
         <MeasurementCard<TallaFormValues>
           name="talleDelantero"
           label="Talle delantero"
@@ -360,6 +378,97 @@ function CamisaSacoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.largo?.message}
         />
+        <MeasurementGroupCard<TallaFormValues>
+          title="Pecho"
+          fields={[
+            {
+              name: "pechoAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Pecho ajustado (cm)",
+              errorMessage: errors.pechoAjustado?.message,
+            },
+            {
+              name: "pechoAncho",
+              label: "Ancho",
+              accessibilityLabel: "Pecho ancho (cm)",
+              errorMessage: errors.pechoAncho?.message,
+            },
+          ]}
+          control={control}
+        />
+        <MeasurementGroupCard<TallaFormValues>
+          title="Cintura"
+          fields={[
+            {
+              name: "cinturaAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Cintura ajustado (cm)",
+              errorMessage: errors.cinturaAjustado?.message,
+            },
+            {
+              name: "cinturaAncho",
+              label: "Ancho",
+              accessibilityLabel: "Cintura ancho (cm)",
+              errorMessage: errors.cinturaAncho?.message,
+            },
+          ]}
+          control={control}
+        />
+        <MeasurementGroupCard<TallaFormValues>
+          title="Base"
+          fields={[
+            {
+              name: "baseAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Base ajustado (cm)",
+              errorMessage: errors.baseAjustado?.message,
+            },
+            {
+              name: "baseAncho",
+              label: "Ancho",
+              accessibilityLabel: "Base ancho (cm)",
+              errorMessage: errors.baseAncho?.message,
+            },
+          ]}
+          control={control}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="hombro"
+          label="Hombro"
+          accessibilityLabel="Hombro (cm)"
+          control={control}
+          errorMessage={errors.hombro?.message}
+        />
+        <MeasurementGroupCard<TallaFormValues>
+          title="Manga"
+          fields={[
+            {
+              name: "mangaLarga",
+              label: "Largo manga larga",
+              accessibilityLabel: "Largo manga larga (cm)",
+              errorMessage: errors.mangaLarga?.message,
+            },
+            {
+              name: "mangaCorta",
+              label: "Largo manga corta",
+              accessibilityLabel: "Largo manga corta (cm)",
+              errorMessage: errors.mangaCorta?.message,
+            },
+            {
+              name: "brazo",
+              label: "Brazo",
+              accessibilityLabel: "Brazo (cm)",
+              errorMessage: errors.brazo?.message,
+            },
+            {
+              name: "puno",
+              label: "Puño",
+              accessibilityLabel: "Puño (cm)",
+              errorMessage: errors.puno?.message,
+            },
+          ]}
+          control={control}
+        />
         <MeasurementCard<TallaFormValues>
           name="distancia"
           label="Distancia"
@@ -374,38 +483,6 @@ function CamisaSacoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.separacion?.message}
         />
-      </MeasurementGridSection>
-      <MeasurementGridSection title="Manga">
-        <MeasurementCard<TallaFormValues>
-          name="largoManga"
-          label="Largo manga"
-          accessibilityLabel="Largo manga (cm)"
-          control={control}
-          errorMessage={errors.largoManga?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="anchoManga"
-          label="Ancho manga"
-          accessibilityLabel="Ancho manga (cm)"
-          control={control}
-          errorMessage={errors.anchoManga?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="brazo"
-          label="Brazo"
-          accessibilityLabel="Brazo (cm)"
-          control={control}
-          errorMessage={errors.brazo?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="puno"
-          label="Puño"
-          accessibilityLabel="Puño (cm)"
-          control={control}
-          errorMessage={errors.puno?.message}
-        />
-      </MeasurementGridSection>
-      <MeasurementGridSection title="Cuello">
         <MeasurementCard<TallaFormValues>
           name="escote"
           label="Escote"
@@ -413,12 +490,23 @@ function CamisaSacoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.escote?.message}
         />
-        <MeasurementCard<TallaFormValues>
-          name="cuello"
-          label="Cuello"
-          accessibilityLabel="Cuello (cm)"
+        <MeasurementGroupCard<TallaFormValues>
+          title="Cuello"
+          fields={[
+            {
+              name: "cuelloNormal",
+              label: "Normal",
+              accessibilityLabel: "Cuello normal (cm)",
+              errorMessage: errors.cuelloNormal?.message,
+            },
+            {
+              name: "cuelloCruce",
+              label: "Cruce",
+              accessibilityLabel: "Cuello cruce (cm)",
+              errorMessage: errors.cuelloCruce?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.cuello?.message}
         />
       </MeasurementGridSection>
     </View>
@@ -430,27 +518,6 @@ function PantalonFields({ control, errors }: GridProps) {
     <View style={styles.gridWrapper}>
       <MeasurementGridSection title="Pantalón">
         <MeasurementCard<TallaFormValues>
-          name="cintura"
-          label="Cintura"
-          accessibilityLabel="Cintura (cm)"
-          control={control}
-          errorMessage={errors.cintura?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="tiro"
-          label="Tiro"
-          accessibilityLabel="Tiro (cm)"
-          control={control}
-          errorMessage={errors.tiro?.message}
-        />
-        <MeasurementCard<TallaFormValues>
-          name="base"
-          label="Cadera"
-          accessibilityLabel="Cadera (cm)"
-          control={control}
-          errorMessage={errors.base?.message}
-        />
-        <MeasurementCard<TallaFormValues>
           name="largo"
           label="Largo"
           accessibilityLabel="Largo (cm)"
@@ -458,11 +525,25 @@ function PantalonFields({ control, errors }: GridProps) {
           errorMessage={errors.largo?.message}
         />
         <MeasurementCard<TallaFormValues>
-          name="pierna"
-          label="Pierna"
-          accessibilityLabel="Pierna (cm)"
+          name="entrepierna"
+          label="Entrepierna"
+          accessibilityLabel="Entrepierna (cm)"
           control={control}
-          errorMessage={errors.pierna?.message}
+          errorMessage={errors.entrepierna?.message}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="cintura"
+          label="Cintura"
+          accessibilityLabel="Cintura (cm)"
+          control={control}
+          errorMessage={errors.cintura?.message}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="base"
+          label="Cadera"
+          accessibilityLabel="Cadera (cm)"
+          control={control}
+          errorMessage={errors.base?.message}
         />
         <MeasurementCard<TallaFormValues>
           name="rodilla"
@@ -477,6 +558,20 @@ function PantalonFields({ control, errors }: GridProps) {
           accessibilityLabel="Bota (cm)"
           control={control}
           errorMessage={errors.bota?.message}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="pierna"
+          label="Pierna"
+          accessibilityLabel="Pierna (cm)"
+          control={control}
+          errorMessage={errors.pierna?.message}
+        />
+        <MeasurementCard<TallaFormValues>
+          name="tiro"
+          label="Tiro"
+          accessibilityLabel="Tiro (cm)"
+          control={control}
+          errorMessage={errors.tiro?.message}
         />
       </MeasurementGridSection>
     </View>
@@ -508,26 +603,59 @@ function ChalecoFields({ control, errors }: GridProps) {
           control={control}
           errorMessage={errors.largo?.message}
         />
-        <MeasurementCard<TallaFormValues>
-          name="pecho"
-          label="Pecho"
-          accessibilityLabel="Pecho (cm)"
+        <MeasurementGroupCard<TallaFormValues>
+          title="Pecho"
+          fields={[
+            {
+              name: "pechoAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Pecho ajustado (cm)",
+              errorMessage: errors.pechoAjustado?.message,
+            },
+            {
+              name: "pechoAncho",
+              label: "Ancho",
+              accessibilityLabel: "Pecho ancho (cm)",
+              errorMessage: errors.pechoAncho?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.pecho?.message}
         />
-        <MeasurementCard<TallaFormValues>
-          name="cintura"
-          label="Cintura"
-          accessibilityLabel="Cintura (cm)"
+        <MeasurementGroupCard<TallaFormValues>
+          title="Cintura"
+          fields={[
+            {
+              name: "cinturaAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Cintura ajustado (cm)",
+              errorMessage: errors.cinturaAjustado?.message,
+            },
+            {
+              name: "cinturaAncho",
+              label: "Ancho",
+              accessibilityLabel: "Cintura ancho (cm)",
+              errorMessage: errors.cinturaAncho?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.cintura?.message}
         />
-        <MeasurementCard<TallaFormValues>
-          name="base"
-          label="Base o cadera"
-          accessibilityLabel="Base o cadera (cm)"
+        <MeasurementGroupCard<TallaFormValues>
+          title="Base"
+          fields={[
+            {
+              name: "baseAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Base ajustado (cm)",
+              errorMessage: errors.baseAjustado?.message,
+            },
+            {
+              name: "baseAncho",
+              label: "Ancho",
+              accessibilityLabel: "Base ancho (cm)",
+              errorMessage: errors.baseAncho?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.base?.message}
         />
         <MeasurementCard<TallaFormValues>
           name="escote"
@@ -546,78 +674,93 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     paddingBottom: 40,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.background,
   },
   nameSection: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
     padding: 16,
-    gap: 6,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   fieldLabel: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#64748b",
+    fontWeight: "700",
+    color: colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   required: {
-    color: "#ef4444",
+    color: colors.danger,
   },
   nameInput: {
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 16,
     fontWeight: "700",
-    color: "#1e293b",
-    backgroundColor: "#f8fafc",
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
   },
   inputError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   errorText: {
-    fontSize: 12,
-    color: "#ef4444",
+    fontSize: 13,
+    color: colors.danger,
   },
   gridWrapper: {
     gap: 12,
   },
   notesSection: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
     padding: 16,
-    gap: 6,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   notesInput: {
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 14,
-    color: "#1e293b",
-    backgroundColor: "#f8fafc",
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
     minHeight: 72,
     textAlignVertical: "top",
   },
   saveBtn: {
-    backgroundColor: "#0f766e",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  saveBtnPressed: {
+    backgroundColor: colors.primaryPressed,
   },
   saveBtnText: {
     color: "#ffffff",
@@ -625,15 +768,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   deleteBtn: {
-    backgroundColor: "#fee2e2",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.dangerSoft,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#fca5a5",
+    borderWidth: 1.5,
+    borderColor: colors.danger,
   },
   deleteBtnText: {
-    color: "#dc2626",
+    color: colors.danger,
     fontWeight: "600",
     fontSize: 15,
   },

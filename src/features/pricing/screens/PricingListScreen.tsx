@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import { colors } from "../../../shared/theme/colors";
+import React, { useCallback, useState, useMemo } from "react";
 import {
   View,
   FlatList,
@@ -7,7 +8,7 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { usePricingServices } from "../hooks/usePricingServices";
@@ -18,6 +19,7 @@ import {
   type PricingCategory,
 } from "../domain/pricingService";
 import { LoadingView, ErrorView } from "../../../shared/components";
+import { normalizeText } from "../../../shared/utils/textSearch";
 import type { PricingStackParamList } from "../../../navigation/types";
 
 type PricingListScreenNavProp = NativeStackNavigationProp<
@@ -43,18 +45,24 @@ export default function PricingListScreen() {
     useState<PricingCategory>("arreglo");
   const [query, setQuery] = useState("");
 
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
   const categoryServices = useMemo(
     () => services.filter((s) => s.category === activeCategory),
     [services, activeCategory],
   );
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeText(query);
     if (!q) return categoryServices;
     return categoryServices.filter(
       (s) =>
-        s.name.toLowerCase().includes(q) ||
-        (s.notes ?? "").toLowerCase().includes(q),
+        normalizeText(s.name).includes(q) ||
+        normalizeText(s.notes ?? "").includes(q),
     );
   }, [categoryServices, query]);
 
@@ -265,7 +273,7 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   segmentTextActive: {
-    color: "#1e40af",
+    color: colors.primary,
     fontWeight: "700",
   },
   badge: {
@@ -283,12 +291,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#cbd5e1",
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     color: "#64748b",
   },
   badgeTextActive: {
-    color: "#1e40af",
+    color: colors.primary,
   },
   searchWrapper: {
     paddingHorizontal: 16,
@@ -328,7 +336,7 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
   },
   resultsCount: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#64748b",
     paddingLeft: 4,
   },
@@ -353,7 +361,7 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     fontSize: 13,
-    color: "#b91c1c",
+    color: colors.danger,
   },
   emptyState: {
     flex: 1,
@@ -385,7 +393,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#1e40af",
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -395,7 +403,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabPressed: {
-    backgroundColor: "#1e3a8a",
+    backgroundColor: colors.primaryPressed,
     transform: [{ scale: 0.96 }],
   },
   fabIcon: {

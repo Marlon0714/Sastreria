@@ -49,14 +49,18 @@ export interface CamisaMeasurement extends BaseEntity {
   talleTrasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pechoAjustado: number | null;
+  pechoAncho: number | null;
+  cinturaAjustado: number | null;
+  cinturaAncho: number | null;
+  baseAjustado: number | null;
+  baseAncho: number | null;
   largo: number | null;
-  largoManga: number | null;
-  anchoManga: number | null;
+  mangaLarga: number | null;
+  mangaCorta: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuelloNormal: number | null;
+  cuelloCruce: number | null;
   brazo: number | null;
   puno: number | null;
   changedBy: string | null;
@@ -72,14 +76,18 @@ export interface UpsertCamisaDTO {
   talleTrasero?: number | null;
   distancia?: number | null;
   separacion?: number | null;
-  pecho?: number | null;
-  cintura?: number | null;
-  base?: number | null;
+  pechoAjustado?: number | null;
+  pechoAncho?: number | null;
+  cinturaAjustado?: number | null;
+  cinturaAncho?: number | null;
+  baseAjustado?: number | null;
+  baseAncho?: number | null;
   largo?: number | null;
-  largoManga?: number | null;
-  anchoManga?: number | null;
+  mangaLarga?: number | null;
+  mangaCorta?: number | null;
   escote?: number | null;
-  cuello?: number | null;
+  cuelloNormal?: number | null;
+  cuelloCruce?: number | null;
   brazo?: number | null;
   puno?: number | null;
   changedBy?: string | null;
@@ -91,6 +99,7 @@ export interface UpsertCamisaDTO {
 export interface PantalonMeasurement extends BaseEntity {
   clientId: string;
   largo: number | null;
+  entrepierna: number | null;
   cintura: number | null;
   base: number | null;
   tiro: number | null;
@@ -105,6 +114,7 @@ export interface PantalonMeasurement extends BaseEntity {
 export interface UpsertPantalonDTO {
   clientId: string;
   largo?: number | null;
+  entrepierna?: number | null;
   cintura?: number | null;
   base?: number | null;
   tiro?: number | null;
@@ -125,16 +135,21 @@ export interface SacoMeasurement extends BaseEntity {
   talleTrasero: number | null;
   distancia: number | null;
   separacion: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pechoAjustado: number | null;
+  pechoAncho: number | null;
+  cinturaAjustado: number | null;
+  cinturaAncho: number | null;
+  baseAjustado: number | null;
+  baseAncho: number | null;
   largo: number | null;
-  largoManga: number | null;
-  anchoManga: number | null;
+  mangaLarga: number | null;
+  mangaCorta: number | null;
   escote: number | null;
-  cuello: number | null;
+  cuelloNormal: number | null;
+  cuelloCruce: number | null;
   brazo: number | null;
   puno: number | null;
+  notes: string | null;
 }
 
 export interface UpsertSacoDTO {
@@ -145,16 +160,21 @@ export interface UpsertSacoDTO {
   talleTrasero?: number | null;
   distancia?: number | null;
   separacion?: number | null;
-  pecho?: number | null;
-  cintura?: number | null;
-  base?: number | null;
+  pechoAjustado?: number | null;
+  pechoAncho?: number | null;
+  cinturaAjustado?: number | null;
+  cinturaAncho?: number | null;
+  baseAjustado?: number | null;
+  baseAncho?: number | null;
   largo?: number | null;
-  largoManga?: number | null;
-  anchoManga?: number | null;
+  mangaLarga?: number | null;
+  mangaCorta?: number | null;
   escote?: number | null;
-  cuello?: number | null;
+  cuelloNormal?: number | null;
+  cuelloCruce?: number | null;
   brazo?: number | null;
   puno?: number | null;
+  notes?: string | null;
 }
 
 // ─── Medidas Chaleco (N-045) ──────────────────────────────────────────────────
@@ -164,10 +184,14 @@ export interface ChalecoMeasurement extends BaseEntity {
   espalda: number | null;
   talleTrasero: number | null;
   largo: number | null;
-  pecho: number | null;
-  cintura: number | null;
-  base: number | null;
+  pechoAjustado: number | null;
+  pechoAncho: number | null;
+  cinturaAjustado: number | null;
+  cinturaAncho: number | null;
+  baseAjustado: number | null;
+  baseAncho: number | null;
   escote: number | null;
+  notes: string | null;
 }
 
 export interface UpsertChalecoDTO {
@@ -175,10 +199,14 @@ export interface UpsertChalecoDTO {
   espalda?: number | null;
   talleTrasero?: number | null;
   largo?: number | null;
-  pecho?: number | null;
-  cintura?: number | null;
-  base?: number | null;
+  pechoAjustado?: number | null;
+  pechoAncho?: number | null;
+  cinturaAjustado?: number | null;
+  cinturaAncho?: number | null;
+  baseAjustado?: number | null;
+  baseAncho?: number | null;
   escote?: number | null;
+  notes?: string | null;
 }
 
 // ─── Tallas ───────────────────────────────────────────────────────────────────

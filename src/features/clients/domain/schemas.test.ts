@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import {
   createClientSchema,
+  updateClientSchema,
   upsertCamisaSchema,
   upsertPantalonSchema,
 } from "./schemas";
@@ -41,6 +42,128 @@ describe("clients schemas", () => {
         "El nombre es obligatorio",
       );
     });
+
+    it("accepts a missing or empty phone and stores it as an empty string", () => {
+      const withoutPhone = createClientSchema.safeParse({
+        firstName: "Ana",
+        lastName: "Torres",
+      });
+      const withEmptyPhone = createClientSchema.safeParse({
+        firstName: "Ana",
+        lastName: "Torres",
+        phone: "   ",
+      });
+
+      expect(withoutPhone.success).toBe(true);
+      expect(withEmptyPhone.success).toBe(true);
+      if (!withoutPhone.success || !withEmptyPhone.success) return;
+
+      expect(withoutPhone.data.phone).toBe("");
+      expect(withEmptyPhone.data.phone).toBe("");
+    });
+
+    it("rejects a first/last name containing digits", () => {
+      const result = createClientSchema.safeParse({
+        firstName: "Ana2",
+        lastName: "Torres",
+        phone: "",
+      });
+
+      expect(result.success).toBe(false);
+      if (result.success) return;
+
+      expect(result.error.flatten().fieldErrors.firstName?.[0]).toBe(
+        "El nombre solo puede contener letras",
+      );
+    });
+
+    it("accepts accented letters and hyphens in names", () => {
+      const result = createClientSchema.safeParse({
+        firstName: "José-María",
+        lastName: "Peña",
+        phone: "",
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects a phone containing letters or symbols used to bypass the old required validation", () => {
+      const withLetters = createClientSchema.safeParse({
+        firstName: "Ana",
+        lastName: "Torres",
+        phone: "abc1234",
+      });
+      const withAsterisks = createClientSchema.safeParse({
+        firstName: "Ana",
+        lastName: "Torres",
+        phone: "*******",
+      });
+
+      expect(withLetters.success).toBe(false);
+      expect(withAsterisks.success).toBe(false);
+      if (withLetters.success || withAsterisks.success) return;
+
+      expect(withLetters.error.flatten().fieldErrors.phone?.[0]).toBe(
+        "El teléfono solo puede contener números",
+      );
+      expect(withAsterisks.error.flatten().fieldErrors.phone?.[0]).toBe(
+        "El teléfono solo puede contener números",
+      );
+    });
+
+    it("normalizes a phone formatted with spaces, dots and dashes into digits only", () => {
+      const result = createClientSchema.safeParse({
+        firstName: "Ana",
+        lastName: "Torres",
+        phone: "300 123-4567",
+        phone2: "(300) 123.4567",
+        cedula: "10.203.040",
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(result.data.phone).toBe("3001234567");
+      expect(result.data.phone2).toBe("3001234567");
+      expect(result.data.cedula).toBe("10203040");
+    });
+
+    it("rejects a cedula containing letters", () => {
+      const result = createClientSchema.safeParse({
+        firstName: "Ana",
+        lastName: "Torres",
+        phone: "",
+        cedula: "10203ABC",
+      });
+
+      expect(result.success).toBe(false);
+      if (result.success) return;
+
+      expect(result.error.flatten().fieldErrors.cedula?.[0]).toBe(
+        "La cédula solo puede contener números",
+      );
+    });
+  });
+
+  describe("updateClientSchema", () => {
+    it("applies the same name/phone/cedula character rules as createClientSchema", () => {
+      const result = updateClientSchema.safeParse({
+        id: "11111111-1111-4111-8111-111111111111",
+        firstName: "Ana3",
+        lastName: "Torres",
+        phone: "###",
+      });
+
+      expect(result.success).toBe(false);
+      if (result.success) return;
+
+      expect(result.error.flatten().fieldErrors.firstName?.[0]).toBe(
+        "El nombre solo puede contener letras",
+      );
+      expect(result.error.flatten().fieldErrors.phone?.[0]).toBe(
+        "El teléfono solo puede contener números",
+      );
+    });
   });
 
   describe("upsertCamisaSchema", () => {
@@ -61,8 +184,8 @@ describe("clients schemas", () => {
         clientId: validClientId,
         espalda: "",
         hombro: "  ",
-        pecho: "92,5",
-        cintura: "70.5",
+        pechoAjustado: "92,5",
+        cinturaAjustado: "70.5",
         notes: "  Cliente nuevo  ",
       });
 
@@ -71,15 +194,15 @@ describe("clients schemas", () => {
 
       expect(result.data.espalda).toBe(null);
       expect(result.data.hombro).toBe(null);
-      expect(result.data.pecho).toBe(92.5);
-      expect(result.data.cintura).toBe(70.5);
+      expect(result.data.pechoAjustado).toBe(92.5);
+      expect(result.data.cinturaAjustado).toBe(70.5);
       expect(result.data.notes).toBe("Cliente nuevo");
     });
 
     it("fails when a measurement field is out of range", () => {
       const result = upsertCamisaSchema.safeParse({
         clientId: validClientId,
-        pecho: 9999,
+        pechoAjustado: 9999,
       });
 
       expect(result.success).toBe(false);
@@ -88,7 +211,7 @@ describe("clients schemas", () => {
     it("fails when clientId is not a uuid", () => {
       const result = upsertCamisaSchema.safeParse({
         clientId: "not-uuid",
-        pecho: 90,
+        pechoAjustado: 90,
       });
 
       expect(result.success).toBe(false);
@@ -111,14 +234,14 @@ describe("clients schemas", () => {
     it("accepts boundary value 300 and normalizes empty notes to null", () => {
       const result = upsertCamisaSchema.safeParse({
         clientId: validClientId,
-        pecho: 300,
+        pechoAjustado: 300,
         notes: "   ",
       });
 
       expect(result.success).toBe(true);
       if (!result.success) return;
 
-      expect(result.data.pecho).toBe(300);
+      expect(result.data.pechoAjustado).toBe(300);
       expect(result.data.notes ?? null).toBe(null);
     });
 

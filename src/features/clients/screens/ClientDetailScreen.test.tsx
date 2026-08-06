@@ -171,6 +171,48 @@ describe("ClientDetailScreen", () => {
     expect(queryByText(/pending/i)).toBeNull();
   });
 
+  it("shows creation date but not edit date when never edited", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      createdAt: "2026-01-15T10:00:00.000Z",
+      updatedAt: "2026-01-15T10:00:00.000Z",
+    });
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByText, queryByText } = render(
+      <ClientDetailScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    expect(getByText("15 de enero de 2026")).toBeTruthy();
+    expect(queryByText("✏️ Editado")).toBeNull();
+  });
+
+  it("shows both creation and edit dates when the client was edited", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const client = clientFactory({
+      createdAt: "2026-01-15T10:00:00.000Z",
+      updatedAt: "2026-02-20T10:00:00.000Z",
+    });
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByText } = render(
+      <ClientDetailScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    expect(getByText("15 de enero de 2026")).toBeTruthy();
+    expect(getByText("20 de febrero de 2026")).toBeTruthy();
+  });
+
   it("navigates to MeasurementTypeSelect when pressing Medidas button", () => {
     const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
     const client = clientFactory({

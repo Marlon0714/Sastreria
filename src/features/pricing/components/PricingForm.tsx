@@ -1,3 +1,5 @@
+import { colors } from "../../../shared/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
   View,
@@ -98,7 +100,7 @@ export default function PricingForm({
             <TextInput
               style={[styles.input, errors.name && styles.inputError]}
               placeholder="Ej: Dobladillo pantalón"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
               accessibilityLabel="Nombre"
               onBlur={onBlur}
               onChangeText={onChange}
@@ -124,13 +126,20 @@ export default function PricingForm({
             <TextInput
               style={[styles.input, errors.price && styles.inputError]}
               placeholder="Ej: 15000"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
               accessibilityLabel="Precio"
               keyboardType="numeric"
               onBlur={onBlur}
               onChangeText={(v) => {
-                const n = parseFloat(v.replace(/[^0-9.]/g, ""));
-                onChange(isNaN(n) ? 0 : n);
+                // Solo dígitos: el COP no maneja centavos, y un "." acá se
+                // presta a confusión porque el resto de la app lo usa como
+                // separador de miles al MOSTRAR precios (formatPrice) — si
+                // se permitiera como parte del número, pegar/escribir
+                // "15.000" (como se ve en cualquier otra pantalla) se leería
+                // como 15 en vez de 15000.
+                const digitsOnly = v.replace(/[^0-9]/g, "");
+                const n = digitsOnly === "" ? 0 : parseInt(digitsOnly, 10);
+                onChange(n);
               }}
               value={value === 0 ? "" : String(value)}
             />
@@ -151,7 +160,7 @@ export default function PricingForm({
             <TextInput
               style={[styles.input, styles.notesInput]}
               placeholder="Descripción, detalles del servicio..."
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
               multiline
               numberOfLines={3}
               onBlur={onBlur}
@@ -179,7 +188,10 @@ export default function PricingForm({
         {submitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.saveButtonText}>{pricingStrings.save}</Text>
+          <>
+            <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+            <Text style={styles.saveButtonText}>{pricingStrings.save}</Text>
+          </>
         )}
       </Pressable>
     </View>
@@ -197,12 +209,12 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#64748b",
+    color: colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   required: {
-    color: "#ef4444",
+    color: colors.danger,
   },
   categoryRow: {
     flexDirection: "row",
@@ -213,57 +225,65 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
+    borderColor: colors.border,
+    backgroundColor: colors.background,
     alignItems: "center",
   },
   categoryChipActive: {
-    borderColor: "#1e40af",
-    backgroundColor: "#dbeafe",
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   categoryChipText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#64748b",
+    color: colors.textMuted,
   },
   categoryChipTextActive: {
-    color: "#1e40af",
+    color: colors.primary,
     fontWeight: "700",
   },
   input: {
     borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    borderRadius: 10,
+    borderColor: colors.border,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#1e293b",
-    backgroundColor: "#f8fafc",
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
   },
   notesInput: {
     minHeight: 80,
     textAlignVertical: "top",
   },
   inputError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   errorText: {
-    fontSize: 12,
-    color: "#ef4444",
+    fontSize: 13,
+    color: colors.danger,
     marginTop: 2,
   },
   saveButton: {
-    backgroundColor: "#1e40af",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: "center",
     marginTop: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   saveButtonDisabled: {
     backgroundColor: "#93c5fd",
   },
   saveButtonPressed: {
-    backgroundColor: "#1e3a8a",
+    backgroundColor: colors.primaryPressed,
   },
   saveButtonText: {
     color: "#ffffff",

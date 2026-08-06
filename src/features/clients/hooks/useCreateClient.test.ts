@@ -101,13 +101,13 @@ describe("useCreateClient", () => {
     const errors = result.current.validate({
       firstName: "",
       lastName: "",
-      phone: "123",
+      phone: "",
       notes: "",
     });
 
     expect(errors.firstName?.message).toBe("El nombre es obligatorio");
     expect(errors.lastName?.message).toBe("El apellido es obligatorio");
-    expect(errors.phone?.message).toBe("El teléfono no es válido");
+    expect(errors.phone?.message).toBeUndefined();
   });
 
   it("creates client successfully and resets form", async () => {
@@ -212,6 +212,42 @@ describe("useCreateClient", () => {
           phone: "3001234567",
           phone2: "3009998888",
           phone3: "3118887777",
+          notes: "",
+        },
+        resetMock,
+      );
+    });
+
+    // Assert
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phones: ["3009998888", "3118887777"],
+      }),
+    );
+  });
+
+  it("createClient normaliza phone2/phone3 (quita espacios/guiones) antes de enviarlos", async () => {
+    // Arrange
+    const createdClient = clientFactory();
+    mockCreate.mockResolvedValueOnce(createdClient);
+    const resetMock: UseFormReset<CreateClientSchemaInput> = jest.fn();
+    const { result } = renderHook(() => useCreateClient(), {
+      wrapper: createWrapper({
+        clientRepository: mockClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: noopTallaRepository,
+      }),
+    });
+
+    // Act
+    await act(async () => {
+      await result.current.createClient(
+        {
+          firstName: "Ana",
+          lastName: "Torres",
+          phone: "3001234567",
+          phone2: "300 999-8888",
+          phone3: "  311 888 7777  ",
           notes: "",
         },
         resetMock,

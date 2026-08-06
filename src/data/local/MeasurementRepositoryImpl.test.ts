@@ -70,14 +70,18 @@ describe("MeasurementRepositoryImpl", () => {
       talle_trasero: null,
       distancia: null,
       separacion: null,
-      pecho: 92.5,
-      cintura: 70.5,
-      base: null,
+      pecho_ajustado: 92.5,
+      pecho_ancho: null,
+      cintura_ajustado: 70.5,
+      cintura_ancho: null,
+      base_ajustado: null,
+      base_ancho: null,
       largo: 68,
-      largo_manga: null,
-      ancho_manga: null,
+      manga_larga: null,
+      manga_corta: null,
       escote: null,
-      cuello: null,
+      cuello_normal: null,
+      cuello_cruce: null,
       brazo: null,
       puno: null,
       changed_by: null,
@@ -97,8 +101,8 @@ describe("MeasurementRepositoryImpl", () => {
       clientId: "11111111-1111-4111-8111-111111111111",
       espalda: 44,
       hombro: 13,
-      pecho: 92.5,
-      cintura: 70.5,
+      pechoAjustado: 92.5,
+      cinturaAjustado: 70.5,
       largo: 68,
       notes: "  Ajustar molde  ",
     });
@@ -112,14 +116,18 @@ describe("MeasurementRepositoryImpl", () => {
       talleTrasero: null,
       distancia: null,
       separacion: null,
-      pecho: 92.5,
-      cintura: 70.5,
-      base: null,
+      pechoAjustado: 92.5,
+      pechoAncho: null,
+      cinturaAjustado: 70.5,
+      cinturaAncho: null,
+      baseAjustado: null,
+      baseAncho: null,
       largo: 68,
-      largoManga: null,
-      anchoManga: null,
+      mangaLarga: null,
+      mangaCorta: null,
       escote: null,
-      cuello: null,
+      cuelloNormal: null,
+      cuelloCruce: null,
       brazo: null,
       puno: null,
       changedBy: null,
@@ -140,18 +148,22 @@ describe("MeasurementRepositoryImpl", () => {
       "11111111-1111-4111-8111-111111111111",
       44,
       13,
-      null,
-      null,
-      null,
-      null,
-      92.5,
-      70.5,
-      null,
-      68,
-      null,
-      null,
+      null, // talle_delantero
+      null, // talle_trasero
+      null, // distancia
+      null, // separacion
+      92.5, // pecho_ajustado
+      null, // pecho_ancho
+      70.5, // cintura_ajustado
+      null, // cintura_ancho
+      null, // base_ajustado
+      null, // base_ancho
+      68, // largo
+      null, // manga_larga
+      null, // manga_corta
       null, // escote
-      null, // cuello
+      null, // cuello_normal
+      null, // cuello_cruce
       null, // brazo
       null, // puno
       null, // changed_by
@@ -173,14 +185,18 @@ describe("MeasurementRepositoryImpl", () => {
       talle_trasero: null,
       distancia: null,
       separacion: null,
-      pecho: null,
-      cintura: null,
-      base: null,
+      pecho_ajustado: null,
+      pecho_ancho: null,
+      cintura_ajustado: null,
+      cintura_ancho: null,
+      base_ajustado: null,
+      base_ancho: null,
       largo: null,
-      largo_manga: null,
-      ancho_manga: null,
+      manga_larga: null,
+      manga_corta: null,
       escote: null,
-      cuello: null,
+      cuello_normal: null,
+      cuello_cruce: null,
       brazo: null,
       puno: null,
       changed_by: "empleado-1",
@@ -200,14 +216,18 @@ describe("MeasurementRepositoryImpl", () => {
       talle_trasero: null,
       distancia: null,
       separacion: null,
-      pecho: null,
-      cintura: null,
-      base: null,
+      pecho_ajustado: null,
+      pecho_ancho: null,
+      cintura_ajustado: null,
+      cintura_ancho: null,
+      base_ajustado: null,
+      base_ancho: null,
       largo: null,
-      largo_manga: null,
-      ancho_manga: null,
+      manga_larga: null,
+      manga_corta: null,
       escote: null,
-      cuello: null,
+      cuello_normal: null,
+      cuello_cruce: null,
       brazo: null,
       puno: null,
       changed_by: "empleado-2",
@@ -273,6 +293,44 @@ describe("MeasurementRepositoryImpl", () => {
     expect(sql).toContain("INSERT INTO pantalon_measurements");
   });
 
+  it("upserts saco guardando y recortando las notas", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null);
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGenerateDomainUuid.mockReturnValueOnce("saco-1");
+
+    const repository = new MeasurementRepositoryImpl();
+    const created = await repository.upsertSaco({
+      clientId: "11111111-1111-4111-8111-111111111111",
+      pechoAjustado: 100,
+      notes: "  Ajuste de espalda  ",
+    });
+
+    expect(created.notes).toBe("Ajuste de espalda");
+    const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("INSERT INTO saco_measurements");
+    expect(sql).toContain("notes");
+    expect(params).toContain("Ajuste de espalda");
+  });
+
+  it("upserts chaleco guardando y recortando las notas", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce(null);
+    mockRunAsync.mockResolvedValueOnce({});
+    mockGenerateDomainUuid.mockReturnValueOnce("chaleco-1");
+
+    const repository = new MeasurementRepositoryImpl();
+    const created = await repository.upsertChaleco({
+      clientId: "11111111-1111-4111-8111-111111111111",
+      pechoAjustado: 100,
+      notes: "  Entallar  ",
+    });
+
+    expect(created.notes).toBe("Entallar");
+    const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("INSERT INTO chaleco_measurements");
+    expect(sql).toContain("notes");
+    expect(params).toContain("Entallar");
+  });
+
   it("findCamisaByClientId and findPantalonByClientId return null when missing", async () => {
     mockGetFirstAsync.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
 
@@ -288,7 +346,8 @@ describe("MeasurementRepositoryImpl", () => {
     const [camisaSql, camisaClientId] = mockGetFirstAsync.mock.calls[0] ?? [];
     expect(camisaSql).toContain("FROM camisa_measurements");
     expect(camisaSql).toContain("WHERE client_id = ?");
-    expect(camisaSql).toContain("cuello");
+    expect(camisaSql).toContain("cuello_normal");
+    expect(camisaSql).toContain("pecho_ajustado");
     expect(camisaSql).toContain("brazo");
     expect(camisaSql).toContain("puno");
     expect(camisaClientId).toBe("client-1");
@@ -306,14 +365,18 @@ describe("MeasurementRepositoryImpl", () => {
       talle_trasero: null,
       distancia: null,
       separacion: null,
-      pecho: null,
-      cintura: null,
-      base: null,
+      pecho_ajustado: null,
+      pecho_ancho: null,
+      cintura_ajustado: null,
+      cintura_ancho: null,
+      base_ajustado: null,
+      base_ancho: null,
       largo: null,
-      largo_manga: null,
-      ancho_manga: null,
+      manga_larga: null,
+      manga_corta: null,
       escote: null,
-      cuello: null,
+      cuello_normal: null,
+      cuello_cruce: null,
       brazo: null,
       puno: null,
       changed_by: null,
@@ -383,14 +446,18 @@ describe("MeasurementRepositoryImpl", () => {
       talle_trasero: null,
       distancia: null,
       separacion: null,
-      pecho: 92.5,
-      cintura: 70.5,
-      base: null,
+      pecho_ajustado: 92.5,
+      pecho_ancho: null,
+      cintura_ajustado: 70.5,
+      cintura_ancho: null,
+      base_ajustado: null,
+      base_ancho: null,
       largo: 68,
-      largo_manga: 60,
-      ancho_manga: null,
+      manga_larga: 60,
+      manga_corta: null,
       escote: null,
-      cuello: 38,
+      cuello_normal: 38,
+      cuello_cruce: null,
       brazo: 58,
       puno: 24,
       changed_by: "modista-3",
@@ -411,7 +478,7 @@ describe("MeasurementRepositoryImpl", () => {
     // Assert
     expect(result).not.toBeNull();
     expect(result?.id).toBe("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
-    expect(result?.cuello).toBe(38);
+    expect(result?.cuelloNormal).toBe(38);
     expect(result?.brazo).toBe(58);
     expect(result?.puno).toBe(24);
     expect(result?.changedBy).toBe("modista-3");

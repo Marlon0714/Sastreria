@@ -1,6 +1,8 @@
 import "react-native-url-polyfill/auto";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import {
   getClientsDependencies,
@@ -16,6 +18,7 @@ import { SyncLifecycleController } from "./src/data/sync/SyncLifecycleController
 import type { SyncTriggerSource } from "./src/data/sync/types";
 import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
+import { useDebugModeStore } from "./src/shared/state/debugModeStore";
 import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
 import { interceptLogs } from "./src/shared/utils/logInterceptor";
 import { LogViewer } from "./src/shared/components/LogViewer";
@@ -24,6 +27,7 @@ import { LogViewerToggle } from "./src/shared/components/LogViewerToggle";
 export default function App() {
   const [isReady, setIsReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const debugModeUnlocked = useDebugModeStore((state) => state.debugModeUnlocked);
   const clientsDependencies = useMemo(
     () => (isReady ? getClientsDependencies() : null),
     [isReady],
@@ -137,35 +141,52 @@ export default function App() {
     interceptLogs();
   }, []);
 
+  useEffect(() => {
+    void useDebugModeStore.getState().hydrate();
+  }, []);
+
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
+      <GestureHandlerRootView style={styles.flex}>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </GestureHandlerRootView>
     );
   }
 
   if (!isReady || !clientsDependencies) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.message}>Preparando aplicación...</Text>
-      </View>
+      <GestureHandlerRootView style={styles.flex}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.message}>Preparando aplicación...</Text>
+        </View>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <>
-      <ClientsDependenciesProvider dependencies={clientsDependencies}>
-        <RootNavigator />
-      </ClientsDependenciesProvider>
-      <LogViewerToggle />
-      <LogViewer />
-    </>
+    <GestureHandlerRootView style={styles.flex}>
+      <SafeAreaProvider>
+        <ClientsDependenciesProvider dependencies={clientsDependencies}>
+          <RootNavigator />
+        </ClientsDependenciesProvider>
+        {debugModeUnlocked ? (
+          <>
+            <LogViewerToggle />
+            <LogViewer />
+          </>
+        ) : null}
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   centered: {
     flex: 1,
     alignItems: "center",

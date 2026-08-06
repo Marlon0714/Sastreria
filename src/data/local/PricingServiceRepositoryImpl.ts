@@ -1,4 +1,4 @@
-import type { PricingServiceRepository } from "../../features/pricing/repository/PricingServiceRepository";
+import type { PricingServiceRepository } from "../../features/pricing/domain/repository";
 import type {
   PricingService,
   CreatePricingServiceInput,
@@ -6,6 +6,10 @@ import type {
 } from "../../features/pricing/domain/pricingService";
 import { generateDomainUuid } from "../../features/clients/domain/types";
 import { getDatabase } from "./database";
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 
 interface PricingServiceRow {
   id: string;
@@ -32,6 +36,8 @@ function mapRow(row: PricingServiceRow): PricingService {
 }
 
 export class PricingServiceRepositoryImpl implements PricingServiceRepository {
+  constructor(private readonly options: WriteCommittedOptions = {}) {}
+
   async getAll(): Promise<PricingService[]> {
     const db = getDatabase();
     const rows = await db.getAllAsync<PricingServiceRow>(
@@ -73,6 +79,7 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       entity.updatedAt,
       entity.syncStatus,
     );
+    notifyWriteCommitted(this.options);
     return entity;
   }
 
@@ -105,11 +112,30 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
       updated.updatedAt,
       id,
     );
+    notifyWriteCommitted(this.options);
     return updated;
   }
 
   async delete(id: string): Promise<void> {
     const db = getDatabase();
-    await db.runAsync(`DELETE FROM pricing_services WHERE id = ?;`, id);
+    const nowIso = new Date().toISOString();
+    const deleteLogId = generateDomainUuid();
+
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(`DELETE FROM pricing_services WHERE id = ?;`, id);
+      await db.runAsync(
+        `
+        INSERT INTO sync_delete_log (id, entity_type, entity_id, deleted_at, sync_status)
+        VALUES (?, ?, ?, ?, ?);
+        `,
+        deleteLogId,
+        "pricing_service",
+        id,
+        nowIso,
+        "pending",
+      );
+    });
+
+    notifyWriteCommitted(this.options);
   }
 }

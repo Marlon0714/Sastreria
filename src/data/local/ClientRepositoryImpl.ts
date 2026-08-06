@@ -1,4 +1,8 @@
 import { getDatabase } from "./database";
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 
 import type { ClientRepository } from "../../features/clients/domain/repository";
 import {
@@ -7,12 +11,6 @@ import {
   type CreateClientDTO,
   type UpdateClientDTO,
 } from "../../features/clients/domain/types";
-
-type WriteCommittedCallback = () => void | Promise<void>;
-
-interface ClientRepositoryImplOptions {
-  onWriteCommitted?: WriteCommittedCallback;
-}
 
 interface ClientRow {
   id: string;
@@ -27,13 +25,24 @@ interface ClientRow {
   sync_status: "pending" | "synced" | "error";
 }
 
+function parsePhonesJson(value: string | null): string[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(value) as string[];
+  } catch {
+    return undefined;
+  }
+}
+
 function mapClientRow(row: ClientRow): Client {
   return {
     id: row.id,
     firstName: row.first_name,
     lastName: row.last_name,
     phone: row.phone,
-    phones: row.phones ? (JSON.parse(row.phones) as string[]) : undefined,
+    phones: parsePhonesJson(row.phones),
     cedula: row.cedula ?? undefined,
     notes: row.notes,
     createdAt: row.created_at,
@@ -44,7 +53,7 @@ function mapClientRow(row: ClientRow): Client {
 }
 
 export class ClientRepositoryImpl implements ClientRepository {
-  constructor(private readonly options: ClientRepositoryImplOptions = {}) {}
+  constructor(private readonly options: WriteCommittedOptions = {}) {}
 
   async create(input: CreateClientDTO): Promise<Client> {
     const db = getDatabase();
@@ -96,7 +105,7 @@ export class ClientRepositoryImpl implements ClientRepository {
       client.syncStatus,
     );
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
 
     return client;
   }
@@ -206,23 +215,15 @@ export class ClientRepositoryImpl implements ClientRepository {
     );
 
     if (!row) {
-      // SQLite UPDATE on a non-existent id is a no-op — return a constructed client.
-      return {
-        id: input.id,
-        firstName: input.firstName.trim(),
-        lastName: input.lastName.trim(),
-        phone: input.phone.trim(),
-        phones: input.phones?.filter(Boolean),
-        cedula: input.cedula?.trim() ?? undefined,
-        notes: input.notes?.trim() ?? null,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        syncStatus: "pending",
-        measurements: [],
-      };
+      // SQLite UPDATE on a non-existent id is a no-op — el cliente pudo
+      // haberse borrado desde otro dispositivo mientras esta pantalla
+      // estaba abierta. Antes esto retornaba un Client fabricado a partir
+      // del input, dando una falsa sensación de éxito (la pantalla navegaba
+      // "hacia atrás" como si hubiera guardado) sin haber persistido nada.
+      throw new Error("El cliente ya no existe.");
     }
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
 
     return mapClientRow(row);
   }
@@ -232,6 +233,17 @@ export class ClientRepositoryImpl implements ClientRepository {
     const nowIso = new Date().toISOString();
     const deleteLogId = generateDomainUuid();
 
+    // Se lee el nombre ANTES de borrar nada: el turno lo conserva como
+    // "sin registrar" para no perder de vista de quién era, en vez de
+    // quedar sin ningún nombre visible.
+    const clientRow = await db.getFirstAsync<{
+      first_name: string;
+      last_name: string;
+    }>(`SELECT first_name, last_name FROM clients WHERE id = ?;`, id);
+    const deletedClientLabel = clientRow
+      ? `${clientRow.first_name} ${clientRow.last_name} (cliente eliminado)`
+      : "Cliente eliminado";
+
     await db.withTransactionAsync(async () => {
       await db.runAsync(
         `DELETE FROM camisa_measurements WHERE client_id = ?;`,
@@ -239,6 +251,24 @@ export class ClientRepositoryImpl implements ClientRepository {
       );
       await db.runAsync(
         `DELETE FROM pantalon_measurements WHERE client_id = ?;`,
+        id,
+      );
+      await db.runAsync(
+        `DELETE FROM saco_measurements WHERE client_id = ?;`,
+        id,
+      );
+      await db.runAsync(
+        `DELETE FROM chaleco_measurements WHERE client_id = ?;`,
+        id,
+      );
+      await db.runAsync(`DELETE FROM client_tallas WHERE client_id = ?;`, id);
+      // Los turnos NO se borran — sobreviven como historial con clientId
+      // vacío y el nombre del cliente conservado en unregistered_client_name
+      // (ver ScheduleDayViewScreen.clientLabel). Solo las medidas y tallas
+      // no tienen sentido sin el cliente, por eso esas sí se borran arriba.
+      await db.runAsync(
+        `UPDATE schedules SET client_id = NULL, unregistered_client_name = ? WHERE client_id = ?;`,
+        deletedClientLabel,
         id,
       );
       await db.runAsync(`DELETE FROM clients WHERE id = ?;`, id);
@@ -255,17 +285,6 @@ export class ClientRepositoryImpl implements ClientRepository {
       );
     });
 
-    this.notifyWriteCommitted();
-  }
-
-  private notifyWriteCommitted(): void {
-    if (!this.options.onWriteCommitted) {
-      return;
-    }
-
-    // Sync trigger must never block or fail local writes.
-    void Promise.resolve(this.options.onWriteCommitted()).catch(
-      () => undefined,
-    );
+    notifyWriteCommitted(this.options);
   }
 }

@@ -5,6 +5,7 @@ import { type CamisaFormValues } from "./CamisaMeasurementForm";
 import { MeasurementCard } from "./MeasurementCard";
 import { MeasurementNotesField } from "./MeasurementFields";
 import { MeasurementGridSection } from "./MeasurementGridSection";
+import { MeasurementGroupCard } from "./MeasurementGroupCard";
 
 interface CamisaMeasurementGridProps {
   control: Control<CamisaFormValues>;
@@ -19,7 +20,7 @@ export default function CamisaMeasurementGrid({
 }: CamisaMeasurementGridProps) {
   return (
     <View style={styles.container}>
-      <MeasurementGridSection title="Torso">
+      <MeasurementGridSection title="Medidas">
         <MeasurementCard
           name="espalda"
           label="Espalda"
@@ -28,41 +29,6 @@ export default function CamisaMeasurementGrid({
           errorMessage={errors.espalda?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="hombro"
-          label="Hombro"
-          accessibilityLabel="Hombro (cm)"
-          control={control}
-          errorMessage={errors.hombro?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="pecho"
-          label="Pecho"
-          accessibilityLabel="Pecho (cm)"
-          control={control}
-          errorMessage={errors.pecho?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="cintura"
-          label="Cintura"
-          accessibilityLabel="Cintura (cm)"
-          control={control}
-          errorMessage={errors.cintura?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="base"
-          label="Base"
-          accessibilityLabel="Base (cm)"
-          control={control}
-          errorMessage={errors.base?.message}
-          disabled={disabled}
-        />
-      </MeasurementGridSection>
-
-      <MeasurementGridSection title="Largo">
         <MeasurementCard
           name="talleDelantero"
           label="Talle delantero"
@@ -87,6 +53,102 @@ export default function CamisaMeasurementGrid({
           errorMessage={errors.largo?.message}
           disabled={disabled}
         />
+        <MeasurementGroupCard
+          title="Pecho"
+          fields={[
+            {
+              name: "pechoAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Pecho ajustado (cm)",
+              errorMessage: errors.pechoAjustado?.message,
+            },
+            {
+              name: "pechoAncho",
+              label: "Ancho",
+              accessibilityLabel: "Pecho ancho (cm)",
+              errorMessage: errors.pechoAncho?.message,
+            },
+          ]}
+          control={control}
+          disabled={disabled}
+        />
+        <MeasurementGroupCard
+          title="Cintura"
+          fields={[
+            {
+              name: "cinturaAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Cintura ajustado (cm)",
+              errorMessage: errors.cinturaAjustado?.message,
+            },
+            {
+              name: "cinturaAncho",
+              label: "Ancho",
+              accessibilityLabel: "Cintura ancho (cm)",
+              errorMessage: errors.cinturaAncho?.message,
+            },
+          ]}
+          control={control}
+          disabled={disabled}
+        />
+        <MeasurementGroupCard
+          title="Base"
+          fields={[
+            {
+              name: "baseAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Base ajustado (cm)",
+              errorMessage: errors.baseAjustado?.message,
+            },
+            {
+              name: "baseAncho",
+              label: "Ancho",
+              accessibilityLabel: "Base ancho (cm)",
+              errorMessage: errors.baseAncho?.message,
+            },
+          ]}
+          control={control}
+          disabled={disabled}
+        />
+        <MeasurementCard
+          name="hombro"
+          label="Hombro"
+          accessibilityLabel="Hombro (cm)"
+          control={control}
+          errorMessage={errors.hombro?.message}
+          disabled={disabled}
+        />
+        <MeasurementGroupCard
+          title="Manga"
+          fields={[
+            {
+              name: "mangaLarga",
+              label: "Largo manga larga",
+              accessibilityLabel: "Largo manga larga (cm)",
+              errorMessage: errors.mangaLarga?.message,
+            },
+            {
+              name: "mangaCorta",
+              label: "Largo manga corta",
+              accessibilityLabel: "Largo manga corta (cm)",
+              errorMessage: errors.mangaCorta?.message,
+            },
+            {
+              name: "brazo",
+              label: "Brazo",
+              accessibilityLabel: "Brazo (cm)",
+              errorMessage: errors.brazo?.message,
+            },
+            {
+              name: "puno",
+              label: "Puño",
+              accessibilityLabel: "Puño (cm)",
+              errorMessage: errors.puno?.message,
+            },
+          ]}
+          control={control}
+          disabled={disabled}
+        />
         <MeasurementCard
           name="distancia"
           label="Distancia"
@@ -103,44 +165,6 @@ export default function CamisaMeasurementGrid({
           errorMessage={errors.separacion?.message}
           disabled={disabled}
         />
-      </MeasurementGridSection>
-
-      <MeasurementGridSection title="Manga">
-        <MeasurementCard
-          name="largoManga"
-          label="Largo manga"
-          accessibilityLabel="Largo manga (cm)"
-          control={control}
-          errorMessage={errors.largoManga?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="anchoManga"
-          label="Ancho manga"
-          accessibilityLabel="Ancho manga (cm)"
-          control={control}
-          errorMessage={errors.anchoManga?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="brazo"
-          label="Brazo"
-          accessibilityLabel="Brazo (cm)"
-          control={control}
-          errorMessage={errors.brazo?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="puno"
-          label="Puño"
-          accessibilityLabel="Puño (cm)"
-          control={control}
-          errorMessage={errors.puno?.message}
-          disabled={disabled}
-        />
-      </MeasurementGridSection>
-
-      <MeasurementGridSection title="Cuello">
         <MeasurementCard
           name="escote"
           label="Escote"
@@ -149,12 +173,23 @@ export default function CamisaMeasurementGrid({
           errorMessage={errors.escote?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="cuello"
-          label="Cuello"
-          accessibilityLabel="Cuello (cm)"
+        <MeasurementGroupCard
+          title="Cuello"
+          fields={[
+            {
+              name: "cuelloNormal",
+              label: "Normal",
+              accessibilityLabel: "Cuello normal (cm)",
+              errorMessage: errors.cuelloNormal?.message,
+            },
+            {
+              name: "cuelloCruce",
+              label: "Cruce",
+              accessibilityLabel: "Cuello cruce (cm)",
+              errorMessage: errors.cuelloCruce?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.cuello?.message}
           disabled={disabled}
         />
       </MeasurementGridSection>

@@ -54,29 +54,41 @@ function mapValidationErrors(
     separacion: fieldErrors.separacion?.[0]
       ? { type: "zod", message: fieldErrors.separacion[0] }
       : undefined,
-    pecho: fieldErrors.pecho?.[0]
-      ? { type: "zod", message: fieldErrors.pecho[0] }
+    pechoAjustado: fieldErrors.pechoAjustado?.[0]
+      ? { type: "zod", message: fieldErrors.pechoAjustado[0] }
       : undefined,
-    cintura: fieldErrors.cintura?.[0]
-      ? { type: "zod", message: fieldErrors.cintura[0] }
+    pechoAncho: fieldErrors.pechoAncho?.[0]
+      ? { type: "zod", message: fieldErrors.pechoAncho[0] }
       : undefined,
-    base: fieldErrors.base?.[0]
-      ? { type: "zod", message: fieldErrors.base[0] }
+    cinturaAjustado: fieldErrors.cinturaAjustado?.[0]
+      ? { type: "zod", message: fieldErrors.cinturaAjustado[0] }
+      : undefined,
+    cinturaAncho: fieldErrors.cinturaAncho?.[0]
+      ? { type: "zod", message: fieldErrors.cinturaAncho[0] }
+      : undefined,
+    baseAjustado: fieldErrors.baseAjustado?.[0]
+      ? { type: "zod", message: fieldErrors.baseAjustado[0] }
+      : undefined,
+    baseAncho: fieldErrors.baseAncho?.[0]
+      ? { type: "zod", message: fieldErrors.baseAncho[0] }
       : undefined,
     largo: fieldErrors.largo?.[0]
       ? { type: "zod", message: fieldErrors.largo[0] }
       : undefined,
-    largoManga: fieldErrors.largoManga?.[0]
-      ? { type: "zod", message: fieldErrors.largoManga[0] }
+    mangaLarga: fieldErrors.mangaLarga?.[0]
+      ? { type: "zod", message: fieldErrors.mangaLarga[0] }
       : undefined,
-    anchoManga: fieldErrors.anchoManga?.[0]
-      ? { type: "zod", message: fieldErrors.anchoManga[0] }
+    mangaCorta: fieldErrors.mangaCorta?.[0]
+      ? { type: "zod", message: fieldErrors.mangaCorta[0] }
       : undefined,
     escote: fieldErrors.escote?.[0]
       ? { type: "zod", message: fieldErrors.escote[0] }
       : undefined,
-    cuello: fieldErrors.cuello?.[0]
-      ? { type: "zod", message: fieldErrors.cuello[0] }
+    cuelloNormal: fieldErrors.cuelloNormal?.[0]
+      ? { type: "zod", message: fieldErrors.cuelloNormal[0] }
+      : undefined,
+    cuelloCruce: fieldErrors.cuelloCruce?.[0]
+      ? { type: "zod", message: fieldErrors.cuelloCruce[0] }
       : undefined,
     brazo: fieldErrors.brazo?.[0]
       ? { type: "zod", message: fieldErrors.brazo[0] }

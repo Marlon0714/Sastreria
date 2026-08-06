@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   message: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
   },
   slate: {

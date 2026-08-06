@@ -6,6 +6,9 @@ import PricingStackNavigator from "./PricingStackNavigator";
 import * as usePricingServicesModule from "../features/pricing/hooks/usePricingServices";
 
 jest.mock("../features/pricing/hooks/usePricingServices");
+jest.mock("../features/auth/components/LogoutButton", () => ({
+  LogoutButton: () => null,
+}));
 
 describe("PricingStackNavigator", () => {
   it("renderiza la pantalla de lista de precios por defecto", async () => {

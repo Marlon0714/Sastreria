@@ -3,11 +3,11 @@ import type {
   PricingService,
   CreatePricingServiceInput,
 } from "../domain/pricingService";
-import { PricingServiceRepositoryImpl } from "../../../data/local/PricingServiceRepositoryImpl";
+import { getDefaultPricingServiceRepository } from "../../../data/local/pricingDependencies";
 import { pricingStrings } from "../domain/strings";
 import { useNetworkStatus } from "../../../shared/utils/network";
 
-const repo = new PricingServiceRepositoryImpl();
+const repo = getDefaultPricingServiceRepository();
 
 export function usePricingServices() {
   const [services, setServices] = useState<PricingService[]>([]);

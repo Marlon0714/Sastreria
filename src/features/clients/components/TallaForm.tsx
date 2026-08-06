@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 import {
   ScrollView,
@@ -111,6 +112,7 @@ export default function TallaForm({
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Ej: M, 38, 40/32"
+              placeholderTextColor="#94a3b8"
               autoCapitalize="characters"
               editable={!disabled}
               accessibilityLabel="Valor de talla"
@@ -139,6 +141,7 @@ export default function TallaForm({
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Observaciones adicionales..."
+              placeholderTextColor="#94a3b8"
               multiline
               numberOfLines={3}
               editable={!disabled}
@@ -180,8 +183,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   chipSelected: {
-    backgroundColor: "#0f766e",
-    borderColor: "#0f766e",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipText: {
     fontSize: 14,
@@ -215,7 +218,7 @@ const styles = StyleSheet.create({
     color: "#64748b",
   },
   errorText: {
-    fontSize: 12,
-    color: "#b91c1c",
+    fontSize: 13,
+    color: colors.danger,
   },
 });

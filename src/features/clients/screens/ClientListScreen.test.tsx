@@ -13,6 +13,12 @@ interface UseClientListResult {
 }
 
 const mockUseClientList = jest.fn<() => UseClientListResult>();
+const mockUnlockDebugMode = jest.fn<() => Promise<void>>();
+
+jest.mock("../../../shared/state/debugModeStore", () => ({
+  useDebugModeStore: (selector: (state: { unlock: () => Promise<void> }) => unknown) =>
+    selector({ unlock: mockUnlockDebugMode }),
+}));
 
 jest.mock("@react-navigation/native", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
@@ -51,6 +57,8 @@ function buildProps(navigate: jest.Mock): ScreenProps {
 describe("ClientListScreen", () => {
   beforeEach(() => {
     mockUseClientList.mockReset();
+    mockUnlockDebugMode.mockReset();
+    mockUnlockDebugMode.mockResolvedValue();
   });
 
   it("renders loading state", () => {
@@ -140,6 +148,55 @@ describe("ClientListScreen", () => {
     expect(getByLabelText("Filtro todos")).toBeTruthy();
     expect(getByLabelText("Filtro nombre")).toBeTruthy();
     expect(getByLabelText("Filtro telefono")).toBeTruthy();
+    expect(getByLabelText("Total de clientes registrados")).toHaveTextContent(
+      "2 clientes",
+    );
+  });
+
+  it("shows the client count in singular when there is only one client", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({ id: "aaaa-1", firstName: "Ana", lastName: "Torres" }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByLabelText("Total de clientes registrados")).toHaveTextContent(
+      "1 cliente",
+    );
+  });
+
+  it("keeps the total client count unchanged while filtering the visible list", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({ id: "aaaa-1", firstName: "María", lastName: "García" }),
+        clientFactory({ id: "aaaa-2", firstName: "Juan", lastName: "Pérez" }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "maria",
+    );
+
+    expect(getByLabelText("Total de clientes registrados")).toHaveTextContent(
+      "2 clientes",
+    );
   });
 
   it("filters clients by name when searching", () => {
@@ -211,6 +268,43 @@ describe("ClientListScreen", () => {
 
     expect(getByText("Juan Pérez")).toBeTruthy();
     expect(queryByText("María García")).toBeNull();
+  });
+
+  it("finds a client by a secondary phone number (client.phones), not just the primary one", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({
+          id: "aaaa-1",
+          firstName: "María",
+          lastName: "García",
+          phone: "3001112233",
+          phones: ["3005556677"],
+        }),
+        clientFactory({
+          id: "aaaa-2",
+          firstName: "Juan",
+          lastName: "Pérez",
+          phone: "3009998877",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, getByText, queryByText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Filtro telefono"));
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "300555",
+    );
+
+    expect(getByText("María García")).toBeTruthy();
+    expect(queryByText("Juan Pérez")).toBeNull();
   });
 
   it("shows no results message when search finds nothing", () => {
@@ -315,5 +409,120 @@ describe("ClientListScreen", () => {
     expect(navigate).toHaveBeenCalledWith("ClientDetail", {
       clientId: client.id,
     });
+  });
+
+  it("unlocks debug mode silently when the exact secret phrase is typed in search", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({ id: "aaaa-1", firstName: "Ana", lastName: "Torres" }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+    const searchInput = getByLabelText(
+      "Buscar cliente por nombre o telefono",
+    );
+
+    fireEvent.changeText(searchInput, "Modo Taller Oculto");
+
+    expect(mockUnlockDebugMode).toHaveBeenCalledTimes(1);
+    expect(searchInput.props.value).toBe("");
+  });
+
+  it("does not unlock debug mode on a normal search", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({ id: "aaaa-1", firstName: "Ana", lastName: "Torres" }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "ana",
+    );
+
+    expect(mockUnlockDebugMode).not.toHaveBeenCalled();
+  });
+
+  it("does not show the load more button when there are 20 clients or fewer", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: Array.from({ length: 20 }, (_, i) =>
+        clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
+      ),
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { queryByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
+  });
+
+  it("shows the load more button and reveals the rest of the clients on press", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: Array.from({ length: 25 }, (_, i) =>
+        clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
+      ),
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, getByText, queryByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByText("Mostrando 20 de 25")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Cargar más clientes"));
+
+    // All 25 now fit within the page size increment (20 + 20), so the
+    // "load more" affordance disappears entirely.
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
+  });
+
+  it("resets the visible count when the search term changes", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: Array.from({ length: 25 }, (_, i) =>
+        clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
+      ),
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, queryByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Cargar más clientes"));
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "Cliente",
+    );
+
+    expect(getByLabelText("Cargar más clientes")).toBeTruthy();
   });
 });

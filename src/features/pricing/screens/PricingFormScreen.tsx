@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Alert, ScrollView } from "react-native";
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
@@ -79,21 +80,21 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
     gap: 12,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.background,
   },
   banner: {
-    backgroundColor: "#fef2f2",
+    backgroundColor: colors.dangerSoft,
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#fecaca",
+    borderColor: colors.danger,
   },
   bannerText: {
     fontSize: 13,
-    color: "#b91c1c",
+    color: colors.danger,
   },
   categoryHint: {
-    backgroundColor: "#dbeafe",
+    backgroundColor: colors.primarySoft,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -101,16 +102,18 @@ const styles = StyleSheet.create({
   categoryHintText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1e40af",
+    color: colors.primary,
   },
   formCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
 });

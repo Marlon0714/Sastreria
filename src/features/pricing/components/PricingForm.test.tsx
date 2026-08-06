@@ -73,6 +73,30 @@ describe("PricingForm", () => {
     });
   });
 
+  it("ignora los puntos al escribir/pegar un precio (ej. '15.000' no se lee como 15)", async () => {
+    // El resto de la app muestra precios con "." como separador de miles
+    // (formatPrice) — un usuario que pega/escribe ese mismo formato acá no
+    // debe terminar guardando un precio 1000 veces menor.
+    const onSubmitMock = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <PricingForm onSubmit={onSubmitMock} submitting={false} />,
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText("Ej: Dobladillo pantalón"),
+      "Ajuste de manga",
+    );
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "15.000");
+    fireEvent.press(getByText(pricingStrings.save));
+
+    await waitFor(() => {
+      expect(onSubmitMock).toHaveBeenCalled();
+    });
+    expect(onSubmitMock.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ price: 15000 }),
+    );
+  });
+
   it("muestra error de validacion y no envia cuando el nombre es invalido", async () => {
     // Arrange
     const onSubmitMock = jest.fn();

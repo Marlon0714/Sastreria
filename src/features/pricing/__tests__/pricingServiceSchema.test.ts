@@ -56,6 +56,44 @@ describe("pricingServiceSchema", () => {
         .success,
     ).toBe(true);
   });
+
+  it("acepta nombres de servicio con números y puntuación común", () => {
+    expect(
+      pricingServiceSchema.safeParse({
+        ...validService,
+        name: 'Ajuste de basta x2 (50% adelanto)',
+      }).success,
+    ).toBe(true);
+  });
+
+  it("falla si el nombre contiene caracteres de inyección bloqueados", () => {
+    const result = pricingServiceSchema.safeParse({
+      ...validService,
+      name: "<script>alert(1)</script>",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toContain("name");
+  });
+
+  it("falla si el nombre es solo espacios", () => {
+    const result = pricingServiceSchema.safeParse({
+      ...validService,
+      name: "   ",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toContain("name");
+  });
+
+  it("recorta espacios al inicio/fin del nombre", () => {
+    const result = pricingServiceSchema.safeParse({
+      ...validService,
+      name: "  Dobladillo  ",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe("Dobladillo");
+    }
+  });
 });
 
 describe("createPricingServiceSchema", () => {
@@ -80,6 +118,15 @@ describe("createPricingServiceSchema", () => {
   it("falla si el nombre es muy corto", () => {
     const result = createPricingServiceSchema.safeParse({
       name: "X",
+      price: 5000,
+      category: "arreglo",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("falla si el nombre es solo espacios", () => {
+    const result = createPricingServiceSchema.safeParse({
+      name: "     ",
       price: 5000,
       category: "arreglo",
     });

@@ -1,20 +1,23 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { LogoutButton } from "../features/auth/components/LogoutButton";
 import PricingPlaceholderScreen from "../features/pricing/screens/PricingPlaceholderScreen";
 import PricingListScreen from "../features/pricing/screens/PricingListScreen";
 import PricingDetailScreen from "../features/pricing/screens/PricingDetailScreen";
 import PricingFormScreen from "../features/pricing/screens/PricingFormScreen";
+import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { PricingStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<PricingStackParamList>();
+const SwipeablePricingListScreen = withTabSwipeLock(PricingListScreen);
 
 export default function PricingStackNavigator() {
   return (
     <Stack.Navigator>
       <Stack.Screen
         name="PricingList"
-        component={PricingListScreen}
-        options={{ title: "Precios" }}
+        component={SwipeablePricingListScreen}
+        options={{ title: "Precios", headerRight: () => <LogoutButton /> }}
       />
       <Stack.Screen
         name="PricingDetail"

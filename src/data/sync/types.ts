@@ -1,14 +1,28 @@
 import type {
   CamisaMeasurement,
+  ChalecoMeasurement,
   Client,
+  ClientTalla,
   PantalonMeasurement,
+  SacoMeasurement,
 } from "../../features/clients/domain/types";
+import type { PricingService } from "../../features/pricing/domain/pricingService";
+import type { ScheduleEvent } from "../../features/schedule/domain/events";
+import type { Schedule } from "../../features/schedule/domain/types";
+import type { TallaTemplate } from "../../features/tallas/domain/types";
 import type { SyncStatus } from "../../shared/domain/baseEntity";
 
 export type SyncEntityType =
   | "client"
   | "camisa_measurement"
   | "pantalon_measurement"
+  | "client_talla"
+  | "pricing_service"
+  | "saco_measurement"
+  | "chaleco_measurement"
+  | "talla_template"
+  | "schedule"
+  | "schedule_event"
   | "delete_log";
 
 export type SyncOperationType = "upsert" | "delete";
@@ -17,6 +31,14 @@ export type SyncCheckpointScope =
   | "clients"
   | "camisa_measurements"
   | "pantalon_measurements"
+  | "client_tallas"
+  | "pricing_services"
+  | "saco_measurements"
+  | "chaleco_measurements"
+  | "talla_templates"
+  | "schedules"
+  | "schedule_events"
+  | "profiles"
   | "sync_delete_log";
 
 export interface SyncCursor {
@@ -62,6 +84,7 @@ export type SyncTransportAttemptOutcome =
 export interface SyncTransportAttemptResult {
   outcome: SyncTransportAttemptOutcome;
   errorCode?: string;
+  errorMessage?: string;
 }
 
 export type SyncMode = "cloud" | "local-only";
@@ -95,6 +118,41 @@ export interface SyncPantalonQueueItem extends SyncQueueItemBase {
   payload: PantalonMeasurement;
 }
 
+export interface SyncClientTallaQueueItem extends SyncQueueItemBase {
+  entityType: "client_talla";
+  payload: ClientTalla;
+}
+
+export interface SyncPricingServiceQueueItem extends SyncQueueItemBase {
+  entityType: "pricing_service";
+  payload: PricingService;
+}
+
+export interface SyncSacoQueueItem extends SyncQueueItemBase {
+  entityType: "saco_measurement";
+  payload: SacoMeasurement;
+}
+
+export interface SyncChalecoQueueItem extends SyncQueueItemBase {
+  entityType: "chaleco_measurement";
+  payload: ChalecoMeasurement;
+}
+
+export interface SyncTallaTemplateQueueItem extends SyncQueueItemBase {
+  entityType: "talla_template";
+  payload: TallaTemplate;
+}
+
+export interface SyncScheduleQueueItem extends SyncQueueItemBase {
+  entityType: "schedule";
+  payload: Schedule;
+}
+
+export interface SyncScheduleEventQueueItem extends SyncQueueItemBase {
+  entityType: "schedule_event";
+  payload: ScheduleEvent;
+}
+
 export interface SyncDeleteQueueItem extends SyncQueueItemBase {
   entityType: "delete_log";
   operationType: "delete";
@@ -105,6 +163,13 @@ export type SyncQueueItem =
   | SyncClientQueueItem
   | SyncCamisaQueueItem
   | SyncPantalonQueueItem
+  | SyncClientTallaQueueItem
+  | SyncPricingServiceQueueItem
+  | SyncSacoQueueItem
+  | SyncChalecoQueueItem
+  | SyncTallaTemplateQueueItem
+  | SyncScheduleQueueItem
+  | SyncScheduleEventQueueItem
   | SyncDeleteQueueItem;
 
 export interface RetryPolicy {

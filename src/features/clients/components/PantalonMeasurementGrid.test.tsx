@@ -31,27 +31,26 @@ function Harness({ disabled = false, defaultValues = {} }: HarnessProps) {
 }
 
 describe("PantalonMeasurementGrid", () => {
-  it("renderiza los 2 títulos de sección: Longitud y Contorno", () => {
+  it("renderiza el título de sección: Medidas", () => {
     // Arrange & Act
     const { getByText } = render(<Harness />);
 
     // Assert
-    expect(getByText("Longitud")).toBeTruthy();
-    expect(getByText("Contorno")).toBeTruthy();
+    expect(getByText("Medidas")).toBeTruthy();
   });
 
-  it("renderiza los 7 accessibilityLabels de campos numéricos", () => {
+  it("renderiza los 8 accessibilityLabels de campos numéricos", () => {
     // Arrange & Act
     const { getByLabelText } = render(<Harness />);
 
-    // Assert — sección Longitud
+    // Assert
     expect(getByLabelText("Largo (cm)")).toBeTruthy();
-    expect(getByLabelText("Pierna (cm)")).toBeTruthy();
-    expect(getByLabelText("Rodilla (cm)")).toBeTruthy();
-    expect(getByLabelText("Bota (cm)")).toBeTruthy();
-    // Assert — sección Contorno
+    expect(getByLabelText("Entrepierna (cm)")).toBeTruthy();
     expect(getByLabelText("Cintura (cm)")).toBeTruthy();
     expect(getByLabelText("Base (cm)")).toBeTruthy();
+    expect(getByLabelText("Rodilla (cm)")).toBeTruthy();
+    expect(getByLabelText("Bota (cm)")).toBeTruthy();
+    expect(getByLabelText("Pierna (cm)")).toBeTruthy();
     expect(getByLabelText("Tiro (cm)")).toBeTruthy();
   });
 

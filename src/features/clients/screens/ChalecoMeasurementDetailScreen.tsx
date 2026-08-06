@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -15,7 +16,7 @@ import { useUpsertChaleco } from "../hooks/useUpsertChaleco";
 
 type Props = NativeStackScreenProps<
   ClientsStackParamList,
-  "ChalecoMeasurementCreate"
+  "ChalecoMeasurementDetail"
 >;
 
 function toFormValues(
@@ -27,9 +28,26 @@ function toFormValues(
     talleTrasero:
       measurement.talleTrasero != null ? String(measurement.talleTrasero) : "",
     largo: measurement.largo != null ? String(measurement.largo) : "",
-    pecho: measurement.pecho != null ? String(measurement.pecho) : "",
-    cintura: measurement.cintura != null ? String(measurement.cintura) : "",
-    base: measurement.base != null ? String(measurement.base) : "",
+    pechoAjustado:
+      measurement.pechoAjustado != null
+        ? String(measurement.pechoAjustado)
+        : "",
+    pechoAncho:
+      measurement.pechoAncho != null ? String(measurement.pechoAncho) : "",
+    cinturaAjustado:
+      measurement.cinturaAjustado != null
+        ? String(measurement.cinturaAjustado)
+        : "",
+    cinturaAncho:
+      measurement.cinturaAncho != null
+        ? String(measurement.cinturaAncho)
+        : "",
+    baseAjustado:
+      measurement.baseAjustado != null
+        ? String(measurement.baseAjustado)
+        : "",
+    baseAncho:
+      measurement.baseAncho != null ? String(measurement.baseAncho) : "",
     escote: measurement.escote != null ? String(measurement.escote) : "",
     notes: typeof measurement.notes === "string" ? measurement.notes : "",
   };
@@ -162,12 +180,12 @@ export default function ChalecoMeasurementDetailScreen({
 
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 12, backgroundColor: "#f8fafc" },
-  errorBanner: { backgroundColor: "#fee2e2", borderRadius: 8, padding: 12 },
+  errorBanner: { backgroundColor: colors.dangerSoft, borderRadius: 8, padding: 12 },
   errorBannerText: { color: "#991b1b", fontSize: 14 },
   actions: { flexDirection: "row", gap: 8 },
   flex: { flex: 1 },
   primaryButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",

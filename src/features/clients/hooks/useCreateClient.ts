@@ -83,8 +83,8 @@ export function useCreateClient(
 
     try {
       const parsed: CreateClientSchemaOutput = createClientSchema.parse(values);
-      const phones = [values.phone2, values.phone3].filter((p): p is string =>
-        Boolean(p?.trim()),
+      const phones = [parsed.phone2, parsed.phone3].filter(
+        (p): p is string => Boolean(p),
       );
       const payload = {
         ...parsed,
@@ -101,8 +101,17 @@ export function useCreateClient(
         notes: "",
       });
       return createdClient;
-    } catch {
+    } catch (err) {
       setError("No se pudo crear el cliente. Intenta nuevamente.");
+      // TODO: replace with Crashlytics when telemetry is integrated
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "useCreateClient",
+          message: "createClient failed",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
       return null;
     } finally {
       setIsSubmitting(false);

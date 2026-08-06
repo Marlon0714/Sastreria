@@ -198,6 +198,55 @@ describe("useTallas", () => {
     );
   });
 
+  it("un segundo upsertTalla mientras el primero sigue en curso no llama al repositorio otra vez", async () => {
+    // Regresión: sin este guard, un doble tap en "Guardar" podía disparar
+    // dos upserts en paralelo con ids generados distintos para la misma
+    // talla, huerfanando en Supabase la copia ya sincronizada de la fila.
+    const talla = makeTalla();
+    mockFindByClientId.mockResolvedValue([talla]);
+    let resolveUpsert!: (value: ClientTalla) => void;
+    const deferredUpsert = new Promise<ClientTalla>((resolve) => {
+      resolveUpsert = resolve;
+    });
+    mockUpsert.mockReturnValueOnce(deferredUpsert);
+
+    const { result } = renderHook(() => useTallas(CLIENT_ID), {
+      wrapper: createWrapper({
+        clientRepository: noopClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: mockTallaRepository,
+      }),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Act — dos llamadas "simultáneas", como un doble tap.
+    let firstResult: ClientTalla | null = null;
+    let secondResult: ClientTalla | null = null;
+    const firstCall = result.current.upsertTalla({
+      clientId: CLIENT_ID,
+      type: "camisa",
+      value: "M",
+    });
+    const secondCall = result.current.upsertTalla({
+      clientId: CLIENT_ID,
+      type: "camisa",
+      value: "M",
+    });
+
+    await waitFor(() => expect(result.current.isSubmitting).toBe(true));
+
+    await act(async () => {
+      resolveUpsert(talla);
+      [firstResult, secondResult] = await Promise.all([firstCall, secondCall]);
+    });
+
+    // Assert
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+    expect(firstResult).toEqual(talla);
+    expect(secondResult).toBeNull();
+    await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+  });
+
   it("upsertTalla con value vacío retorna null y setea error sin llamar al repositorio", async () => {
     // Arrange
     mockFindByClientId.mockResolvedValue([]);

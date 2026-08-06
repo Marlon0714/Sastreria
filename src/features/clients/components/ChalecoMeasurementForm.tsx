@@ -10,9 +10,12 @@ export interface ChalecoFormValues {
   espalda: string;
   talleTrasero: string;
   largo: string;
-  pecho: string;
-  cintura: string;
-  base: string;
+  pechoAjustado: string;
+  pechoAncho: string;
+  cinturaAjustado: string;
+  cinturaAncho: string;
+  baseAjustado: string;
+  baseAncho: string;
   escote: string;
   notes: string;
 }
@@ -21,9 +24,12 @@ export const CHALECO_FORM_DEFAULTS: ChalecoFormValues = {
   espalda: "",
   talleTrasero: "",
   largo: "",
-  pecho: "",
-  cintura: "",
-  base: "",
+  pechoAjustado: "",
+  pechoAncho: "",
+  cinturaAjustado: "",
+  cinturaAncho: "",
+  baseAjustado: "",
+  baseAncho: "",
   escote: "",
   notes: "",
 };
@@ -63,24 +69,45 @@ export function ChalecoMeasurementForm({
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="pecho"
-        label="Pecho (cm)"
+        name="pechoAjustado"
+        label="Pecho ajustado (cm)"
         control={control}
-        errorMessage={errors.pecho?.message}
+        errorMessage={errors.pechoAjustado?.message}
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="cintura"
-        label="Cintura (cm)"
+        name="pechoAncho"
+        label="Pecho ancho (cm)"
         control={control}
-        errorMessage={errors.cintura?.message}
+        errorMessage={errors.pechoAncho?.message}
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="base"
-        label="Base o cadera (cm)"
+        name="cinturaAjustado"
+        label="Cintura ajustado (cm)"
         control={control}
-        errorMessage={errors.base?.message}
+        errorMessage={errors.cinturaAjustado?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="cinturaAncho"
+        label="Cintura ancho (cm)"
+        control={control}
+        errorMessage={errors.cinturaAncho?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="baseAjustado"
+        label="Base ajustado (cm)"
+        control={control}
+        errorMessage={errors.baseAjustado?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="baseAncho"
+        label="Base ancho (cm)"
+        control={control}
+        errorMessage={errors.baseAncho?.message}
         disabled={disabled}
       />
       <MeasurementNumberField

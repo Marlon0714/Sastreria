@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -15,7 +16,7 @@ import { useUpsertSaco } from "../hooks/useUpsertSaco";
 
 type Props = NativeStackScreenProps<
   ClientsStackParamList,
-  "SacoMeasurementCreate"
+  "SacoMeasurementDetail"
 >;
 
 function toFormValues(
@@ -35,16 +36,40 @@ function toFormValues(
       measurement.distancia != null ? String(measurement.distancia) : "",
     separacion:
       measurement.separacion != null ? String(measurement.separacion) : "",
-    pecho: measurement.pecho != null ? String(measurement.pecho) : "",
-    cintura: measurement.cintura != null ? String(measurement.cintura) : "",
-    base: measurement.base != null ? String(measurement.base) : "",
+    pechoAjustado:
+      measurement.pechoAjustado != null
+        ? String(measurement.pechoAjustado)
+        : "",
+    pechoAncho:
+      measurement.pechoAncho != null ? String(measurement.pechoAncho) : "",
+    cinturaAjustado:
+      measurement.cinturaAjustado != null
+        ? String(measurement.cinturaAjustado)
+        : "",
+    cinturaAncho:
+      measurement.cinturaAncho != null
+        ? String(measurement.cinturaAncho)
+        : "",
+    baseAjustado:
+      measurement.baseAjustado != null
+        ? String(measurement.baseAjustado)
+        : "",
+    baseAncho:
+      measurement.baseAncho != null ? String(measurement.baseAncho) : "",
     largo: measurement.largo != null ? String(measurement.largo) : "",
-    largoManga:
-      measurement.largoManga != null ? String(measurement.largoManga) : "",
-    anchoManga:
-      measurement.anchoManga != null ? String(measurement.anchoManga) : "",
+    mangaLarga:
+      measurement.mangaLarga != null ? String(measurement.mangaLarga) : "",
+    mangaCorta:
+      measurement.mangaCorta != null ? String(measurement.mangaCorta) : "",
     escote: measurement.escote != null ? String(measurement.escote) : "",
-    cuello: measurement.cuello != null ? String(measurement.cuello) : "",
+    cuelloNormal:
+      measurement.cuelloNormal != null
+        ? String(measurement.cuelloNormal)
+        : "",
+    cuelloCruce:
+      measurement.cuelloCruce != null
+        ? String(measurement.cuelloCruce)
+        : "",
     brazo: measurement.brazo != null ? String(measurement.brazo) : "",
     puno: measurement.puno != null ? String(measurement.puno) : "",
     notes: typeof measurement.notes === "string" ? measurement.notes : "",
@@ -178,12 +203,12 @@ export default function SacoMeasurementDetailScreen({
 
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 12, backgroundColor: "#f8fafc" },
-  errorBanner: { backgroundColor: "#fee2e2", borderRadius: 8, padding: 12 },
+  errorBanner: { backgroundColor: colors.dangerSoft, borderRadius: 8, padding: 12 },
   errorBannerText: { color: "#991b1b", fontSize: 14 },
   actions: { flexDirection: "row", gap: 8 },
   flex: { flex: 1 },
   primaryButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",

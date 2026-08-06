@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -181,22 +182,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9fafb",
   },
   inputError: {
-    borderColor: "#ef4444",
+    borderColor: colors.danger,
   },
   fieldError: {
-    fontSize: 12,
-    color: "#ef4444",
+    fontSize: 13,
+    color: colors.danger,
     marginTop: 4,
   },
   togglePassword: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#6366f1",
     marginTop: 6,
     textAlign: "right",
   },
   authError: {
     fontSize: 13,
-    color: "#ef4444",
+    color: colors.danger,
     backgroundColor: "#fef2f2",
     borderRadius: 6,
     padding: 10,

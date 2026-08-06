@@ -13,10 +13,6 @@ export type ClientsStackParamList = {
    * - `mode: "view"` redirige a la pantalla de detalle del tipo seleccionado.
    */
   MeasurementTypeSelect: { clientId: string; mode: MeasurementTypeSelectMode };
-  /** @deprecated — navegación a Create separada eliminada; flujo unificado en Detail */
-  CamisaMeasurementCreate: { clientId: string };
-  /** @deprecated — navegación a Create separada eliminada; flujo unificado en Detail */
-  PantalonMeasurementCreate: { clientId: string };
   /**
    * Pantalla unificada de camisa: crea si no hay medidas, muestra/edita si ya existen.
    * `mode: "create"` muestra "Continuar sin medidas" la primera vez.
@@ -33,23 +29,33 @@ export type ClientsStackParamList = {
     clientId: string;
     mode?: MeasurementTypeSelectMode;
   };
-  /** Crear medidas de saco para un cliente. */
-  SacoMeasurementCreate: { clientId: string; mode?: MeasurementTypeSelectMode };
-  /** Editar medidas de saco para un cliente. */
-  SacoMeasurementEdit: { clientId: string };
-  /** Crear medidas de chaleco para un cliente. */
-  ChalecoMeasurementCreate: {
+  /**
+   * Pantalla unificada de saco: crea si no hay medidas, muestra/edita si ya existen.
+   * `mode: "create"` muestra "Continuar sin medidas" la primera vez.
+   */
+  SacoMeasurementDetail: {
     clientId: string;
     mode?: MeasurementTypeSelectMode;
   };
-  /** Editar medidas de chaleco para un cliente. */
-  ChalecoMeasurementEdit: { clientId: string };
+  /**
+   * Pantalla unificada de chaleco: crea si no hay medidas, muestra/edita si ya existen.
+   * `mode: "create"` muestra "Continuar sin medidas" la primera vez.
+   */
+  ChalecoMeasurementDetail: {
+    clientId: string;
+    mode?: MeasurementTypeSelectMode;
+  };
   /** Gestión de tallas por cliente (acceso desde ClientDetail). */
   Tallas: { clientId: string };
 };
 
 export type ScheduleStackParamList = {
-  SchedulePlaceholder: undefined;
+  ScheduleDayView: undefined;
+  ScheduleForm: {
+    scheduleId?: string;
+    /** Preselecciona la categoría al crear un turno nuevo (según el segmento activo en la Agenda). */
+    category?: "arreglo" | "confeccion";
+  };
 };
 
 export type PricingStackParamList = {

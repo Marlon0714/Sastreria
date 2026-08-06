@@ -279,32 +279,27 @@ describe("ClientRepositoryImpl", () => {
     expect(onWriteCommitted).toHaveBeenCalledTimes(1);
   });
 
-  it("returns constructed client when update id does not exist", async () => {
+  it("throws instead of fabricating a client when update id does not exist", async () => {
+    // Regresión: antes, si el cliente ya no existía (ej. borrado desde otro
+    // dispositivo mientras esta pantalla estaba abierta), el UPDATE no
+    // afectaba ninguna fila pero el método igual retornaba un Client
+    // fabricado a partir del input — la pantalla lo trataba como éxito y
+    // navegaba "hacia atrás" sin haber persistido nada.
     mockRunAsync.mockResolvedValueOnce({});
     mockGetFirstAsync.mockResolvedValueOnce(null);
 
     const onWriteCommitted = jest.fn<() => void>();
     const repository = new ClientRepositoryImpl({ onWriteCommitted });
 
-    const result = await repository.update({
-      id: "99999999-9999-4999-8999-999999999999",
-      firstName: "  Laura ",
-      lastName: " Mora ",
-      phone: " 3110001111 ",
-      notes: "  ",
-    });
-
-    expect(result).toEqual({
-      id: "99999999-9999-4999-8999-999999999999",
-      firstName: "Laura",
-      lastName: "Mora",
-      phone: "3110001111",
-      notes: "",
-      createdAt: "2026-04-29T12:30:00.000Z",
-      updatedAt: "2026-04-29T12:30:00.000Z",
-      syncStatus: "pending",
-      measurements: [],
-    });
+    await expect(
+      repository.update({
+        id: "99999999-9999-4999-8999-999999999999",
+        firstName: "Laura",
+        lastName: "Mora",
+        phone: "3110001111",
+        notes: "",
+      }),
+    ).rejects.toThrow("El cliente ya no existe.");
     expect(onWriteCommitted).not.toHaveBeenCalled();
   });
 
@@ -313,6 +308,10 @@ describe("ClientRepositoryImpl", () => {
       "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
     );
     mockRunAsync.mockResolvedValue({});
+    mockGetFirstAsync.mockResolvedValueOnce({
+      first_name: "Ana",
+      last_name: "Gomez",
+    });
 
     const onWriteCommitted = jest.fn<() => void>();
     const repository = new ClientRepositoryImpl({ onWriteCommitted });
@@ -320,18 +319,34 @@ describe("ClientRepositoryImpl", () => {
     await repository.delete("11111111-1111-4111-8111-111111111111");
 
     expect(mockWithTransactionAsync).toHaveBeenCalledTimes(1);
-    expect(mockRunAsync).toHaveBeenCalledTimes(4);
+    expect(mockRunAsync).toHaveBeenCalledTimes(8);
 
     const [deleteCamisaSql, deleteCamisaId] = mockRunAsync.mock.calls[0] ?? [];
     const [deletePantalonSql, deletePantalonId] =
       mockRunAsync.mock.calls[1] ?? [];
-    const [deleteClientSql, deleteClientId] = mockRunAsync.mock.calls[2] ?? [];
-    const [insertLogSql, ...insertLogParams] = mockRunAsync.mock.calls[3] ?? [];
+    const [deleteSacoSql, deleteSacoId] = mockRunAsync.mock.calls[2] ?? [];
+    const [deleteChalecoSql, deleteChalecoId] =
+      mockRunAsync.mock.calls[3] ?? [];
+    const [deleteTallaSql, deleteTallaClientId] =
+      mockRunAsync.mock.calls[4] ?? [];
+    const [deleteScheduleSql, deleteScheduleLabel, deleteScheduleClientId] =
+      mockRunAsync.mock.calls[5] ?? [];
+    const [deleteClientSql, deleteClientId] = mockRunAsync.mock.calls[6] ?? [];
+    const [insertLogSql, ...insertLogParams] = mockRunAsync.mock.calls[7] ?? [];
 
     expect(deleteCamisaSql).toContain("DELETE FROM camisa_measurements");
     expect(deleteCamisaId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deletePantalonSql).toContain("DELETE FROM pantalon_measurements");
     expect(deletePantalonId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(deleteSacoSql).toContain("DELETE FROM saco_measurements");
+    expect(deleteSacoId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(deleteChalecoSql).toContain("DELETE FROM chaleco_measurements");
+    expect(deleteChalecoId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(deleteTallaSql).toContain("DELETE FROM client_tallas");
+    expect(deleteTallaClientId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(deleteScheduleSql).toContain("UPDATE schedules SET client_id = NULL");
+    expect(deleteScheduleLabel).toBe("Ana Gomez (cliente eliminado)");
+    expect(deleteScheduleClientId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deleteClientSql).toContain("DELETE FROM clients");
     expect(deleteClientId).toBe("11111111-1111-4111-8111-111111111111");
 

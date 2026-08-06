@@ -4,6 +4,7 @@ const DEFAULT_PANTALON_MEASUREMENT: PantalonMeasurement = {
   id: "44444444-4444-4444-8444-444444444444",
   clientId: "11111111-1111-4111-8111-111111111111",
   largo: 105,
+  entrepierna: 78,
   cintura: 82,
   base: 52,
   tiro: 30,

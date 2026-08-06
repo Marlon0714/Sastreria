@@ -67,6 +67,14 @@ jest.mock("./src/data/sync/SyncConnectivityController", () => ({
   })),
 }));
 
+jest.mock("react-native-safe-area-context", () => {
+  const React = jest.requireActual("react") as typeof import("react");
+  return {
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) =>
+      children,
+  };
+});
+
 jest.mock("./src/navigation/RootNavigator", () => {
   const React = jest.requireActual("react") as typeof import("react");
   const { Text } = jest.requireActual(

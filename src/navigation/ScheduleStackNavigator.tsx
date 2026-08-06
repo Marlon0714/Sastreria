@@ -1,17 +1,30 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import SchedulePlaceholderScreen from "../features/schedule/screens/SchedulePlaceholderScreen";
+import { LogoutButton } from "../features/auth/components/LogoutButton";
+import ScheduleDayViewScreen from "../features/schedule/screens/ScheduleDayViewScreen";
+import ScheduleFormScreen from "../features/schedule/screens/ScheduleFormScreen";
+import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { ScheduleStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<ScheduleStackParamList>();
+const SwipeableScheduleDayViewScreen = withTabSwipeLock(
+  ScheduleDayViewScreen,
+);
 
 export default function ScheduleStackNavigator() {
   return (
     <Stack.Navigator>
       <Stack.Screen
-        name="SchedulePlaceholder"
-        component={SchedulePlaceholderScreen}
-        options={{ title: "Agenda" }}
+        name="ScheduleDayView"
+        component={SwipeableScheduleDayViewScreen}
+        options={{ title: "Agenda", headerRight: () => <LogoutButton /> }}
+      />
+      <Stack.Screen
+        name="ScheduleForm"
+        component={ScheduleFormScreen}
+        options={({ route }) => ({
+          title: route.params?.scheduleId ? "Editar turno" : "Nuevo turno",
+        })}
       />
     </Stack.Navigator>
   );

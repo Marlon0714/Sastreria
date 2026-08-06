@@ -214,4 +214,37 @@ describe("ClientEditScreen", () => {
     expect(updateClient).not.toHaveBeenCalled();
     expect(goBack).not.toHaveBeenCalled();
   });
+
+  it("no destapa Teléfono 3 si Teléfono 2 sigue vacío, para no correr los teléfonos al guardar", () => {
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+      firstName: "Ana",
+      lastName: "Torres",
+      phone: "3001234567",
+      phones: [],
+    });
+
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload: jest.fn<() => Promise<void>>().mockResolvedValue(),
+    });
+    mockUseUpdateClient.mockReturnValue({
+      isSubmitting: false,
+      error: null,
+      updateClient: jest.fn(async () => client),
+      validate: () => ({}),
+    });
+
+    const { getByLabelText, queryByLabelText } = render(
+      <ClientEditScreen {...buildProps()} />,
+    );
+
+    fireEvent.press(getByLabelText("Agregar teléfono adicional"));
+    expect(getByLabelText("Eliminar teléfono 2")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Agregar teléfono adicional"));
+    expect(queryByLabelText("Eliminar teléfono 3")).toBeNull();
+  });
 });

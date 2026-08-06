@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { LogoutButton } from "../features/auth/components/LogoutButton";
 import { getTallasDependencies } from "../data/local/tallasDependencies";
 import { TallasDependenciesProvider } from "../features/tallas/hooks/TallasDependenciesProvider";
 import TallasListScreen from "../features/tallas/screens/TallasListScreen";
 import TallaFormScreen from "../features/tallas/screens/TallaFormScreen";
+import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { TallasStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<TallasStackParamList>();
+const SwipeableTallasListScreen = withTabSwipeLock(TallasListScreen);
 
 export default function TallasStackNavigator() {
   const deps = useMemo(() => getTallasDependencies(), []);
@@ -15,8 +18,8 @@ export default function TallasStackNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: true }}>
         <Stack.Screen
           name="TallasList"
-          component={TallasListScreen}
-          options={{ title: "Tallas" }}
+          component={SwipeableTallasListScreen}
+          options={{ title: "Tallas", headerRight: () => <LogoutButton /> }}
         />
         <Stack.Screen
           name="TallaForm"

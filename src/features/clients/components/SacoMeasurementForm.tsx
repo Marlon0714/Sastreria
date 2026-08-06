@@ -8,41 +8,49 @@ import {
 
 export interface SacoFormValues {
   espalda: string;
-  hombro: string;
   talleDelantero: string;
   talleTrasero: string;
-  distancia: string;
-  separacion: string;
-  pecho: string;
-  cintura: string;
-  base: string;
   largo: string;
-  largoManga: string;
-  anchoManga: string;
-  escote: string;
-  cuello: string;
+  pechoAjustado: string;
+  pechoAncho: string;
+  cinturaAjustado: string;
+  cinturaAncho: string;
+  baseAjustado: string;
+  baseAncho: string;
+  hombro: string;
+  mangaLarga: string;
+  mangaCorta: string;
   brazo: string;
   puno: string;
+  distancia: string;
+  separacion: string;
+  escote: string;
+  cuelloNormal: string;
+  cuelloCruce: string;
   notes: string;
 }
 
 export const SACO_FORM_DEFAULTS: SacoFormValues = {
   espalda: "",
-  hombro: "",
   talleDelantero: "",
   talleTrasero: "",
-  distancia: "",
-  separacion: "",
-  pecho: "",
-  cintura: "",
-  base: "",
   largo: "",
-  largoManga: "",
-  anchoManga: "",
-  escote: "",
-  cuello: "",
+  pechoAjustado: "",
+  pechoAncho: "",
+  cinturaAjustado: "",
+  cinturaAncho: "",
+  baseAjustado: "",
+  baseAncho: "",
+  hombro: "",
+  mangaLarga: "",
+  mangaCorta: "",
   brazo: "",
   puno: "",
+  distancia: "",
+  separacion: "",
+  escote: "",
+  cuelloNormal: "",
+  cuelloCruce: "",
   notes: "",
 };
 
@@ -67,13 +75,6 @@ export function SacoMeasurementForm({
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="hombro"
-        label="Hombro (cm)"
-        control={control}
-        errorMessage={errors.hombro?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
         name="talleDelantero"
         label="Talle delantero (cm)"
         control={control}
@@ -85,6 +86,90 @@ export function SacoMeasurementForm({
         label="Talle trasero (cm)"
         control={control}
         errorMessage={errors.talleTrasero?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="largo"
+        label="Largo (cm)"
+        control={control}
+        errorMessage={errors.largo?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="pechoAjustado"
+        label="Pecho ajustado (cm)"
+        control={control}
+        errorMessage={errors.pechoAjustado?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="pechoAncho"
+        label="Pecho ancho (cm)"
+        control={control}
+        errorMessage={errors.pechoAncho?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="cinturaAjustado"
+        label="Cintura ajustado (cm)"
+        control={control}
+        errorMessage={errors.cinturaAjustado?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="cinturaAncho"
+        label="Cintura ancho (cm)"
+        control={control}
+        errorMessage={errors.cinturaAncho?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="baseAjustado"
+        label="Base ajustado (cm)"
+        control={control}
+        errorMessage={errors.baseAjustado?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="baseAncho"
+        label="Base ancho (cm)"
+        control={control}
+        errorMessage={errors.baseAncho?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="hombro"
+        label="Hombro (cm)"
+        control={control}
+        errorMessage={errors.hombro?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="mangaLarga"
+        label="Largo manga larga (cm)"
+        control={control}
+        errorMessage={errors.mangaLarga?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="mangaCorta"
+        label="Largo manga corta (cm)"
+        control={control}
+        errorMessage={errors.mangaCorta?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="brazo"
+        label="Brazo (cm)"
+        control={control}
+        errorMessage={errors.brazo?.message}
+        disabled={disabled}
+      />
+      <MeasurementNumberField
+        name="puno"
+        label="Puño (cm)"
+        control={control}
+        errorMessage={errors.puno?.message}
         disabled={disabled}
       />
       <MeasurementNumberField
@@ -102,48 +187,6 @@ export function SacoMeasurementForm({
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="pecho"
-        label="Pecho (cm)"
-        control={control}
-        errorMessage={errors.pecho?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
-        name="cintura"
-        label="Cintura (cm)"
-        control={control}
-        errorMessage={errors.cintura?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
-        name="base"
-        label="Base o cadera (cm)"
-        control={control}
-        errorMessage={errors.base?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
-        name="largo"
-        label="Largo (cm)"
-        control={control}
-        errorMessage={errors.largo?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
-        name="largoManga"
-        label="Largo manga (cm)"
-        control={control}
-        errorMessage={errors.largoManga?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
-        name="anchoManga"
-        label="Ancho manga (cm)"
-        control={control}
-        errorMessage={errors.anchoManga?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
         name="escote"
         label="Escote (cm)"
         control={control}
@@ -151,24 +194,17 @@ export function SacoMeasurementForm({
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="cuello"
-        label="Cuello (cm)"
+        name="cuelloNormal"
+        label="Cuello normal (cm)"
         control={control}
-        errorMessage={errors.cuello?.message}
+        errorMessage={errors.cuelloNormal?.message}
         disabled={disabled}
       />
       <MeasurementNumberField
-        name="brazo"
-        label="Brazo (cm)"
+        name="cuelloCruce"
+        label="Cuello cruce (cm)"
         control={control}
-        errorMessage={errors.brazo?.message}
-        disabled={disabled}
-      />
-      <MeasurementNumberField
-        name="puno"
-        label="Puño (cm)"
-        control={control}
-        errorMessage={errors.puno?.message}
+        errorMessage={errors.cuelloCruce?.message}
         disabled={disabled}
       />
       <MeasurementNotesField

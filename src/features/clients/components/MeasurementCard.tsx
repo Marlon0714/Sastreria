@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import {
   Controller,
   type Control,
@@ -86,7 +87,7 @@ export function MeasurementCard<TFormValues extends FieldValues>({
               onChangeText={onChange}
               keyboardType="decimal-pad"
               placeholder={placeholder}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
             />
             {errorMessage ? (
               <Text style={styles.errorText}>{errorMessage}</Text>
@@ -108,26 +109,26 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   cardEditable: {
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: colors.borderStrong,
   },
   cardDisabled: {
     backgroundColor: "#f1f5f9",
   },
   cardError: {
     borderWidth: 1,
-    borderColor: "#dc2626",
+    borderColor: colors.danger,
   },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    color: "#64748b",
+    color: colors.textMuted,
     fontWeight: "600",
   },
   labelEmpty: {
-    color: "#94a3b8",
+    color: colors.textPlaceholder,
   },
   valueRow: {
     flexDirection: "row",
@@ -137,27 +138,27 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#0f172a",
+    color: colors.textPrimary,
   },
   valuePlaceholder: {
     fontSize: 22,
     fontWeight: "400",
-    color: "#94a3b8",
+    color: colors.textPlaceholder,
   },
   unit: {
-    fontSize: 11,
-    color: "#94a3b8",
+    fontSize: 12,
+    color: colors.textPlaceholder,
     marginBottom: 4,
   },
   input: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#0f172a",
+    color: colors.textPrimary,
     padding: 0,
     flex: 1,
   },
   errorText: {
-    fontSize: 11,
-    color: "#b91c1c",
+    fontSize: 12,
+    color: colors.danger,
   },
 });

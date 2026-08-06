@@ -1,3 +1,4 @@
+import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -24,6 +25,8 @@ function toFormValues(
   if (!measurement) return PANTALON_FORM_DEFAULTS;
   return {
     largo: measurement.largo != null ? String(measurement.largo) : "",
+    entrepierna:
+      measurement.entrepierna != null ? String(measurement.entrepierna) : "",
     cintura: measurement.cintura != null ? String(measurement.cintura) : "",
     base: measurement.base != null ? String(measurement.base) : "",
     tiro: measurement.tiro != null ? String(measurement.tiro) : "",
@@ -166,12 +169,12 @@ export default function PantalonMeasurementDetailScreen({
 
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 12, backgroundColor: "#f8fafc" },
-  errorBanner: { backgroundColor: "#fee2e2", borderRadius: 8, padding: 12 },
+  errorBanner: { backgroundColor: colors.dangerSoft, borderRadius: 8, padding: 12 },
   errorBannerText: { color: "#991b1b", fontSize: 14 },
   actions: { flexDirection: "row", gap: 8 },
   flex: { flex: 1 },
   primaryButton: {
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",

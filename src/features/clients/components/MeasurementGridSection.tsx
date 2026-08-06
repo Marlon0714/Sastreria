@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import { colors } from "../../../shared/theme/colors";
 import { MeasurementCard } from "./MeasurementCard";
 
 interface MeasurementGridSectionProps {
@@ -49,7 +50,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 11,
+    fontSize: 12,
     textTransform: "uppercase",
     fontWeight: "bold",
     color: "#475569",
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
   },
   separator: {
     borderBottomWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: colors.border,
   },
   cardsContainer: {
     flexDirection: "row",

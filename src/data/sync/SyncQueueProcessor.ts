@@ -89,8 +89,12 @@ export class SyncQueueProcessor {
 
       try {
         result = await this.syncItem(item);
-      } catch {
-        result = { outcome: "failed", errorCode: "unexpected_error" };
+      } catch (err) {
+        result = {
+          outcome: "failed",
+          errorCode: "unexpected_error",
+          errorMessage: err instanceof Error ? err.message : String(err),
+        };
       }
 
       // Solo marcar como synced si outcome=cloud-ok y modo cloud
@@ -98,7 +102,11 @@ export class SyncQueueProcessor {
       if (result.outcome === "synced") {
         if (mode === "cloud") {
           try {
-            await this.queueRepository.markAsSynced(item.entityType, item.id);
+            await this.queueRepository.markAsSynced(
+              item.entityType,
+              item.id,
+              item.updatedAt,
+            );
             useSyncStatusStore.getState().setLastSyncError(null);
             return "synced";
           } catch (err) {
@@ -112,7 +120,7 @@ export class SyncQueueProcessor {
                 error: err instanceof Error ? err.message : String(err),
               }),
             );
-            await this.queueRepository.markAsError(item.entityType, item.id);
+            await this.queueRepository.markAsError(item.entityType, item.id, item.updatedAt);
             useSyncStatusStore
               .getState()
               .setLastSyncError("No se pudo sincronizar un cambio pendiente.");
@@ -143,9 +151,27 @@ export class SyncQueueProcessor {
         return "deferred";
       }
 
+      // outcome === "failed" a partir de acá — se loguea SIEMPRE (no solo en
+      // el intento final) porque antes esta rama no imprimía nada: el
+      // usuario veía la etiqueta "Error sync" sin ninguna pista de la causa
+      // real (código/mensaje que devolvió Supabase) en ningún log.
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "SyncQueueProcessor",
+          message: "Intento de sync falló",
+          entityType: item.entityType,
+          itemId: item.id,
+          attempt,
+          maxRetries: this.retryPolicy.maxRetries,
+          errorCode: result.errorCode,
+          errorMessage: result.errorMessage,
+        }),
+      );
+
       if (attempt === this.retryPolicy.maxRetries) {
         try {
-          await this.queueRepository.markAsError(item.entityType, item.id);
+          await this.queueRepository.markAsError(item.entityType, item.id, item.updatedAt);
         } catch (err) {
           console.error(
             JSON.stringify({
@@ -173,18 +199,35 @@ export class SyncQueueProcessor {
   private async syncItem(
     item: SyncQueueItem,
   ): ReturnType<SyncTransport["syncClient"]> {
-    if (item.entityType === "delete_log") {
-      return this.transport.syncDeleteLogEntry(item.payload);
+    switch (item.entityType) {
+      case "delete_log":
+        return this.transport.syncDeleteLogEntry(item.payload);
+      case "client":
+        return this.transport.syncClient(item.payload);
+      case "camisa_measurement":
+        return this.transport.syncCamisaMeasurement(item.payload);
+      case "pantalon_measurement":
+        return this.transport.syncPantalonMeasurement(item.payload);
+      case "client_talla":
+        return this.transport.syncClientTalla(item.payload);
+      case "pricing_service":
+        return this.transport.syncPricingService(item.payload);
+      case "saco_measurement":
+        return this.transport.syncSacoMeasurement(item.payload);
+      case "chaleco_measurement":
+        return this.transport.syncChalecoMeasurement(item.payload);
+      case "talla_template":
+        return this.transport.syncTallaTemplate(item.payload);
+      case "schedule":
+        return this.transport.syncSchedule(item.payload);
+      case "schedule_event":
+        return this.transport.syncScheduleEvent(item.payload);
+      default: {
+        const exhaustiveCheck: never = item;
+        throw new Error(
+          `Tipo de entidad de sync no soportado: ${JSON.stringify(exhaustiveCheck)}`,
+        );
+      }
     }
-
-    if (item.entityType === "client") {
-      return this.transport.syncClient(item.payload);
-    }
-
-    if (item.entityType === "camisa_measurement") {
-      return this.transport.syncCamisaMeasurement(item.payload);
-    }
-
-    return this.transport.syncPantalonMeasurement(item.payload);
   }
 }

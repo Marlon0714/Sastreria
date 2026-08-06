@@ -4,6 +4,7 @@ import { type ChalecoFormValues } from "./ChalecoMeasurementForm";
 import { MeasurementCard } from "./MeasurementCard";
 import { MeasurementNotesField } from "./MeasurementFields";
 import { MeasurementGridSection } from "./MeasurementGridSection";
+import { MeasurementGroupCard } from "./MeasurementGroupCard";
 
 interface ChalecoMeasurementGridProps {
   control: Control<ChalecoFormValues>;
@@ -43,28 +44,61 @@ export default function ChalecoMeasurementGrid({
           errorMessage={errors.largo?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="pecho"
-          label="Pecho"
-          accessibilityLabel="Pecho (cm)"
+        <MeasurementGroupCard
+          title="Pecho"
+          fields={[
+            {
+              name: "pechoAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Pecho ajustado (cm)",
+              errorMessage: errors.pechoAjustado?.message,
+            },
+            {
+              name: "pechoAncho",
+              label: "Ancho",
+              accessibilityLabel: "Pecho ancho (cm)",
+              errorMessage: errors.pechoAncho?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.pecho?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="cintura"
-          label="Cintura"
-          accessibilityLabel="Cintura (cm)"
+        <MeasurementGroupCard
+          title="Cintura"
+          fields={[
+            {
+              name: "cinturaAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Cintura ajustado (cm)",
+              errorMessage: errors.cinturaAjustado?.message,
+            },
+            {
+              name: "cinturaAncho",
+              label: "Ancho",
+              accessibilityLabel: "Cintura ancho (cm)",
+              errorMessage: errors.cinturaAncho?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.cintura?.message}
           disabled={disabled}
         />
-        <MeasurementCard
-          name="base"
-          label="Base o cadera"
-          accessibilityLabel="Base o cadera (cm)"
+        <MeasurementGroupCard
+          title="Base"
+          fields={[
+            {
+              name: "baseAjustado",
+              label: "Ajustado",
+              accessibilityLabel: "Base ajustado (cm)",
+              errorMessage: errors.baseAjustado?.message,
+            },
+            {
+              name: "baseAncho",
+              label: "Ancho",
+              accessibilityLabel: "Base ancho (cm)",
+              errorMessage: errors.baseAncho?.message,
+            },
+          ]}
           control={control}
-          errorMessage={errors.base?.message}
           disabled={disabled}
         />
         <MeasurementCard

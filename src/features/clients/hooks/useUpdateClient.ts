@@ -82,16 +82,25 @@ export function useUpdateClient(
 
     try {
       const parsed: UpdateClientSchemaOutput = updateClientSchema.parse(values);
-      const phones = [values.phone2, values.phone3].filter((p): p is string =>
-        Boolean(p?.trim()),
+      const phones = [parsed.phone2, parsed.phone3].filter(
+        (p): p is string => Boolean(p),
       );
       const payload = {
         ...parsed,
         phones: phones.length > 0 ? phones : undefined,
       };
       return await clientRepository.update(payload);
-    } catch {
+    } catch (err) {
       setError("No se pudo actualizar el cliente. Intenta nuevamente.");
+      // TODO: replace with Crashlytics when telemetry is integrated
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "useUpdateClient",
+          message: "updateClient failed",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
       return null;
     } finally {
       setIsSubmitting(false);

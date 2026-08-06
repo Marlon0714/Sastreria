@@ -6,9 +6,7 @@ interface Migration {
   statements: readonly string[];
 }
 
-const TARGET_SCHEMA_VERSION = 13;
-
-const MIGRATIONS: readonly Migration[] = [
+export const MIGRATIONS: readonly Migration[] = [
   {
     version: 12,
     name: "v12_talla_templates",
@@ -317,21 +315,291 @@ const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE pricing_services ADD COLUMN category TEXT NOT NULL DEFAULT 'arreglo' CHECK (category IN ('arreglo', 'confeccion'));`,
     ],
   },
+  {
+    version: 14,
+    name: "v14_schedules",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS schedules (
+        id TEXT PRIMARY KEY NOT NULL,
+        date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        client_id TEXT NOT NULL,
+        notes TEXT,
+        status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);`,
+    ],
+  },
+  {
+    // Bloque 1 (N-076): date/time pasan a opcionales y status cambia de
+    // valores placeholder a los 5 estados de negocio reales. SQLite no
+    // permite quitar NOT NULL ni cambiar un CHECK con ALTER TABLE — primera
+    // vez en el proyecto que se usa el patrón "recrear tabla" (crear nueva,
+    // copiar datos con mapeo defensivo de valores viejos, dropear vieja,
+    // renombrar). Ver SUPABASE_MIGRATIONS.md v19 para el equivalente en Postgres.
+    version: 19,
+    name: "v19_schedule_redesign",
+    statements: [
+      `
+      CREATE TABLE schedules_new (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT NOT NULL,
+        date TEXT,
+        time TEXT,
+        price REAL,
+        operario_id TEXT,
+        notes TEXT,
+        status TEXT NOT NULL CHECK (status IN ('pendiente', 'agendado', 'en_proceso', 'listo_para_entregar', 'entregado')),
+        ready_at TEXT,
+        delivered_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `
+      INSERT INTO schedules_new (id, client_id, date, time, status, notes, created_at, updated_at, sync_status)
+      SELECT id, client_id, date, time,
+        CASE status
+          WHEN 'pending' THEN 'pendiente'
+          WHEN 'confirmed' THEN 'agendado'
+          WHEN 'completed' THEN 'entregado'
+          WHEN 'cancelled' THEN 'pendiente'
+          ELSE 'pendiente'
+        END,
+        notes, created_at, updated_at, sync_status
+      FROM schedules;
+      `,
+      `DROP TABLE schedules;`,
+      `ALTER TABLE schedules_new RENAME TO schedules;`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_operario_id ON schedules (operario_id);`,
+      `
+      CREATE TABLE IF NOT EXISTS schedule_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        schedule_id TEXT NOT NULL,
+        actor_id TEXT NOT NULL,
+        actor_display_name TEXT NOT NULL,
+        action TEXT NOT NULL CHECK (action IN ('created', 'updated', 'status_auto', 'status_manual', 'status_manual_correction', 'deleted')),
+        changes TEXT,
+        identity_verified INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error'))
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_schedule_events_schedule_id ON schedule_events (schedule_id);`,
+    ],
+  },
+  {
+    // Bloque 1 Fase 4 (N-077): espejo local de solo lectura de `profiles`
+    // (Supabase), para que el picker de "operario asignado" funcione sin
+    // internet. Pull-only — la app nunca crea/edita perfiles, así que no
+    // pasa por el motor de sync de push (sin fila en sync_delete_log, sin
+    // SyncEntityType propio). Nunca incluye pin_hash (ni siquiera se
+    // selecciona desde Supabase, ver SupabasePullSync.pullProfilesIncremental).
+    version: 20,
+    name: "v20_profiles_cache",
+    statements: [
+      `
+      CREATE TABLE IF NOT EXISTS profiles_cache (
+        id TEXT PRIMARY KEY NOT NULL,
+        display_name TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('owner', 'operario')),
+        is_shared_device INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      );
+      `,
+      `CREATE INDEX IF NOT EXISTS idx_profiles_cache_is_shared_device ON profiles_cache (is_shared_device);`,
+    ],
+  },
+  {
+    // Feedback de uso real (2026-08-04): corregir manualmente el status a
+    // "pendiente"/"agendado"/"en_proceso" no se quedaba — el siguiente
+    // update() de cualquier campo volvía a derivar el status automáticamente
+    // (ej. si el operario seguía asignado, volvía a "en_proceso" solo por
+    // eso). `status_locked` marca que el status actual viene de una
+    // corrección manual explícita, para que update() deje de re-derivarlo
+    // hasta la próxima acción explícita (markReady/markDelivered/otra
+    // corrección). `is_priority` es un campo nuevo del usuario: marca un
+    // turno ya agendado (con fecha) como más urgente que el resto del día.
+    version: 21,
+    name: "v21_schedule_status_lock_and_priority",
+    statements: [
+      `ALTER TABLE schedules ADD COLUMN status_locked INTEGER NOT NULL DEFAULT 0;`,
+      `ALTER TABLE schedules ADD COLUMN is_priority INTEGER NOT NULL DEFAULT 0;`,
+    ],
+  },
+  {
+    // Pedido del dueño (2026-08-05): separar la Agenda de arreglos de una
+    // agenda de confecciones, con el mismo patrón de segmentado que ya usa
+    // Precios (un solo turno, categorizado, no una entidad/tabla aparte).
+    // Todos los turnos existentes quedan como 'arreglo' por defecto.
+    version: 22,
+    name: "v22_schedule_category",
+    statements: [
+      `ALTER TABLE schedules ADD COLUMN category TEXT NOT NULL DEFAULT 'arreglo';`,
+    ],
+  },
+  {
+    // Pedido del dueño (2026-08-05): agregar la medida "entrepierna" a
+    // pantalón, faltante tanto en medidas de cliente como en plantillas de
+    // talla.
+    version: 23,
+    name: "v23_pantalon_entrepierna",
+    statements: [
+      `ALTER TABLE pantalon_measurements ADD COLUMN entrepierna REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN entrepierna REAL;`,
+    ],
+  },
+  {
+    // Pedido del dueño (2026-08-05): pecho/cintura/base pasan a tener dos
+    // sub-medidas (ajustado/ancho) en camisa, saco, chaleco y sus plantillas
+    // de talla; cuello pasa a tener normal/cruce (camisa/saco/plantillas,
+    // chaleco nunca tuvo cuello). Se migra el valor viejo al primer subcampo
+    // (ajustado/normal) para no perder medidas ya tomadas; las columnas
+    // viejas quedan sin usar (no se borran).
+    version: 24,
+    name: "v24_camisa_saco_chaleco_pares",
+    statements: [
+      `ALTER TABLE camisa_measurements ADD COLUMN pecho_ajustado REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN pecho_ancho REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN cintura_ajustado REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN cintura_ancho REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN base_ajustado REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN base_ancho REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN cuello_normal REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN cuello_cruce REAL;`,
+      `UPDATE camisa_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello;`,
+
+      `ALTER TABLE saco_measurements ADD COLUMN pecho_ajustado REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN pecho_ancho REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cintura_ajustado REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cintura_ancho REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN base_ajustado REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN base_ancho REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cuello_normal REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN cuello_cruce REAL;`,
+      `UPDATE saco_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello;`,
+
+      `ALTER TABLE chaleco_measurements ADD COLUMN pecho_ajustado REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN pecho_ancho REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN cintura_ajustado REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN cintura_ancho REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN base_ajustado REAL;`,
+      `ALTER TABLE chaleco_measurements ADD COLUMN base_ancho REAL;`,
+      `UPDATE chaleco_measurements SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base;`,
+
+      `ALTER TABLE talla_templates ADD COLUMN pecho_ajustado REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN pecho_ancho REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN cintura_ajustado REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN cintura_ancho REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN base_ajustado REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN base_ancho REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN cuello_normal REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN cuello_cruce REAL;`,
+      `UPDATE talla_templates SET pecho_ajustado = pecho, cintura_ajustado = cintura, base_ajustado = base, cuello_normal = cuello
+        WHERE type IN ('camisa', 'saco', 'chaleco');`,
+    ],
+  },
+  {
+    // Pedido del dueño (2026-08-05): la manga pasa a tener 2 variantes de
+    // largo (manga larga / manga corta) en vez de un solo "largo manga";
+    // "ancho manga" queda deprecado (sin reemplazo directo, brazo y puño ya
+    // cubrían ese rol). Se migra el valor viejo de largo_manga a manga_larga.
+    version: 25,
+    name: "v25_manga_larga_corta",
+    statements: [
+      `ALTER TABLE camisa_measurements ADD COLUMN manga_larga REAL;`,
+      `ALTER TABLE camisa_measurements ADD COLUMN manga_corta REAL;`,
+      `UPDATE camisa_measurements SET manga_larga = largo_manga;`,
+
+      `ALTER TABLE saco_measurements ADD COLUMN manga_larga REAL;`,
+      `ALTER TABLE saco_measurements ADD COLUMN manga_corta REAL;`,
+      `UPDATE saco_measurements SET manga_larga = largo_manga;`,
+
+      `ALTER TABLE talla_templates ADD COLUMN manga_larga REAL;`,
+      `ALTER TABLE talla_templates ADD COLUMN manga_corta REAL;`,
+      `UPDATE talla_templates SET manga_larga = largo_manga WHERE type IN ('camisa', 'saco');`,
+    ],
+  },
+  {
+    // Pedido del dueño (2026-08-05): borrar un cliente ya no debe borrar sus
+    // turnos (deben sobrevivir como historial, ver ClientRepositoryImpl.delete()),
+    // y se debe poder agendar un turno sin registrar un cliente completo
+    // (solo el nombre). Ambos casos requieren que client_id deje de ser
+    // NOT NULL — SQLite no permite quitar NOT NULL con ALTER TABLE, así que
+    // se recrea la tabla completa (mismo patrón que v19_schedule_redesign).
+    version: 26,
+    name: "v26_schedule_client_optional",
+    statements: [
+      `
+      CREATE TABLE schedules_new (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT,
+        unregistered_client_name TEXT,
+        date TEXT,
+        time TEXT,
+        price REAL,
+        operario_id TEXT,
+        notes TEXT,
+        status TEXT NOT NULL CHECK (status IN ('pendiente', 'agendado', 'en_proceso', 'listo_para_entregar', 'entregado')),
+        status_locked INTEGER NOT NULL DEFAULT 0,
+        is_priority INTEGER NOT NULL DEFAULT 0,
+        category TEXT NOT NULL DEFAULT 'arreglo',
+        ready_at TEXT,
+        delivered_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `
+      INSERT INTO schedules_new (
+        id, client_id, date, time, price, operario_id, notes, status,
+        status_locked, is_priority, category, ready_at, delivered_at,
+        created_at, updated_at, sync_status
+      )
+      SELECT
+        id, client_id, date, time, price, operario_id, notes, status,
+        status_locked, is_priority, category, ready_at, delivered_at,
+        created_at, updated_at, sync_status
+      FROM schedules;
+      `,
+      `DROP TABLE schedules;`,
+      `ALTER TABLE schedules_new RENAME TO schedules;`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_operario_id ON schedules (operario_id);`,
+    ],
+  },
 ];
 
 interface UserVersionRow {
   user_version: number;
 }
 
+// Nota: deliberadamente NO hay una constante "TARGET_SCHEMA_VERSION" que
+// limite hasta qué versión correr. Hubo una hasta 2026-08-05 y quedó
+// desincronizada de MIGRATIONS (se agregó v22 sin subirla de 21 a 22), lo
+// que hizo que runMigrations() retornara de inmediato sin aplicar v22 en
+// cualquier dispositivo que ya estuviera en la versión 21 — bug real,
+// descubierto en producción. El filtro `migration.version <= currentVersion`
+// de abajo ya es suficiente por sí solo para no reaplicar migraciones viejas.
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   const versionRow = await db.getFirstAsync<UserVersionRow>(
     "PRAGMA user_version;",
   );
   const currentVersion = versionRow?.user_version ?? 0;
-
-  if (currentVersion >= TARGET_SCHEMA_VERSION) {
-    return;
-  }
 
   const sortedMigrations = [...MIGRATIONS].sort(
     (a, b) => a.version - b.version,

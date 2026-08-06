@@ -1,6 +1,7 @@
+import { colors } from "../../../shared/theme/colors";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,10 +14,18 @@ import {
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { EmptyView, ErrorView, LoadingView } from "../../../shared/components";
+import { useDebugModeStore } from "../../../shared/state/debugModeStore";
+import { normalizePhone, normalizeText } from "../../../shared/utils/textSearch";
 import { useClientList } from "../hooks/useClientList";
+
+// Frase de desbloqueo del modo debug (visor de logs). Cambiar por algo que
+// solo tú conozcas y que nadie escribiría por accidente en una búsqueda real.
+const DEBUG_UNLOCK_PHRASE = "modo taller oculto";
 
 type Props = NativeStackScreenProps<ClientsStackParamList, "ClientList">;
 type ClientFilter = "all" | "name" | "phone";
+
+const PAGE_SIZE = 20;
 
 function renderSyncBadge(syncStatus: "pending" | "synced" | "error") {
   if (syncStatus === "synced") {
@@ -48,22 +57,24 @@ function renderSyncBadge(syncStatus: "pending" | "synced" | "error") {
   );
 }
 
-function normalizeText(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
-function normalizePhone(value: string): string {
-  return value.replace(/\D/g, "");
-}
-
 export default function ClientListScreen({ navigation }: Props) {
   const { clients, isLoading, isRefreshing, error, reload } = useClientList();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState<ClientFilter>("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const unlockDebugMode = useDebugModeStore((state) => state.unlock);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchTerm, filterBy]);
+
+  useEffect(() => {
+    if (normalizeText(searchTerm) !== normalizeText(DEBUG_UNLOCK_PHRASE)) {
+      return;
+    }
+    setSearchTerm("");
+    void unlockDebugMode();
+  }, [searchTerm, unlockDebugMode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -83,24 +94,33 @@ export default function ClientListScreen({ navigation }: Props) {
       const normalizedName = normalizeText(
         `${client.firstName} ${client.lastName}`,
       );
-      const normalizedClientPhone = normalizePhone(client.phone);
+      // Incluye teléfono 2/3 (client.phones) — antes solo comparaba el
+      // teléfono principal, así que un cliente encontrable únicamente por
+      // su segundo o tercer número no aparecía en ningún filtro.
+      const clientPhones = [client.phone, ...(client.phones ?? [])];
+      const matchesPhone = numericQuery
+        ? clientPhones.some((phone) =>
+            normalizePhone(phone).includes(numericQuery),
+          )
+        : false;
 
       if (filterBy === "name") {
         return normalizedName.includes(normalizedQuery);
       }
 
       if (filterBy === "phone") {
-        return numericQuery
-          ? normalizedClientPhone.includes(numericQuery)
-          : false;
+        return matchesPhone;
       }
 
-      return (
-        normalizedName.includes(normalizedQuery) ||
-        (numericQuery ? normalizedClientPhone.includes(numericQuery) : false)
-      );
+      return normalizedName.includes(normalizedQuery) || matchesPhone;
     });
   }, [clients, filterBy, searchTerm]);
+
+  const visibleClients = useMemo(
+    () => filteredClients.slice(0, visibleCount),
+    [filteredClients, visibleCount],
+  );
+  const hasMore = filteredClients.length > visibleClients.length;
 
   if (isLoading && clients.length === 0) {
     return <LoadingView message="Cargando clientes..." />;
@@ -126,7 +146,7 @@ export default function ClientListScreen({ navigation }: Props) {
     <View style={styles.container}>
       {isRefreshing && (
         <View style={styles.refreshBanner}>
-          <ActivityIndicator size="small" color="#0f766e" />
+          <ActivityIndicator size="small" color={colors.primary} />
           <Text style={styles.refreshText}>Actualizando...</Text>
         </View>
       )}
@@ -134,6 +154,7 @@ export default function ClientListScreen({ navigation }: Props) {
         <TextInput
           accessibilityLabel="Buscar cliente por nombre o telefono"
           placeholder="Buscar por nombre o telefono"
+          placeholderTextColor="#94a3b8"
           value={searchTerm}
           onChangeText={setSearchTerm}
           style={styles.searchInput}
@@ -192,8 +213,11 @@ export default function ClientListScreen({ navigation }: Props) {
           </Pressable>
         </View>
       </View>
+      <Text style={styles.clientCountText} accessibilityLabel="Total de clientes registrados">
+        {clients.length} {clients.length === 1 ? "cliente" : "clientes"}
+      </Text>
       <FlatList
-        data={filteredClients}
+        data={visibleClients}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
@@ -201,6 +225,24 @@ export default function ClientListScreen({ navigation }: Props) {
             <Text style={styles.noResultsText}>
               No hay clientes que coincidan con la busqueda.
             </Text>
+          ) : null
+        }
+        ListFooterComponent={
+          hasMore ? (
+            <View style={styles.loadMoreSection}>
+              <Text style={styles.loadMoreCountText}>
+                Mostrando {visibleClients.length} de {filteredClients.length}
+              </Text>
+              <Pressable
+                accessibilityLabel="Cargar más clientes"
+                style={styles.loadMoreButton}
+                onPress={() =>
+                  setVisibleCount((count) => count + PAGE_SIZE)
+                }
+              >
+                <Text style={styles.loadMoreButtonText}>Cargar más</Text>
+              </Pressable>
+            </View>
           ) : null
         }
         renderItem={({ item }) => (
@@ -241,13 +283,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 8,
-    backgroundColor: "#ccfbf1",
+    backgroundColor: colors.primarySoft,
     borderBottomWidth: 1,
     borderBottomColor: "#99f6e4",
   },
   refreshText: {
     fontSize: 13,
-    color: "#0f766e",
+    color: colors.primary,
     fontWeight: "600",
   },
   listContent: {
@@ -283,8 +325,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   filterButtonActive: {
-    borderColor: "#0f766e",
-    backgroundColor: "#ccfbf1",
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   filterButtonText: {
     color: "#334155",
@@ -292,13 +334,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   filterButtonTextActive: {
-    color: "#115e59",
+    color: colors.primaryPressed,
   },
   noResultsText: {
     textAlign: "center",
     color: "#64748b",
     fontSize: 14,
     marginTop: 32,
+  },
+  loadMoreSection: {
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 16,
+  },
+  loadMoreCountText: {
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  loadMoreButton: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  loadMoreButtonText: {
+    color: colors.primary,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  clientCountText: {
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: "600",
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   card: {
     backgroundColor: "#ffffff",
@@ -333,20 +403,20 @@ const styles = StyleSheet.create({
     borderColor: "#fca5a5",
   },
   syncBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
   },
   syncBadgeTextPending: {
     color: "#0e7490",
   },
   syncBadgeTextError: {
-    color: "#b91c1c",
+    color: colors.danger,
   },
   fabButton: {
     position: "absolute",
     right: 16,
     bottom: 16,
-    backgroundColor: "#0f766e",
+    backgroundColor: colors.primary,
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 999,

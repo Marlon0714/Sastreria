@@ -1,4 +1,8 @@
 import { getDatabase } from "./database";
+import {
+  notifyWriteCommitted,
+  type WriteCommittedOptions,
+} from "./writeCommitted";
 
 import type { TallaRepository } from "../../features/clients/domain/repository";
 import {
@@ -8,12 +12,6 @@ import {
   type TallaType,
   type UpdateTallaDTO,
 } from "../../features/clients/domain/types";
-
-type WriteCommittedCallback = () => void | Promise<void>;
-
-interface TallaRepositoryImplOptions {
-  onWriteCommitted?: WriteCommittedCallback;
-}
 
 interface TallaRow {
   id: string;
@@ -40,34 +38,60 @@ function mapTallaRow(row: TallaRow): ClientTalla {
 }
 
 export class TallaRepositoryImpl implements TallaRepository {
-  constructor(private readonly options: TallaRepositoryImplOptions = {}) {}
+  constructor(private readonly options: WriteCommittedOptions = {}) {}
 
   async upsert(input: CreateTallaDTO | UpdateTallaDTO): Promise<ClientTalla> {
     const db = getDatabase();
     const nowIso = new Date().toISOString();
-    const id = "id" in input && input.id ? input.id : generateDomainUuid();
+
+    // Se resuelve el id/created_at ANTES del INSERT (en vez de generar
+    // siempre un id nuevo y confiar en INSERT OR REPLACE) para no perder la
+    // identidad de la fila si ya existe una talla de este tipo para el
+    // cliente — INSERT OR REPLACE borra e inserta de cero con el id nuevo,
+    // huerfanando cualquier copia ya sincronizada de la fila original en
+    // Supabase. Mismo patrón que MeasurementRepositoryImpl.upsertCamisa().
+    let id: string;
+    let createdAt: string;
+
+    if ("id" in input && input.id) {
+      id = input.id;
+      const existing = await db.getFirstAsync<Pick<TallaRow, "created_at">>(
+        `SELECT created_at FROM client_tallas WHERE id = ?;`,
+        id,
+      );
+      createdAt = existing?.created_at ?? nowIso;
+    } else {
+      const existing = await db.getFirstAsync<
+        Pick<TallaRow, "id" | "created_at">
+      >(
+        `SELECT id, created_at FROM client_tallas WHERE client_id = ? AND type = ?;`,
+        input.clientId,
+        input.type,
+      );
+      id = existing?.id ?? generateDomainUuid();
+      createdAt = existing?.created_at ?? nowIso;
+    }
 
     await db.runAsync(
       `
-      INSERT OR REPLACE INTO client_tallas
-        (id, client_id, type, value, notes, created_at, updated_at, sync_status)
-      VALUES (?, ?, ?, ?, ?, COALESCE(
-        (SELECT created_at FROM client_tallas WHERE client_id = ? AND type = ?),
-        ?
-      ), ?, 'pending');
+      INSERT INTO client_tallas (id, client_id, type, value, notes, created_at, updated_at, sync_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+      ON CONFLICT(id) DO UPDATE SET
+        value = excluded.value,
+        notes = excluded.notes,
+        updated_at = excluded.updated_at,
+        sync_status = 'pending';
       `,
       id,
       input.clientId,
       input.type,
       input.value.trim(),
       input.notes?.trim() ?? null,
-      input.clientId,
-      input.type,
-      nowIso,
+      createdAt,
       nowIso,
     );
 
-    this.notifyWriteCommitted();
+    notifyWriteCommitted(this.options);
 
     const rows = await db.getAllAsync<TallaRow>(
       `SELECT * FROM client_tallas WHERE id = ?;`,
@@ -107,15 +131,6 @@ export class TallaRepositoryImpl implements TallaRepository {
       );
     });
 
-    this.notifyWriteCommitted();
-  }
-
-  private notifyWriteCommitted(): void {
-    if (!this.options.onWriteCommitted) {
-      return;
-    }
-    void Promise.resolve(this.options.onWriteCommitted()).catch(
-      () => undefined,
-    );
+    notifyWriteCommitted(this.options);
   }
 }
