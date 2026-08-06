@@ -109,8 +109,9 @@ describe("TallaTemplateRepositoryImpl", () => {
     });
 
     it("se llama una vez después de update()", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // fetch previo (merge parcial)
       mockRunAsync.mockResolvedValueOnce(undefined);
-      mockGetFirstAsync.mockResolvedValueOnce(baseRow);
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // fetch posterior al UPDATE
       const onWriteCommitted = jest.fn<() => void>();
       const repo = new TallaTemplateRepositoryImpl({ onWriteCommitted });
 
@@ -118,7 +119,49 @@ describe("TallaTemplateRepositoryImpl", () => {
 
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
     });
+  });
 
+  describe("update", () => {
+    it("conserva las medidas existentes en un update parcial, en vez de borrarlas a NULL", async () => {
+      // Regresión: antes, cualquier campo omitido del DTO se sobreescribía
+      // con NULL (salvo `name`, que sí usaba COALESCE) — un update parcial
+      // legítimo (ej. solo renombrar la plantilla) borraba las 27 medidas.
+      const existingRow = {
+        ...baseRow,
+        pecho_ajustado: 50,
+        pecho_ancho: 52,
+        cintura_ajustado: 80,
+        cintura_ancho: 82,
+        base_ajustado: 100,
+        base_ancho: 102,
+        manga_larga: 62,
+        manga_corta: 58,
+        cuello_normal: 38,
+        cuello_cruce: 40,
+        entrepierna: 28,
+      };
+      mockGetFirstAsync.mockResolvedValueOnce(existingRow);
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...existingRow,
+        espalda: 44,
+      });
+
+      const repo = new TallaTemplateRepositoryImpl();
+      await repo.update({ id: existingRow.id, espalda: 44 });
+
+      const [, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(params[1]).toBe(44); // espalda: sí se actualizó
+      expect(params[7]).toBe(existingRow.pecho_ajustado); // conservado, no NULL
+      expect(params[8]).toBe(existingRow.pecho_ancho);
+      expect(params[16]).toBe(existingRow.manga_larga);
+      expect(params[19]).toBe(existingRow.cuello_normal);
+      expect(params[23]).toBe(existingRow.entrepierna);
+      expect(params[28]).toBe(existingRow.notes);
+    });
+  });
+
+  describe("onWriteCommitted", () => {
     it("se llama una vez después de delete()", async () => {
       mockRunAsync.mockResolvedValue(undefined);
       const onWriteCommitted = jest.fn<() => void>();

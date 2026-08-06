@@ -94,6 +94,18 @@ function n(v: number | null | undefined): number | null {
   return v != null && !isNaN(v) ? v : null;
 }
 
+/**
+ * A diferencia de `n()`, distingue "no vino en el DTO" (mantener el valor
+ * actual — update() es un contrato de actualización PARCIAL) de "vino como
+ * null/undefined explícito en un campo numérico ya presente" (limpiarlo).
+ */
+function mergeNum(
+  value: number | null | undefined,
+  current: number | null,
+): number | null {
+  return value === undefined ? current : n(value);
+}
+
 export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
   constructor(private readonly options: WriteCommittedOptions = {}) {}
 
@@ -172,7 +184,22 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
 
   async update(dto: UpdateTallaTemplateDTO): Promise<TallaTemplate> {
     const db = getDatabase();
+    const existing = await db.getFirstAsync<TallaTemplateRow>(
+      `SELECT * FROM talla_templates WHERE id = ?;`,
+      dto.id,
+    );
+    if (!existing) {
+      throw new Error("Plantilla de talla no encontrada");
+    }
     const now = new Date().toISOString();
+
+    // update() es un contrato PARCIAL (UpdateTallaTemplateDTO extiende
+    // Partial<CreateTallaTemplateDTO>) — un campo omitido debe conservar su
+    // valor actual, no borrarse. Antes cada campo (salvo `name`, que sí
+    // usaba COALESCE) se sobreescribía siempre con `n(dto.campo)`, que
+    // convierte `undefined` en `NULL` — cualquier update parcial real
+    // (ej. renombrar la plantilla sin reenviar las 27 medidas) borraba
+    // todas las medidas existentes.
     await db.runAsync(
       `UPDATE talla_templates SET
         name = COALESCE(?, name),
@@ -187,34 +214,34 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
         notes = ?, updated_at = ?, sync_status = 'pending'
       WHERE id = ?;`,
       dto.name ?? null,
-      n(dto.espalda),
-      n(dto.hombro),
-      n(dto.talleDelantero),
-      n(dto.talleTrasero),
-      n(dto.distancia),
-      n(dto.separacion),
-      n(dto.pechoAjustado),
-      n(dto.pechoAncho),
-      n(dto.cintura),
-      n(dto.cinturaAjustado),
-      n(dto.cinturaAncho),
-      n(dto.base),
-      n(dto.baseAjustado),
-      n(dto.baseAncho),
-      n(dto.largo),
-      n(dto.mangaLarga),
-      n(dto.mangaCorta),
-      n(dto.escote),
-      n(dto.cuelloNormal),
-      n(dto.cuelloCruce),
-      n(dto.brazo),
-      n(dto.puno),
-      n(dto.entrepierna),
-      n(dto.tiro),
-      n(dto.pierna),
-      n(dto.rodilla),
-      n(dto.bota),
-      dto.notes ?? null,
+      mergeNum(dto.espalda, existing.espalda),
+      mergeNum(dto.hombro, existing.hombro),
+      mergeNum(dto.talleDelantero, existing.talle_delantero),
+      mergeNum(dto.talleTrasero, existing.talle_trasero),
+      mergeNum(dto.distancia, existing.distancia),
+      mergeNum(dto.separacion, existing.separacion),
+      mergeNum(dto.pechoAjustado, existing.pecho_ajustado),
+      mergeNum(dto.pechoAncho, existing.pecho_ancho),
+      mergeNum(dto.cintura, existing.cintura),
+      mergeNum(dto.cinturaAjustado, existing.cintura_ajustado),
+      mergeNum(dto.cinturaAncho, existing.cintura_ancho),
+      mergeNum(dto.base, existing.base),
+      mergeNum(dto.baseAjustado, existing.base_ajustado),
+      mergeNum(dto.baseAncho, existing.base_ancho),
+      mergeNum(dto.largo, existing.largo),
+      mergeNum(dto.mangaLarga, existing.manga_larga),
+      mergeNum(dto.mangaCorta, existing.manga_corta),
+      mergeNum(dto.escote, existing.escote),
+      mergeNum(dto.cuelloNormal, existing.cuello_normal),
+      mergeNum(dto.cuelloCruce, existing.cuello_cruce),
+      mergeNum(dto.brazo, existing.brazo),
+      mergeNum(dto.puno, existing.puno),
+      mergeNum(dto.entrepierna, existing.entrepierna),
+      mergeNum(dto.tiro, existing.tiro),
+      mergeNum(dto.pierna, existing.pierna),
+      mergeNum(dto.rodilla, existing.rodilla),
+      mergeNum(dto.bota, existing.bota),
+      dto.notes !== undefined ? dto.notes : existing.notes,
       now,
       dto.id,
     );
