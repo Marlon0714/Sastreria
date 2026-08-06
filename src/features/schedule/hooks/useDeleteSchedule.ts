@@ -40,16 +40,33 @@ export function useDeleteSchedule(
       }
 
       await repo.delete(id);
-      await eventRepo.create({
-        scheduleId: id,
-        actorId: identity.profile.id,
-        actorDisplayName: identity.profile.displayName,
-        action: "deleted",
-        changes: existing
-          ? JSON.stringify({ status: { before: existing.status, after: null } })
-          : undefined,
-        identityVerified: identity.verified,
-      });
+
+      // El turno YA se borró — un fallo del registro de auditoría no debe
+      // reportarse como que el borrado falló (el usuario reintentaría sobre
+      // un turno que ya no existe).
+      try {
+        await eventRepo.create({
+          scheduleId: id,
+          actorId: identity.profile.id,
+          actorDisplayName: identity.profile.displayName,
+          action: "deleted",
+          changes: existing
+            ? JSON.stringify({ status: { before: existing.status, after: null } })
+            : undefined,
+          identityVerified: identity.verified,
+        });
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            level: "error",
+            service: "useDeleteSchedule",
+            message:
+              "No se pudo registrar el evento de auditoría tras un borrado exitoso",
+            scheduleId: id,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
       return true;
     } catch {
       setError("No se pudo eliminar el turno. Intenta nuevamente.");

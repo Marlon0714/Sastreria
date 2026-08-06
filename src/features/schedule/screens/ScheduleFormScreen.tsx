@@ -67,10 +67,14 @@ const CORRECTION_STATUS_OPTIONS: ScheduleStatus[] = [
 export default function ScheduleFormScreen({ navigation, route }: Props) {
   const { scheduleId, category: categoryParam } = route.params;
   const identityGate = useIdentityGate();
-  const { schedule, isLoading, isSubmitting, error, submit } = useScheduleForm(
-    scheduleId,
-    identityGate,
-  );
+  const {
+    schedule,
+    isLoading,
+    isSubmitting,
+    error,
+    submit,
+    syncScheduleSnapshot,
+  } = useScheduleForm(scheduleId, identityGate);
   const { deleteSchedule, isDeleting } = useDeleteSchedule(identityGate);
   const statusActions = useScheduleStatusActions(scheduleId ?? "", identityGate);
   const [displaySchedule, setDisplaySchedule] = useState<Schedule | null>(
@@ -135,6 +139,12 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     const updated = await statusActions.markReady();
     if (updated) {
       setDisplaySchedule(updated);
+      // Mantiene sincronizado el snapshot que usa useScheduleForm como
+      // "antes" — si no, un "Guardar" posterior en la misma visita
+      // compararía contra el estado previo a esta acción y registraría
+      // una transición de estado que ya había ocurrido (y ya quedó
+      // auditada) por esta vía.
+      syncScheduleSnapshot(updated);
       setHistoryRefreshToken((token) => token + 1);
     }
   };
@@ -143,6 +153,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     const updated = await statusActions.markDelivered();
     if (updated) {
       setDisplaySchedule(updated);
+      syncScheduleSnapshot(updated);
       setHistoryRefreshToken((token) => token + 1);
     }
   };
@@ -159,6 +170,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             const updated = await statusActions.applyCorrection(newStatus);
             if (updated) {
               setDisplaySchedule(updated);
+              syncScheduleSnapshot(updated);
               setHistoryRefreshToken((token) => token + 1);
             }
             setIsCorrectionOpen(false);

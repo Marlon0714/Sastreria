@@ -12,6 +12,7 @@ interface UseScheduleFormResult {
   isSubmitting: boolean;
   error: string | null;
   submit: (values: unknown) => Promise<Schedule | null>;
+  syncScheduleSnapshot: (updated: Schedule) => void;
 }
 
 interface UseDeleteScheduleResult {
@@ -196,6 +197,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit: jest.fn(async () => Promise.resolve(schedule)),
+      syncScheduleSnapshot: jest.fn(),
     });
 
     const { getByLabelText, queryByLabelText } = render(
@@ -213,6 +215,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
     });
 
     const { getByText } = render(
@@ -232,6 +235,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit,
+      syncScheduleSnapshot: jest.fn(),
     });
     const goBack = jest.fn();
 
@@ -269,6 +273,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit,
+      syncScheduleSnapshot: jest.fn(),
     });
     const goBack = jest.fn();
 
@@ -303,6 +308,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
     });
 
     const { getByLabelText, queryByLabelText } = render(
@@ -328,6 +334,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit,
+      syncScheduleSnapshot: jest.fn(),
     });
 
     const { getByLabelText } = render(
@@ -354,6 +361,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit,
+      syncScheduleSnapshot: jest.fn(),
     });
 
     const { getByLabelText, findByText } = render(
@@ -376,6 +384,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit,
+      syncScheduleSnapshot: jest.fn(),
     });
 
     const { getByLabelText } = render(
@@ -402,6 +411,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit: jest.fn(async () => Promise.resolve(schedule)),
+      syncScheduleSnapshot: jest.fn(),
     });
 
     const { getByLabelText, getByDisplayValue, getByText } = render(
@@ -425,6 +435,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: "No se pudo cargar el turno.",
       submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
     });
     const goBack = jest.fn();
 
@@ -451,6 +462,7 @@ describe("ScheduleFormScreen", () => {
       isSubmitting: false,
       error: null,
       submit: jest.fn(async () => Promise.resolve(schedule)),
+      syncScheduleSnapshot: jest.fn(),
     });
     const deleteSchedule = jest.fn(async () => Promise.resolve(true));
     mockUseDeleteSchedule.mockReturnValue({
@@ -489,6 +501,7 @@ describe("ScheduleFormScreen", () => {
         isSubmitting: false,
         error: null,
         submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
       });
 
       const { getByLabelText } = render(
@@ -506,6 +519,7 @@ describe("ScheduleFormScreen", () => {
         isSubmitting: false,
         error: null,
         submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
       });
 
       const { queryByLabelText } = render(
@@ -523,6 +537,7 @@ describe("ScheduleFormScreen", () => {
         isSubmitting: false,
         error: null,
         submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
       });
 
       const { queryByLabelText, getByLabelText } = render(
@@ -540,6 +555,7 @@ describe("ScheduleFormScreen", () => {
         isSubmitting: false,
         error: null,
         submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
       });
       const markReady = jest.fn(async () =>
         Promise.resolve({ ...schedule, status: "listo_para_entregar" as const }),
@@ -573,6 +589,7 @@ describe("ScheduleFormScreen", () => {
         isSubmitting: false,
         error: null,
         submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
       });
       const applyCorrection = jest.fn(async () =>
         Promise.resolve({ ...schedule, status: "pendiente" as const }),
@@ -605,6 +622,7 @@ describe("ScheduleFormScreen", () => {
         isSubmitting: false,
         error: null,
         submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
       });
 
       const { getByLabelText, queryByLabelText } = render(

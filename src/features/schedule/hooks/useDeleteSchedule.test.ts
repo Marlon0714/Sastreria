@@ -98,6 +98,21 @@ describe("useDeleteSchedule", () => {
     expect(result.current.isDeleting).toBe(false);
   });
 
+  it("returns true aunque falle el registro de auditoría (el turno ya se borró)", async () => {
+    mockDelete.mockResolvedValueOnce(undefined);
+    mockCreateEvent.mockRejectedValueOnce(new Error("network blip"));
+    const identityGate = makeIdentityGate();
+    const { result } = renderHook(() => useDeleteSchedule(identityGate));
+
+    let success = false;
+    await act(async () => {
+      success = await result.current.deleteSchedule("schedule-1");
+    });
+
+    expect(success).toBe(true);
+    expect(result.current.error).toBeNull();
+  });
+
   it("no borra nada ni crea evento si se cancela la identidad", async () => {
     const identityGate = makeIdentityGate({
       requireIdentity: jest.fn(async () => Promise.resolve(null)),

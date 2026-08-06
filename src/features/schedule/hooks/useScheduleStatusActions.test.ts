@@ -173,7 +173,12 @@ describe("useScheduleStatusActions", () => {
   });
 
   describe("assignOperario", () => {
-    it("asigna el operario vía update() y registra el cambio como 'status_auto'", async () => {
+    it("asigna el operario vía update() y registra el cambio como 'status_auto' cuando el estado realmente cambia", async () => {
+      mockGetById.mockResolvedValueOnce({
+        ...baseSchedule,
+        status: "agendado",
+        operarioId: undefined,
+      });
       const updated: Schedule = {
         ...baseSchedule,
         operarioId: "operario-1",
@@ -198,10 +203,35 @@ describe("useScheduleStatusActions", () => {
         expect.objectContaining({
           action: "status_auto",
           changes: JSON.stringify({
-            status: { before: "en_proceso", after: "en_proceso" },
+            status: { before: "agendado", after: "en_proceso" },
           }),
         }),
       );
+      expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
+    });
+
+    it("no registra ningún evento si reasignar el operario no cambia el estado", async () => {
+      // baseSchedule ya está "en_proceso" (mockGetById por defecto) —
+      // reasignar a otro operario no mueve el estado, así que no debe
+      // quedar un evento fantasma de "cambio de estado".
+      const updated: Schedule = {
+        ...baseSchedule,
+        operarioId: "operario-2",
+        status: "en_proceso",
+      };
+      mockUpdate.mockResolvedValueOnce(updated);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      let resolved: Schedule | null = null;
+      await act(async () => {
+        resolved = await result.current.assignOperario("operario-2");
+      });
+
+      expect(resolved).toEqual(updated);
+      expect(mockCreateEvent).not.toHaveBeenCalled();
       expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
     });
 
@@ -278,23 +308,25 @@ describe("useScheduleStatusActions", () => {
     );
   });
 
-  it("libera la identidad aunque falle la creación del evento tras una mutación exitosa", async () => {
-    mockMarkReady.mockResolvedValueOnce({
+  it("devuelve el turno actualizado aunque falle el registro de auditoría (la mutación ya se guardó)", async () => {
+    const updated: Schedule = {
       ...baseSchedule,
       status: "listo_para_entregar",
-    });
+    };
+    mockMarkReady.mockResolvedValueOnce(updated);
     mockCreateEvent.mockRejectedValueOnce(new Error("network blip"));
     const identityGate = makeIdentityGate();
     const { result } = renderHook(() =>
       useScheduleStatusActions(baseSchedule.id, identityGate),
     );
 
-    let resolved: Schedule | null = baseSchedule;
+    let resolved: Schedule | null = null;
     await act(async () => {
       resolved = await result.current.markReady();
     });
 
-    expect(resolved).toBeNull();
+    expect(resolved).toEqual(updated);
+    expect(result.current.error).toBeNull();
     expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
   });
 

@@ -22,6 +22,31 @@ interface UseScheduleFormResult {
   isSubmitting: boolean;
   error: string | null;
   submit: (values: CreateScheduleDTO) => Promise<Schedule | null>;
+  /**
+   * Actualiza el snapshot interno usado como "antes" en el próximo submit —
+   * debe llamarse cada vez que el turno cambia por fuera de este hook (ej.
+   * una acción de estado desde useScheduleStatusActions), para que un
+   * "Guardar" posterior en la misma visita no compare contra un estado ya
+   * viejo y registre una transición de estado que no ocurrió en ese submit.
+   */
+  syncScheduleSnapshot: (updated: Schedule) => void;
+}
+
+function logAuditFailure(
+  service: string,
+  scheduleId: string,
+  err: unknown,
+): void {
+  console.error(
+    JSON.stringify({
+      level: "error",
+      service,
+      message:
+        "No se pudo registrar el evento de auditoría tras una mutación exitosa",
+      scheduleId,
+      error: err instanceof Error ? err.message : String(err),
+    }),
+  );
 }
 
 export function useScheduleForm(
@@ -95,31 +120,44 @@ export function useScheduleForm(
         if (scheduleId) {
           const before = schedule;
           const updated = await repo.update(scheduleId, values);
+          setSchedule(updated);
 
+          // El registro de auditoría es best-effort: la mutación YA se
+          // guardó, así que un fallo acá no debe reportarse como que el
+          // submit falló (el usuario reintentaría sobre datos ya
+          // actualizados, duplicando el efecto o pisando timestamps).
           if (before) {
             const fieldChanges = diffScheduleFields(before, updated);
             if (Object.keys(fieldChanges).length > 0) {
-              await eventRepo.create({
-                scheduleId: updated.id,
-                actorId: identity.profile.id,
-                actorDisplayName: identity.profile.displayName,
-                action: "updated",
-                changes: JSON.stringify(fieldChanges),
-                identityVerified: identity.verified,
-              });
+              try {
+                await eventRepo.create({
+                  scheduleId: updated.id,
+                  actorId: identity.profile.id,
+                  actorDisplayName: identity.profile.displayName,
+                  action: "updated",
+                  changes: JSON.stringify(fieldChanges),
+                  identityVerified: identity.verified,
+                });
+              } catch (err) {
+                logAuditFailure("useScheduleForm", updated.id, err);
+              }
             }
 
             if (before.status !== updated.status) {
-              await eventRepo.create({
-                scheduleId: updated.id,
-                actorId: identity.profile.id,
-                actorDisplayName: identity.profile.displayName,
-                action: "status_auto",
-                changes: JSON.stringify({
-                  status: { before: before.status, after: updated.status },
-                }),
-                identityVerified: identity.verified,
-              });
+              try {
+                await eventRepo.create({
+                  scheduleId: updated.id,
+                  actorId: identity.profile.id,
+                  actorDisplayName: identity.profile.displayName,
+                  action: "status_auto",
+                  changes: JSON.stringify({
+                    status: { before: before.status, after: updated.status },
+                  }),
+                  identityVerified: identity.verified,
+                });
+              } catch (err) {
+                logAuditFailure("useScheduleForm", updated.id, err);
+              }
             }
           }
 
@@ -128,17 +166,21 @@ export function useScheduleForm(
 
         const created = await repo.create(values);
         const fieldChanges = diffScheduleFields({}, created);
-        await eventRepo.create({
-          scheduleId: created.id,
-          actorId: identity.profile.id,
-          actorDisplayName: identity.profile.displayName,
-          action: "created",
-          changes:
-            Object.keys(fieldChanges).length > 0
-              ? JSON.stringify(fieldChanges)
-              : undefined,
-          identityVerified: identity.verified,
-        });
+        try {
+          await eventRepo.create({
+            scheduleId: created.id,
+            actorId: identity.profile.id,
+            actorDisplayName: identity.profile.displayName,
+            action: "created",
+            changes:
+              Object.keys(fieldChanges).length > 0
+                ? JSON.stringify(fieldChanges)
+                : undefined,
+            identityVerified: identity.verified,
+          });
+        } catch (err) {
+          logAuditFailure("useScheduleForm", created.id, err);
+        }
         return created;
       } catch {
         setError(
@@ -158,5 +200,16 @@ export function useScheduleForm(
     [repo, eventRepo, scheduleId, schedule, identityGate],
   );
 
-  return { schedule, isLoading, isSubmitting, error, submit };
+  const syncScheduleSnapshot = useCallback((updated: Schedule) => {
+    setSchedule(updated);
+  }, []);
+
+  return {
+    schedule,
+    isLoading,
+    isSubmitting,
+    error,
+    submit,
+    syncScheduleSnapshot,
+  };
 }

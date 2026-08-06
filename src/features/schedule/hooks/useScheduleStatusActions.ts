@@ -60,16 +60,42 @@ export function useScheduleStatusActions(
         }
 
         const updated = await perform();
-        await eventRepo.create({
-          scheduleId,
-          actorId: identity.profile.id,
-          actorDisplayName: identity.profile.displayName,
-          action,
-          changes: JSON.stringify({
-            status: { before: existing?.status ?? null, after: updated.status },
-          }),
-          identityVerified: identity.verified,
-        });
+
+        // Solo hay algo que auditar si el estado realmente cambió — evita un
+        // evento "status_auto" fantasma cuando assignOperario reasigna el
+        // operario sin que eso mueva el estado (ej. ya estaba en_proceso).
+        if (existing?.status !== updated.status) {
+          try {
+            await eventRepo.create({
+              scheduleId,
+              actorId: identity.profile.id,
+              actorDisplayName: identity.profile.displayName,
+              action,
+              changes: JSON.stringify({
+                status: {
+                  before: existing?.status ?? null,
+                  after: updated.status,
+                },
+              }),
+              identityVerified: identity.verified,
+            });
+          } catch (err) {
+            // La mutación YA se guardó — un fallo acá es solo del registro
+            // de auditoría, no de la acción en sí. Reportarla como fallida
+            // llevaría al usuario a reintentar sobre datos ya actualizados
+            // (ej. reescribir readyAt con una hora más tardía).
+            console.error(
+              JSON.stringify({
+                level: "error",
+                service: "useScheduleStatusActions",
+                message:
+                  "No se pudo registrar el evento de auditoría tras una mutación exitosa",
+                scheduleId,
+                error: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }
+        }
         return updated;
       } catch {
         setError("No se pudo actualizar el turno. Intenta nuevamente.");

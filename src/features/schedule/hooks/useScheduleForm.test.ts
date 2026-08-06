@@ -184,6 +184,30 @@ describe("useScheduleForm", () => {
       );
     });
 
+    it("devuelve el turno actualizado aunque falle el registro de auditoría del diff", async () => {
+      mockGetById.mockResolvedValueOnce(baseSchedule);
+      const updated: Schedule = { ...baseSchedule, notes: "Camisa nueva" };
+      mockUpdate.mockResolvedValueOnce(updated);
+      mockCreateEvent.mockRejectedValueOnce(new Error("network blip"));
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleForm(baseSchedule.id, identityGate),
+      );
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      let submitted: Schedule | null = null;
+      await act(async () => {
+        submitted = await result.current.submit({
+          ...input,
+          notes: "Camisa nueva",
+        });
+      });
+
+      expect(submitted).toEqual(updated);
+      expect(result.current.error).toBeNull();
+    });
+
     it("registra un evento 'status_auto' adicional cuando el status cambia por derivación", async () => {
       mockGetById.mockResolvedValueOnce({
         ...baseSchedule,
@@ -255,7 +279,7 @@ describe("useScheduleForm", () => {
     );
   });
 
-  it("libera la identidad aunque falle la creación del evento tras una mutación exitosa", async () => {
+  it("devuelve el turno creado aunque falle el registro de auditoría (la mutación ya se guardó)", async () => {
     mockCreate.mockResolvedValueOnce(baseSchedule);
     mockCreateEvent.mockRejectedValueOnce(new Error("network blip"));
     const identityGate = makeIdentityGate();
@@ -268,7 +292,8 @@ describe("useScheduleForm", () => {
       submitted = await result.current.submit(input);
     });
 
-    expect(submitted).toBeNull();
+    expect(submitted).toEqual(baseSchedule);
+    expect(result.current.error).toBeNull();
     expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
   });
 
