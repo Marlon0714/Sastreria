@@ -68,6 +68,9 @@ export function useScheduleStatusActions(
         setError("No se pudo actualizar el turno. Intenta nuevamente.");
         return null;
       } finally {
+        if (identity) {
+          identityGate.releaseIdentity();
+        }
         setIsProcessing(false);
         isRunningRef.current = false;
       }

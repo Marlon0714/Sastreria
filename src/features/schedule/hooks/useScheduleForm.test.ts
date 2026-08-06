@@ -134,9 +134,7 @@ describe("useScheduleForm", () => {
           identityVerified: true,
         }),
       );
-      // La liberación de identidad ahora es responsabilidad de la pantalla
-      // (al desmontar), no de este hook — un PIN vale para toda la visita.
-      expect(identityGate.releaseIdentity).not.toHaveBeenCalled();
+      expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
     });
 
     it("no guarda nada si no se pudo confirmar la identidad (PIN cancelado)", async () => {
@@ -235,7 +233,7 @@ describe("useScheduleForm", () => {
       });
 
       expect(mockCreateEvent).not.toHaveBeenCalled();
-      expect(identityGate.releaseIdentity).not.toHaveBeenCalled();
+      expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -257,7 +255,7 @@ describe("useScheduleForm", () => {
     );
   });
 
-  it("no libera la identidad si falla la creación del evento tras una mutación exitosa (la pantalla lo hace al salir)", async () => {
+  it("libera la identidad aunque falle la creación del evento tras una mutación exitosa", async () => {
     mockCreate.mockResolvedValueOnce(baseSchedule);
     mockCreateEvent.mockRejectedValueOnce(new Error("network blip"));
     const identityGate = makeIdentityGate();
@@ -271,7 +269,7 @@ describe("useScheduleForm", () => {
     });
 
     expect(submitted).toBeNull();
-    expect(identityGate.releaseIdentity).not.toHaveBeenCalled();
+    expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
   });
 
   it("ignora un segundo submit concurrente mientras el primero sigue en curso", async () => {

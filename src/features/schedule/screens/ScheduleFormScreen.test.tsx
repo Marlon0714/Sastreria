@@ -138,27 +138,6 @@ jest.mock("../components/ScheduleHistoryList", () => ({
   ScheduleHistoryList: () => null,
 }));
 
-const mockReleaseIdentity = jest.fn();
-
-jest.mock("../../auth/hooks/useIdentityGate", () => ({
-  useIdentityGate: () => ({
-    requireIdentity: jest.fn(async () => ({
-      profile: { id: "user-1", displayName: "Ana", role: "operario" },
-      verified: true,
-    })),
-    releaseIdentity: mockReleaseIdentity,
-    isPinPromptVisible: false,
-    pinError: null,
-    submitPin: jest.fn(),
-    cancelPinPrompt: jest.fn(),
-    isOfflineActorPickerVisible: false,
-    offlineOperarios: [],
-    isLoadingOfflineOperarios: false,
-    submitOfflineActor: jest.fn(),
-    cancelOfflineActorPicker: jest.fn(),
-  }),
-}));
-
 type ScreenProps = React.ComponentProps<typeof ScheduleFormScreen>;
 
 function buildProps(
@@ -194,7 +173,6 @@ const schedule: Schedule = {
 
 describe("ScheduleFormScreen", () => {
   beforeEach(() => {
-    mockReleaseIdentity.mockClear();
     mockUseScheduleForm.mockReset();
     mockUseDeleteSchedule.mockReset();
     mockUseDeleteSchedule.mockReturnValue({
@@ -415,26 +393,6 @@ describe("ScheduleFormScreen", () => {
         }),
       );
     });
-  });
-
-  it("libera la identidad de dispositivo compartido al salir de la pantalla, no en cada acción", () => {
-    mockUseScheduleForm.mockReturnValue({
-      schedule: null,
-      isLoading: false,
-      isSubmitting: false,
-      error: null,
-      submit: jest.fn(async () => Promise.resolve(null)),
-    });
-
-    const { unmount } = render(
-      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
-    );
-
-    expect(mockReleaseIdentity).not.toHaveBeenCalled();
-
-    unmount();
-
-    expect(mockReleaseIdentity).toHaveBeenCalledTimes(1);
   });
 
   it("pre-fills fields, muestra el estado y el botón de eliminar en modo edición", async () => {

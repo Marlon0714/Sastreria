@@ -93,9 +93,7 @@ describe("useDeleteSchedule", () => {
         identityVerified: true,
       }),
     );
-    // La liberación de identidad ahora es responsabilidad de la pantalla
-    // (al desmontar), no de este hook — un PIN vale para toda la visita.
-    expect(identityGate.releaseIdentity).not.toHaveBeenCalled();
+    expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
     expect(result.current.isDeleting).toBe(false);
   });
@@ -120,7 +118,7 @@ describe("useDeleteSchedule", () => {
     );
   });
 
-  it("returns false and sets error on failure, sin liberar la identidad (la pantalla lo hace al salir)", async () => {
+  it("returns false and sets error on failure, pero igual libera la identidad ya resuelta", async () => {
     mockDelete.mockRejectedValueOnce(new Error("boom"));
     const identityGate = makeIdentityGate();
     const { result } = renderHook(() => useDeleteSchedule(identityGate));
@@ -134,7 +132,7 @@ describe("useDeleteSchedule", () => {
     expect(result.current.error).toBe(
       "No se pudo eliminar el turno. Intenta nuevamente.",
     );
-    expect(identityGate.releaseIdentity).not.toHaveBeenCalled();
+    expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
   });
 
   it("ignora una segunda llamada concurrente mientras la primera sigue en curso", async () => {
