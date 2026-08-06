@@ -816,6 +816,41 @@ ALTER TABLE schedules ADD COLUMN IF NOT EXISTS unregistered_client_name TEXT;
 
 ---
 
+### v30_client_tallas_recreate (2026-08-06)
+
+**Contexto:** el dueño confirmó (vía `SELECT table_schema, table_name FROM information_schema.tables WHERE table_name = 'client_tallas';`) que la tabla `client_tallas` ya no existe en Supabase — se borró en algún momento sin que quedara registrado por qué. Estaba vacía, así que no hay pérdida de datos: se recrea igual que en `v12_client_tallas`, sin cambios de esquema.
+
+```sql
+CREATE TABLE IF NOT EXISTS client_tallas (
+  id TEXT PRIMARY KEY NOT NULL,
+  client_id TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('camisa', 'pantalon', 'saco', 'chaleco')),
+  value TEXT NOT NULL,
+  notes TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+  UNIQUE(client_id, type),
+  FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_client_tallas_client_id ON client_tallas (client_id);
+
+ALTER TABLE client_tallas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "authenticated all client_tallas" ON client_tallas;
+CREATE POLICY "authenticated all client_tallas"
+  ON client_tallas
+  FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
