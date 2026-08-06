@@ -11,6 +11,8 @@ const mockMarkReady = jest.fn<(id: string) => Promise<Schedule>>();
 const mockMarkDelivered = jest.fn<(id: string) => Promise<Schedule>>();
 const mockApplyManualCorrection =
   jest.fn<(id: string, status: Schedule["status"]) => Promise<Schedule>>();
+const mockUpdate =
+  jest.fn<(id: string, data: { operarioId?: string }) => Promise<Schedule>>();
 
 jest.mock("../../../data/local/scheduleDependencies", () => ({
   getDefaultScheduleRepository: () => ({
@@ -19,6 +21,8 @@ jest.mock("../../../data/local/scheduleDependencies", () => ({
     markDelivered: (id: string) => mockMarkDelivered(id),
     applyManualCorrection: (id: string, status: Schedule["status"]) =>
       mockApplyManualCorrection(id, status),
+    update: (id: string, data: { operarioId?: string }) =>
+      mockUpdate(id, data),
   }),
 }));
 
@@ -76,6 +80,7 @@ describe("useScheduleStatusActions", () => {
     mockMarkReady.mockReset();
     mockMarkDelivered.mockReset();
     mockApplyManualCorrection.mockReset();
+    mockUpdate.mockReset();
     mockCreateEvent.mockReset();
     mockGetById.mockResolvedValue(baseSchedule);
   });
@@ -164,6 +169,74 @@ describe("useScheduleStatusActions", () => {
           }),
         }),
       );
+    });
+  });
+
+  describe("assignOperario", () => {
+    it("asigna el operario vía update() y registra el cambio como 'status_auto'", async () => {
+      const updated: Schedule = {
+        ...baseSchedule,
+        operarioId: "operario-1",
+        status: "en_proceso",
+      };
+      mockUpdate.mockResolvedValueOnce(updated);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      let resolved: Schedule | null = null;
+      await act(async () => {
+        resolved = await result.current.assignOperario("operario-1");
+      });
+
+      expect(mockUpdate).toHaveBeenCalledWith(baseSchedule.id, {
+        operarioId: "operario-1",
+      });
+      expect(resolved).toEqual(updated);
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "status_auto",
+          changes: JSON.stringify({
+            status: { before: "en_proceso", after: "en_proceso" },
+          }),
+        }),
+      );
+      expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
+    });
+
+    it("pide identidad antes de asignar, y no asigna si se cancela", async () => {
+      const identityGate = makeIdentityGate({
+        requireIdentity: jest.fn(async () => Promise.resolve(null)),
+      });
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      let resolved: Schedule | null = baseSchedule;
+      await act(async () => {
+        resolved = await result.current.assignOperario("operario-1");
+      });
+
+      expect(resolved).toBeNull();
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it("permite quitar el operario asignado con undefined", async () => {
+      const updated: Schedule = { ...baseSchedule, operarioId: undefined };
+      mockUpdate.mockResolvedValueOnce(updated);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      await act(async () => {
+        await result.current.assignOperario(undefined);
+      });
+
+      expect(mockUpdate).toHaveBeenCalledWith(baseSchedule.id, {
+        operarioId: undefined,
+      });
     });
   });
 

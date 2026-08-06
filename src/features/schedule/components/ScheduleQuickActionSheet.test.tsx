@@ -4,6 +4,12 @@ import { fireEvent, render } from "@testing-library/react-native";
 import type { Schedule } from "../domain/types";
 import { ScheduleQuickActionSheet } from "./ScheduleQuickActionSheet";
 
+jest.mock("../../../data/local/profilesCacheDependencies", () => ({
+  getDefaultProfilesCacheRepository: () => ({
+    getOperarios: jest.fn(async () => Promise.resolve([])),
+  }),
+}));
+
 const baseSchedule: Schedule = {
   id: "schedule-1",
   clientId: "client-1",
@@ -29,6 +35,7 @@ describe("ScheduleQuickActionSheet", () => {
         error={null}
         onMarkReady={jest.fn()}
         onMarkDelivered={jest.fn()}
+        onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -47,6 +54,7 @@ describe("ScheduleQuickActionSheet", () => {
         error={null}
         onMarkReady={jest.fn()}
         onMarkDelivered={jest.fn()}
+        onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -66,6 +74,7 @@ describe("ScheduleQuickActionSheet", () => {
         error={null}
         onMarkReady={jest.fn()}
         onMarkDelivered={jest.fn()}
+        onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -85,6 +94,7 @@ describe("ScheduleQuickActionSheet", () => {
         error={null}
         onMarkReady={jest.fn()}
         onMarkDelivered={jest.fn()}
+        onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -104,6 +114,7 @@ describe("ScheduleQuickActionSheet", () => {
         error={null}
         onMarkReady={jest.fn()}
         onMarkDelivered={jest.fn()}
+        onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -128,6 +139,7 @@ describe("ScheduleQuickActionSheet", () => {
         error={null}
         onMarkReady={onMarkReady}
         onMarkDelivered={onMarkDelivered}
+        onAssignOperario={jest.fn()}
         onViewDetail={onViewDetail}
         onClose={onClose}
       />,
@@ -142,7 +154,7 @@ describe("ScheduleQuickActionSheet", () => {
     fireEvent.press(getByLabelText("Ver turno completo"));
     expect(onViewDetail).toHaveBeenCalledTimes(1);
 
-    fireEvent.press(getByLabelText("Cancelar"));
+    fireEvent.press(getByLabelText("Cerrar"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -156,6 +168,7 @@ describe("ScheduleQuickActionSheet", () => {
         error={null}
         onMarkReady={jest.fn()}
         onMarkDelivered={jest.fn()}
+        onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -182,6 +195,7 @@ describe("ScheduleQuickActionSheet", () => {
         error="No se pudo actualizar el turno. Intenta nuevamente."
         onMarkReady={jest.fn()}
         onMarkDelivered={jest.fn()}
+        onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
       />,

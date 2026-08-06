@@ -15,6 +15,13 @@ interface UseScheduleStatusActionsResult {
   markDelivered: () => Promise<Schedule | null>;
   /** Válvula de escape para casos excepcionales — fija el status elegido sin ninguna regla. */
   applyCorrection: (newStatus: ScheduleStatus) => Promise<Schedule | null>;
+  /**
+   * Asigna (o quita, con `undefined`) el operario sin pasar por el
+   * formulario completo — al igual que en el formulario, esto deriva
+   * "en_proceso" automáticamente salvo que el estado ya esté bloqueado o
+   * sea uno de los finales (`listo_para_entregar`/`entregado`).
+   */
+  assignOperario: (operarioId: string | undefined) => Promise<Schedule | null>;
 }
 
 export function useScheduleStatusActions(
@@ -96,5 +103,18 @@ export function useScheduleStatusActions(
     [runAction, repo, scheduleId],
   );
 
-  return { isProcessing, error, markReady, markDelivered, applyCorrection };
+  const assignOperario = useCallback(
+    (operarioId: string | undefined) =>
+      runAction("status_auto", () => repo.update(scheduleId, { operarioId })),
+    [runAction, repo, scheduleId],
+  );
+
+  return {
+    isProcessing,
+    error,
+    markReady,
+    markDelivered,
+    applyCorrection,
+    assignOperario,
+  };
 }

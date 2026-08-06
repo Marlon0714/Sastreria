@@ -81,7 +81,19 @@ jest.mock("../components/ScheduleDateTimePickerField", () => {
 
 const mockMarkReady = jest.fn<() => Promise<Schedule | null>>();
 const mockMarkDelivered = jest.fn<() => Promise<Schedule | null>>();
+const mockAssignOperario =
+  jest.fn<(operarioId: string | undefined) => Promise<Schedule | null>>();
 const mockReleaseIdentity = jest.fn();
+
+const mockGetOperarios = jest.fn(async () => Promise.resolve<
+  { id: string; displayName: string; role: string; isSharedDevice: boolean }[]
+>([]));
+
+jest.mock("../../../data/local/profilesCacheDependencies", () => ({
+  getDefaultProfilesCacheRepository: () => ({
+    getOperarios: () => mockGetOperarios(),
+  }),
+}));
 
 jest.mock("../../auth/hooks/useIdentityGate", () => ({
   useIdentityGate: () => ({
@@ -109,6 +121,8 @@ jest.mock("../hooks/useScheduleStatusActions", () => ({
     markReady: () => mockMarkReady(),
     markDelivered: () => mockMarkDelivered(),
     applyCorrection: jest.fn(async () => Promise.resolve(null)),
+    assignOperario: (operarioId: string | undefined) =>
+      mockAssignOperario(operarioId),
   }),
 }));
 
@@ -196,6 +210,9 @@ describe("ScheduleDayViewScreen", () => {
     mockFindAll.mockResolvedValue([client]);
     mockMarkReady.mockReset();
     mockMarkDelivered.mockReset();
+    mockAssignOperario.mockReset();
+    mockGetOperarios.mockReset();
+    mockGetOperarios.mockResolvedValue([]);
     mockReleaseIdentity.mockClear();
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [],
@@ -469,7 +486,48 @@ describe("ScheduleDayViewScreen", () => {
       expect(await findByLabelText("Marcar entregado")).toBeTruthy();
     });
 
-    it("cierra el panel al presionar Cancelar", async () => {
+    it("permite asignar un operario desde el panel sin entrar al turno completo", async () => {
+      mockGetOperarios.mockResolvedValue([
+        {
+          id: "operario-1",
+          displayName: "Luis Gómez",
+          role: "operario",
+          isSharedDevice: false,
+        },
+      ]);
+      const reload = jest.fn(async () => Promise.resolve());
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [scheduledOne],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload,
+      });
+      mockAssignOperario.mockResolvedValueOnce({
+        ...scheduledOne,
+        operarioId: "operario-1",
+        status: "en_proceso",
+      });
+
+      const { findByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(
+        await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+      );
+      fireEvent.press(await findByLabelText("Seleccionar operario"));
+      fireEvent.press(await findByLabelText("Elegir a Luis Gómez"));
+
+      await waitFor(() => {
+        expect(mockAssignOperario).toHaveBeenCalledWith("operario-1");
+      });
+      await waitFor(() => {
+        expect(reload).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("cierra el panel al presionar Cerrar", async () => {
       mockUseScheduleDayView.mockReturnValue({
         dateSchedules: [scheduledOne],
         pendingSchedules: [],
@@ -485,33 +543,13 @@ describe("ScheduleDayViewScreen", () => {
       fireEvent.press(
         await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
       );
-      expect(getByLabelText("Cancelar")).toBeTruthy();
+      expect(getByLabelText("Cerrar")).toBeTruthy();
 
-      fireEvent.press(getByLabelText("Cancelar"));
+      fireEvent.press(getByLabelText("Cerrar"));
 
       expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
     });
 
-    it("libera la identidad de dispositivo compartido al salir de la Agenda", async () => {
-      mockUseScheduleDayView.mockReturnValue({
-        dateSchedules: [scheduledOne],
-        pendingSchedules: [],
-        isLoading: false,
-        error: null,
-        reload: jest.fn(async () => Promise.resolve()),
-      });
-
-      const { unmount, findByLabelText } = render(
-        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
-      );
-      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)");
-
-      expect(mockReleaseIdentity).not.toHaveBeenCalled();
-
-      unmount();
-
-      expect(mockReleaseIdentity).toHaveBeenCalledTimes(1);
-    });
   });
 
   it("muestra el precio en la card del turno cuando tiene precio", async () => {

@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../../../shared/theme/colors";
 import type { Schedule, ScheduleStatus } from "../domain/types";
+import { OperarioPickerField } from "./OperarioPickerField";
 
 const STATUS_LABELS: Record<ScheduleStatus, string> = {
   pendiente: "Pendiente",
@@ -20,6 +21,7 @@ interface ScheduleQuickActionSheetProps {
   error: string | null;
   onMarkReady: () => void;
   onMarkDelivered: () => void;
+  onAssignOperario: (operarioId: string | undefined) => void;
   onViewDetail: () => void;
   onClose: () => void;
 }
@@ -39,6 +41,7 @@ export function ScheduleQuickActionSheet({
   error,
   onMarkReady,
   onMarkDelivered,
+  onAssignOperario,
   onViewDetail,
   onClose,
 }: ScheduleQuickActionSheetProps) {
@@ -72,6 +75,14 @@ export function ScheduleQuickActionSheet({
         </Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Operario asignado</Text>
+          <OperarioPickerField
+            value={schedule.operarioId}
+            onChange={onAssignOperario}
+          />
+        </View>
 
         {canMarkReady ? (
           <Pressable
@@ -108,11 +119,11 @@ export function ScheduleQuickActionSheet({
         </Pressable>
 
         <Pressable
-          accessibilityLabel="Cancelar"
+          accessibilityLabel="Cerrar"
           style={styles.cancelButton}
           onPress={onClose}
         >
-          <Text style={styles.cancelButtonText}>Cancelar</Text>
+          <Text style={styles.cancelButtonText}>Cerrar</Text>
         </Pressable>
       </View>
     </Modal>
@@ -154,6 +165,14 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: colors.danger,
+  },
+  fieldGroup: {
+    gap: 4,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textMuted,
   },
   actionButton: {
     flexDirection: "row",
