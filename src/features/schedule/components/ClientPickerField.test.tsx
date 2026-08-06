@@ -1,9 +1,23 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { useState } from "react";
 import { Alert } from "react-native";
 
 import type { Client, CreateClientDTO } from "../../clients/domain/types";
 import { ClientPickerField } from "./ClientPickerField";
+
+function ControlledHarness({ initialClientId }: { initialClientId?: string }) {
+  const [clientId, setClientId] = useState<string | undefined>(
+    initialClientId,
+  );
+  return (
+    <ClientPickerField
+      clientId={clientId}
+      onChangeClientId={setClientId}
+      onChangeUnregisteredName={jest.fn()}
+    />
+  );
+}
 
 const mockFindAll = jest.fn<() => Promise<Client[]>>();
 const mockCreate = jest.fn<(dto: CreateClientDTO) => Promise<Client>>();
@@ -59,60 +73,115 @@ describe("ClientPickerField", () => {
     mockFindAll.mockResolvedValue(clients);
   });
 
-  it("shows a placeholder when no client is selected", async () => {
-    const { findByText } = render(
-      <ClientPickerField value="" onChange={jest.fn()} />,
+  it("muestra un campo de nombre vacío cuando no hay cliente ni nombre", async () => {
+    const { findByLabelText } = render(
+      <ClientPickerField
+        onChangeClientId={jest.fn()}
+        onChangeUnregisteredName={jest.fn()}
+      />,
     );
 
-    expect(await findByText("Toca para elegir un cliente")).toBeTruthy();
+    expect((await findByLabelText("Nombre del cliente")).props.value).toBe("");
   });
 
-  it("shows the selected client's name", async () => {
-    const { findByText } = render(
-      <ClientPickerField value={clients[0]!.id} onChange={jest.fn()} />,
+  it("muestra el nombre del cliente vinculado como chip, no como texto editable", async () => {
+    const { findByText, queryByLabelText } = render(
+      <ClientPickerField
+        clientId={clients[0]!.id}
+        onChangeClientId={jest.fn()}
+        onChangeUnregisteredName={jest.fn()}
+      />,
     );
 
     expect(await findByText("Ana Torres")).toBeTruthy();
+    expect(queryByLabelText("Nombre del cliente")).toBeNull();
   });
 
-  it("shows client phone numbers in the search results to disambiguate homónimos", async () => {
-    const { findByLabelText, getByText } = render(
-      <ClientPickerField value="" onChange={jest.fn()} />,
+  it("al escribir un nombre, se reporta como nombre sin registrar", async () => {
+    const onChangeUnregisteredName = jest.fn();
+    const { findByLabelText } = render(
+      <ClientPickerField
+        onChangeClientId={jest.fn()}
+        onChangeUnregisteredName={onChangeUnregisteredName}
+      />,
     );
 
-    fireEvent.press(await findByLabelText("Seleccionar cliente"));
+    fireEvent.changeText(
+      await findByLabelText("Nombre del cliente"),
+      "Pedro",
+    );
 
-    expect(getByText("3001234567")).toBeTruthy();
-    expect(getByText("3009998877")).toBeTruthy();
+    expect(onChangeUnregisteredName).toHaveBeenCalledWith("Pedro");
   });
 
-  it("opens the search list, filters and selects a client", async () => {
-    const onChange = jest.fn();
-    const { findByLabelText, getByLabelText, getByText, queryByText } =
-      render(<ClientPickerField value="" onChange={onChange} />);
+  it("borrar el texto reporta el nombre sin registrar como undefined", async () => {
+    const onChangeUnregisteredName = jest.fn();
+    const { findByLabelText } = render(
+      <ClientPickerField
+        unregisteredName="Pedro"
+        onChangeClientId={jest.fn()}
+        onChangeUnregisteredName={onChangeUnregisteredName}
+      />,
+    );
 
-    const selector = await findByLabelText("Seleccionar cliente");
-    fireEvent.press(selector);
+    fireEvent.changeText(await findByLabelText("Nombre del cliente"), "");
 
-    await waitFor(() => {
-      expect(getByLabelText("Buscar cliente")).toBeTruthy();
-    });
+    expect(onChangeUnregisteredName).toHaveBeenCalledWith(undefined);
+  });
 
-    fireEvent.changeText(getByLabelText("Buscar cliente"), "juan");
+  it("sugiere clientes existentes que coinciden con el nombre escrito", async () => {
+    const { findByLabelText, getByText, queryByText } = render(
+      <ClientPickerField
+        onChangeClientId={jest.fn()}
+        onChangeUnregisteredName={jest.fn()}
+      />,
+    );
+
+    fireEvent.changeText(
+      await findByLabelText("Nombre del cliente"),
+      "juan",
+    );
 
     expect(getByText("Juan Pérez")).toBeTruthy();
+    expect(getByText("3009998877")).toBeTruthy();
     expect(queryByText("Ana Torres")).toBeNull();
-
-    fireEvent.press(getByLabelText("Elegir a Juan Pérez (3009998877)"));
-
-    expect(onChange).toHaveBeenCalledWith(clients[1]!.id);
   });
 
-  it("shows an error message when provided", async () => {
+  it("elegir una sugerencia vincula el cliente y limpia el nombre sin registrar", async () => {
+    const onChangeClientId = jest.fn();
+    const onChangeUnregisteredName = jest.fn();
+    const { findByLabelText, getByLabelText } = render(
+      <ClientPickerField
+        onChangeClientId={onChangeClientId}
+        onChangeUnregisteredName={onChangeUnregisteredName}
+      />,
+    );
+
+    fireEvent.changeText(
+      await findByLabelText("Nombre del cliente"),
+      "juan",
+    );
+    fireEvent.press(getByLabelText("Elegir a Juan Pérez (3009998877)"));
+
+    expect(onChangeClientId).toHaveBeenCalledWith(clients[1]!.id);
+    expect(onChangeUnregisteredName).toHaveBeenCalledWith(undefined);
+  });
+
+  it("permite cambiar un cliente ya vinculado para volver a escribir un nombre", async () => {
+    const { findByLabelText, getByLabelText } = render(
+      <ControlledHarness initialClientId={clients[0]!.id} />,
+    );
+
+    fireEvent.press(await findByLabelText("Cambiar cliente"));
+
+    expect(getByLabelText("Nombre del cliente")).toBeTruthy();
+  });
+
+  it("muestra un mensaje de error cuando se provee", async () => {
     const { findByText } = render(
       <ClientPickerField
-        value=""
-        onChange={jest.fn()}
+        onChangeClientId={jest.fn()}
+        onChangeUnregisteredName={jest.fn()}
         errorMessage="El cliente es inválido"
       />,
     );
@@ -120,35 +189,23 @@ describe("ClientPickerField", () => {
     expect(await findByText("El cliente es inválido")).toBeTruthy();
   });
 
-  describe("alta rápida de cliente", () => {
-    it("prellena el nombre con el texto buscado al abrir el alta rápida", async () => {
-      const { findByLabelText, getByLabelText } = render(
-        <ClientPickerField value="" onChange={jest.fn()} />,
-      );
-
-      fireEvent.press(await findByLabelText("Seleccionar cliente"));
-      fireEvent.changeText(getByLabelText("Buscar cliente"), "María Gómez");
-      fireEvent.press(getByLabelText("Crear cliente nuevo"));
-
-      expect(getByLabelText("Nombre del cliente nuevo").props.value).toBe(
-        "María Gómez",
-      );
-    });
-
-    it("crea un cliente nuevo con teléfono opcional y lo selecciona", async () => {
+  describe("registrar cliente", () => {
+    it("crea un cliente nuevo con el nombre ya escrito, apellido y teléfono opcional, y lo vincula", async () => {
       mockCreate.mockResolvedValueOnce(newClient);
-      const onChange = jest.fn();
+      const onChangeClientId = jest.fn();
+      const onChangeUnregisteredName = jest.fn();
       const { findByLabelText, getByLabelText } = render(
-        <ClientPickerField value="" onChange={onChange} />,
+        <ClientPickerField
+          onChangeClientId={onChangeClientId}
+          onChangeUnregisteredName={onChangeUnregisteredName}
+        />,
       );
-
-      fireEvent.press(await findByLabelText("Seleccionar cliente"));
-      fireEvent.press(getByLabelText("Crear cliente nuevo"));
 
       fireEvent.changeText(
-        getByLabelText("Nombre del cliente nuevo"),
+        await findByLabelText("Nombre del cliente"),
         "María",
       );
+      fireEvent.press(getByLabelText("Registrar cliente"));
       fireEvent.changeText(
         getByLabelText("Apellido del cliente nuevo"),
         "Gómez",
@@ -157,7 +214,7 @@ describe("ClientPickerField", () => {
         getByLabelText("Teléfono del cliente nuevo"),
         "300 555 4433",
       );
-      fireEvent.press(getByLabelText("Guardar cliente nuevo"));
+      fireEvent.press(getByLabelText("Crear cliente"));
 
       await waitFor(() => {
         expect(mockCreate).toHaveBeenCalledWith({
@@ -166,17 +223,20 @@ describe("ClientPickerField", () => {
           phone: "3005554433",
         });
       });
-      expect(onChange).toHaveBeenCalledWith(newClient.id);
+      expect(onChangeClientId).toHaveBeenCalledWith(newClient.id);
+      expect(onChangeUnregisteredName).toHaveBeenCalledWith(undefined);
     });
 
-    it("requiere nombre y apellido antes de guardar", async () => {
+    it("requiere nombre y apellido antes de crear", async () => {
       const { findByLabelText, getByLabelText, findByText } = render(
-        <ClientPickerField value="" onChange={jest.fn()} />,
+        <ClientPickerField
+          onChangeClientId={jest.fn()}
+          onChangeUnregisteredName={jest.fn()}
+        />,
       );
 
-      fireEvent.press(await findByLabelText("Seleccionar cliente"));
-      fireEvent.press(getByLabelText("Crear cliente nuevo"));
-      fireEvent.press(getByLabelText("Guardar cliente nuevo"));
+      fireEvent.press(await findByLabelText("Registrar cliente"));
+      fireEvent.press(getByLabelText("Crear cliente"));
 
       expect(
         await findByText("Nombre y apellido son obligatorios."),
@@ -191,21 +251,23 @@ describe("ClientPickerField", () => {
         );
         void useExisting?.onPress?.();
       });
-      const onChange = jest.fn();
+      const onChangeClientId = jest.fn();
       const { findByLabelText, getByLabelText } = render(
-        <ClientPickerField value="" onChange={onChange} />,
+        <ClientPickerField
+          onChangeClientId={onChangeClientId}
+          onChangeUnregisteredName={jest.fn()}
+        />,
       );
 
-      fireEvent.press(await findByLabelText("Seleccionar cliente"));
-      fireEvent.press(getByLabelText("Crear cliente nuevo"));
-      fireEvent.changeText(getByLabelText("Nombre del cliente nuevo"), "Ana");
+      fireEvent.changeText(await findByLabelText("Nombre del cliente"), "Ana");
+      fireEvent.press(getByLabelText("Registrar cliente"));
       fireEvent.changeText(
         getByLabelText("Apellido del cliente nuevo"),
         "Torres",
       );
-      fireEvent.press(getByLabelText("Guardar cliente nuevo"));
+      fireEvent.press(getByLabelText("Crear cliente"));
 
-      expect(onChange).toHaveBeenCalledWith(clients[0]!.id);
+      expect(onChangeClientId).toHaveBeenCalledWith(clients[0]!.id);
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
@@ -218,36 +280,40 @@ describe("ClientPickerField", () => {
         void createAnyway?.onPress?.();
       });
       const { findByLabelText, getByLabelText } = render(
-        <ClientPickerField value="" onChange={jest.fn()} />,
+        <ClientPickerField
+          onChangeClientId={jest.fn()}
+          onChangeUnregisteredName={jest.fn()}
+        />,
       );
 
-      fireEvent.press(await findByLabelText("Seleccionar cliente"));
-      fireEvent.press(getByLabelText("Crear cliente nuevo"));
-      fireEvent.changeText(getByLabelText("Nombre del cliente nuevo"), "Ana");
+      fireEvent.changeText(await findByLabelText("Nombre del cliente"), "Ana");
+      fireEvent.press(getByLabelText("Registrar cliente"));
       fireEvent.changeText(
         getByLabelText("Apellido del cliente nuevo"),
         "Torres",
       );
-      fireEvent.press(getByLabelText("Guardar cliente nuevo"));
+      fireEvent.press(getByLabelText("Crear cliente"));
 
       await waitFor(() => {
         expect(mockCreate).toHaveBeenCalled();
       });
     });
 
-    it("cancela el alta rápida y vuelve a la búsqueda", async () => {
+    it("cancela el registro y vuelve al campo de nombre", async () => {
       const { findByLabelText, getByLabelText, queryByLabelText } = render(
-        <ClientPickerField value="" onChange={jest.fn()} />,
+        <ClientPickerField
+          onChangeClientId={jest.fn()}
+          onChangeUnregisteredName={jest.fn()}
+        />,
       );
 
-      fireEvent.press(await findByLabelText("Seleccionar cliente"));
-      fireEvent.press(getByLabelText("Crear cliente nuevo"));
-      expect(getByLabelText("Nombre del cliente nuevo")).toBeTruthy();
+      fireEvent.press(await findByLabelText("Registrar cliente"));
+      expect(getByLabelText("Apellido del cliente nuevo")).toBeTruthy();
 
-      fireEvent.press(getByLabelText("Cancelar cliente nuevo"));
+      fireEvent.press(getByLabelText("Cancelar registro de cliente"));
 
-      expect(queryByLabelText("Nombre del cliente nuevo")).toBeNull();
-      expect(getByLabelText("Buscar cliente")).toBeTruthy();
+      expect(queryByLabelText("Apellido del cliente nuevo")).toBeNull();
+      expect(getByLabelText("Nombre del cliente")).toBeTruthy();
     });
   });
 });

@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,28 +19,32 @@ import {
   normalizeText,
 } from "../../../shared/utils/textSearch";
 
+const MAX_SUGGESTIONS = 5;
+
 interface ClientPickerFieldProps {
-  value: string;
-  onChange: (clientId: string) => void;
+  clientId?: string;
+  unregisteredName?: string;
+  onChangeClientId: (clientId: string | undefined) => void;
+  onChangeUnregisteredName: (name: string | undefined) => void;
   errorMessage?: string;
 }
 
 export function ClientPickerField({
-  value,
-  onChange,
+  clientId,
+  unregisteredName,
+  onChangeClientId,
+  onChangeUnregisteredName,
   errorMessage,
 }: ClientPickerFieldProps) {
   const clientRepository = useClientRepository();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [nameInput, setNameInput] = useState(unregisteredName ?? "");
 
-  const [isAddingClient, setIsAddingClient] = useState(false);
-  const [newFirstName, setNewFirstName] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
   const [newLastName, setNewLastName] = useState("");
   const [newPhone, setNewPhone] = useState("");
-  const [addClientError, setAddClientError] = useState<string | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
 
   useEffect(() => {
@@ -63,69 +66,81 @@ export function ClientPickerField({
     };
   }, [clientRepository]);
 
+  // Mantiene el texto sincronizado si el nombre "sin registrar" cambia desde
+  // afuera (ej. al cargar un turno existente en el formulario de edición).
+  useEffect(() => {
+    if (!clientId) {
+      setNameInput(unregisteredName ?? "");
+    }
+  }, [unregisteredName, clientId]);
+
   const selectedClient = useMemo(
-    () => clients.find((client) => client.id === value) ?? null,
-    [clients, value],
+    () => (clientId ? (clients.find((c) => c.id === clientId) ?? null) : null),
+    [clients, clientId],
   );
 
-  const filteredClients = useMemo(() => {
-    const normalizedQuery = normalizeText(searchTerm);
+  const suggestions = useMemo(() => {
+    const normalizedQuery = normalizeText(nameInput.trim());
     if (!normalizedQuery) {
-      return clients;
+      return [];
     }
-    const numericQuery = normalizePhone(searchTerm);
-    return clients.filter((client) => {
-      const normalizedName = normalizeText(
-        `${client.firstName} ${client.lastName}`,
-      );
-      return (
-        normalizedName.includes(normalizedQuery) ||
-        (numericQuery
-          ? normalizePhone(client.phone).includes(numericQuery)
-          : false)
-      );
-    });
-  }, [clients, searchTerm]);
+    const numericQuery = normalizePhone(nameInput);
+    return clients
+      .filter((client) => {
+        const normalizedName = normalizeText(
+          `${client.firstName} ${client.lastName}`,
+        );
+        return (
+          normalizedName.includes(normalizedQuery) ||
+          (numericQuery
+            ? normalizePhone(client.phone).includes(numericQuery)
+            : false)
+        );
+      })
+      .slice(0, MAX_SUGGESTIONS);
+  }, [clients, nameInput]);
 
-  const resetAddClientState = (): void => {
-    setIsAddingClient(false);
-    setNewFirstName("");
+  const resetRegisterState = (): void => {
+    setIsRegistering(false);
     setNewLastName("");
     setNewPhone("");
-    setAddClientError(null);
+    setRegisterError(null);
   };
 
-  const closePicker = (): void => {
-    setSearchTerm("");
-    resetAddClientState();
-    setIsOpen(false);
+  const selectClient = (client: Client): void => {
+    onChangeClientId(client.id);
+    onChangeUnregisteredName(undefined);
+    setNameInput(`${client.firstName} ${client.lastName}`);
+    resetRegisterState();
   };
 
-  const createNewClient = async (): Promise<void> => {
+  const createNewClient = async (
+    firstName: string,
+    lastName: string,
+  ): Promise<void> => {
     setIsCreatingClient(true);
-    setAddClientError(null);
+    setRegisterError(null);
     try {
       const created = await clientRepository.create({
-        firstName: newFirstName.trim(),
-        lastName: newLastName.trim(),
+        firstName,
+        lastName,
         phone: newPhone.trim() ? normalizeDigitsInput(newPhone.trim()) : "",
       });
       setClients((prev) => [...prev, created]);
-      onChange(created.id);
-      closePicker();
+      selectClient(created);
     } catch {
-      setAddClientError("No se pudo crear el cliente. Intenta nuevamente.");
+      setRegisterError("No se pudo crear el cliente. Intenta nuevamente.");
     } finally {
       setIsCreatingClient(false);
     }
   };
 
-  const handleSaveNewClient = (): void => {
-    const firstName = newFirstName.trim();
+  const handleRegisterPress = (): void => {
+    const firstName = nameInput.trim();
     const lastName = newLastName.trim();
 
     if (!firstName || !lastName) {
-      setAddClientError("Nombre y apellido son obligatorios.");
+      setRegisterError("Nombre y apellido son obligatorios.");
       return;
     }
 
@@ -140,103 +155,44 @@ export function ClientPickerField({
           { text: "Cancelar", style: "cancel" },
           {
             text: "Usar este cliente",
-            onPress: () => {
-              onChange(duplicate.id);
-              closePicker();
-            },
+            onPress: () => selectClient(duplicate),
           },
           {
             text: "Crear de todos modos",
-            onPress: () => void createNewClient(),
+            onPress: () => void createNewClient(firstName, lastName),
           },
         ],
       );
       return;
     }
 
-    void createNewClient();
+    void createNewClient(firstName, lastName);
   };
 
   if (isLoading) {
     return <ActivityIndicator accessibilityLabel="Cargando clientes" />;
   }
 
-  if (!isOpen) {
+  if (selectedClient) {
     return (
       <View style={styles.container}>
-        <Pressable
-          accessibilityLabel="Seleccionar cliente"
-          style={[styles.selector, errorMessage ? styles.selectorError : null]}
-          onPress={() => setIsOpen(true)}
-        >
+        <View style={styles.selector}>
           <Text style={styles.selectorText}>
-            {selectedClient
-              ? `${selectedClient.firstName} ${selectedClient.lastName}`
-              : "Toca para elegir un cliente"}
+            {selectedClient.firstName} {selectedClient.lastName}
           </Text>
-        </Pressable>
-        {errorMessage ? (
-          <Text style={styles.errorText}>{errorMessage}</Text>
-        ) : null}
-      </View>
-    );
-  }
-
-  if (isAddingClient) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.addClientTitle}>Cliente nuevo</Text>
-
-        <TextInput
-          accessibilityLabel="Nombre del cliente nuevo"
-          placeholder="Nombre"
-          placeholderTextColor="#94a3b8"
-          value={newFirstName}
-          onChangeText={setNewFirstName}
-          style={styles.searchInput}
-          autoFocus
-        />
-        <TextInput
-          accessibilityLabel="Apellido del cliente nuevo"
-          placeholder="Apellido"
-          placeholderTextColor="#94a3b8"
-          value={newLastName}
-          onChangeText={setNewLastName}
-          style={styles.searchInput}
-        />
-        <TextInput
-          accessibilityLabel="Teléfono del cliente nuevo"
-          placeholder="Teléfono (opcional)"
-          placeholderTextColor="#94a3b8"
-          value={newPhone}
-          onChangeText={setNewPhone}
-          keyboardType="phone-pad"
-          style={styles.searchInput}
-        />
-
-        {addClientError ? (
-          <Text style={styles.errorText}>{addClientError}</Text>
-        ) : null}
-
+          {selectedClient.phone ? (
+            <Text style={styles.optionSubtext}>{selectedClient.phone}</Text>
+          ) : null}
+        </View>
         <Pressable
-          accessibilityLabel="Guardar cliente nuevo"
-          style={[
-            styles.saveNewClientButton,
-            isCreatingClient ? styles.disabledButton : null,
-          ]}
-          onPress={handleSaveNewClient}
-          disabled={isCreatingClient}
-        >
-          <Text style={styles.saveNewClientButtonText}>
-            {isCreatingClient ? "Guardando..." : "Guardar cliente nuevo"}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityLabel="Cancelar cliente nuevo"
+          accessibilityLabel="Cambiar cliente"
           style={styles.cancelButton}
-          onPress={resetAddClientState}
+          onPress={() => {
+            onChangeClientId(undefined);
+            setNameInput("");
+          }}
         >
-          <Text style={styles.cancelButtonText}>Cancelar</Text>
+          <Text style={styles.cancelButtonText}>Cambiar</Text>
         </Pressable>
       </View>
     );
@@ -245,29 +201,30 @@ export function ClientPickerField({
   return (
     <View style={styles.container}>
       <TextInput
-        accessibilityLabel="Buscar cliente"
-        placeholder="Buscar por nombre o telefono"
+        accessibilityLabel="Nombre del cliente"
+        placeholder="Nombre de quien agenda"
         placeholderTextColor="#94a3b8"
-        value={searchTerm}
-        onChangeText={setSearchTerm}
-        style={styles.searchInput}
-        autoFocus
+        value={nameInput}
+        onChangeText={(text) => {
+          setNameInput(text);
+          onChangeUnregisteredName(text.trim() ? text : undefined);
+        }}
+        style={[styles.searchInput, errorMessage ? styles.selectorError : null]}
       />
-      <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
-        {filteredClients.length === 0 ? (
-          <Text style={styles.emptyText}>No hay clientes que coincidan.</Text>
-        ) : (
-          filteredClients.map((item) => (
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
+
+      {suggestions.length > 0 ? (
+        <View style={styles.list}>
+          {suggestions.map((item) => (
             <Pressable
               key={item.id}
               accessibilityLabel={`Elegir a ${item.firstName} ${item.lastName} (${
                 item.phone || item.id
               })`}
               style={styles.option}
-              onPress={() => {
-                onChange(item.id);
-                closePicker();
-              }}
+              onPress={() => selectClient(item)}
             >
               <Text style={styles.optionText}>
                 {item.firstName} {item.lastName}
@@ -276,26 +233,69 @@ export function ClientPickerField({
                 <Text style={styles.optionSubtext}>{item.phone}</Text>
               ) : null}
             </Pressable>
-          ))
-        )}
-      </ScrollView>
-      <Pressable
-        accessibilityLabel="Crear cliente nuevo"
-        style={styles.addClientButton}
-        onPress={() => {
-          setNewFirstName(searchTerm.trim());
-          setIsAddingClient(true);
-        }}
-      >
-        <Text style={styles.addClientButtonText}>+ Crear cliente nuevo</Text>
-      </Pressable>
-      <Pressable
-        accessibilityLabel="Cancelar selección de cliente"
-        style={styles.cancelButton}
-        onPress={closePicker}
-      >
-        <Text style={styles.cancelButtonText}>Cancelar</Text>
-      </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      {isRegistering ? (
+        <View style={styles.registerForm}>
+          <Text style={styles.addClientTitle}>Registrar cliente</Text>
+          <TextInput
+            accessibilityLabel="Apellido del cliente nuevo"
+            placeholder="Apellido"
+            placeholderTextColor="#94a3b8"
+            value={newLastName}
+            onChangeText={setNewLastName}
+            style={styles.searchInput}
+            autoFocus
+          />
+          <TextInput
+            accessibilityLabel="Teléfono del cliente nuevo"
+            placeholder="Teléfono (opcional)"
+            placeholderTextColor="#94a3b8"
+            value={newPhone}
+            onChangeText={setNewPhone}
+            keyboardType="phone-pad"
+            style={styles.searchInput}
+          />
+
+          {registerError ? (
+            <Text style={styles.errorText}>{registerError}</Text>
+          ) : null}
+
+          <Pressable
+            accessibilityLabel="Crear cliente"
+            style={[
+              styles.saveNewClientButton,
+              isCreatingClient ? styles.disabledButton : null,
+            ]}
+            onPress={handleRegisterPress}
+            disabled={isCreatingClient}
+          >
+            <Text style={styles.saveNewClientButtonText}>
+              {isCreatingClient ? "Guardando..." : "Crear cliente"}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Cancelar registro de cliente"
+            style={styles.cancelButton}
+            onPress={resetRegisterState}
+          >
+            <Text style={styles.cancelButtonText}>Cancelar</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          accessibilityLabel="Registrar cliente"
+          style={styles.addClientButton}
+          onPress={() => {
+            setRegisterError(null);
+            setIsRegistering(true);
+          }}
+        >
+          <Text style={styles.addClientButtonText}>+ Registrar cliente</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -351,12 +351,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  emptyText: {
-    textAlign: "center",
-    color: "#64748b",
-    fontSize: 13,
-    padding: 16,
-  },
   addClientButton: {
     borderWidth: 1,
     borderColor: colors.primary,
@@ -368,6 +362,9 @@ const styles = StyleSheet.create({
   addClientButtonText: {
     color: colors.primary,
     fontWeight: "600",
+  },
+  registerForm: {
+    gap: 6,
   },
   addClientTitle: {
     fontSize: 14,

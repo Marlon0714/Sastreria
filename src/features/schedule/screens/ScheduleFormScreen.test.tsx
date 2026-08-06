@@ -54,20 +54,32 @@ jest.mock("../components/ClientPickerField", () => {
 
   return {
     ClientPickerField: ({
-      value,
-      onChange,
+      clientId,
+      unregisteredName,
+      onChangeClientId,
+      onChangeUnregisteredName,
       errorMessage,
     }: {
-      value: string;
-      onChange: (id: string) => void;
+      clientId?: string;
+      unregisteredName?: string;
+      onChangeClientId: (id: string | undefined) => void;
+      onChangeUnregisteredName: (name: string | undefined) => void;
       errorMessage?: string;
     }) =>
       ReactModule.createElement(View, null, [
         ReactModule.createElement(TextInput, {
-          key: "input",
+          key: "clientId",
           accessibilityLabel: "Cliente",
-          value,
-          onChangeText: onChange,
+          value: clientId ?? "",
+          onChangeText: (text: string) =>
+            onChangeClientId(text === "" ? undefined : text),
+        }),
+        ReactModule.createElement(TextInput, {
+          key: "unregisteredName",
+          accessibilityLabel: "Nombre del cliente",
+          value: unregisteredName ?? "",
+          onChangeText: (text: string) =>
+            onChangeUnregisteredName(text === "" ? undefined : text),
         }),
         errorMessage
           ? ReactModule.createElement(Text, { key: "error" }, errorMessage)
@@ -370,7 +382,6 @@ describe("ScheduleFormScreen", () => {
       <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
     );
 
-    fireEvent.press(getByLabelText("Sin registrar"));
     fireEvent.changeText(getByLabelText("Nombre del cliente"), "Pedro Ramírez");
     fireEvent.press(getByLabelText("Guardar turno"));
 
