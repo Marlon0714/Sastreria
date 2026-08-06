@@ -160,6 +160,17 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
         ? existing.status
         : deriveScheduleStatus(merged);
 
+    // Un turno ya listo/entregado no puede quedarse sin operario — sería
+    // deshacer por la puerta de atrás la regla que exige asignar uno antes
+    // de llegar a esos estados (ver markReady/markDelivered). Sin esto,
+    // OperarioPickerField's "Sin operario asignado" podía dejarlo en un
+    // estado que las acciones de marcar listo/entregado ya no permiten crear.
+    if (isStickyStatus(status) && !merged.operarioId) {
+      throw new ScheduleValidationError(
+        "No puedes quitar el operario de un turno ya listo para entregar o entregado.",
+      );
+    }
+
     return this.persistUpdate({ ...merged, status });
   }
 

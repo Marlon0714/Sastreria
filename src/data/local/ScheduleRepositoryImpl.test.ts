@@ -302,6 +302,22 @@ describe("ScheduleRepositoryImpl", () => {
       expect(result.status).toBe("entregado");
     });
 
+    it("rechaza quitar el operario de un turno ya listo/entregado, y no escribe nada", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "entregado",
+        operario_id: "op-1",
+      });
+      const repository = new ScheduleRepositoryImpl();
+
+      await expect(
+        repository.update(baseRow.id, { operarioId: undefined }),
+      ).rejects.toThrow(
+        "No puedes quitar el operario de un turno ya listo para entregar o entregado.",
+      );
+      expect(mockRunAsync).not.toHaveBeenCalled();
+    });
+
     it("no recalcula status si quedó bloqueado por una corrección manual, aunque el operario siga asignado", async () => {
       // Regresión: antes de status_locked, corregir a "pendiente" con un
       // operario todavía asignado se revertía a "en_proceso" en el próximo

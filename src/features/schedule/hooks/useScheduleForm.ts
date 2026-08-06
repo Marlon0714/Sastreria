@@ -4,7 +4,11 @@ import type { ResolvedIdentity } from "../../auth/hooks/useIdentityGate";
 import { getDefaultScheduleEventRepository } from "../../../data/local/scheduleEventDependencies";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
 import { diffScheduleFields } from "../domain/changeDiff";
-import type { CreateScheduleDTO, Schedule } from "../domain/types";
+import {
+  ScheduleValidationError,
+  type CreateScheduleDTO,
+  type Schedule,
+} from "../domain/types";
 
 /**
  * Subconjunto de `useIdentityGate()` que necesita este hook — inyectado
@@ -182,12 +186,16 @@ export function useScheduleForm(
           logAuditFailure("useScheduleForm", created.id, err);
         }
         return created;
-      } catch {
-        setError(
-          scheduleId
-            ? "No se pudo actualizar el turno. Intenta nuevamente."
-            : "No se pudo guardar el turno. Intenta nuevamente.",
-        );
+      } catch (err) {
+        if (err instanceof ScheduleValidationError) {
+          setError(err.message);
+        } else {
+          setError(
+            scheduleId
+              ? "No se pudo actualizar el turno. Intenta nuevamente."
+              : "No se pudo guardar el turno. Intenta nuevamente.",
+          );
+        }
         return null;
       } finally {
         if (identity) {
