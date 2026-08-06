@@ -19,7 +19,7 @@ export default function PantalonMeasurementGrid({
 }: PantalonMeasurementGridProps) {
   return (
     <View style={styles.container}>
-      <MeasurementGridSection title="Longitud">
+      <MeasurementGridSection title="Medidas">
         <MeasurementCard
           name="largo"
           label="Largo"
@@ -34,6 +34,22 @@ export default function PantalonMeasurementGrid({
           accessibilityLabel="Entrepierna (cm)"
           control={control}
           errorMessage={errors.entrepierna?.message}
+          disabled={disabled}
+        />
+        <MeasurementCard
+          name="cintura"
+          label="Cintura"
+          accessibilityLabel="Cintura (cm)"
+          control={control}
+          errorMessage={errors.cintura?.message}
+          disabled={disabled}
+        />
+        <MeasurementCard
+          name="base"
+          label="Base"
+          accessibilityLabel="Base (cm)"
+          control={control}
+          errorMessage={errors.base?.message}
           disabled={disabled}
         />
         <MeasurementCard
@@ -58,25 +74,6 @@ export default function PantalonMeasurementGrid({
           accessibilityLabel="Pierna (cm)"
           control={control}
           errorMessage={errors.pierna?.message}
-          disabled={disabled}
-        />
-      </MeasurementGridSection>
-
-      <MeasurementGridSection title="Contorno">
-        <MeasurementCard
-          name="cintura"
-          label="Cintura"
-          accessibilityLabel="Cintura (cm)"
-          control={control}
-          errorMessage={errors.cintura?.message}
-          disabled={disabled}
-        />
-        <MeasurementCard
-          name="base"
-          label="Base"
-          accessibilityLabel="Base (cm)"
-          control={control}
-          errorMessage={errors.base?.message}
           disabled={disabled}
         />
         <MeasurementCard
