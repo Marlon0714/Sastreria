@@ -94,22 +94,25 @@ export default function ClientListScreen({ navigation }: Props) {
       const normalizedName = normalizeText(
         `${client.firstName} ${client.lastName}`,
       );
-      const normalizedClientPhone = normalizePhone(client.phone);
+      // Incluye teléfono 2/3 (client.phones) — antes solo comparaba el
+      // teléfono principal, así que un cliente encontrable únicamente por
+      // su segundo o tercer número no aparecía en ningún filtro.
+      const clientPhones = [client.phone, ...(client.phones ?? [])];
+      const matchesPhone = numericQuery
+        ? clientPhones.some((phone) =>
+            normalizePhone(phone).includes(numericQuery),
+          )
+        : false;
 
       if (filterBy === "name") {
         return normalizedName.includes(normalizedQuery);
       }
 
       if (filterBy === "phone") {
-        return numericQuery
-          ? normalizedClientPhone.includes(numericQuery)
-          : false;
+        return matchesPhone;
       }
 
-      return (
-        normalizedName.includes(normalizedQuery) ||
-        (numericQuery ? normalizedClientPhone.includes(numericQuery) : false)
-      );
+      return normalizedName.includes(normalizedQuery) || matchesPhone;
     });
   }, [clients, filterBy, searchTerm]);
 

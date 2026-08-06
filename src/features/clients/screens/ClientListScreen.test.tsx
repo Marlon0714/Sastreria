@@ -270,6 +270,43 @@ describe("ClientListScreen", () => {
     expect(queryByText("María García")).toBeNull();
   });
 
+  it("finds a client by a secondary phone number (client.phones), not just the primary one", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({
+          id: "aaaa-1",
+          firstName: "María",
+          lastName: "García",
+          phone: "3001112233",
+          phones: ["3005556677"],
+        }),
+        clientFactory({
+          id: "aaaa-2",
+          firstName: "Juan",
+          lastName: "Pérez",
+          phone: "3009998877",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, getByText, queryByText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Filtro telefono"));
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "300555",
+    );
+
+    expect(getByText("María García")).toBeTruthy();
+    expect(queryByText("Juan Pérez")).toBeNull();
+  });
+
   it("shows no results message when search finds nothing", () => {
     const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
     mockUseClientList.mockReturnValue({
