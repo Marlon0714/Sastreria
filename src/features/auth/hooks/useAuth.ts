@@ -131,6 +131,26 @@ export function useAuth(
       });
   }, [repo, resolveProfileForSession]);
 
+  // Detecta cuando Supabase invalida la sesión por su cuenta (ej. refresh
+  // token muerto tras estar mucho tiempo sin red) — sin este listener la app
+  // sigue "creyendo" que está logueada mientras cada escritura a la nube
+  // falla en silencio, y nunca vuelve a mostrar el login.
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
+    const unsubscribe = repo.onAuthStateChange((hasSession) => {
+      if (!hasSession) {
+        setIsAuthenticated(false);
+        applyProfile(null);
+        void cacheProfile(null);
+      }
+    });
+
+    return unsubscribe;
+  }, [repo, applyProfile]);
+
   const signIn = useCallback(
     async (email: string, password: string): Promise<void> => {
       setError(null);

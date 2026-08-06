@@ -58,6 +58,9 @@ function makeRepo(
     getProfile: jest
       .fn<SupabaseAuthRepositoryPort["getProfile"]>()
       .mockResolvedValue(testProfile),
+    onAuthStateChange: jest
+      .fn<SupabaseAuthRepositoryPort["onAuthStateChange"]>()
+      .mockReturnValue(() => {}),
     ...overrides,
   };
 }
@@ -347,6 +350,47 @@ describe("useAuth", () => {
       expect(result.current.profile).toEqual(testProfile);
       expect(useIdentityStore.getState().ownProfile).toEqual(testProfile);
       expect(result.current.error).toBe("network error");
+    });
+  });
+
+  describe("onAuthStateChange", () => {
+    it("se desloguea solo cuando Supabase invalida la sesión sin pasar por signOut", async () => {
+      let emitAuthStateChange: (hasSession: boolean) => void = () => {};
+      const repo = makeRepo({
+        hasValidSession: jest
+          .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
+          .mockResolvedValue(true),
+        getSession: jest
+          .fn<SupabaseAuthRepositoryPort["getSession"]>()
+          .mockResolvedValue({ userId: "user-1", accessToken: "token-abc" }),
+        onAuthStateChange: jest
+          .fn<SupabaseAuthRepositoryPort["onAuthStateChange"]>()
+          .mockImplementation((callback) => {
+            emitAuthStateChange = callback;
+            return () => {};
+          }),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+      await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+      await waitFor(() => expect(result.current.profile).toEqual(testProfile));
+
+      act(() => {
+        emitAuthStateChange(false);
+      });
+
+      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.profile).toBeNull();
+      expect(useIdentityStore.getState().ownProfile).toBeNull();
+    });
+
+    it("no se suscribe cuando Supabase no está configurado", async () => {
+      mockIsConfigured.mockReturnValue(false);
+      const repo = makeRepo();
+      const { result } = renderHook(() => useAuth(repo));
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(repo.onAuthStateChange).not.toHaveBeenCalled();
     });
   });
 });

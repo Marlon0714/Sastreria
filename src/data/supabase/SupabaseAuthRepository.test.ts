@@ -25,6 +25,17 @@ const mockMaybeSingle =
 const mockEq = jest.fn(() => ({ maybeSingle: mockMaybeSingle }));
 const mockSelect = jest.fn(() => ({ eq: mockEq }));
 const mockFrom = jest.fn(() => ({ select: mockSelect }));
+const mockUnsubscribe = jest.fn();
+const mockOnAuthStateChange = jest.fn(
+  (
+    _callback: (
+      event: string,
+      session: { user: { id: string } } | null,
+    ) => void,
+  ) => ({
+    data: { subscription: { unsubscribe: mockUnsubscribe } },
+  }),
+);
 
 jest.mock("./client", () => ({
   getSupabaseClient: () => ({
@@ -32,6 +43,7 @@ jest.mock("./client", () => ({
       signInWithPassword: mockSignInWithPassword,
       signOut: mockSignOut,
       getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
     },
     from: mockFrom,
   }),
@@ -178,6 +190,35 @@ describe("SupabaseAuthRepository", () => {
       const result = await repo.getProfile("user-1");
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("onAuthStateChange", () => {
+    it("invoca el callback con hasSession=true cuando llega una sesión", () => {
+      const callback = jest.fn();
+      repo.onAuthStateChange(callback);
+
+      const [registered] = mockOnAuthStateChange.mock.calls[0] ?? [];
+      registered?.("SIGNED_IN", fakeSession);
+
+      expect(callback).toHaveBeenCalledWith(true);
+    });
+
+    it("invoca el callback con hasSession=false cuando la sesión se pierde", () => {
+      const callback = jest.fn();
+      repo.onAuthStateChange(callback);
+
+      const [registered] = mockOnAuthStateChange.mock.calls[0] ?? [];
+      registered?.("SIGNED_OUT", null);
+
+      expect(callback).toHaveBeenCalledWith(false);
+    });
+
+    it("retorna una función que cancela la suscripción", () => {
+      const unsubscribe = repo.onAuthStateChange(jest.fn());
+      unsubscribe();
+
+      expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
     });
   });
 });

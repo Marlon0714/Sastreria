@@ -14,6 +14,13 @@ export interface SupabaseAuthRepositoryPort {
   getSession(): Promise<AuthSession | null>;
   hasValidSession(): Promise<boolean>;
   getProfile(userId: string): Promise<Profile | null>;
+  /**
+   * Se dispara con `hasSession=false` cuando Supabase determina que la
+   * sesión ya no es válida (ej. refresh token muerto) — incluso si nadie
+   * llamó a `signOut()` explícitamente. Retorna una función para cancelar
+   * la suscripción.
+   */
+  onAuthStateChange(callback: (hasSession: boolean) => void): () => void;
 }
 
 function toAuthSession(session: Session): AuthSession {
@@ -62,6 +69,17 @@ export class SupabaseAuthRepository implements SupabaseAuthRepositoryPort {
   async hasValidSession(): Promise<boolean> {
     const session = await this.getSession();
     return session !== null;
+  }
+
+  onAuthStateChange(callback: (hasSession: boolean) => void): () => void {
+    const supabase = getSupabaseClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      callback(session !== null);
+    });
+
+    return () => subscription.unsubscribe();
   }
 
   async getProfile(userId: string): Promise<Profile | null> {
