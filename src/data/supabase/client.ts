@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { AppState } from "react-native";
 
 import { getSupabaseConfig } from "./config";
 import { secureSessionStorage } from "./secureSessionStorage";
@@ -21,6 +22,24 @@ export function getSupabaseClient(): SupabaseClient {
         persistSession: true,
         detectSessionInUrl: false,
       },
+    });
+
+    // En React Native el refresh automático de supabase-js no sabe cuándo la
+    // app está en background — sin este hook (recomendado por la propia
+    // documentación de Supabase) el refresh puede no dispararse mientras la
+    // app está minimizada, y al volver a abrirla el refresh token ya venció
+    // ("Invalid Refresh Token: Refresh Token Not Found"), matando la sesión
+    // en silencio. Se registra una sola vez porque `instance` es singleton.
+    const client = instance;
+    if (AppState.currentState === "active") {
+      void client.auth.startAutoRefresh();
+    }
+    AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void client.auth.startAutoRefresh();
+      } else {
+        void client.auth.stopAutoRefresh();
+      }
     });
   }
 
