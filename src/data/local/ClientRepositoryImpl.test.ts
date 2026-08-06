@@ -340,7 +340,7 @@ describe("ClientRepositoryImpl", () => {
     expect(deleteChalecoId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deleteTallaSql).toContain("DELETE FROM client_tallas");
     expect(deleteTallaClientId).toBe("11111111-1111-4111-8111-111111111111");
-    expect(deleteScheduleSql).toContain("DELETE FROM schedules");
+    expect(deleteScheduleSql).toContain("UPDATE schedules SET client_id = NULL");
     expect(deleteScheduleClientId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deleteClientSql).toContain("DELETE FROM clients");
     expect(deleteClientId).toBe("11111111-1111-4111-8111-111111111111");

@@ -6,11 +6,17 @@ import { SupabaseSyncTransport } from "./SupabaseSyncTransport";
 type MockError = { code: string } | null;
 const mockUpsert = jest.fn<() => Promise<{ error: MockError }>>();
 const mockDelete = jest.fn<() => { eq: jest.Mock }>();
+const mockUpdate = jest.fn<() => { eq: jest.Mock }>();
 const mockEq = jest.fn<() => Promise<{ error: MockError }>>();
 
 mockDelete.mockImplementation(() => ({ eq: mockEq }));
+mockUpdate.mockImplementation(() => ({ eq: mockEq }));
 
-const mockFrom = jest.fn(() => ({ upsert: mockUpsert, delete: mockDelete }));
+const mockFrom = jest.fn(() => ({
+  upsert: mockUpsert,
+  delete: mockDelete,
+  update: mockUpdate,
+}));
 
 jest.mock("../supabase/client", () => ({
   getSupabaseClient: () => ({ from: mockFrom }),
@@ -226,8 +232,10 @@ describe("SupabaseSyncTransport", () => {
     mockFrom.mockClear();
     mockUpsert.mockReset();
     mockDelete.mockClear();
+    mockUpdate.mockClear();
     mockEq.mockReset();
     mockDelete.mockImplementation(() => ({ eq: mockEq }));
+    mockUpdate.mockImplementation(() => ({ eq: mockEq }));
   });
 
   describe("syncClient", () => {
@@ -583,14 +591,16 @@ describe("SupabaseSyncTransport", () => {
       expect(result).toEqual({ outcome: "synced" });
       // Log upsert
       expect(mockFrom).toHaveBeenCalledWith("sync_delete_log");
-      // Cascade deletes: camisa, pantalon, saco, chaleco, schedules, client
+      // Cascade: camisa/pantalon/saco/chaleco/client se borran; schedules
+      // solo pierde la referencia (client_id = NULL), el turno sobrevive.
       expect(mockFrom).toHaveBeenCalledWith("camisa_measurements");
       expect(mockFrom).toHaveBeenCalledWith("pantalon_measurements");
       expect(mockFrom).toHaveBeenCalledWith("saco_measurements");
       expect(mockFrom).toHaveBeenCalledWith("chaleco_measurements");
       expect(mockFrom).toHaveBeenCalledWith("schedules");
       expect(mockFrom).toHaveBeenCalledWith("clients");
-      expect(mockDelete).toHaveBeenCalledTimes(6);
+      expect(mockDelete).toHaveBeenCalledTimes(5);
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
     });
 
     it("skips audit log and proceeds with cloud delete when sync_delete_log upsert fails with 42501 (RLS)", async () => {
@@ -601,7 +611,8 @@ describe("SupabaseSyncTransport", () => {
       const result = await transport.syncDeleteLogEntry(baseDeleteLog);
       // Despite audit log failure, cloud deletes should proceed and succeed
       expect(result).toEqual({ outcome: "synced" });
-      expect(mockDelete).toHaveBeenCalledTimes(6);
+      expect(mockDelete).toHaveBeenCalledTimes(5);
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
     });
 
     it("returns failed when sync_delete_log upsert fails with a non-infra error", async () => {

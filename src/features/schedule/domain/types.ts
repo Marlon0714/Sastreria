@@ -20,7 +20,11 @@ export const SCHEDULE_CATEGORY_LABELS: Record<ScheduleCategory, string> = {
 };
 
 export interface Schedule extends BaseEntity {
-  clientId: string;
+  // Exactamente uno de clientId/unregisteredClientName debe estar presente
+  // (o clientId puede quedar vacío si el cliente fue borrado — ver
+  // ClientRepositoryImpl.delete(), el turno sobrevive con clientId=undefined).
+  clientId?: string;
+  unregisteredClientName?: string; // turno agendado sin registrar cliente
   date?: string; // YYYY-MM-DD
   time?: string; // HH:mm
   price?: number;
@@ -39,7 +43,8 @@ export interface Schedule extends BaseEntity {
 }
 
 export interface CreateScheduleDTO {
-  clientId: string;
+  clientId?: string;
+  unregisteredClientName?: string;
   date?: string;
   time?: string;
   price?: number;
@@ -51,6 +56,7 @@ export interface CreateScheduleDTO {
 
 export interface UpdateScheduleDTO {
   clientId?: string;
+  unregisteredClientName?: string;
   date?: string;
   time?: string;
   price?: number;

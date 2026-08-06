@@ -251,7 +251,14 @@ export class ClientRepositoryImpl implements ClientRepository {
         id,
       );
       await db.runAsync(`DELETE FROM client_tallas WHERE client_id = ?;`, id);
-      await db.runAsync(`DELETE FROM schedules WHERE client_id = ?;`, id);
+      // Los turnos NO se borran — sobreviven como historial con clientId
+      // vacío (ver ScheduleDayViewScreen.clientLabel: se muestran como
+      // "Cliente eliminado"). Solo las medidas y tallas no tienen sentido
+      // sin el cliente, por eso esas sí se borran arriba.
+      await db.runAsync(
+        `UPDATE schedules SET client_id = NULL WHERE client_id = ?;`,
+        id,
+      );
       await db.runAsync(`DELETE FROM clients WHERE id = ?;`, id);
       await db.runAsync(
         `

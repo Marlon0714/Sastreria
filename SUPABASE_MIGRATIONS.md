@@ -803,6 +803,19 @@ UPDATE talla_templates SET manga_larga = largo_manga WHERE type IN ('camisa', 's
 
 ---
 
+### v29_schedule_client_optional (2026-08-05)
+
+**Contexto:** pedido del dueño — borrar un cliente ya no debe borrar sus turnos (deben sobrevivir como historial, mostrando "Cliente eliminado"), y se debe poder agendar un turno sin registrar un cliente completo (solo el nombre, campo `unregistered_client_name`). Ambos casos requieren que `client_id` deje de ser `NOT NULL`.
+
+```sql
+ALTER TABLE schedules ALTER COLUMN client_id DROP NOT NULL;
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS unregistered_client_name TEXT;
+```
+
+**Importante:** el borrado de un cliente (`sync_delete_log`, `entity_type = 'client'`) ya NO borra sus turnos — ahora les pone `client_id = NULL` (`UPDATE schedules SET client_id = NULL WHERE client_id = ...`, ejecutado por la app). No requiere ningún SQL manual adicional aquí, solo la migración de columnas de arriba.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

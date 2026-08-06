@@ -184,7 +184,8 @@ interface ScheduleRow {
   time: string | null;
   price: number | null;
   operario_id: string | null;
-  client_id: string;
+  client_id: string | null;
+  unregistered_client_name: string | null;
   notes: string | null;
   is_priority: boolean;
   category: "arreglo" | "confeccion";
@@ -1010,7 +1011,7 @@ export class SupabasePullSync {
     let query = supabase
       .from("schedules")
       .select(
-        "id, date, time, price, operario_id, client_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
+        "id, date, time, price, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -1035,23 +1036,24 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO schedules
-            (id, date, time, price, operario_id, client_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+            (id, date, time, price, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
-            date          = excluded.date,
-            time          = excluded.time,
-            price         = excluded.price,
-            operario_id   = excluded.operario_id,
-            client_id     = excluded.client_id,
-            notes         = excluded.notes,
-            is_priority   = excluded.is_priority,
-            category      = excluded.category,
-            status        = excluded.status,
-            status_locked = excluded.status_locked,
-            ready_at      = excluded.ready_at,
-            delivered_at  = excluded.delivered_at,
-            updated_at    = excluded.updated_at,
-            sync_status   = 'synced'
+            date                      = excluded.date,
+            time                      = excluded.time,
+            price                     = excluded.price,
+            operario_id               = excluded.operario_id,
+            client_id                 = excluded.client_id,
+            unregistered_client_name  = excluded.unregistered_client_name,
+            notes                     = excluded.notes,
+            is_priority               = excluded.is_priority,
+            category                  = excluded.category,
+            status                    = excluded.status,
+            status_locked             = excluded.status_locked,
+            ready_at                  = excluded.ready_at,
+            delivered_at              = excluded.delivered_at,
+            updated_at                = excluded.updated_at,
+            sync_status               = 'synced'
           WHERE excluded.updated_at >= schedules.updated_at;
           `,
           row.id,
@@ -1060,6 +1062,7 @@ export class SupabasePullSync {
           row.price,
           row.operario_id,
           row.client_id,
+          row.unregistered_client_name ?? null,
           row.notes ?? null,
           row.is_priority ? 1 : 0,
           row.category,
@@ -1248,8 +1251,9 @@ export class SupabasePullSync {
             `DELETE FROM client_tallas WHERE client_id = ?;`,
             row.entity_id,
           );
+          // Los turnos sobreviven al cliente borrado (ver ClientRepositoryImpl.delete()).
           await db.runAsync(
-            `DELETE FROM schedules WHERE client_id = ?;`,
+            `UPDATE schedules SET client_id = NULL WHERE client_id = ?;`,
             row.entity_id,
           );
           await db.runAsync(`DELETE FROM clients WHERE id = ?;`, row.entity_id);

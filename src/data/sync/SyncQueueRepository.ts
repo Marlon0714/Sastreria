@@ -192,7 +192,8 @@ interface ScheduleQueueRow {
   time: string | null;
   price: number | null;
   operario_id: string | null;
-  client_id: string;
+  client_id: string | null;
+  unregistered_client_name: string | null;
   notes: string | null;
   is_priority: number;
   category: "arreglo" | "confeccion";
@@ -512,7 +513,8 @@ function toScheduleQueueItem(row: ScheduleQueueRow): SyncScheduleQueueItem {
       time: row.time ?? undefined,
       price: row.price ?? undefined,
       operarioId: row.operario_id ?? undefined,
-      clientId: row.client_id,
+      clientId: row.client_id ?? undefined,
+      unregisteredClientName: row.unregistered_client_name ?? undefined,
       notes: row.notes ?? undefined,
       isPriority: row.is_priority === 1,
       category: row.category,
@@ -850,6 +852,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         price,
         operario_id,
         client_id,
+        unregistered_client_name,
         notes,
         is_priority,
         category,

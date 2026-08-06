@@ -87,8 +87,12 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     (schedule: Schedule) => {
       const normalizedQuery = normalizeText(searchTerm);
       if (!normalizedQuery) return true;
-      const client = clientsById[schedule.clientId];
-      const label = client ? `${client.firstName} ${client.lastName}` : "";
+      const client = schedule.clientId
+        ? clientsById[schedule.clientId]
+        : undefined;
+      const label = client
+        ? `${client.firstName} ${client.lastName}`
+        : (schedule.unregisteredClientName ?? "");
       return normalizeText(label).includes(normalizedQuery);
     },
     [searchTerm, clientsById],
@@ -132,8 +136,13 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
 
   const clientLabel = useMemo(
     () => (schedule: Schedule) => {
-      const client = clientsById[schedule.clientId];
-      return client ? `${client.firstName} ${client.lastName}` : "Cliente";
+      if (schedule.clientId) {
+        const client = clientsById[schedule.clientId];
+        return client
+          ? `${client.firstName} ${client.lastName}`
+          : "Cliente eliminado";
+      }
+      return schedule.unregisteredClientName ?? "Cliente";
     },
     [clientsById],
   );

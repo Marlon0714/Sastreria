@@ -350,8 +350,38 @@ describe("ScheduleFormScreen", () => {
 
     fireEvent.press(getByLabelText("Guardar turno"));
 
-    expect(await findByText("El cliente es inválido")).toBeTruthy();
+    expect(
+      await findByText("Elige un cliente o escribe un nombre, no ambos ni ninguno"),
+    ).toBeTruthy();
     expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("permite guardar un turno sin registrar cliente, solo con el nombre", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+    });
+
+    const { getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Sin registrar"));
+    fireEvent.changeText(getByLabelText("Nombre del cliente"), "Pedro Ramírez");
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: undefined,
+          unregisteredClientName: "Pedro Ramírez",
+        }),
+      );
+    });
   });
 
   it("pre-fills fields, muestra el estado y el botón de eliminar en modo edición", async () => {

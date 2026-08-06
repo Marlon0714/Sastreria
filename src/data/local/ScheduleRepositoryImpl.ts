@@ -18,7 +18,8 @@ import { generateDomainUuid } from "../../features/clients/domain/types";
 
 interface ScheduleRow {
   id: string;
-  client_id: string;
+  client_id: string | null;
+  unregistered_client_name: string | null;
   date: string | null;
   time: string | null;
   price: number | null;
@@ -38,7 +39,8 @@ interface ScheduleRow {
 function mapRow(row: ScheduleRow): Schedule {
   return {
     id: row.id,
-    clientId: row.client_id,
+    clientId: row.client_id ?? undefined,
+    unregisteredClientName: row.unregistered_client_name ?? undefined,
     date: row.date ?? undefined,
     time: row.time ?? undefined,
     price: row.price ?? undefined,
@@ -108,6 +110,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     const schedule: Schedule = {
       id: generateDomainUuid(),
       clientId: data.clientId,
+      unregisteredClientName: data.unregisteredClientName,
       date: data.date,
       time: data.time,
       price: data.price,
@@ -122,10 +125,11 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       syncStatus: "pending",
     };
     await db.runAsync(
-      `INSERT INTO schedules (id, client_id, date, time, price, operario_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO schedules (id, client_id, unregistered_client_name, date, time, price, operario_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       schedule.id,
-      schedule.clientId,
+      schedule.clientId ?? null,
+      schedule.unregisteredClientName ?? null,
       schedule.date ?? null,
       schedule.time ?? null,
       schedule.price ?? null,
@@ -208,8 +212,9 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     };
 
     await db.runAsync(
-      `UPDATE schedules SET client_id = ?, date = ?, time = ?, price = ?, operario_id = ?, notes = ?, is_priority = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
-      updated.clientId,
+      `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, operario_id = ?, notes = ?, is_priority = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
+      updated.clientId ?? null,
+      updated.unregisteredClientName ?? null,
       updated.date ?? null,
       updated.time ?? null,
       updated.price ?? null,

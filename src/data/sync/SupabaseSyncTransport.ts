@@ -320,15 +320,17 @@ export class SupabaseSyncTransport implements SyncTransport {
 
   async syncSchedule(schedule: Schedule): Promise<SyncTransportAttemptResult> {
     // Requiere la migración v19 aplicada en Supabase (columnas nuevas +
-    // CHECK de status actualizado), v21 (is_priority/status_locked) y v24
-    // (category) — ver SUPABASE_MIGRATIONS.md.
+    // CHECK de status actualizado), v21 (is_priority/status_locked), v24
+    // (category) y v29 (client_id opcional + unregistered_client_name) —
+    // ver SUPABASE_MIGRATIONS.md.
     return this.upsertSynced("schedules", {
       id: schedule.id,
       date: schedule.date ?? null,
       time: schedule.time ?? null,
       price: schedule.price ?? null,
       operario_id: schedule.operarioId ?? null,
-      client_id: schedule.clientId,
+      client_id: schedule.clientId ?? null,
+      unregistered_client_name: schedule.unregisteredClientName ?? null,
       notes: schedule.notes ?? null,
       is_priority: schedule.isPriority,
       category: schedule.category,
@@ -443,9 +445,10 @@ export class SupabaseSyncTransport implements SyncTransport {
         return this.toAttemptFailure(chalecoError.code, chalecoError.message);
       }
 
+      // Los turnos sobreviven al cliente borrado (ver ClientRepositoryImpl.delete()).
       const { error: scheduleError } = await supabase
         .from("schedules")
-        .delete()
+        .update({ client_id: null })
         .eq("client_id", entry.entityId);
       if (scheduleError) {
         return this.toAttemptFailure(scheduleError.code, scheduleError.message);

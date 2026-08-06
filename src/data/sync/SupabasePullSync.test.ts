@@ -916,7 +916,9 @@ describe("SupabasePullSync", () => {
       sqlStatements.some((sql) => sql.includes("DELETE FROM clients")),
     ).toBe(true);
     expect(
-      sqlStatements.some((sql) => sql.includes("DELETE FROM schedules")),
+      sqlStatements.some((sql) =>
+        sql.includes("UPDATE schedules SET client_id = NULL"),
+      ),
     ).toBe(true);
     expect(
       sqlStatements.some((sql) =>

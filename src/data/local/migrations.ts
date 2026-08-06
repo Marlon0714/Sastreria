@@ -531,6 +531,57 @@ export const MIGRATIONS: readonly Migration[] = [
       `UPDATE talla_templates SET manga_larga = largo_manga WHERE type IN ('camisa', 'saco');`,
     ],
   },
+  {
+    // Pedido del dueño (2026-08-05): borrar un cliente ya no debe borrar sus
+    // turnos (deben sobrevivir como historial, ver ClientRepositoryImpl.delete()),
+    // y se debe poder agendar un turno sin registrar un cliente completo
+    // (solo el nombre). Ambos casos requieren que client_id deje de ser
+    // NOT NULL — SQLite no permite quitar NOT NULL con ALTER TABLE, así que
+    // se recrea la tabla completa (mismo patrón que v19_schedule_redesign).
+    version: 26,
+    name: "v26_schedule_client_optional",
+    statements: [
+      `
+      CREATE TABLE schedules_new (
+        id TEXT PRIMARY KEY NOT NULL,
+        client_id TEXT,
+        unregistered_client_name TEXT,
+        date TEXT,
+        time TEXT,
+        price REAL,
+        operario_id TEXT,
+        notes TEXT,
+        status TEXT NOT NULL CHECK (status IN ('pendiente', 'agendado', 'en_proceso', 'listo_para_entregar', 'entregado')),
+        status_locked INTEGER NOT NULL DEFAULT 0,
+        is_priority INTEGER NOT NULL DEFAULT 0,
+        category TEXT NOT NULL DEFAULT 'arreglo',
+        ready_at TEXT,
+        delivered_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      );
+      `,
+      `
+      INSERT INTO schedules_new (
+        id, client_id, date, time, price, operario_id, notes, status,
+        status_locked, is_priority, category, ready_at, delivered_at,
+        created_at, updated_at, sync_status
+      )
+      SELECT
+        id, client_id, date, time, price, operario_id, notes, status,
+        status_locked, is_priority, category, ready_at, delivered_at,
+        created_at, updated_at, sync_status
+      FROM schedules;
+      `,
+      `DROP TABLE schedules;`,
+      `ALTER TABLE schedules_new RENAME TO schedules;`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules (date);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_operario_id ON schedules (operario_id);`,
+    ],
+  },
 ];
 
 interface UserVersionRow {

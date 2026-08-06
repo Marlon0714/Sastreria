@@ -33,9 +33,23 @@ const optionalTime = z
 
 export const scheduleCategorySchema = z.enum(["arreglo", "confeccion"]);
 
+// Exactamente uno de clientId/unregisteredClientName debe venir del
+// formulario — el turno o tiene un cliente registrado, o guarda solo el
+// nombre de quien no quiso registrarse, nunca ambos ni ninguno.
+const exactlyOneClientField = (data: {
+  clientId?: string;
+  unregisteredClientName?: string;
+}): boolean => Boolean(data.clientId) !== Boolean(data.unregisteredClientName);
+
+const CLIENT_FIELD_ERROR: { message: string; path: string[] } = {
+  message: "Elige un cliente o escribe un nombre, no ambos ni ninguno",
+  path: ["clientId"],
+};
+
 export const scheduleSchema = z.object({
   id: z.string().uuid(),
-  clientId: z.string().uuid("El cliente es inválido"),
+  clientId: z.string().uuid("El cliente es inválido").optional(),
+  unregisteredClientName: z.string().trim().max(120).optional(),
   date: optionalDate,
   time: optionalTime,
   price: z.number().nonnegative("El precio no puede ser negativo").optional(),
@@ -52,7 +66,7 @@ export const scheduleSchema = z.object({
   syncStatus: z.enum(["pending", "synced", "error"]),
 });
 
-export const createScheduleSchema = scheduleSchema.omit({
+const createScheduleObjectSchema = scheduleSchema.omit({
   id: true,
   status: true,
   statusLocked: true,
@@ -63,7 +77,15 @@ export const createScheduleSchema = scheduleSchema.omit({
   syncStatus: true,
 });
 
-export const updateScheduleSchema = createScheduleSchema.partial();
+export const createScheduleSchema = createScheduleObjectSchema.refine(
+  exactlyOneClientField,
+  CLIENT_FIELD_ERROR,
+);
+
+// Sin el refine de createScheduleSchema: una actualización parcial legítima
+// (ej. solo cambiar el precio) no debe tocar clientId/unregisteredClientName
+// y no tiene por qué traer ninguno de los dos.
+export const updateScheduleSchema = createScheduleObjectSchema.partial();
 
 export type CreateScheduleSchemaInput = z.input<typeof createScheduleSchema>;
 export type CreateScheduleSchemaOutput = z.output<typeof createScheduleSchema>;

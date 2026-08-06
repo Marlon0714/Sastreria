@@ -38,6 +38,7 @@ const OPAQUE_ID_FIELDS = new Set(["clientId", "operarioId"]);
 
 const FIELD_LABELS: Record<string, string> = {
   clientId: "Cliente",
+  unregisteredClientName: "Cliente (sin registrar)",
   date: "Fecha",
   time: "Hora",
   price: "Precio",

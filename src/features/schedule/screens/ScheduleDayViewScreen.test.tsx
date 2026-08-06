@@ -527,4 +527,50 @@ describe("ScheduleDayViewScreen", () => {
       await findByText("No hay turnos que coincidan con la búsqueda."),
     ).toBeTruthy();
   });
+
+  it("muestra 'Cliente eliminado' cuando el clientId del turno ya no existe", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [{ ...scheduledOne, clientId: "client-borrado" }],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(
+      await findByLabelText(
+        "Ver turno de Cliente eliminado (14:30, schedule-1)",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("muestra el nombre sin registrar cuando el turno no tiene clientId", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [
+        {
+          ...scheduledOne,
+          clientId: undefined,
+          unregisteredClientName: "Pedro Ramírez",
+        },
+      ],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(
+      await findByLabelText(
+        "Ver turno de Pedro Ramírez (14:30, schedule-1)",
+      ),
+    ).toBeTruthy();
+  });
 });

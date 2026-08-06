@@ -79,6 +79,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [hasTime, setHasTime] = useState(false);
+  const [clientMode, setClientMode] = useState<"registrado" | "sinRegistrar">(
+    "registrado",
+  );
 
   const {
     control,
@@ -91,7 +94,8 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     defaultValues: {
       date: undefined,
       time: undefined,
-      clientId: "",
+      clientId: undefined,
+      unregisteredClientName: "",
       price: undefined,
       operarioId: undefined,
       notes: "",
@@ -109,10 +113,12 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (!schedule) return;
     setHasTime(!!schedule.time);
+    setClientMode(schedule.unregisteredClientName ? "sinRegistrar" : "registrado");
     reset({
       date: schedule.date,
       time: schedule.time,
       clientId: schedule.clientId,
+      unregisteredClientName: schedule.unregisteredClientName ?? "",
       price: schedule.price,
       operarioId: schedule.operarioId,
       notes: schedule.notes ?? "",
@@ -342,17 +348,93 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Cliente</Text>
-          <Controller
-            control={control}
-            name="clientId"
-            render={({ field: { onChange, value } }) => (
-              <ClientPickerField
-                value={value}
-                onChange={onChange}
-                errorMessage={errors.clientId?.message}
+          <View style={styles.clientModeToggle}>
+            <Pressable
+              accessibilityLabel="Cliente registrado"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: clientMode === "registrado" }}
+              style={[
+                styles.clientModeButton,
+                clientMode === "registrado" && styles.clientModeButtonActive,
+              ]}
+              onPress={() => {
+                setClientMode("registrado");
+                setValue("unregisteredClientName", "");
+              }}
+            >
+              <Text
+                style={[
+                  styles.clientModeButtonText,
+                  clientMode === "registrado" &&
+                    styles.clientModeButtonTextActive,
+                ]}
+              >
+                Cliente registrado
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Sin registrar"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: clientMode === "sinRegistrar" }}
+              style={[
+                styles.clientModeButton,
+                clientMode === "sinRegistrar" && styles.clientModeButtonActive,
+              ]}
+              onPress={() => {
+                setClientMode("sinRegistrar");
+                setValue("clientId", undefined);
+              }}
+            >
+              <Text
+                style={[
+                  styles.clientModeButtonText,
+                  clientMode === "sinRegistrar" &&
+                    styles.clientModeButtonTextActive,
+                ]}
+              >
+                Sin registrar
+              </Text>
+            </Pressable>
+          </View>
+
+          {clientMode === "registrado" ? (
+            <Controller
+              control={control}
+              name="clientId"
+              render={({ field: { onChange, value } }) => (
+                <ClientPickerField
+                  value={value ?? ""}
+                  onChange={onChange}
+                  errorMessage={errors.clientId?.message}
+                />
+              )}
+            />
+          ) : (
+            <>
+              <Controller
+                control={control}
+                name="unregisteredClientName"
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    accessibilityLabel="Nombre del cliente"
+                    style={[
+                      styles.input,
+                      errors.clientId && styles.inputError,
+                    ]}
+                    placeholder="Nombre de quien agenda"
+                    placeholderTextColor={colors.textPlaceholder}
+                    value={value ?? ""}
+                    onChangeText={onChange}
+                  />
+                )}
               />
-            )}
-          />
+              {errors.clientId ? (
+                <Text style={styles.errorText}>
+                  {errors.clientId.message}
+                </Text>
+              ) : null}
+            </>
+          )}
         </View>
 
         <View style={styles.fieldGroup}>
@@ -664,6 +746,36 @@ const styles = StyleSheet.create({
     color: colors.warning,
     fontWeight: "600",
     fontSize: 13,
+  },
+  clientModeToggle: {
+    flexDirection: "row",
+    backgroundColor: colors.border,
+    borderRadius: 10,
+    padding: 3,
+    gap: 2,
+    marginBottom: 8,
+  },
+  clientModeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  clientModeButtonActive: {
+    backgroundColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  clientModeButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textMuted,
+  },
+  clientModeButtonTextActive: {
+    color: colors.primary,
   },
   input: {
     borderWidth: 1,
