@@ -8,6 +8,15 @@ const mockUpsert = jest.fn<() => Promise<{ error: MockError }>>();
 const mockDelete = jest.fn<() => { eq: jest.Mock }>();
 const mockUpdate = jest.fn<() => { eq: jest.Mock }>();
 const mockEq = jest.fn<() => Promise<{ error: MockError }>>();
+const mockMaybeSingle =
+  jest.fn<
+    () => Promise<{
+      data: { first_name: string; last_name: string } | null;
+      error: MockError;
+    }>
+  >();
+const mockSelectEq = jest.fn(() => ({ maybeSingle: mockMaybeSingle }));
+const mockSelect = jest.fn(() => ({ eq: mockSelectEq }));
 
 mockDelete.mockImplementation(() => ({ eq: mockEq }));
 mockUpdate.mockImplementation(() => ({ eq: mockEq }));
@@ -16,6 +25,7 @@ const mockFrom = jest.fn(() => ({
   upsert: mockUpsert,
   delete: mockDelete,
   update: mockUpdate,
+  select: mockSelect,
 }));
 
 jest.mock("../supabase/client", () => ({
@@ -234,6 +244,11 @@ describe("SupabaseSyncTransport", () => {
     mockDelete.mockClear();
     mockUpdate.mockClear();
     mockEq.mockReset();
+    mockMaybeSingle.mockReset();
+    mockMaybeSingle.mockResolvedValue({
+      data: { first_name: "Ana", last_name: "Torres" },
+      error: null,
+    });
     mockDelete.mockImplementation(() => ({ eq: mockEq }));
     mockUpdate.mockImplementation(() => ({ eq: mockEq }));
   });

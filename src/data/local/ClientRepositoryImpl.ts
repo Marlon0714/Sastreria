@@ -233,6 +233,17 @@ export class ClientRepositoryImpl implements ClientRepository {
     const nowIso = new Date().toISOString();
     const deleteLogId = generateDomainUuid();
 
+    // Se lee el nombre ANTES de borrar nada: el turno lo conserva como
+    // "sin registrar" para no perder de vista de quién era, en vez de
+    // quedar sin ningún nombre visible.
+    const clientRow = await db.getFirstAsync<{
+      first_name: string;
+      last_name: string;
+    }>(`SELECT first_name, last_name FROM clients WHERE id = ?;`, id);
+    const deletedClientLabel = clientRow
+      ? `${clientRow.first_name} ${clientRow.last_name} (cliente eliminado)`
+      : "Cliente eliminado";
+
     await db.withTransactionAsync(async () => {
       await db.runAsync(
         `DELETE FROM camisa_measurements WHERE client_id = ?;`,
@@ -252,11 +263,12 @@ export class ClientRepositoryImpl implements ClientRepository {
       );
       await db.runAsync(`DELETE FROM client_tallas WHERE client_id = ?;`, id);
       // Los turnos NO se borran — sobreviven como historial con clientId
-      // vacío (ver ScheduleDayViewScreen.clientLabel: se muestran como
-      // "Cliente eliminado"). Solo las medidas y tallas no tienen sentido
-      // sin el cliente, por eso esas sí se borran arriba.
+      // vacío y el nombre del cliente conservado en unregistered_client_name
+      // (ver ScheduleDayViewScreen.clientLabel). Solo las medidas y tallas
+      // no tienen sentido sin el cliente, por eso esas sí se borran arriba.
       await db.runAsync(
-        `UPDATE schedules SET client_id = NULL WHERE client_id = ?;`,
+        `UPDATE schedules SET client_id = NULL, unregistered_client_name = ? WHERE client_id = ?;`,
+        deletedClientLabel,
         id,
       );
       await db.runAsync(`DELETE FROM clients WHERE id = ?;`, id);

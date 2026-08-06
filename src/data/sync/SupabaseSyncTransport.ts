@@ -445,10 +445,25 @@ export class SupabaseSyncTransport implements SyncTransport {
         return this.toAttemptFailure(chalecoError.code, chalecoError.message);
       }
 
+      // Se lee el nombre ANTES de borrar nada, mismo criterio que
+      // ClientRepositoryImpl.delete(): el turno conserva el nombre en vez
+      // de quedar sin ninguno.
+      const { data: clientRow } = await supabase
+        .from("clients")
+        .select("first_name, last_name")
+        .eq("id", entry.entityId)
+        .maybeSingle();
+      const deletedClientLabel = clientRow
+        ? `${clientRow.first_name} ${clientRow.last_name} (cliente eliminado)`
+        : "Cliente eliminado";
+
       // Los turnos sobreviven al cliente borrado (ver ClientRepositoryImpl.delete()).
       const { error: scheduleError } = await supabase
         .from("schedules")
-        .update({ client_id: null })
+        .update({
+          client_id: null,
+          unregistered_client_name: deletedClientLabel,
+        })
         .eq("client_id", entry.entityId);
       if (scheduleError) {
         return this.toAttemptFailure(scheduleError.code, scheduleError.message);

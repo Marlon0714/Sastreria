@@ -1231,6 +1231,20 @@ export class SupabasePullSync {
     await db.withTransactionAsync(async () => {
       for (const row of rows) {
         if (row.entity_type === "client") {
+          // Se lee el nombre ANTES de borrar nada, mismo criterio que
+          // ClientRepositoryImpl.delete(): el turno conserva el nombre en
+          // vez de quedar sin ninguno.
+          const clientRow = await db.getFirstAsync<{
+            first_name: string;
+            last_name: string;
+          }>(
+            `SELECT first_name, last_name FROM clients WHERE id = ?;`,
+            row.entity_id,
+          );
+          const deletedClientLabel = clientRow
+            ? `${clientRow.first_name} ${clientRow.last_name} (cliente eliminado)`
+            : "Cliente eliminado";
+
           await db.runAsync(
             `DELETE FROM camisa_measurements WHERE client_id = ?;`,
             row.entity_id,
@@ -1253,7 +1267,8 @@ export class SupabasePullSync {
           );
           // Los turnos sobreviven al cliente borrado (ver ClientRepositoryImpl.delete()).
           await db.runAsync(
-            `UPDATE schedules SET client_id = NULL WHERE client_id = ?;`,
+            `UPDATE schedules SET client_id = NULL, unregistered_client_name = ? WHERE client_id = ?;`,
+            deletedClientLabel,
             row.entity_id,
           );
           await db.runAsync(`DELETE FROM clients WHERE id = ?;`, row.entity_id);

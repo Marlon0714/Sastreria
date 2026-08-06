@@ -49,6 +49,8 @@ const mockOrCalls: Record<string, string[]> = {
 
 const mockRunAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown>>();
+const mockGetFirstAsync =
+  jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown>>();
 const mockWithTransactionAsync = jest.fn(async (task: () => Promise<void>) =>
   task(),
 );
@@ -88,6 +90,8 @@ jest.mock("../local/database", () => ({
   getDatabase: () => ({
     runAsync: (sql: string, ...params: unknown[]) =>
       mockRunAsync(sql, ...params),
+    getFirstAsync: (sql: string, ...params: unknown[]) =>
+      mockGetFirstAsync(sql, ...params),
     withTransactionAsync: (task: () => Promise<void>) =>
       mockWithTransactionAsync(task),
   }),
@@ -120,6 +124,11 @@ describe("SupabasePullSync", () => {
     mockOrCalls.profiles = [];
     mockOrCalls.sync_delete_log = [];
     mockRunAsync.mockReset();
+    mockGetFirstAsync.mockReset();
+    mockGetFirstAsync.mockResolvedValue({
+      first_name: "Ana",
+      last_name: "Gomez",
+    });
     mockWithTransactionAsync.mockClear();
   });
 

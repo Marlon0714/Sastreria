@@ -308,6 +308,10 @@ describe("ClientRepositoryImpl", () => {
       "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
     );
     mockRunAsync.mockResolvedValue({});
+    mockGetFirstAsync.mockResolvedValueOnce({
+      first_name: "Ana",
+      last_name: "Gomez",
+    });
 
     const onWriteCommitted = jest.fn<() => void>();
     const repository = new ClientRepositoryImpl({ onWriteCommitted });
@@ -325,7 +329,7 @@ describe("ClientRepositoryImpl", () => {
       mockRunAsync.mock.calls[3] ?? [];
     const [deleteTallaSql, deleteTallaClientId] =
       mockRunAsync.mock.calls[4] ?? [];
-    const [deleteScheduleSql, deleteScheduleClientId] =
+    const [deleteScheduleSql, deleteScheduleLabel, deleteScheduleClientId] =
       mockRunAsync.mock.calls[5] ?? [];
     const [deleteClientSql, deleteClientId] = mockRunAsync.mock.calls[6] ?? [];
     const [insertLogSql, ...insertLogParams] = mockRunAsync.mock.calls[7] ?? [];
@@ -341,6 +345,7 @@ describe("ClientRepositoryImpl", () => {
     expect(deleteTallaSql).toContain("DELETE FROM client_tallas");
     expect(deleteTallaClientId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deleteScheduleSql).toContain("UPDATE schedules SET client_id = NULL");
+    expect(deleteScheduleLabel).toBe("Ana Gomez (cliente eliminado)");
     expect(deleteScheduleClientId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deleteClientSql).toContain("DELETE FROM clients");
     expect(deleteClientId).toBe("11111111-1111-4111-8111-111111111111");
