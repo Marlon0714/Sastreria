@@ -131,8 +131,15 @@ export default function PricingForm({
               keyboardType="numeric"
               onBlur={onBlur}
               onChangeText={(v) => {
-                const n = parseFloat(v.replace(/[^0-9.]/g, ""));
-                onChange(isNaN(n) ? 0 : n);
+                // Solo dígitos: el COP no maneja centavos, y un "." acá se
+                // presta a confusión porque el resto de la app lo usa como
+                // separador de miles al MOSTRAR precios (formatPrice) — si
+                // se permitiera como parte del número, pegar/escribir
+                // "15.000" (como se ve en cualquier otra pantalla) se leería
+                // como 15 en vez de 15000.
+                const digitsOnly = v.replace(/[^0-9]/g, "");
+                const n = digitsOnly === "" ? 0 : parseInt(digitsOnly, 10);
+                onChange(n);
               }}
               value={value === 0 ? "" : String(value)}
             />

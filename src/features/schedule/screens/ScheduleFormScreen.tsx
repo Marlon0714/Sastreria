@@ -405,9 +405,13 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                 keyboardType="numeric"
                 onBlur={onBlur}
                 onChangeText={(text) => {
-                  const digitsOnly = text.replace(/[^0-9.]/g, "");
+                  // Solo dígitos — ver PricingForm.tsx para el motivo: un
+                  // "." acá se confunde con el separador de miles que
+                  // formatPrice usa al MOSTRAR precios en el resto de la
+                  // app, y "15.000" se leería como 15 en vez de 15000.
+                  const digitsOnly = text.replace(/[^0-9]/g, "");
                   onChange(
-                    digitsOnly === "" ? undefined : parseFloat(digitsOnly),
+                    digitsOnly === "" ? undefined : parseInt(digitsOnly, 10),
                   );
                 }}
                 value={value === undefined ? "" : String(value)}
