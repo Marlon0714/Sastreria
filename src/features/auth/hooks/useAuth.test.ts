@@ -213,6 +213,40 @@ describe("useAuth", () => {
   });
 
   describe("signIn", () => {
+    it("usa isSigningIn (no isLoading) mientras el login está en curso", async () => {
+      // Regresión: RootNavigator desmonta TODO (incluida la pantalla de
+      // login) mientras isLoading es true — si signIn() reusara ese mismo
+      // flag, tocar "Iniciar sesión" causaría una pantalla en blanco y, si
+      // fallara, el formulario reaparecería vacío al re-montarse.
+      let resolveSignIn: ((value: { userId: string; accessToken: string }) => void) | undefined;
+      const repo = makeRepo({
+        signIn: jest.fn<SupabaseAuthRepositoryPort["signIn"]>(
+          () =>
+            new Promise((resolve) => {
+              resolveSignIn = resolve;
+            }),
+        ),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      let signInPromise: Promise<void> = Promise.resolve();
+      act(() => {
+        signInPromise = result.current.signIn("user@example.com", "password123");
+      });
+
+      expect(result.current.isSigningIn).toBe(true);
+      expect(result.current.isLoading).toBe(false);
+
+      await act(async () => {
+        resolveSignIn?.({ userId: "user-1", accessToken: "token-abc" });
+        await signInPromise;
+      });
+
+      expect(result.current.isSigningIn).toBe(false);
+      expect(result.current.isLoading).toBe(false);
+    });
+
     it("autentica al usuario con credenciales correctas y carga su perfil", async () => {
       const repo = makeRepo();
       const { result } = renderHook(() => useAuth(repo));

@@ -17,7 +17,18 @@ const PROFILE_CACHE_TTL_MS = 72 * 60 * 60 * 1000; // 72h
 
 interface AuthState {
   isAuthenticated: boolean;
+  /** Solo la comprobación inicial de sesión guardada al montar la app. */
   isLoading: boolean;
+  /**
+   * Solo mientras corre signIn() — separado de `isLoading` a propósito:
+   * RootNavigator usa `isLoading` para decidir si desmonta TODO (incluida
+   * la pantalla de login) mientras carga la sesión inicial. Si signIn()
+   * reusara ese mismo flag, tocar "Iniciar sesión" desmontaría la propia
+   * pantalla de login a mitad del intento — pantalla en blanco y, si el
+   * login falla, el formulario reaparece vacío (nuevo montaje de
+   * react-hook-form) obligando a re-escribir todo.
+   */
+  isSigningIn: boolean;
   error: string | null;
   profile: Profile | null;
 }
@@ -76,6 +87,7 @@ export function useAuth(
 ): UseAuthResult {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const setOwnProfile = useIdentityStore((state) => state.setOwnProfile);
@@ -154,7 +166,7 @@ export function useAuth(
   const signIn = useCallback(
     async (email: string, password: string): Promise<void> => {
       setError(null);
-      setIsLoading(true);
+      setIsSigningIn(true);
       try {
         const session = await repo.signIn(email, password);
         setIsAuthenticated(true);
@@ -164,7 +176,7 @@ export function useAuth(
           err instanceof Error ? err.message : "Error al iniciar sesión.",
         );
       } finally {
-        setIsLoading(false);
+        setIsSigningIn(false);
       }
     },
     [repo, resolveProfileForSession],
@@ -187,5 +199,13 @@ export function useAuth(
     }
   }, [repo, applyProfile]);
 
-  return { isAuthenticated, isLoading, error, profile, signIn, signOut };
+  return {
+    isAuthenticated,
+    isLoading,
+    isSigningIn,
+    error,
+    profile,
+    signIn,
+    signOut,
+  };
 }

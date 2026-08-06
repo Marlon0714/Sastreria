@@ -8,7 +8,8 @@ import { SyncStatusBanner } from "../shared/components";
 import FeatureTabsNavigator from "./FeatureTabsNavigator";
 
 export default function RootNavigator() {
-  const { isAuthenticated, isLoading, error, signIn, signOut } = useAuth();
+  const { isAuthenticated, isLoading, isSigningIn, error, signIn, signOut } =
+    useAuth();
 
   // While checking stored session, render nothing (App.tsx shows spinner)
   if (isLoading) return null;
@@ -23,7 +24,7 @@ export default function RootNavigator() {
           </View>
         </AuthActionsProvider>
       ) : (
-        <LoginScreen onSignIn={signIn} isLoading={isLoading} error={error} />
+        <LoginScreen onSignIn={signIn} isLoading={isSigningIn} error={error} />
       )}
     </NavigationContainer>
   );
