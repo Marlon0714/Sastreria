@@ -512,7 +512,7 @@ describe("ScheduleFormScreen", () => {
       expect(getByLabelText("Marcar entregado")).toBeTruthy();
     });
 
-    it("no ofrece 'Marcar listo para entregar' sin operario asignado, y explica por qué", () => {
+    it("no ofrece 'Marcar listo' ni 'Marcar entregado' sin operario asignado, y explica por qué", () => {
       mockUseScheduleForm.mockReturnValue({
         schedule: { ...schedule, status: "agendado", operarioId: undefined },
         isLoading: false,
@@ -527,8 +527,11 @@ describe("ScheduleFormScreen", () => {
       );
 
       expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
+      expect(queryByLabelText("Marcar entregado")).toBeNull();
       expect(
-        getByText("Asigna un operario para poder marcarlo listo para entregar."),
+        getByText(
+          "Asigna un operario para poder marcar el turno como listo o entregado.",
+        ),
       ).toBeTruthy();
     });
 
@@ -585,7 +588,7 @@ describe("ScheduleFormScreen", () => {
 
     it("oculta solo 'Marcar listo' cuando ya está en listo_para_entregar (pero permite entregar directo)", () => {
       mockUseScheduleForm.mockReturnValue({
-        schedule: { ...schedule, status: "listo_para_entregar" },
+        schedule: { ...schedule, status: "listo_para_entregar", operarioId: "op-1" },
         isLoading: false,
         isSubmitting: false,
         error: null,

@@ -51,8 +51,10 @@ export function ScheduleQuickActionSheet({
 
   const isPending =
     schedule.status !== "listo_para_entregar" && schedule.status !== "entregado";
-  const canMarkReady = isPending && Boolean(schedule.operarioId);
-  const canMarkDelivered = schedule.status !== "entregado";
+  const isDelivered = schedule.status === "entregado";
+  const hasOperario = Boolean(schedule.operarioId);
+  const canMarkReady = isPending && hasOperario;
+  const canMarkDelivered = !isDelivered && hasOperario;
 
   return (
     <Modal
@@ -85,6 +87,13 @@ export function ScheduleQuickActionSheet({
           />
         </View>
 
+        {!hasOperario && !isDelivered ? (
+          <Text style={styles.helperText}>
+            Asigna un operario para poder marcar el turno como listo o
+            entregado.
+          </Text>
+        ) : null}
+
         {canMarkReady ? (
           <Pressable
             accessibilityLabel="Marcar listo para entregar"
@@ -97,10 +106,6 @@ export function ScheduleQuickActionSheet({
               Marcar listo para entregar
             </Text>
           </Pressable>
-        ) : isPending ? (
-          <Text style={styles.helperText}>
-            Asigna un operario para poder marcarlo listo para entregar.
-          </Text>
         ) : null}
 
         {canMarkDelivered ? (

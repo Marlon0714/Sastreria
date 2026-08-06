@@ -481,31 +481,33 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             <Text style={styles.errorText}>{statusActions.error}</Text>
           ) : null}
 
-          {displaySchedule.status !== "listo_para_entregar" &&
-          displaySchedule.status !== "entregado" ? (
-            displaySchedule.operarioId ? (
-              <Pressable
-                accessibilityLabel="Marcar listo para entregar"
-                style={[
-                  styles.statusActionButton,
-                  isBusy ? styles.buttonDisabled : null,
-                ]}
-                onPress={() => void handleMarkReady()}
-                disabled={isBusy}
-              >
-                <Ionicons name="bag-check-outline" size={18} color="#ffffff" />
-                <Text style={styles.statusActionButtonText}>
-                  Marcar listo para entregar
-                </Text>
-              </Pressable>
-            ) : (
-              <Text style={styles.helperText}>
-                Asigna un operario para poder marcarlo listo para entregar.
-              </Text>
-            )
+          {!displaySchedule.operarioId && displaySchedule.status !== "entregado" ? (
+            <Text style={styles.helperText}>
+              Asigna un operario para poder marcar el turno como listo o
+              entregado.
+            </Text>
           ) : null}
 
-          {displaySchedule.status !== "entregado" ? (
+          {displaySchedule.status !== "listo_para_entregar" &&
+          displaySchedule.status !== "entregado" &&
+          displaySchedule.operarioId ? (
+            <Pressable
+              accessibilityLabel="Marcar listo para entregar"
+              style={[
+                styles.statusActionButton,
+                isBusy ? styles.buttonDisabled : null,
+              ]}
+              onPress={() => void handleMarkReady()}
+              disabled={isBusy}
+            >
+              <Ionicons name="bag-check-outline" size={18} color="#ffffff" />
+              <Text style={styles.statusActionButtonText}>
+                Marcar listo para entregar
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {displaySchedule.status !== "entregado" && displaySchedule.operarioId ? (
             <Pressable
               accessibilityLabel="Marcar entregado"
               style={[

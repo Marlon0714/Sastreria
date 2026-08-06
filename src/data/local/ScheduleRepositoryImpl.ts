@@ -182,6 +182,11 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
   async markDelivered(id: string): Promise<Schedule> {
     const existing = await this.getById(id);
     if (!existing) throw new Error("Turno no encontrado");
+    if (!existing.operarioId) {
+      throw new ScheduleValidationError(
+        "Asigna un operario antes de marcar el turno como entregado.",
+      );
+    }
 
     return this.persistUpdate({
       ...existing,

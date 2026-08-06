@@ -105,7 +105,7 @@ describe("ScheduleQuickActionSheet", () => {
     expect(getByLabelText("Marcar entregado")).toBeTruthy();
   });
 
-  it("no ofrece 'Marcar listo para entregar' sin operario asignado, y explica por qué", () => {
+  it("no ofrece 'Marcar listo' ni 'Marcar entregado' sin operario asignado, y explica por qué", () => {
     const { queryByLabelText, getByText } = render(
       <ScheduleQuickActionSheet
         visible
@@ -122,8 +122,11 @@ describe("ScheduleQuickActionSheet", () => {
     );
 
     expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
+    expect(queryByLabelText("Marcar entregado")).toBeNull();
     expect(
-      getByText("Asigna un operario para poder marcarlo listo para entregar."),
+      getByText(
+        "Asigna un operario para poder marcar el turno como listo o entregado.",
+      ),
     ).toBeTruthy();
   });
 

@@ -370,10 +370,11 @@ describe("ScheduleRepositoryImpl", () => {
   });
 
   describe("markDelivered", () => {
-    it("fija status entregado y deliveredAt desde cualquier estado previo", async () => {
+    it("fija status entregado y deliveredAt desde cualquier estado previo, con operario asignado", async () => {
       mockGetFirstAsync.mockResolvedValueOnce({
         ...baseRow,
         status: "pendiente",
+        operario_id: "op-1",
       });
       mockRunAsync.mockResolvedValueOnce({});
       const repository = new ScheduleRepositoryImpl();
@@ -382,6 +383,16 @@ describe("ScheduleRepositoryImpl", () => {
 
       expect(result.status).toBe("entregado");
       expect(result.deliveredAt).toBe("2026-08-01T10:00:00.000Z");
+    });
+
+    it("rechaza marcar entregado sin operario asignado, y no escribe nada", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // operario_id: null
+      const repository = new ScheduleRepositoryImpl();
+
+      await expect(repository.markDelivered(baseRow.id)).rejects.toThrow(
+        "Asigna un operario antes de marcar el turno como entregado.",
+      );
+      expect(mockRunAsync).not.toHaveBeenCalled();
     });
   });
 

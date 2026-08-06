@@ -468,7 +468,9 @@ describe("ScheduleDayViewScreen", () => {
 
     it("solo ofrece 'Marcar entregado' cuando el turno ya está listo para entregar", async () => {
       mockUseScheduleDayView.mockReturnValue({
-        dateSchedules: [{ ...scheduledOne, status: "listo_para_entregar" }],
+        dateSchedules: [
+          { ...scheduledOne, status: "listo_para_entregar", operarioId: "op-1" },
+        ],
         pendingSchedules: [],
         isLoading: false,
         error: null,
