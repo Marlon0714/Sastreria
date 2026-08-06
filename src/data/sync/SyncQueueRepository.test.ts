@@ -335,7 +335,7 @@ describe("SyncQueueRepository", () => {
     expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks pricing_service row as error using updated_at as an optimistic-concurrency guard", async () => {
+  it("marks pricing_service row as error using updatedAt (camelCase) as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
@@ -344,7 +344,7 @@ describe("SyncQueueRepository", () => {
     const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE pricing_services");
     expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
-    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
+    expect(sql).toContain("WHERE id = ? AND updatedAt = ?");
     expect(status).toBe("error");
     expect(id).toBe("price-1");
     expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");

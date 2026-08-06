@@ -1027,15 +1027,20 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       delete_log: "sync_delete_log",
     };
     const table = tableMap[entityType];
-    // sync_delete_log y schedule_events son de solo-escritura (un log, nunca
-    // se editan después de creados) y no tienen columna updated_at — usan su
-    // propio timestamp de creación/borrado como versión.
+    // El nombre real de la columna de versión varía por tabla:
+    // - sync_delete_log y schedule_events son de solo-escritura (un log,
+    //   nunca se editan tras crearse) y no tienen updated_at — usan su
+    //   propio timestamp de creación/borrado.
+    // - pricing_services quedó con createdAt/updatedAt en camelCase en
+    //   SQLite (ver v8_pricing_services en migrations.ts) — el rename a
+    //   snake_case documentado en SUPABASE_MIGRATIONS.md fue solo del lado
+    //   de Supabase/Postgres, la tabla local nunca se tocó.
     const versionColumnMap: Record<SyncQueueItem["entityType"], string> = {
       client: "updated_at",
       camisa_measurement: "updated_at",
       pantalon_measurement: "updated_at",
       client_talla: "updated_at",
-      pricing_service: "updated_at",
+      pricing_service: "updatedAt",
       saco_measurement: "updated_at",
       chaleco_measurement: "updated_at",
       talla_template: "updated_at",
