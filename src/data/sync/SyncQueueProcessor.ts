@@ -89,8 +89,12 @@ export class SyncQueueProcessor {
 
       try {
         result = await this.syncItem(item);
-      } catch {
-        result = { outcome: "failed", errorCode: "unexpected_error" };
+      } catch (err) {
+        result = {
+          outcome: "failed",
+          errorCode: "unexpected_error",
+          errorMessage: err instanceof Error ? err.message : String(err),
+        };
       }
 
       // Solo marcar como synced si outcome=cloud-ok y modo cloud
@@ -146,6 +150,24 @@ export class SyncQueueProcessor {
       ) {
         return "deferred";
       }
+
+      // outcome === "failed" a partir de acá — se loguea SIEMPRE (no solo en
+      // el intento final) porque antes esta rama no imprimía nada: el
+      // usuario veía la etiqueta "Error sync" sin ninguna pista de la causa
+      // real (código/mensaje que devolvió Supabase) en ningún log.
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "SyncQueueProcessor",
+          message: "Intento de sync falló",
+          entityType: item.entityType,
+          itemId: item.id,
+          attempt,
+          maxRetries: this.retryPolicy.maxRetries,
+          errorCode: result.errorCode,
+          errorMessage: result.errorMessage,
+        }),
+      );
 
       if (attempt === this.retryPolicy.maxRetries) {
         try {

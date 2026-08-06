@@ -84,6 +84,7 @@ export type SyncTransportAttemptOutcome =
 export interface SyncTransportAttemptResult {
   outcome: SyncTransportAttemptOutcome;
   errorCode?: string;
+  errorMessage?: string;
 }
 
 export type SyncMode = "cloud" | "local-only";

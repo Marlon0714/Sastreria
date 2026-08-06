@@ -564,6 +564,6 @@ export class SupabaseSyncTransport implements SyncTransport {
       return { outcome: "deferred_offline" };
     }
 
-    return { outcome: "failed", errorCode };
+    return { outcome: "failed", errorCode, errorMessage };
   }
 }

@@ -641,6 +641,46 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsError).toHaveBeenCalledWith("client", "c-1", clientItem.updatedAt);
   });
 
+  it("loguea el código y mensaje reales del error en cada intento fallido, no solo un mensaje genérico", async () => {
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const queueRepository = {
+      getPendingItems: jest.fn(async () => [clientItem]),
+      hasPendingItems: jest.fn(async () => true),
+      markAsSynced: jest.fn(async () => Promise.resolve()),
+      markAsError: jest.fn(async () => Promise.resolve()),
+    };
+    const transport = makeMockTransport();
+    transport.syncClient.mockResolvedValue({
+      outcome: "failed",
+      errorCode: "23505",
+      errorMessage: "duplicate key value violates unique constraint",
+    });
+
+    const processor = new SyncQueueProcessor(queueRepository, transport, {
+      maxRetries: 3,
+      baseDelayMs: 200,
+    });
+
+    const runPromise = processor.runOnce();
+    await jest.advanceTimersByTimeAsync(200);
+    await jest.advanceTimersByTimeAsync(400);
+    await runPromise;
+
+    const loggedFailure = consoleErrorSpy.mock.calls
+      .map((call) => JSON.parse(call[0] as string) as Record<string, unknown>)
+      .find((entry) => entry.message === "Intento de sync falló");
+
+    expect(loggedFailure).toEqual(
+      expect.objectContaining({
+        entityType: "client",
+        itemId: "c-1",
+        errorCode: "23505",
+        errorMessage: "duplicate key value violates unique constraint",
+      }),
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
   it("returns an empty summary when queue has no items", async () => {
     const queueRepository = {
       getPendingItems: jest.fn(async () => []),
