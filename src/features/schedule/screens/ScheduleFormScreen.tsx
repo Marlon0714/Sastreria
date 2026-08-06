@@ -77,6 +77,14 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   } = useScheduleForm(scheduleId, identityGate);
   const { deleteSchedule, isDeleting } = useDeleteSchedule(identityGate);
   const statusActions = useScheduleStatusActions(scheduleId ?? "", identityGate);
+  // Guardar, marcar listo/entregado, corregir y eliminar mutan el mismo
+  // turno con lecturas-y-reescrituras independientes (sin control de
+  // concurrencia a nivel de fila) — si dos de estas quedaran habilitadas al
+  // mismo tiempo, un doble tap entre botones distintos podría hacer que una
+  // sobrescriba silenciosamente lo que la otra acababa de guardar. Un solo
+  // flag "ocupado" que deshabilita TODAS las acciones mientras cualquiera
+  // esté en curso evita esa ventana.
+  const isBusy = isSubmitting || statusActions.isProcessing || isDeleting;
   const [displaySchedule, setDisplaySchedule] = useState<Schedule | null>(
     null,
   );
@@ -453,11 +461,11 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         accessibilityLabel="Guardar turno"
         style={({ pressed }) => [
           styles.saveButton,
-          isSubmitting ? styles.buttonDisabled : null,
-          pressed && !isSubmitting ? styles.saveButtonPressed : null,
+          isBusy ? styles.buttonDisabled : null,
+          pressed && !isBusy ? styles.saveButtonPressed : null,
         ]}
         onPress={() => void onSubmit()}
-        disabled={isSubmitting}
+        disabled={isBusy}
       >
         <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         <Text style={styles.saveButtonText}>
@@ -479,10 +487,10 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
               accessibilityLabel="Marcar listo para entregar"
               style={[
                 styles.statusActionButton,
-                statusActions.isProcessing ? styles.buttonDisabled : null,
+                isBusy ? styles.buttonDisabled : null,
               ]}
               onPress={() => void handleMarkReady()}
-              disabled={statusActions.isProcessing}
+              disabled={isBusy}
             >
               <Ionicons name="bag-check-outline" size={18} color="#ffffff" />
               <Text style={styles.statusActionButtonText}>
@@ -496,10 +504,10 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
               accessibilityLabel="Marcar entregado"
               style={[
                 styles.statusActionButton,
-                statusActions.isProcessing ? styles.buttonDisabled : null,
+                isBusy ? styles.buttonDisabled : null,
               ]}
               onPress={() => void handleMarkDelivered()}
-              disabled={statusActions.isProcessing}
+              disabled={isBusy}
             >
               <Ionicons name="checkmark-done" size={18} color="#ffffff" />
               <Text style={styles.statusActionButtonText}>
@@ -528,7 +536,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                   accessibilityLabel={`Corregir a ${STATUS_LABELS[status]}`}
                   style={styles.correctionChip}
                   onPress={() => handleApplyCorrection(status)}
-                  disabled={statusActions.isProcessing}
+                  disabled={isBusy}
                 >
                   <Text style={styles.correctionChipText}>
                     {STATUS_LABELS[status]}
@@ -543,9 +551,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       {scheduleId ? (
         <Pressable
           accessibilityLabel="Eliminar turno"
-          style={[styles.deleteButton, isDeleting ? styles.buttonDisabled : null]}
+          style={[styles.deleteButton, isBusy ? styles.buttonDisabled : null]}
           onPress={onDelete}
-          disabled={isDeleting}
+          disabled={isBusy}
         >
           <Ionicons name="trash-outline" size={18} color={colors.danger} />
           <Text style={styles.deleteButtonText}>

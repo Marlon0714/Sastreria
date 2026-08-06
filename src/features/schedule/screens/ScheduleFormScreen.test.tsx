@@ -512,6 +512,39 @@ describe("ScheduleFormScreen", () => {
       expect(getByLabelText("Marcar entregado")).toBeTruthy();
     });
 
+    it("deshabilita Guardar y Eliminar mientras una acción de estado está en curso, para no pisar cambios entre sí", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "agendado" },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: true,
+        error: null,
+        markReady: jest.fn(async () => Promise.resolve(null)),
+        markDelivered: jest.fn(async () => Promise.resolve(null)),
+        applyCorrection: jest.fn(async () => Promise.resolve(null)),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      const saveButton = getByLabelText("Guardar turno");
+      expect(
+        saveButton.props.accessibilityState?.disabled ??
+          saveButton.props.disabled,
+      ).toBe(true);
+      const deleteButton = getByLabelText("Eliminar turno");
+      expect(
+        deleteButton.props.accessibilityState?.disabled ??
+          deleteButton.props.disabled,
+      ).toBe(true);
+    });
+
     it("oculta ambos botones cuando ya está entregado", () => {
       mockUseScheduleForm.mockReturnValue({
         schedule: { ...schedule, status: "entregado" },

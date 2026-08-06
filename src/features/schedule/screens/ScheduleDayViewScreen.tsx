@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -88,6 +88,15 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   const [clientsById, setClientsById] = useState<Record<string, Client>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [sheetSchedule, setSheetSchedule] = useState<Schedule | null>(null);
+  // Espeja `sheetSchedule` para leerse desde dentro de los handlers async de
+  // abajo: si el usuario cierra el panel (o abre otro turno) mientras una
+  // acción sigue esperando el PIN o la respuesta de la mutación, el cierre
+  // de esa closure ya quedó "vieja" — sin esto, la respuesta tardía podría
+  // reabrir el panel (o pisar el de otro turno) igual.
+  const sheetScheduleIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    sheetScheduleIdRef.current = sheetSchedule?.id ?? null;
+  }, [sheetSchedule]);
 
   const identityGate = useIdentityGate();
   // Cada acción de estado pide su propio PIN (ver useScheduleStatusActions):
@@ -173,17 +182,23 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   // sin volver a tocar la tarjeta. "Cerrar" sigue disponible para salir
   // cuando se quiera.
   const handleSheetMarkReady = async (): Promise<void> => {
+    const actingOnId = sheetScheduleIdRef.current;
     const updated = await statusActions.markReady();
     if (updated) {
-      setSheetSchedule(updated);
+      if (sheetScheduleIdRef.current === actingOnId) {
+        setSheetSchedule(updated);
+      }
       void reload();
     }
   };
 
   const handleSheetMarkDelivered = async (): Promise<void> => {
+    const actingOnId = sheetScheduleIdRef.current;
     const updated = await statusActions.markDelivered();
     if (updated) {
-      setSheetSchedule(updated);
+      if (sheetScheduleIdRef.current === actingOnId) {
+        setSheetSchedule(updated);
+      }
       void reload();
     }
   };
@@ -191,9 +206,12 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   const handleSheetAssignOperario = async (
     operarioId: string | undefined,
   ): Promise<void> => {
+    const actingOnId = sheetScheduleIdRef.current;
     const updated = await statusActions.assignOperario(operarioId);
     if (updated) {
-      setSheetSchedule(updated);
+      if (sheetScheduleIdRef.current === actingOnId) {
+        setSheetSchedule(updated);
+      }
       void reload();
     }
   };
