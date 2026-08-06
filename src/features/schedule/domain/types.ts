@@ -1,5 +1,12 @@
 import type { BaseEntity } from "../../../shared/domain/baseEntity";
 
+/**
+ * Violación de una regla de negocio esperada (ej. marcar listo sin
+ * operario asignado) — a diferencia de un error técnico (SQLite, red),
+ * su mensaje ya está escrito para mostrarse tal cual al usuario.
+ */
+export class ScheduleValidationError extends Error {}
+
 export type ScheduleStatus =
   | "pendiente"
   | "agendado"

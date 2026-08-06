@@ -483,20 +483,26 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
           {displaySchedule.status !== "listo_para_entregar" &&
           displaySchedule.status !== "entregado" ? (
-            <Pressable
-              accessibilityLabel="Marcar listo para entregar"
-              style={[
-                styles.statusActionButton,
-                isBusy ? styles.buttonDisabled : null,
-              ]}
-              onPress={() => void handleMarkReady()}
-              disabled={isBusy}
-            >
-              <Ionicons name="bag-check-outline" size={18} color="#ffffff" />
-              <Text style={styles.statusActionButtonText}>
-                Marcar listo para entregar
+            displaySchedule.operarioId ? (
+              <Pressable
+                accessibilityLabel="Marcar listo para entregar"
+                style={[
+                  styles.statusActionButton,
+                  isBusy ? styles.buttonDisabled : null,
+                ]}
+                onPress={() => void handleMarkReady()}
+                disabled={isBusy}
+              >
+                <Ionicons name="bag-check-outline" size={18} color="#ffffff" />
+                <Text style={styles.statusActionButtonText}>
+                  Marcar listo para entregar
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.helperText}>
+                Asigna un operario para poder marcarlo listo para entregar.
               </Text>
-            </Pressable>
+            )
           ) : null}
 
           {displaySchedule.status !== "entregado" ? (
@@ -724,6 +730,11 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.danger,
     fontSize: 13,
+  },
+  helperText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontStyle: "italic",
   },
   statusBadge: {
     alignSelf: "flex-start",

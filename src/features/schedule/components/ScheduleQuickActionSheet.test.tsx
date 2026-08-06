@@ -13,6 +13,7 @@ jest.mock("../../../data/local/profilesCacheDependencies", () => ({
 const baseSchedule: Schedule = {
   id: "schedule-1",
   clientId: "client-1",
+  operarioId: "operario-1",
   date: "2026-08-15",
   time: "14:30",
   isPriority: false,
@@ -102,6 +103,28 @@ describe("ScheduleQuickActionSheet", () => {
 
     expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
     expect(getByLabelText("Marcar entregado")).toBeTruthy();
+  });
+
+  it("no ofrece 'Marcar listo para entregar' sin operario asignado, y explica por qué", () => {
+    const { queryByLabelText, getByText } = render(
+      <ScheduleQuickActionSheet
+        visible
+        schedule={{ ...baseSchedule, operarioId: undefined }}
+        clientLabel="Ana Torres"
+        isProcessing={false}
+        error={null}
+        onMarkReady={jest.fn()}
+        onMarkDelivered={jest.fn()}
+        onAssignOperario={jest.fn()}
+        onViewDetail={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
+
+    expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
+    expect(
+      getByText("Asigna un operario para poder marcarlo listo para entregar."),
+    ).toBeTruthy();
   });
 
   it("no muestra ninguna acción de estado cuando ya está entregado", () => {

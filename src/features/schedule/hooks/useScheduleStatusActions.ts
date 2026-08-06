@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { getDefaultScheduleEventRepository } from "../../../data/local/scheduleEventDependencies";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
-import type { Schedule, ScheduleStatus } from "../domain/types";
+import { ScheduleValidationError, type Schedule, type ScheduleStatus } from "../domain/types";
 import type { ScheduleIdentityGate } from "./useScheduleForm";
 import type { ScheduleEventAction } from "../domain/events";
 
@@ -97,8 +97,12 @@ export function useScheduleStatusActions(
           }
         }
         return updated;
-      } catch {
-        setError("No se pudo actualizar el turno. Intenta nuevamente.");
+      } catch (err) {
+        setError(
+          err instanceof ScheduleValidationError
+            ? err.message
+            : "No se pudo actualizar el turno. Intenta nuevamente.",
+        );
         return null;
       } finally {
         if (identity) {

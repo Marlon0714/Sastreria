@@ -49,8 +49,9 @@ export function ScheduleQuickActionSheet({
     return null;
   }
 
-  const canMarkReady =
+  const isPending =
     schedule.status !== "listo_para_entregar" && schedule.status !== "entregado";
+  const canMarkReady = isPending && Boolean(schedule.operarioId);
   const canMarkDelivered = schedule.status !== "entregado";
 
   return (
@@ -96,6 +97,10 @@ export function ScheduleQuickActionSheet({
               Marcar listo para entregar
             </Text>
           </Pressable>
+        ) : isPending ? (
+          <Text style={styles.helperText}>
+            Asigna un operario para poder marcarlo listo para entregar.
+          </Text>
         ) : null}
 
         {canMarkDelivered ? (
@@ -165,6 +170,11 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: colors.danger,
+  },
+  helperText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontStyle: "italic",
   },
   fieldGroup: {
     gap: 4,

@@ -8,11 +8,12 @@ import {
   deriveScheduleStatus,
   isStickyStatus,
 } from "../../features/schedule/domain/statusDerivation";
-import type {
-  Schedule,
-  ScheduleStatus,
-  CreateScheduleDTO,
-  UpdateScheduleDTO,
+import {
+  ScheduleValidationError,
+  type Schedule,
+  type ScheduleStatus,
+  type CreateScheduleDTO,
+  type UpdateScheduleDTO,
 } from "../../features/schedule/domain/types";
 import { generateDomainUuid } from "../../features/clients/domain/types";
 
@@ -165,6 +166,11 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
   async markReady(id: string): Promise<Schedule> {
     const existing = await this.getById(id);
     if (!existing) throw new Error("Turno no encontrado");
+    if (!existing.operarioId) {
+      throw new ScheduleValidationError(
+        "Asigna un operario antes de marcar el turno como listo para entregar.",
+      );
+    }
 
     return this.persistUpdate({
       ...existing,

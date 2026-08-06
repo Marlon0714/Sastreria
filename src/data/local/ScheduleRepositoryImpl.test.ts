@@ -340,8 +340,11 @@ describe("ScheduleRepositoryImpl", () => {
   });
 
   describe("markReady", () => {
-    it("fija status listo_para_entregar y readyAt", async () => {
-      mockGetFirstAsync.mockResolvedValueOnce(baseRow);
+    it("fija status listo_para_entregar y readyAt cuando hay un operario asignado", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        operario_id: "op-1",
+      });
       mockRunAsync.mockResolvedValueOnce({});
       const onWriteCommitted = jest.fn<() => void>();
       const repository = new ScheduleRepositoryImpl({ onWriteCommitted });
@@ -351,6 +354,18 @@ describe("ScheduleRepositoryImpl", () => {
       expect(result.status).toBe("listo_para_entregar");
       expect(result.readyAt).toBe("2026-08-01T10:00:00.000Z");
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+
+    it("rechaza marcar listo sin operario asignado, y no escribe nada", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // operario_id: null
+      const onWriteCommitted = jest.fn<() => void>();
+      const repository = new ScheduleRepositoryImpl({ onWriteCommitted });
+
+      await expect(repository.markReady(baseRow.id)).rejects.toThrow(
+        "Asigna un operario antes de marcar el turno como listo para entregar.",
+      );
+      expect(mockRunAsync).not.toHaveBeenCalled();
+      expect(onWriteCommitted).not.toHaveBeenCalled();
     });
   });
 

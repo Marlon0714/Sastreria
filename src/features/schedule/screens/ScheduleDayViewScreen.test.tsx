@@ -430,7 +430,7 @@ describe("ScheduleDayViewScreen", () => {
     it("muestra las acciones según el estado del turno y marca listo sin salir de la Agenda", async () => {
       const reload = jest.fn(async () => Promise.resolve());
       mockUseScheduleDayView.mockReturnValue({
-        dateSchedules: [scheduledOne],
+        dateSchedules: [{ ...scheduledOne, operarioId: "op-1" }],
         pendingSchedules: [],
         isLoading: false,
         error: null,
@@ -438,6 +438,7 @@ describe("ScheduleDayViewScreen", () => {
       });
       mockMarkReady.mockResolvedValueOnce({
         ...scheduledOne,
+        operarioId: "op-1",
         status: "listo_para_entregar",
       });
 

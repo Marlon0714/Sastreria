@@ -496,7 +496,7 @@ describe("ScheduleFormScreen", () => {
   describe("acciones de estado manual", () => {
     it("muestra ambos botones cuando el turno está en un estado no terminal", () => {
       mockUseScheduleForm.mockReturnValue({
-        schedule: { ...schedule, status: "agendado" },
+        schedule: { ...schedule, status: "agendado", operarioId: "op-1" },
         isLoading: false,
         isSubmitting: false,
         error: null,
@@ -510,6 +510,26 @@ describe("ScheduleFormScreen", () => {
 
       expect(getByLabelText("Marcar listo para entregar")).toBeTruthy();
       expect(getByLabelText("Marcar entregado")).toBeTruthy();
+    });
+
+    it("no ofrece 'Marcar listo para entregar' sin operario asignado, y explica por qué", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "agendado", operarioId: undefined },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { queryByLabelText, getByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
+      expect(
+        getByText("Asigna un operario para poder marcarlo listo para entregar."),
+      ).toBeTruthy();
     });
 
     it("deshabilita Guardar y Eliminar mientras una acción de estado está en curso, para no pisar cambios entre sí", () => {
@@ -583,7 +603,7 @@ describe("ScheduleFormScreen", () => {
 
     it("al marcar listo, actualiza el badge de estado en pantalla", async () => {
       mockUseScheduleForm.mockReturnValue({
-        schedule: { ...schedule, status: "en_proceso" },
+        schedule: { ...schedule, status: "en_proceso", operarioId: "op-1" },
         isLoading: false,
         isSubmitting: false,
         error: null,
