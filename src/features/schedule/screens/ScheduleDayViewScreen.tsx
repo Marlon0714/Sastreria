@@ -17,7 +17,11 @@ import { formatPrice } from "../../pricing/domain/strings";
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
 import { normalizeText } from "../../../shared/utils/textSearch";
+import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
+import { PinPromptModal } from "../../auth/components/PinPromptModal";
+import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
+import { ScheduleQuickActionSheet } from "../components/ScheduleQuickActionSheet";
 import {
   formatDateForDisplay,
   shiftDateString,
@@ -32,6 +36,7 @@ import {
 } from "../domain/types";
 import { colors } from "../../../shared/theme/colors";
 import { useScheduleDayView } from "../hooks/useScheduleDayView";
+import { useScheduleStatusActions } from "../hooks/useScheduleStatusActions";
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, "ScheduleDayView">;
 
@@ -82,6 +87,23 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   const clientRepository = useClientRepository();
   const [clientsById, setClientsById] = useState<Record<string, Client>>({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [sheetSchedule, setSheetSchedule] = useState<Schedule | null>(null);
+
+  const identityGate = useIdentityGate();
+  const statusActions = useScheduleStatusActions(
+    sheetSchedule?.id ?? "",
+    identityGate,
+  );
+
+  // Un PIN vale para toda la visita a esta pantalla (igual que en
+  // ScheduleFormScreen) — se libera al salir de la Agenda, no cada vez que
+  // se cierra el panel rápido, para no repetirlo turno tras turno.
+  useEffect(() => {
+    return () => {
+      identityGate.releaseIdentity();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityGate.releaseIdentity]);
 
   const matchesSearch = useCallback(
     (schedule: Schedule) => {
@@ -147,6 +169,33 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     [clientsById],
   );
 
+  const closeSheet = useCallback(() => {
+    setSheetSchedule(null);
+  }, []);
+
+  const handleSheetMarkReady = async (): Promise<void> => {
+    const updated = await statusActions.markReady();
+    if (updated) {
+      closeSheet();
+      void reload();
+    }
+  };
+
+  const handleSheetMarkDelivered = async (): Promise<void> => {
+    const updated = await statusActions.markDelivered();
+    if (updated) {
+      closeSheet();
+      void reload();
+    }
+  };
+
+  const handleViewDetail = (): void => {
+    if (!sheetSchedule) return;
+    const scheduleId = sheetSchedule.id;
+    closeSheet();
+    navigation.navigate("ScheduleForm", { scheduleId });
+  };
+
   const renderCard = (item: Schedule, dateLabel: string) => {
     const statusColor = STATUS_COLORS[item.status];
     return (
@@ -154,9 +203,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         key={item.id}
         accessibilityLabel={`Ver turno de ${clientLabel(item)} (${dateLabel}, ${item.id})`}
         style={styles.card}
-        onPress={() =>
-          navigation.navigate("ScheduleForm", { scheduleId: item.id })
-        }
+        onPress={() => setSheetSchedule(item)}
       >
         <View style={styles.cardHeader}>
           <Text style={styles.cardClient} numberOfLines={1}>
@@ -400,6 +447,32 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
       >
         <Text style={styles.fabButtonText}>Nuevo turno</Text>
       </Pressable>
+
+      <ScheduleQuickActionSheet
+        visible={sheetSchedule !== null}
+        schedule={sheetSchedule}
+        clientLabel={sheetSchedule ? clientLabel(sheetSchedule) : ""}
+        isProcessing={statusActions.isProcessing}
+        error={statusActions.error}
+        onMarkReady={() => void handleSheetMarkReady()}
+        onMarkDelivered={() => void handleSheetMarkDelivered()}
+        onViewDetail={handleViewDetail}
+        onClose={closeSheet}
+      />
+
+      <PinPromptModal
+        visible={identityGate.isPinPromptVisible}
+        error={identityGate.pinError}
+        onSubmit={(pin) => void identityGate.submitPin(pin)}
+        onCancel={identityGate.cancelPinPrompt}
+      />
+      <OfflineActorPickerModal
+        visible={identityGate.isOfflineActorPickerVisible}
+        operarios={identityGate.offlineOperarios}
+        isLoading={identityGate.isLoadingOfflineOperarios}
+        onSelect={identityGate.submitOfflineActor}
+        onCancel={identityGate.cancelOfflineActorPicker}
+      />
     </View>
   );
 }

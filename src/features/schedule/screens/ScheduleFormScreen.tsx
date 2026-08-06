@@ -414,20 +414,22 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           ) : null}
         </View>
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Operario asignado (opcional)</Text>
-          <Controller
-            control={control}
-            name="operarioId"
-            render={({ field: { onChange, value } }) => (
-              <OperarioPickerField
-                value={value}
-                onChange={onChange}
-                errorMessage={errors.operarioId?.message}
-              />
-            )}
-          />
-        </View>
+        {scheduleId ? (
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Operario asignado (opcional)</Text>
+            <Controller
+              control={control}
+              name="operarioId"
+              render={({ field: { onChange, value } }) => (
+                <OperarioPickerField
+                  value={value}
+                  onChange={onChange}
+                  errorMessage={errors.operarioId?.message}
+                />
+              )}
+            />
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.card}>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import type React from "react";
 
 import type { Client } from "../../clients/domain/types";
@@ -78,6 +78,39 @@ jest.mock("../components/ScheduleDateTimePickerField", () => {
       ),
   };
 });
+
+const mockMarkReady = jest.fn<() => Promise<Schedule | null>>();
+const mockMarkDelivered = jest.fn<() => Promise<Schedule | null>>();
+const mockReleaseIdentity = jest.fn();
+
+jest.mock("../../auth/hooks/useIdentityGate", () => ({
+  useIdentityGate: () => ({
+    requireIdentity: jest.fn(async () => ({
+      profile: { id: "user-1", displayName: "Ana", role: "operario" },
+      verified: true,
+    })),
+    releaseIdentity: mockReleaseIdentity,
+    isPinPromptVisible: false,
+    pinError: null,
+    submitPin: jest.fn(),
+    cancelPinPrompt: jest.fn(),
+    isOfflineActorPickerVisible: false,
+    offlineOperarios: [],
+    isLoadingOfflineOperarios: false,
+    submitOfflineActor: jest.fn(),
+    cancelOfflineActorPicker: jest.fn(),
+  }),
+}));
+
+jest.mock("../hooks/useScheduleStatusActions", () => ({
+  useScheduleStatusActions: () => ({
+    isProcessing: false,
+    error: null,
+    markReady: () => mockMarkReady(),
+    markDelivered: () => mockMarkDelivered(),
+    applyCorrection: jest.fn(async () => Promise.resolve(null)),
+  }),
+}));
 
 type ScreenProps = React.ComponentProps<typeof ScheduleDayViewScreen>;
 
@@ -161,6 +194,9 @@ describe("ScheduleDayViewScreen", () => {
     mockUseScheduleDayView.mockReset();
     mockFindAll.mockReset();
     mockFindAll.mockResolvedValue([client]);
+    mockMarkReady.mockReset();
+    mockMarkDelivered.mockReset();
+    mockReleaseIdentity.mockClear();
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [],
       pendingSchedules: [],
@@ -343,7 +379,7 @@ describe("ScheduleDayViewScreen", () => {
     });
   });
 
-  it("navega al formulario al presionar un turno, y al FAB para uno nuevo", async () => {
+  it("abre el panel rápido al presionar un turno, y navega al formulario completo desde ahí", async () => {
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [scheduledOne],
       pendingSchedules: [],
@@ -360,6 +396,9 @@ describe("ScheduleDayViewScreen", () => {
     fireEvent.press(
       await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
     );
+    expect(navigate).not.toHaveBeenCalled();
+
+    fireEvent.press(await findByLabelText("Ver turno completo"));
     expect(navigate).toHaveBeenCalledWith("ScheduleForm", {
       scheduleId: scheduledOne.id,
     });
@@ -367,6 +406,111 @@ describe("ScheduleDayViewScreen", () => {
     fireEvent.press(getByLabelText("Nuevo turno"));
     expect(navigate).toHaveBeenCalledWith("ScheduleForm", {
       category: "arreglo",
+    });
+  });
+
+  describe("panel rápido de acciones", () => {
+    it("muestra las acciones según el estado del turno y marca listo sin salir de la Agenda", async () => {
+      const reload = jest.fn(async () => Promise.resolve());
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [scheduledOne],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload,
+      });
+      mockMarkReady.mockResolvedValueOnce({
+        ...scheduledOne,
+        status: "listo_para_entregar",
+      });
+
+      const { findByLabelText, getByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(
+        await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+      );
+
+      expect(getByLabelText("Marcar listo para entregar")).toBeTruthy();
+      expect(getByLabelText("Marcar entregado")).toBeTruthy();
+
+      fireEvent.press(getByLabelText("Marcar listo para entregar"));
+
+      await waitFor(() => {
+        expect(mockMarkReady).toHaveBeenCalledTimes(1);
+      });
+      // `reload` ya se llama una vez al enfocar la pantalla (useFocusEffect);
+      // la acción rápida debe disparar una segunda corrida para refrescar
+      // el estado de la tarjeta sin salir de la Agenda.
+      await waitFor(() => {
+        expect(reload).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("solo ofrece 'Marcar entregado' cuando el turno ya está listo para entregar", async () => {
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [{ ...scheduledOne, status: "listo_para_entregar" }],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload: jest.fn(async () => Promise.resolve()),
+      });
+
+      const { findByLabelText, queryByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(
+        await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+      );
+
+      expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
+      expect(await findByLabelText("Marcar entregado")).toBeTruthy();
+    });
+
+    it("cierra el panel al presionar Cancelar", async () => {
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [scheduledOne],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload: jest.fn(async () => Promise.resolve()),
+      });
+
+      const { findByLabelText, getByLabelText, queryByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(
+        await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+      );
+      expect(getByLabelText("Cancelar")).toBeTruthy();
+
+      fireEvent.press(getByLabelText("Cancelar"));
+
+      expect(queryByLabelText("Marcar listo para entregar")).toBeNull();
+    });
+
+    it("libera la identidad de dispositivo compartido al salir de la Agenda", async () => {
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [scheduledOne],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload: jest.fn(async () => Promise.resolve()),
+      });
+
+      const { unmount, findByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)");
+
+      expect(mockReleaseIdentity).not.toHaveBeenCalled();
+
+      unmount();
+
+      expect(mockReleaseIdentity).toHaveBeenCalledTimes(1);
     });
   });
 
