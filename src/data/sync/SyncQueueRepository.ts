@@ -1027,9 +1027,23 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       delete_log: "sync_delete_log",
     };
     const table = tableMap[entityType];
-    // sync_delete_log no tiene updated_at (es un log de una sola escritura),
-    // usa deleted_at como su columna de versión.
-    const versionColumn = entityType === "delete_log" ? "deleted_at" : "updated_at";
+    // sync_delete_log y schedule_events son de solo-escritura (un log, nunca
+    // se editan después de creados) y no tienen columna updated_at — usan su
+    // propio timestamp de creación/borrado como versión.
+    const versionColumnMap: Record<SyncQueueItem["entityType"], string> = {
+      client: "updated_at",
+      camisa_measurement: "updated_at",
+      pantalon_measurement: "updated_at",
+      client_talla: "updated_at",
+      pricing_service: "updated_at",
+      saco_measurement: "updated_at",
+      chaleco_measurement: "updated_at",
+      talla_template: "updated_at",
+      schedule: "updated_at",
+      schedule_event: "created_at",
+      delete_log: "deleted_at",
+    };
+    const versionColumn = versionColumnMap[entityType];
 
     // El filtro por versionColumn evita una actualización perdida: si el
     // usuario editó la fila DESPUÉS de que este intento de sync leyera el
