@@ -161,4 +161,19 @@ describe("ClientCreateScreen", () => {
       clientId: created.id,
     });
   });
+
+  it("no destapa Teléfono 3 si Teléfono 2 sigue vacío, para no correr los teléfonos al guardar", async () => {
+    const { getByLabelText, queryByLabelText } = render(
+      <ClientCreateScreen {...buildProps(jest.fn())} />,
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
+
+    fireEvent.press(getByLabelText("Agregar teléfono adicional"));
+    expect(getByLabelText("Eliminar teléfono 2")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Agregar teléfono adicional"));
+    expect(queryByLabelText("Eliminar teléfono 3")).toBeNull();
+  });
 });

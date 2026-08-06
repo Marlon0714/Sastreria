@@ -49,6 +49,7 @@ export default function ClientCreateScreen({ navigation }: Props) {
     setError,
     reset,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<CreateClientSchemaInput>({
     defaultValues: {
@@ -287,8 +288,15 @@ export default function ClientCreateScreen({ navigation }: Props) {
             <Pressable
               style={styles.addPhoneBtn}
               onPress={() => {
-                if (!showPhone2) setShowPhone2(true);
-                else setShowPhone3(true);
+                if (!showPhone2) {
+                  setShowPhone2(true);
+                } else if (getValues("phone2")?.trim()) {
+                  // Si "Teléfono 2" queda vacío, guardar compacta el array
+                  // de teléfonos y lo que se escriba en "Teléfono 3" pasaría
+                  // a mostrarse como "Teléfono 2" al recargar — se exige
+                  // llenar el anterior antes de destapar el siguiente.
+                  setShowPhone3(true);
+                }
               }}
               accessibilityLabel="Agregar teléfono adicional"
             >
