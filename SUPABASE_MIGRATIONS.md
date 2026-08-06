@@ -851,6 +851,32 @@ NOTIFY pgrst, 'reload schema';
 
 ---
 
+### v31_clients_camisa_pantalon_sync_status (2026-08-06)
+
+**Contexto:** diagnosticado con logs reales (`PGRST204: Could not find the 'sync_status' column`) — `clients`, `camisa_measurements` y `pantalon_measurements` nunca tuvieron la columna `sync_status` en Supabase, a diferencia de todas las demás tablas. Esto explica el "Error sync" persistente: `SupabaseSyncTransport.ts` manda `sync_status: "synced"` en cada upsert (ver nota más abajo sobre N-070), y Postgres rechaza la fila entera porque la columna no existe — así que ningún cliente, camisa o pantalón lograba sincronizar nunca, sin importar qué tan bien estuviera el resto del código.
+
+Se agrega con `DEFAULT 'synced'` (no solo `NOT NULL`) porque, a diferencia de una tabla nueva, esta ya tiene filas existentes en Supabase — y si una fila ya está en Supabase, por definición ya está sincronizada desde la perspectiva del servidor (mismo razonamiento que N-070). Sin el `DEFAULT`, el `ALTER TABLE` fallaría por violar `NOT NULL` en las filas ya existentes.
+
+```sql
+ALTER TABLE clients
+  ADD COLUMN IF NOT EXISTS sync_status TEXT NOT NULL DEFAULT 'synced'
+  CHECK (sync_status IN ('pending', 'synced', 'error'));
+
+ALTER TABLE camisa_measurements
+  ADD COLUMN IF NOT EXISTS sync_status TEXT NOT NULL DEFAULT 'synced'
+  CHECK (sync_status IN ('pending', 'synced', 'error'));
+
+ALTER TABLE pantalon_measurements
+  ADD COLUMN IF NOT EXISTS sync_status TEXT NOT NULL DEFAULT 'synced'
+  CHECK (sync_status IN ('pending', 'synced', 'error'));
+
+NOTIFY pgrst, 'reload schema';
+```
+
+**Importante:** después de correr esto, los turnos que fallaban con `23503 schedules_client_id_fkey` (porque el cliente al que apuntaban nunca había logrado subir) deberían resolverse solos en el próximo intento de sync — no requieren ningún SQL adicional.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
