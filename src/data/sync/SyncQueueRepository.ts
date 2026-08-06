@@ -576,10 +576,12 @@ export interface SyncQueueRepositoryPort {
   markAsSynced(
     entityType: SyncQueueItem["entityType"],
     id: string,
+    updatedAt: string,
   ): Promise<void>;
   markAsError(
     entityType: SyncQueueItem["entityType"],
     id: string,
+    updatedAt: string,
   ): Promise<void>;
 }
 
@@ -991,20 +993,23 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
   async markAsSynced(
     entityType: SyncQueueItem["entityType"],
     id: string,
+    updatedAt: string,
   ): Promise<void> {
-    await this.updateStatus(entityType, id, "synced");
+    await this.updateStatus(entityType, id, updatedAt, "synced");
   }
 
   async markAsError(
     entityType: SyncQueueItem["entityType"],
     id: string,
+    updatedAt: string,
   ): Promise<void> {
-    await this.updateStatus(entityType, id, "error");
+    await this.updateStatus(entityType, id, updatedAt, "error");
   }
 
   private async updateStatus(
     entityType: SyncQueueItem["entityType"],
     id: string,
+    updatedAt: string,
     syncStatus: "synced" | "error",
   ): Promise<void> {
     const db = getDatabase();
@@ -1022,31 +1027,25 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       delete_log: "sync_delete_log",
     };
     const table = tableMap[entityType];
+    // sync_delete_log no tiene updated_at (es un log de una sola escritura),
+    // usa deleted_at como su columna de versión.
+    const versionColumn = entityType === "delete_log" ? "deleted_at" : "updated_at";
 
-    if (entityType === "delete_log") {
-      await db.runAsync(
-        `
-        UPDATE ${table}
-        SET sync_status = ?
-        WHERE id = ?;
-        `,
-        syncStatus,
-        id,
-      );
-      return;
-    }
-
-    // Only update sync_status — never touch updated_at, which is the
-    // conflict-resolution timestamp used by the sync engine. Mutating it
-    // here would cause silent last-write-wins conflicts.
+    // El filtro por versionColumn evita una actualización perdida: si el
+    // usuario editó la fila DESPUÉS de que este intento de sync leyera el
+    // payload que se envió pero ANTES de que la respuesta de red volviera,
+    // sin este filtro se marcaría como "synced" una fila que en realidad
+    // contiene datos nuevos que nunca se subieron — se pierden en silencio
+    // porque getPendingItems() ya no la vuelve a seleccionar.
     await db.runAsync(
       `
       UPDATE ${table}
       SET sync_status = ?
-      WHERE id = ?;
+      WHERE id = ? AND ${versionColumn} = ?;
       `,
       syncStatus,
       id,
+      updatedAt,
     );
   }
 }

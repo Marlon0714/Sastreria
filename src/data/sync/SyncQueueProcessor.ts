@@ -98,7 +98,11 @@ export class SyncQueueProcessor {
       if (result.outcome === "synced") {
         if (mode === "cloud") {
           try {
-            await this.queueRepository.markAsSynced(item.entityType, item.id);
+            await this.queueRepository.markAsSynced(
+              item.entityType,
+              item.id,
+              item.updatedAt,
+            );
             useSyncStatusStore.getState().setLastSyncError(null);
             return "synced";
           } catch (err) {
@@ -112,7 +116,7 @@ export class SyncQueueProcessor {
                 error: err instanceof Error ? err.message : String(err),
               }),
             );
-            await this.queueRepository.markAsError(item.entityType, item.id);
+            await this.queueRepository.markAsError(item.entityType, item.id, item.updatedAt);
             useSyncStatusStore
               .getState()
               .setLastSyncError("No se pudo sincronizar un cambio pendiente.");
@@ -145,7 +149,7 @@ export class SyncQueueProcessor {
 
       if (attempt === this.retryPolicy.maxRetries) {
         try {
-          await this.queueRepository.markAsError(item.entityType, item.id);
+          await this.queueRepository.markAsError(item.entityType, item.id, item.updatedAt);
         } catch (err) {
           console.error(
             JSON.stringify({

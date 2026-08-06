@@ -275,160 +275,184 @@ describe("SyncQueueRepository", () => {
     expect(scheduleItem.payload.category).toBe("confeccion");
   });
 
-  it("marks client row as synced without mutating updated_at", async () => {
+  it("marks client row as synced using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsSynced("client", "c-1");
+    await repository.markAsSynced("client", "c-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE clients");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("c-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks camisa_measurement row as error without mutating updated_at", async () => {
+  it("marks camisa_measurement row as error using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsError("camisa_measurement", "cam-1");
+    await repository.markAsError("camisa_measurement", "cam-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE camisa_measurements");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("error");
     expect(id).toBe("cam-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks pantalon_measurement row as synced without mutating updated_at", async () => {
+  it("marks pantalon_measurement row as synced using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsSynced("pantalon_measurement", "pan-1");
+    await repository.markAsSynced("pantalon_measurement", "pan-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE pantalon_measurements");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("pan-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks client_talla row as synced without mutating updated_at", async () => {
+  it("marks client_talla row as synced using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsSynced("client_talla", "talla-1");
+    await repository.markAsSynced("client_talla", "talla-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE client_tallas");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("talla-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks pricing_service row as error without mutating updatedAt", async () => {
+  it("marks pricing_service row as error using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsError("pricing_service", "price-1");
+    await repository.markAsError("pricing_service", "price-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE pricing_services");
-    expect(sql).not.toContain("updatedAt");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("error");
     expect(id).toBe("price-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks saco_measurement row as synced without mutating updated_at", async () => {
+  it("marks saco_measurement row as synced using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsSynced("saco_measurement", "saco-1");
+    await repository.markAsSynced("saco_measurement", "saco-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE saco_measurements");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("saco-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks chaleco_measurement row as error without mutating updated_at", async () => {
+  it("marks chaleco_measurement row as error using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsError("chaleco_measurement", "chaleco-1");
+    await repository.markAsError("chaleco_measurement", "chaleco-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE chaleco_measurements");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("error");
     expect(id).toBe("chaleco-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks talla_template row as synced without mutating updated_at", async () => {
+  it("marks talla_template row as synced using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsSynced("talla_template", "template-1");
+    await repository.markAsSynced("talla_template", "template-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE talla_templates");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("template-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks schedule row as synced without mutating updated_at", async () => {
+  it("marks schedule row as synced using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsSynced("schedule", "schedule-1");
+    await repository.markAsSynced("schedule", "schedule-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE schedules");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("schedule-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks schedule_event row as synced without mutating timestamp", async () => {
+  it("marks schedule_event row as synced using updated_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsSynced("schedule_event", "event-1");
+    await repository.markAsSynced("schedule_event", "event-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE schedule_events");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("event-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks delete_log row as synced without mutating timestamp", async () => {
+  it("marks delete_log row as synced using deleted_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsSynced("delete_log", "del-1");
+    await repository.markAsSynced("delete_log", "del-1", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE sync_delete_log");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND deleted_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("del-1");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
-  it("marks delete_log row as error without mutating timestamp", async () => {
+  it("marks delete_log row as error using deleted_at as an optimistic-concurrency guard", async () => {
     mockRunAsync.mockResolvedValueOnce({});
 
     const repository = new SyncQueueRepository();
-    await repository.markAsError("delete_log", "del-2");
+    await repository.markAsError("delete_log", "del-2", "2026-08-01T10:00:00.000Z");
 
-    const [sql, status, id] = mockRunAsync.mock.calls[0] ?? [];
+    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
     expect(sql).toContain("UPDATE sync_delete_log");
-    expect(sql).not.toContain("updated_at");
+    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
+    expect(sql).toContain("WHERE id = ? AND deleted_at = ?");
     expect(status).toBe("error");
     expect(id).toBe("del-2");
+    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
   it("throws when fetching pending items fails", async () => {

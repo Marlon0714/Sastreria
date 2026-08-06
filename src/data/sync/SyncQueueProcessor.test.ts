@@ -350,7 +350,7 @@ describe("SyncQueueProcessor", () => {
 
     expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
     expect(transport.syncClient).toHaveBeenCalledTimes(1);
-    expect(queueRepository.markAsSynced).toHaveBeenCalledWith("client", "c-1");
+    expect(queueRepository.markAsSynced).toHaveBeenCalledWith("client", "c-1", clientItem.updatedAt);
     expect(queueRepository.markAsError).not.toHaveBeenCalled();
   });
 
@@ -409,6 +409,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "camisa_measurement",
       "cam-1",
+      camisaItem.updatedAt,
     );
   });
 
@@ -429,6 +430,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "pantalon_measurement",
       "pan-1",
+      pantalonItem.updatedAt,
     );
   });
 
@@ -450,6 +452,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "client_talla",
       "talla-1",
+      tallaItem.updatedAt,
     );
   });
 
@@ -471,6 +474,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "pricing_service",
       "price-1",
+      pricingItem.updatedAt,
     );
   });
 
@@ -492,6 +496,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "schedule",
       "schedule-1",
+      scheduleItem.updatedAt,
     );
   });
 
@@ -513,6 +518,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "saco_measurement",
       "saco-1",
+      sacoItem.updatedAt,
     );
   });
 
@@ -534,6 +540,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "chaleco_measurement",
       "chaleco-1",
+      chalecoItem.updatedAt,
     );
   });
 
@@ -555,6 +562,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "talla_template",
       "template-1",
+      tallaTemplateItem.updatedAt,
     );
   });
 
@@ -600,6 +608,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
       "delete_log",
       "del-1",
+      deleteItem.updatedAt,
     );
   });
 
@@ -629,7 +638,7 @@ describe("SyncQueueProcessor", () => {
     expect(result).toEqual({ processed: 1, synced: 0, deferred: 0, failed: 1 });
     expect(transport.syncClient).toHaveBeenCalledTimes(3);
     expect(queueRepository.markAsSynced).not.toHaveBeenCalled();
-    expect(queueRepository.markAsError).toHaveBeenCalledWith("client", "c-1");
+    expect(queueRepository.markAsError).toHaveBeenCalledWith("client", "c-1", clientItem.updatedAt);
   });
 
   it("returns an empty summary when queue has no items", async () => {
@@ -816,6 +825,7 @@ describe("SyncQueueProcessor", () => {
     expect(queueRepository.markAsError).toHaveBeenCalledWith(
       clientItem.entityType,
       clientItem.id,
+      clientItem.updatedAt,
     );
   });
 });
