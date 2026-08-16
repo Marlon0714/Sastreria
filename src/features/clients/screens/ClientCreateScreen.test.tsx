@@ -162,6 +162,45 @@ describe("ClientCreateScreen", () => {
     });
   });
 
+  it("advierte si el teléfono ya existe en otro cliente y permite guardar de todos modos", async () => {
+    const created = clientFactory({
+      id: "new-3",
+      firstName: "Luis",
+      lastName: "Gómez",
+      phone: existingClient.phone,
+    });
+    mockCreate.mockResolvedValueOnce(created);
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+      const saveAnyway = buttons?.find(
+        (b) => b.text === "Guardar de todos modos",
+      );
+      void saveAnyway?.onPress?.();
+    });
+    const replace = jest.fn();
+
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ClientCreateScreen {...buildProps(replace)} />,
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
+
+    fireEvent.changeText(getByPlaceholderText("Ej. Ana"), "Luis");
+    fireEvent.changeText(getByPlaceholderText("Ej. Torres"), "Gómez");
+    fireEvent.changeText(
+      getByPlaceholderText("Ej. 3001234567"),
+      existingClient.phone,
+    );
+    fireEvent.press(getByLabelText("Guardar cliente"));
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalled();
+    });
+    expect(replace).toHaveBeenCalledWith("ClientDetail", {
+      clientId: created.id,
+    });
+  });
+
   it("no destapa Teléfono 3 si Teléfono 2 sigue vacío, para no correr los teléfonos al guardar", async () => {
     const { getByLabelText, queryByLabelText } = render(
       <ClientCreateScreen {...buildProps(jest.fn())} />,

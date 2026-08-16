@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import { clientFactory } from "../../../__tests__/factories";
 import type { Client } from "../domain/types";
 import type { UpdateClientSchemaInput } from "../domain/schemas";
 import ClientEditScreen from "./ClientEditScreen";
+
+const mockFindAll = jest.fn<() => Promise<Client[]>>();
+
+jest.mock("../hooks/ClientsDependenciesProvider", () => ({
+  useClientRepository: () => ({ findAll: mockFindAll }),
+}));
 
 interface UseClientDetailResult {
   client: Client | null;
@@ -59,9 +66,11 @@ describe("ClientEditScreen", () => {
   beforeEach(() => {
     mockUseClientDetail.mockReset();
     mockUseUpdateClient.mockReset();
+    mockFindAll.mockReset();
+    mockFindAll.mockResolvedValue([]);
   });
 
-  it("renderiza el formulario pre-llenado con los datos del cliente", () => {
+  it("renderiza el formulario pre-llenado con los datos del cliente", async () => {
     // Arrange
     const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
     const client = clientFactory({
@@ -90,6 +99,7 @@ describe("ClientEditScreen", () => {
     const { getByDisplayValue } = render(
       <ClientEditScreen {...buildProps()} />,
     );
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
 
     // Assert
     expect(getByDisplayValue("Ana")).toBeTruthy();
@@ -138,6 +148,7 @@ describe("ClientEditScreen", () => {
     const { getByDisplayValue, getByLabelText } = render(
       <ClientEditScreen {...props} />,
     );
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
 
     fireEvent.changeText(getByDisplayValue("Ana"), "Ana Maria");
     fireEvent.changeText(getByDisplayValue("Torres"), "Torres Diaz");
@@ -206,6 +217,7 @@ describe("ClientEditScreen", () => {
     const { getByLabelText, findByText } = render(
       <ClientEditScreen {...props} />,
     );
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
     fireEvent.press(getByLabelText("Guardar cambios del cliente"));
 
     // Assert
@@ -215,7 +227,66 @@ describe("ClientEditScreen", () => {
     expect(goBack).not.toHaveBeenCalled();
   });
 
-  it("no destapa Teléfono 3 si Teléfono 2 sigue vacío, para no correr los teléfonos al guardar", () => {
+  it("advierte si el teléfono ya está usado por otro cliente y permite guardar de todos modos", async () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    const goBack = jest.fn();
+
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+      firstName: "Ana",
+      lastName: "Torres",
+      phone: "3001234567",
+      notes: "",
+    });
+    const otroCliente = clientFactory({
+      id: "22222222-2222-4222-8222-222222222222",
+      firstName: "Luis",
+      lastName: "Gómez",
+      phone: "3119990000",
+    });
+    mockFindAll.mockResolvedValue([client, otroCliente]);
+
+    const updateClient =
+      jest.fn<(values: UpdateClientSchemaInput) => Promise<Client | null>>();
+    updateClient.mockResolvedValue(client);
+
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload,
+    });
+    mockUseUpdateClient.mockReturnValue({
+      isSubmitting: false,
+      error: null,
+      updateClient,
+      validate: () => ({}),
+    });
+
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+      const saveAnyway = buttons?.find(
+        (b) => b.text === "Guardar de todos modos",
+      );
+      void saveAnyway?.onPress?.();
+    });
+
+    const props = { ...buildProps(), navigation: { goBack } as never };
+    const { getByDisplayValue, getByLabelText } = render(
+      <ClientEditScreen {...props} />,
+    );
+
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
+
+    fireEvent.changeText(getByDisplayValue("3001234567"), otroCliente.phone);
+    fireEvent.press(getByLabelText("Guardar cambios del cliente"));
+
+    await waitFor(() => {
+      expect(updateClient).toHaveBeenCalled();
+      expect(goBack).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("no destapa Teléfono 3 si Teléfono 2 sigue vacío, para no correr los teléfonos al guardar", async () => {
     const client = clientFactory({
       id: "11111111-1111-4111-8111-111111111111",
       firstName: "Ana",
@@ -240,6 +311,7 @@ describe("ClientEditScreen", () => {
     const { getByLabelText, queryByLabelText } = render(
       <ClientEditScreen {...buildProps()} />,
     );
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
 
     fireEvent.press(getByLabelText("Agregar teléfono adicional"));
     expect(getByLabelText("Eliminar teléfono 2")).toBeTruthy();

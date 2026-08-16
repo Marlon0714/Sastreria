@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,8 +17,11 @@ import {
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
+import { findDuplicateByPhone } from "../../../shared/utils/textSearch";
 import type { UpdateClientSchemaInput } from "../domain/schemas";
+import type { Client } from "../domain/types";
 import { useClientDetail } from "../hooks/useClientDetail";
+import { useClientRepository } from "../hooks/ClientsDependenciesProvider";
 import { useUpdateClient } from "../hooks/useUpdateClient";
 
 type Props = NativeStackScreenProps<ClientsStackParamList, "ClientEdit">;
@@ -38,6 +42,20 @@ export default function ClientEditScreen({ navigation, route }: Props) {
     updateClient,
     validate,
   } = useUpdateClient();
+  const clientRepository = useClientRepository();
+  const [existingClients, setExistingClients] = useState<Client[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    clientRepository.findAll().then((result) => {
+      if (!cancelled) {
+        setExistingClients(result);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientRepository]);
 
   const {
     control,
@@ -116,10 +134,33 @@ export default function ClientEditScreen({ navigation, route }: Props) {
       return;
     }
 
-    const updated = await updateClient(values);
-    if (updated) {
-      navigation.goBack();
+    const proceedUpdate = async (): Promise<void> => {
+      const updated = await updateClient(values);
+      if (updated) {
+        navigation.goBack();
+      }
+    };
+
+    const duplicatePhone = values.phone
+      ? findDuplicateByPhone(existingClients, values.phone, clientId)
+      : null;
+
+    if (duplicatePhone) {
+      Alert.alert(
+        "Teléfono ya registrado",
+        `Ya existe un cliente con este teléfono: ${duplicatePhone.firstName} ${duplicatePhone.lastName}. ¿Deseas guardarlo así de todos modos?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Guardar de todos modos",
+            onPress: () => void proceedUpdate(),
+          },
+        ],
+      );
+      return;
     }
+
+    void proceedUpdate();
   });
 
   return (
