@@ -4,6 +4,7 @@ import {
   ID_DIGITS_PATTERN,
   PERSON_NAME_PATTERN,
   PHONE_DIGITS_PATTERN,
+  capitalizeWords,
   normalizeDigitsInput,
 } from "../../../shared/domain/textPatterns";
 
@@ -99,7 +100,8 @@ const personNameField = (label: string) =>
     .trim()
     .min(1, `El ${label} es obligatorio`)
     .max(80)
-    .regex(PERSON_NAME_PATTERN, `El ${label} solo puede contener letras`);
+    .regex(PERSON_NAME_PATTERN, `El ${label} solo puede contener letras`)
+    .transform((v) => capitalizeWords(v));
 
 export const createClientSchema = z.object({
   firstName: personNameField("nombre"),

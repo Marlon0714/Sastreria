@@ -22,6 +22,7 @@ import type { Client } from "../../clients/domain/types";
 import {
   PERSON_NAME_PATTERN,
   PHONE_DIGITS_PATTERN,
+  capitalizeWords,
   normalizeDigitsInput,
 } from "../../../shared/domain/textPatterns";
 import {
@@ -199,21 +200,24 @@ export const ClientPickerField = forwardRef<
   };
 
   const handleRegisterPress = (): void => {
-    const firstName = nameInput.trim();
-    const lastName = newLastName.trim();
+    const rawFirstName = nameInput.trim();
+    const rawLastName = newLastName.trim();
 
-    if (!firstName || !lastName) {
+    if (!rawFirstName || !rawLastName) {
       setRegisterError("Nombre y apellido son obligatorios.");
       return;
     }
 
     if (
-      !PERSON_NAME_PATTERN.test(firstName) ||
-      !PERSON_NAME_PATTERN.test(lastName)
+      !PERSON_NAME_PATTERN.test(rawFirstName) ||
+      !PERSON_NAME_PATTERN.test(rawLastName)
     ) {
       setRegisterError("Nombre y apellido solo pueden contener letras.");
       return;
     }
+
+    const firstName = capitalizeWords(rawFirstName);
+    const lastName = capitalizeWords(rawLastName);
 
     const trimmedPhone = newPhone.trim();
     if (trimmedPhone && !PHONE_DIGITS_PATTERN.test(normalizeDigitsInput(trimmedPhone))) {
@@ -256,23 +260,26 @@ export const ClientPickerField = forwardRef<
             return;
           }
 
-          const firstName = nameInput.trim();
-          const lastName = newLastName.trim();
-          if (!firstName || !lastName) {
+          const rawFirstName = nameInput.trim();
+          const rawLastName = newLastName.trim();
+          if (!rawFirstName || !rawLastName) {
             resolve();
             return;
           }
 
-          const fullName = `${firstName} ${lastName}`;
           const trimmedPhone = newPhone.trim();
           const normalizedPhone = trimmedPhone
             ? normalizeDigitsInput(trimmedPhone)
             : "";
           const canRegister =
-            PERSON_NAME_PATTERN.test(firstName) &&
-            PERSON_NAME_PATTERN.test(lastName) &&
+            PERSON_NAME_PATTERN.test(rawFirstName) &&
+            PERSON_NAME_PATTERN.test(rawLastName) &&
             normalizedPhone !== "" &&
             PHONE_DIGITS_PATTERN.test(normalizedPhone);
+
+          const firstName = capitalizeWords(rawFirstName);
+          const lastName = capitalizeWords(rawLastName);
+          const fullName = `${firstName} ${lastName}`;
 
           if (!canRegister) {
             // Sin teléfono válido no se registra como cliente — se guarda

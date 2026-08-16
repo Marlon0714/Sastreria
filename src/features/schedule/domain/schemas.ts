@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { capitalizeWords } from "../../../shared/domain/textPatterns";
+
 export const scheduleStatusSchema = z.enum([
   "pendiente",
   "agendado",
@@ -49,7 +51,12 @@ const CLIENT_FIELD_ERROR: { message: string; path: string[] } = {
 export const scheduleSchema = z.object({
   id: z.string().uuid(),
   clientId: z.string().uuid("El cliente es inválido").optional(),
-  unregisteredClientName: z.string().trim().max(120).optional(),
+  unregisteredClientName: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .transform((v) => (v ? capitalizeWords(v) : v)),
   date: optionalDate,
   time: optionalTime,
   price: z.number().nonnegative("El precio no puede ser negativo").optional(),

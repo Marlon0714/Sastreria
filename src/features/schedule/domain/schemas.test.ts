@@ -108,6 +108,16 @@ describe("schedule schemas", () => {
 
       expect(result.success).toBe(false);
     });
+
+    it("formatea el nombre sin registrar con la primera letra en mayúscula", () => {
+      const result = createScheduleSchema.safeParse({
+        unregisteredClientName: "pedro RAMÍREZ",
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.unregisteredClientName).toBe("Pedro Ramírez");
+    });
   });
 
   describe("updateScheduleSchema", () => {

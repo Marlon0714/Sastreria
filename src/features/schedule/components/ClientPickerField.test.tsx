@@ -227,6 +227,35 @@ describe("ClientPickerField", () => {
       expect(onChangeUnregisteredName).toHaveBeenCalledWith(undefined);
     });
 
+    it("formatea el nombre y apellido con la primera letra en mayúscula al crear", async () => {
+      mockCreate.mockResolvedValueOnce(newClient);
+      const { findByLabelText, getByLabelText } = render(
+        <ClientPickerField
+          onChangeClientId={jest.fn()}
+          onChangeUnregisteredName={jest.fn()}
+        />,
+      );
+
+      fireEvent.changeText(
+        await findByLabelText("Nombre del cliente"),
+        "maría",
+      );
+      fireEvent.press(getByLabelText("Registrar cliente"));
+      fireEvent.changeText(
+        getByLabelText("Apellido del cliente nuevo"),
+        "GÓMEZ",
+      );
+      fireEvent.press(getByLabelText("Crear cliente"));
+
+      await waitFor(() => {
+        expect(mockCreate).toHaveBeenCalledWith({
+          firstName: "María",
+          lastName: "Gómez",
+          phone: "",
+        });
+      });
+    });
+
     it("requiere nombre y apellido antes de crear", async () => {
       const { findByLabelText, getByLabelText, findByText } = render(
         <ClientPickerField
