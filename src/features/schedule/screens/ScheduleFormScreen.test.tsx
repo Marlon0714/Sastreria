@@ -47,14 +47,16 @@ jest.mock("../hooks/useScheduleStatusActions", () => ({
   useScheduleStatusActions: () => mockUseScheduleStatusActions(),
 }));
 
+const mockResolvePendingRegistration = jest.fn<() => Promise<void>>();
+
 jest.mock("../components/ClientPickerField", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
   const { Text, TextInput, View } = jest.requireActual(
     "react-native",
   ) as typeof import("react-native");
 
-  return {
-    ClientPickerField: ({
+  const ClientPickerField = ReactModule.forwardRef(function ClientPickerField(
+    {
       clientId,
       unregisteredName,
       onChangeClientId,
@@ -66,27 +68,35 @@ jest.mock("../components/ClientPickerField", () => {
       onChangeClientId: (id: string | undefined) => void;
       onChangeUnregisteredName: (name: string | undefined) => void;
       errorMessage?: string;
-    }) =>
-      ReactModule.createElement(View, null, [
-        ReactModule.createElement(TextInput, {
-          key: "clientId",
-          accessibilityLabel: "Cliente",
-          value: clientId ?? "",
-          onChangeText: (text: string) =>
-            onChangeClientId(text === "" ? undefined : text),
-        }),
-        ReactModule.createElement(TextInput, {
-          key: "unregisteredName",
-          accessibilityLabel: "Nombre del cliente",
-          value: unregisteredName ?? "",
-          onChangeText: (text: string) =>
-            onChangeUnregisteredName(text === "" ? undefined : text),
-        }),
-        errorMessage
-          ? ReactModule.createElement(Text, { key: "error" }, errorMessage)
-          : null,
-      ]),
-  };
+    },
+    ref: React.Ref<unknown>,
+  ) {
+    ReactModule.useImperativeHandle(ref, () => ({
+      resolvePendingRegistration: mockResolvePendingRegistration,
+    }));
+
+    return ReactModule.createElement(View, null, [
+      ReactModule.createElement(TextInput, {
+        key: "clientId",
+        accessibilityLabel: "Cliente",
+        value: clientId ?? "",
+        onChangeText: (text: string) =>
+          onChangeClientId(text === "" ? undefined : text),
+      }),
+      ReactModule.createElement(TextInput, {
+        key: "unregisteredName",
+        accessibilityLabel: "Nombre del cliente",
+        value: unregisteredName ?? "",
+        onChangeText: (text: string) =>
+          onChangeUnregisteredName(text === "" ? undefined : text),
+      }),
+      errorMessage
+        ? ReactModule.createElement(Text, { key: "error" }, errorMessage)
+        : null,
+    ]);
+  });
+
+  return { ClientPickerField };
 });
 
 jest.mock("../components/OperarioPickerField", () => {
@@ -176,6 +186,8 @@ describe("ScheduleFormScreen", () => {
   beforeEach(() => {
     mockUseScheduleForm.mockReset();
     mockUseDeleteSchedule.mockReset();
+    mockResolvePendingRegistration.mockReset();
+    mockResolvePendingRegistration.mockResolvedValue(undefined);
     mockUseDeleteSchedule.mockReturnValue({
       isDeleting: false,
       error: null,
@@ -428,6 +440,38 @@ describe("ScheduleFormScreen", () => {
         }),
       );
     });
+  });
+
+  it("resuelve un registro de cliente a medio llenar antes de guardar el turno", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+      syncScheduleSnapshot: jest.fn(),
+    });
+    const callOrder: string[] = [];
+    mockResolvePendingRegistration.mockImplementation(async () => {
+      callOrder.push("resolvePendingRegistration");
+    });
+    submit.mockImplementation(async () => {
+      callOrder.push("submit");
+      return schedule;
+    });
+
+    const { getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    fireEvent.changeText(getByLabelText("Nombre del cliente"), "Pedro Ramírez");
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalled();
+    });
+    expect(callOrder).toEqual(["resolvePendingRegistration", "submit"]);
   });
 
   it("pre-fills fields, muestra el estado y el botón de eliminar en modo edición", async () => {

@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   Alert,
@@ -21,7 +21,10 @@ import { ErrorView, LoadingView } from "../../../shared/components";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
-import { ClientPickerField } from "../components/ClientPickerField";
+import {
+  ClientPickerField,
+  type ClientPickerFieldHandle,
+} from "../components/ClientPickerField";
 import { OperarioPickerField } from "../components/OperarioPickerField";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleHistoryList } from "../components/ScheduleHistoryList";
@@ -86,13 +89,16 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   // sobrescriba silenciosamente lo que la otra acababa de guardar. Un solo
   // flag "ocupado" que deshabilita TODAS las acciones mientras cualquiera
   // esté en curso evita esa ventana.
-  const isBusy = isSubmitting || statusActions.isProcessing || isDeleting;
   const [displaySchedule, setDisplaySchedule] = useState<Schedule | null>(
     null,
   );
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [hasTime, setHasTime] = useState(false);
+  const [isResolvingClient, setIsResolvingClient] = useState(false);
+  const clientPickerRef = useRef<ClientPickerFieldHandle>(null);
+  const isBusy =
+    isSubmitting || statusActions.isProcessing || isDeleting || isResolvingClient;
 
   const {
     control,
@@ -196,6 +202,19 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       navigation.goBack();
     }
   });
+
+  const handleSavePress = async (): Promise<void> => {
+    // Si se abrió "Registrar cliente" pero nunca se presionó el botón,
+    // resuelve esos datos (registra el cliente o los deja como "sin
+    // registrar") ANTES de validar/guardar, para no perderlos.
+    setIsResolvingClient(true);
+    try {
+      await clientPickerRef.current?.resolvePendingRegistration();
+    } finally {
+      setIsResolvingClient(false);
+    }
+    await onSubmit();
+  };
 
   const onDelete = () => {
     if (!scheduleId) return;
@@ -384,6 +403,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                   },
                 }) => (
                   <ClientPickerField
+                    ref={clientPickerRef}
                     clientId={clientIdValue}
                     unregisteredName={unregisteredNameValue ?? undefined}
                     onChangeClientId={onChangeClientId}
@@ -474,12 +494,12 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           isBusy ? styles.buttonDisabled : null,
           pressed && !isBusy ? styles.saveButtonPressed : null,
         ]}
-        onPress={() => void onSubmit()}
+        onPress={() => void handleSavePress()}
         disabled={isBusy}
       >
         <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         <Text style={styles.saveButtonText}>
-          {isSubmitting ? "Guardando..." : "Guardar turno"}
+          {isSubmitting || isResolvingClient ? "Guardando..." : "Guardar turno"}
         </Text>
       </Pressable>
 
