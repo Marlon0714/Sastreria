@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -229,10 +231,14 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
       {displaySchedule ? (
         <View style={styles.statusBadge}>
           <Text style={styles.statusBadgeText}>
@@ -597,11 +603,15 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         onSelect={identityGate.submitOfflineActor}
         onCancel={identityGate.cancelOfflineActorPicker}
       />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     padding: 16,
     gap: 16,
