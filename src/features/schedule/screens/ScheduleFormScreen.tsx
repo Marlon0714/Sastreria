@@ -304,6 +304,40 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       </View>
 
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>Cliente</Text>
+
+        <View style={styles.fieldGroup}>
+          <Controller
+            control={control}
+            name="clientId"
+            render={({ field: { onChange: onChangeClientId, value: clientIdValue } }) => (
+              <Controller
+                control={control}
+                name="unregisteredClientName"
+                render={({
+                  field: {
+                    onChange: onChangeUnregisteredName,
+                    value: unregisteredNameValue,
+                  },
+                }) => (
+                  <ClientPickerField
+                    ref={clientPickerRef}
+                    clientId={clientIdValue}
+                    unregisteredName={unregisteredNameValue ?? undefined}
+                    onChangeClientId={onChangeClientId}
+                    onChangeUnregisteredName={(name) =>
+                      onChangeUnregisteredName(name ?? "")
+                    }
+                    errorMessage={errors.clientId?.message}
+                  />
+                )}
+              />
+            )}
+          />
+        </View>
+      </View>
+
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Cuándo</Text>
 
         <View style={styles.fieldGroup}>
@@ -386,37 +420,6 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Detalles</Text>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Cliente</Text>
-          <Controller
-            control={control}
-            name="clientId"
-            render={({ field: { onChange: onChangeClientId, value: clientIdValue } }) => (
-              <Controller
-                control={control}
-                name="unregisteredClientName"
-                render={({
-                  field: {
-                    onChange: onChangeUnregisteredName,
-                    value: unregisteredNameValue,
-                  },
-                }) => (
-                  <ClientPickerField
-                    ref={clientPickerRef}
-                    clientId={clientIdValue}
-                    unregisteredName={unregisteredNameValue ?? undefined}
-                    onChangeClientId={onChangeClientId}
-                    onChangeUnregisteredName={(name) =>
-                      onChangeUnregisteredName(name ?? "")
-                    }
-                    errorMessage={errors.clientId?.message}
-                  />
-                )}
-              />
-            )}
-          />
-        </View>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Precio (opcional)</Text>
