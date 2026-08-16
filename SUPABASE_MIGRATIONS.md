@@ -996,6 +996,46 @@ Si el problema era el UUID equivocado, ahora te va a marcar el error inmediatame
 
 ---
 
+### v34_operario_self_service_pin (2026-08-16)
+
+**Contexto:** para la pantalla de autoservicio (P4 — el operario ve sus arreglos del día y puede cambiar su correo/contraseña/PIN desde su celular), la app necesita poder cambiar el PIN llamando una función por RPC. `set_operario_pin(operario_id, candidate_pin)` **no sirve para esto tal cual**: no verifica que quien la llama sea el dueño de ese `operario_id` — cualquier operario autenticado podría, en teoría, pasar el UUID de OTRO operario y cambiarle el PIN sin que se dé cuenta. Esa función se deja intacta (la sigue usando el dueño manualmente desde el SQL Editor para casos excepcionales, ej. resetear el PIN de alguien que quedó bloqueado — ahí `auth.uid()` no aplica porque no hay sesión de la app).
+
+En vez de agregarle un chequeo a `set_operario_pin` (que rompería ese uso manual del dueño, porque el SQL Editor no tiene `auth.uid()`), se crea una función nueva y separada **sin parámetro `operario_id`**: siempre opera sobre `auth.uid()` (quien está autenticado en la sesión que hace la llamada), así que es estructuralmente imposible pedirle que cambie el PIN de otra persona.
+
+```sql
+CREATE OR REPLACE FUNCTION set_own_pin(candidate_pin TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_pin TEXT := trim(candidate_pin);
+  caller_id UUID := auth.uid();
+BEGIN
+  IF caller_id IS NULL THEN
+    RAISE EXCEPTION 'No autenticado.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id <> caller_id AND role = 'operario' AND pin_hash IS NOT NULL
+      AND pin_hash = crypt(trimmed_pin, pin_hash)
+  ) THEN
+    RAISE EXCEPTION 'Ya existe un operario con ese PIN. Elige un PIN distinto.';
+  END IF;
+
+  UPDATE profiles
+  SET pin_hash = crypt(trimmed_pin, gen_salt('bf')), updated_at = now()
+  WHERE id = caller_id;
+END;
+$$;
+```
+
+Para cambiar correo o contraseña no hace falta ninguna función nueva: la app usa directamente `supabase.auth.updateUser({ email })` / `supabase.auth.updateUser({ password })`, que por diseño de Supabase Auth solo pueden tocar la sesión propia — no requieren ni permiten pasar el id de otra persona.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
