@@ -11,6 +11,11 @@ jest.mock("../features/clients/hooks/ClientsDependenciesProvider");
 jest.mock("../features/auth/components/LogoutButton", () => ({
   LogoutButton: () => null,
 }));
+jest.mock("../data/local/scheduleDependencies", () => ({
+  getDefaultScheduleRepository: () => ({
+    getAll: async () => Promise.resolve([]),
+  }),
+}));
 
 describe("ScheduleStackNavigator", () => {
   it("renderiza la vista día-por-día de la agenda por defecto", async () => {

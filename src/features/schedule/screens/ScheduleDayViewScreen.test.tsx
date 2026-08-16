@@ -16,6 +16,13 @@ interface UseScheduleDayViewResult {
 
 const mockUseScheduleDayView = jest.fn<(date: string) => UseScheduleDayViewResult>();
 const mockFindAll = jest.fn<() => Promise<Client[]>>();
+const mockScheduleGetAll = jest.fn<() => Promise<Schedule[]>>();
+
+jest.mock("../../../data/local/scheduleDependencies", () => ({
+  getDefaultScheduleRepository: () => ({
+    getAll: () => mockScheduleGetAll(),
+  }),
+}));
 
 jest.mock("@react-navigation/native", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
@@ -208,6 +215,8 @@ describe("ScheduleDayViewScreen", () => {
     mockUseScheduleDayView.mockReset();
     mockFindAll.mockReset();
     mockFindAll.mockResolvedValue([client]);
+    mockScheduleGetAll.mockReset();
+    mockScheduleGetAll.mockResolvedValue([]);
     mockMarkReady.mockReset();
     mockMarkDelivered.mockReset();
     mockAssignOperario.mockReset();
@@ -649,6 +658,88 @@ describe("ScheduleDayViewScreen", () => {
     expect(
       queryByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
     ).toBeNull();
+  });
+
+  it("salta al turno futuro más próximo del cliente buscado si no tiene turno hoy", async () => {
+    mockFindAll.mockResolvedValue([client, secondClient]);
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+    mockScheduleGetAll.mockResolvedValue([
+      scheduledOne,
+      {
+        ...scheduledOne,
+        id: "schedule-luis-cercano",
+        clientId: secondClient.id,
+        date: "2026-08-20",
+      },
+      {
+        ...scheduledOne,
+        id: "schedule-luis-lejano",
+        clientId: secondClient.id,
+        date: "2026-09-01",
+      },
+    ]);
+
+    const { getByLabelText, findByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)");
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente en la agenda"),
+      "luis",
+    );
+
+    await waitFor(() => {
+      expect(mockUseScheduleDayView).toHaveBeenCalledWith("2026-08-20");
+    });
+  });
+
+  it("salta al turno pasado más reciente del cliente buscado si no tiene ninguno futuro", async () => {
+    mockFindAll.mockResolvedValue([client, secondClient]);
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+    mockScheduleGetAll.mockResolvedValue([
+      scheduledOne,
+      {
+        ...scheduledOne,
+        id: "schedule-luis-viejo",
+        clientId: secondClient.id,
+        date: "2026-07-01",
+      },
+      {
+        ...scheduledOne,
+        id: "schedule-luis-reciente",
+        clientId: secondClient.id,
+        date: "2026-08-01",
+      },
+    ]);
+
+    const { getByLabelText, findByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)");
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente en la agenda"),
+      "luis",
+    );
+
+    await waitFor(() => {
+      expect(mockUseScheduleDayView).toHaveBeenCalledWith("2026-08-01");
+    });
   });
 
   it("limpia la búsqueda al presionar el botón de limpiar", async () => {

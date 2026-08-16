@@ -14,6 +14,7 @@ import {
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
 import { formatPrice } from "../../pricing/domain/strings";
+import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
 import { normalizeText } from "../../../shared/utils/textSearch";
@@ -85,7 +86,9 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     reload,
   } = useScheduleDayView(selectedDate);
   const clientRepository = useClientRepository();
+  const scheduleRepository = useMemo(() => getDefaultScheduleRepository(), []);
   const [clientsById, setClientsById] = useState<Record<string, Client>>({});
+  const [allSchedules, setAllSchedules] = useState<Schedule[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sheetSchedule, setSheetSchedule] = useState<Schedule | null>(null);
   // Espeja `sheetSchedule` para leerse desde dentro de los handlers async de
@@ -141,8 +144,45 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       void reload();
-    }, [reload]),
+      // Necesario para poder saltar a la fecha de un turno que no sea el
+      // día actual al buscar un cliente (ver efecto de abajo) — la agenda
+      // solo carga el día seleccionado y los "sin fecha" por separado.
+      void scheduleRepository.getAll().then(setAllSchedules);
+    }, [reload, scheduleRepository]),
   );
+
+  useEffect(() => {
+    if (activeView !== "dia") return;
+    const trimmedSearch = searchTerm.trim();
+    if (!trimmedSearch || dateSchedules.length > 0 || isLoading) return;
+
+    const matches = allSchedules.filter(
+      (item): item is Schedule & { date: string } =>
+        Boolean(item.date) && matchesSearch(item),
+    );
+    if (matches.length === 0) return;
+
+    const today = todayDateString();
+    const nextUpcoming = matches
+      .filter((item) => item.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    const mostRecentPast = matches
+      .filter((item) => item.date < today)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const target = nextUpcoming?.date ?? mostRecentPast?.date;
+
+    if (target && target !== selectedDate) {
+      setSelectedDate(target);
+    }
+  }, [
+    activeView,
+    searchTerm,
+    dateSchedules.length,
+    isLoading,
+    allSchedules,
+    matchesSearch,
+    selectedDate,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
