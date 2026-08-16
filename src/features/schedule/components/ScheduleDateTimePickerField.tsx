@@ -75,7 +75,7 @@ function formatDisplay(
     if (variant === "dayNavigator") {
       return capitalize(
         date.toLocaleDateString("es-CO", {
-          weekday: "short",
+          weekday: "long",
           day: "numeric",
           month: "short",
         }),

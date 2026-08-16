@@ -103,7 +103,7 @@ describe("ScheduleDateTimePickerField", () => {
         />,
       );
 
-      expect(getByText("Lun, 10 de ago")).toBeTruthy();
+      expect(getByText("Lunes, 10 de ago")).toBeTruthy();
     });
 
     it("no muestra el botón de quitar cuando allowClear=false", () => {
