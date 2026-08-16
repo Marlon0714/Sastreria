@@ -517,6 +517,8 @@ describe("SupabasePullSync", () => {
           id: "schedule-1",
           date: "2026-08-10",
           time: "14:30",
+          price: 100000,
+          abono: 30000,
           client_id: "c-1",
           notes: null,
           category: "confeccion",
@@ -544,6 +546,7 @@ describe("SupabasePullSync", () => {
     expect(params).toContain("2026-08-10");
     expect(params).toContain("14:30");
     expect(params).toContain("confeccion");
+    expect(params).toContain(30000);
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
       "schedules",
       { id: "schedule-1", updatedAt: "2026-08-01T10:05:00.000Z" },

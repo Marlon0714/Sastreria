@@ -232,7 +232,7 @@ describe("SyncQueueRepository", () => {
     expect(clientItem.payload.cedula).toBe("1020304050");
   });
 
-  it("mapea category en el payload de la cola de schedules", async () => {
+  it("mapea category y abono en el payload de la cola de schedules", async () => {
     mockGetAllAsync
       .mockResolvedValueOnce([]) // clients
       .mockResolvedValueOnce([]) // camisa
@@ -247,7 +247,8 @@ describe("SyncQueueRepository", () => {
           id: "schedule-1",
           date: "2026-08-10",
           time: "14:30",
-          price: null,
+          price: 100000,
+          abono: 30000,
           operario_id: null,
           client_id: "c-1",
           notes: null,
@@ -273,6 +274,7 @@ describe("SyncQueueRepository", () => {
       payload: Record<string, unknown>;
     };
     expect(scheduleItem.payload.category).toBe("confeccion");
+    expect(scheduleItem.payload.abono).toBe(30000);
   });
 
   it("marks client row as synced using updated_at as an optimistic-concurrency guard", async () => {

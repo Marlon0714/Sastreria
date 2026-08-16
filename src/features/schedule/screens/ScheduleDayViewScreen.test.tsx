@@ -580,6 +580,25 @@ describe("ScheduleDayViewScreen", () => {
     expect(await findByText("$25.000")).toBeTruthy();
   });
 
+  it("muestra el saldo pendiente (no el precio total) cuando el turno tiene abono", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [{ ...scheduledOne, price: 100000, abono: 30000 }],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(await findByText("Saldo $70.000")).toBeTruthy();
+    expect(
+      await findByText("Precio $100.000 · Abono $30.000"),
+    ).toBeTruthy();
+  });
+
   it("no muestra precio en la card cuando el turno no tiene precio", async () => {
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [scheduledOne],

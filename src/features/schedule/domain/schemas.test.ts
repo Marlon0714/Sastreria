@@ -109,6 +109,40 @@ describe("schedule schemas", () => {
       expect(result.success).toBe(false);
     });
 
+    it("acepta un abono válido, menor o igual al precio", () => {
+      const result = createScheduleSchema.safeParse({
+        ...validInput,
+        abono: 5000,
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.abono).toBe(5000);
+    });
+
+    it("rechaza un abono negativo", () => {
+      const result = createScheduleSchema.safeParse({
+        ...validInput,
+        abono: -100,
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("rechaza un abono mayor que el precio", () => {
+      const result = createScheduleSchema.safeParse({
+        ...validInput,
+        price: 15000,
+        abono: 20000,
+      });
+
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(result.error.flatten().fieldErrors.abono?.[0]).toBe(
+        "El abono no puede ser mayor que el precio",
+      );
+    });
+
     it("formatea el nombre sin registrar con la primera letra en mayúscula", () => {
       const result = createScheduleSchema.safeParse({
         unregisteredClientName: "pedro RAMÍREZ",

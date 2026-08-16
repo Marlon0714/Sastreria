@@ -582,6 +582,15 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_schedules_operario_id ON schedules (operario_id);`,
     ],
   },
+  {
+    // Pedido del dueño (2026-08-16): poder registrar un abono al agendar un
+    // arreglo/confección, y calcular el saldo pendiente (price - abono).
+    // El saldo no se guarda: se deriva en el código para no arriesgar que
+    // quede desincronizado si luego se corrige el precio o el abono.
+    version: 27,
+    name: "v27_schedule_abono",
+    statements: [`ALTER TABLE schedules ADD COLUMN abono REAL;`],
+  },
 ];
 
 interface UserVersionRow {

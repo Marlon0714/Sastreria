@@ -41,6 +41,8 @@ import {
   type ScheduleStatus,
 } from "../domain/types";
 import { colors } from "../../../shared/theme/colors";
+import { computeSaldo } from "../domain/saldo";
+import { formatPrice } from "../../pricing/domain/strings";
 import { useDeleteSchedule } from "../hooks/useDeleteSchedule";
 import { useScheduleForm } from "../hooks/useScheduleForm";
 import { useScheduleStatusActions } from "../hooks/useScheduleStatusActions";
@@ -114,6 +116,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       clientId: undefined,
       unregisteredClientName: "",
       price: undefined,
+      abono: undefined,
       operarioId: undefined,
       notes: "",
       isPriority: false,
@@ -122,6 +125,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   });
 
   const dateValue = useWatch({ control, name: "date" });
+  const priceValue = useWatch({ control, name: "price" });
+  const abonoValue = useWatch({ control, name: "abono" });
+  const saldo = computeSaldo({ price: priceValue, abono: abonoValue });
 
   useEffect(() => {
     setDisplaySchedule(schedule);
@@ -136,6 +142,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       clientId: schedule.clientId,
       unregisteredClientName: schedule.unregisteredClientName ?? "",
       price: schedule.price,
+      abono: schedule.abono,
       operarioId: schedule.operarioId,
       notes: schedule.notes ?? "",
       isPriority: schedule.isPriority,
@@ -150,6 +157,14 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       setValue("isPriority", false);
     }
   }, [dateValue, setValue]);
+
+  // El abono solo tiene sentido si hay un precio del que descontarlo — si se
+  // borra el precio, el campo (y su valor) deja de mostrarse.
+  useEffect(() => {
+    if (priceValue == null) {
+      setValue("abono", undefined);
+    }
+  }, [priceValue, setValue]);
 
   const handleMarkReady = async (): Promise<void> => {
     const updated = await statusActions.markReady();
@@ -451,6 +466,40 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             <Text style={styles.errorText}>{errors.price.message}</Text>
           ) : null}
         </View>
+
+        {priceValue != null ? (
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Abono (opcional)</Text>
+            <Controller
+              control={control}
+              name="abono"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  style={[styles.input, errors.abono && styles.inputError]}
+                  placeholder="Ej: 5000"
+                  placeholderTextColor={colors.textPlaceholder}
+                  keyboardType="numeric"
+                  onBlur={onBlur}
+                  onChangeText={(text) => {
+                    const digitsOnly = text.replace(/[^0-9]/g, "");
+                    onChange(
+                      digitsOnly === "" ? undefined : parseInt(digitsOnly, 10),
+                    );
+                  }}
+                  value={value === undefined ? "" : String(value)}
+                />
+              )}
+            />
+            {errors.abono ? (
+              <Text style={styles.errorText}>{errors.abono.message}</Text>
+            ) : null}
+            {saldo != null ? (
+              <Text style={styles.helperText}>
+                Saldo pendiente: {formatPrice(saldo)}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {scheduleId ? (
           <View style={styles.fieldGroup}>

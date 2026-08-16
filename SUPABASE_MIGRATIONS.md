@@ -877,6 +877,16 @@ NOTIFY pgrst, 'reload schema';
 
 ---
 
+### v32_schedule_abono (2026-08-16)
+
+**Contexto:** pedido del dueño para poder registrar un abono al agendar un arreglo/confección. Se guarda solo `abono`; el saldo pendiente se calcula en el código (`price - abono`) y no se persiste, para que nunca quede desincronizado si luego se corrige cualquiera de los dos valores.
+
+```sql
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS abono NUMERIC;
+```
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

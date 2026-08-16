@@ -259,6 +259,22 @@ describe("ScheduleRepositoryImpl", () => {
       expect(result.statusLocked).toBe(false);
       expect(result.isPriority).toBe(true);
     });
+
+    it("guarda el abono si se envía", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+        price: 100000,
+        abono: 30000,
+      });
+
+      expect(result.abono).toBe(30000);
+      const params = mockRunAsync.mock.calls[0] ?? [];
+      expect(params).toContain(30000);
+    });
   });
 
   describe("update", () => {
@@ -285,6 +301,34 @@ describe("ScheduleRepositoryImpl", () => {
       expect(result.date).toBe("2026-08-12");
       expect(result.notes).toBe(baseRow.notes);
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+
+    it("conserva el abono existente si no se envía en el update", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        price: 100000,
+        abono: 30000,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, { notes: "otra nota" });
+
+      expect(result.abono).toBe(30000);
+    });
+
+    it("actualiza el abono si se envía", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        price: 100000,
+        abono: 30000,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, { abono: 50000 });
+
+      expect(result.abono).toBe(50000);
     });
 
     it("no recalcula status si ya está en un estado pegajoso", async () => {

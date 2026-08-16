@@ -24,6 +24,7 @@ interface ScheduleRow {
   date: string | null;
   time: string | null;
   price: number | null;
+  abono: number | null;
   operario_id: string | null;
   notes: string | null;
   is_priority: number;
@@ -45,6 +46,7 @@ function mapRow(row: ScheduleRow): Schedule {
     date: row.date ?? undefined,
     time: row.time ?? undefined,
     price: row.price ?? undefined,
+    abono: row.abono ?? undefined,
     operarioId: row.operario_id ?? undefined,
     notes: row.notes ?? undefined,
     isPriority: row.is_priority === 1,
@@ -115,6 +117,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       date: data.date,
       time: data.time,
       price: data.price,
+      abono: data.abono,
       operarioId: data.operarioId,
       notes: data.notes,
       isPriority: data.isPriority ?? false,
@@ -126,14 +129,15 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       syncStatus: "pending",
     };
     await db.runAsync(
-      `INSERT INTO schedules (id, client_id, unregistered_client_name, date, time, price, operario_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO schedules (id, client_id, unregistered_client_name, date, time, price, abono, operario_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       schedule.id,
       schedule.clientId ?? null,
       schedule.unregisteredClientName ?? null,
       schedule.date ?? null,
       schedule.time ?? null,
       schedule.price ?? null,
+      schedule.abono ?? null,
       schedule.operarioId ?? null,
       schedule.notes ?? null,
       schedule.isPriority ? 1 : 0,
@@ -234,12 +238,13 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     };
 
     await db.runAsync(
-      `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, operario_id = ?, notes = ?, is_priority = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
+      `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, abono = ?, operario_id = ?, notes = ?, is_priority = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
       updated.clientId ?? null,
       updated.unregisteredClientName ?? null,
       updated.date ?? null,
       updated.time ?? null,
       updated.price ?? null,
+      updated.abono ?? null,
       updated.operarioId ?? null,
       updated.notes ?? null,
       updated.isPriority ? 1 : 0,

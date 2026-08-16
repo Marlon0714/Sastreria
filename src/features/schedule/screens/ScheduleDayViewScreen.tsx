@@ -14,6 +14,7 @@ import {
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
 import { formatPrice } from "../../pricing/domain/strings";
+import { computeSaldo } from "../domain/saldo";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
@@ -287,7 +288,11 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         <View style={styles.cardSubRow}>
           <Text style={styles.cardDate}>{dateLabel}</Text>
           {item.price != null ? (
-            <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
+            <Text style={styles.cardPrice}>
+              {item.abono
+                ? `Saldo ${formatPrice(computeSaldo(item) ?? item.price)}`
+                : formatPrice(item.price)}
+            </Text>
           ) : null}
           {item.isPriority ? (
             <View style={styles.priorityBadge}>
@@ -295,6 +300,11 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
             </View>
           ) : null}
         </View>
+        {item.price != null && item.abono ? (
+          <Text style={styles.cardAbonoDetail}>
+            Precio {formatPrice(item.price)} · Abono {formatPrice(item.abono)}
+          </Text>
+        ) : null}
         {item.notes ? (
           <Text style={styles.cardNotes}>{item.notes}</Text>
         ) : null}
@@ -719,6 +729,10 @@ const styles = StyleSheet.create({
   },
   cardNotes: {
     fontSize: 13,
+    color: colors.textMuted,
+  },
+  cardAbonoDetail: {
+    fontSize: 12,
     color: colors.textMuted,
   },
   statusBadge: {

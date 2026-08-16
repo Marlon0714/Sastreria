@@ -183,6 +183,7 @@ interface ScheduleRow {
   date: string | null;
   time: string | null;
   price: number | null;
+  abono: number | null;
   operario_id: string | null;
   client_id: string | null;
   unregistered_client_name: string | null;
@@ -1011,7 +1012,7 @@ export class SupabasePullSync {
     let query = supabase
       .from("schedules")
       .select(
-        "id, date, time, price, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
+        "id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -1036,12 +1037,13 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO schedules
-            (id, date, time, price, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+            (id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             date                      = excluded.date,
             time                      = excluded.time,
             price                     = excluded.price,
+            abono                     = excluded.abono,
             operario_id               = excluded.operario_id,
             client_id                 = excluded.client_id,
             unregistered_client_name  = excluded.unregistered_client_name,
@@ -1060,6 +1062,7 @@ export class SupabasePullSync {
           row.date,
           row.time,
           row.price,
+          row.abono,
           row.operario_id,
           row.client_id,
           row.unregistered_client_name ?? null,

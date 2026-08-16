@@ -303,6 +303,55 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
+  it("solo muestra el campo de abono si hay un precio, y calcula el saldo pendiente", async () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(schedule)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByPlaceholderText, queryByPlaceholderText, findByText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    expect(queryByPlaceholderText("Ej: 5000")).toBeNull();
+
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
+    fireEvent.changeText(getByPlaceholderText("Ej: 5000"), "30000");
+
+    expect(await findByText(/Saldo pendiente/)).toBeTruthy();
+  });
+
+  it("envía el abono junto con el precio al guardar", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
+    fireEvent.changeText(getByPlaceholderText("Ej: 5000"), "30000");
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ price: 100000, abono: 30000 }),
+      );
+    });
+  });
+
   it("preselecciona la categoría del segmento activo y permite cambiarla antes de guardar", async () => {
     const submit = jest.fn(async () => Promise.resolve(schedule));
     mockUseScheduleForm.mockReturnValue({
