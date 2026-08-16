@@ -24,8 +24,10 @@ import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleQuickActionSheet } from "../components/ScheduleQuickActionSheet";
+import { WeekStrip } from "../components/WeekStrip";
 import {
   formatDateForDisplay,
+  getWeekDates,
   shiftDateString,
   todayDateString,
 } from "../domain/dateUtils";
@@ -76,6 +78,7 @@ const STATUS_COLORS: Record<ScheduleStatus, { bg: string; text: string }> = {
 
 export default function ScheduleDayViewScreen({ navigation }: Props) {
   const [selectedDate, setSelectedDate] = useState(todayDateString());
+  const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const [activeView, setActiveView] = useState<ActiveView>("dia");
   const [activeCategory, setActiveCategory] =
     useState<ScheduleCategory>("arreglo");
@@ -430,6 +433,18 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
 
       {activeView === "dia" ? (
         <>
+          <WeekStrip
+            weekDates={weekDates}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onPrevWeek={() =>
+              setSelectedDate((current) => shiftDateString(current, -7))
+            }
+            onNextWeek={() =>
+              setSelectedDate((current) => shiftDateString(current, 7))
+            }
+          />
+
           <View style={styles.header}>
             <Pressable
               accessibilityLabel="Día anterior"

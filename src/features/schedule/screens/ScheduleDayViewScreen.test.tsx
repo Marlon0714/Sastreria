@@ -362,6 +362,32 @@ describe("ScheduleDayViewScreen", () => {
     expect(mockUseScheduleDayView).toHaveBeenLastCalledWith("2026-08-15");
   });
 
+  it("muestra la tira de la semana y permite saltar a un día tocándolo", () => {
+    const { getByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(getByLabelText("Ir al Lun 10")).toBeTruthy();
+    expect(getByLabelText("Ir al Dom 16")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Ir al Jue 13"));
+
+    expect(mockUseScheduleDayView).toHaveBeenLastCalledWith("2026-08-13");
+  });
+
+  it("navega a la semana anterior/siguiente con las flechas de la tira", () => {
+    const { getByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Semana anterior"));
+    expect(mockUseScheduleDayView).toHaveBeenLastCalledWith("2026-08-08");
+
+    fireEvent.press(getByLabelText("Semana siguiente"));
+    fireEvent.press(getByLabelText("Semana siguiente"));
+    expect(mockUseScheduleDayView).toHaveBeenLastCalledWith("2026-08-22");
+  });
+
   it("salta a la fecha elegida en el selector", () => {
     const { getByLabelText } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,

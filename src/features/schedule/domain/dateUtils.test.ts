@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import {
   formatDateForDisplay,
   formatDateString,
+  getWeekDates,
   shiftDateString,
   todayDateString,
 } from "./dateUtils";
@@ -40,6 +41,56 @@ describe("dateUtils", () => {
 
     it("retorna la fecha de hoy formateada", () => {
       expect(todayDateString()).toBe("2026-08-15");
+    });
+  });
+
+  describe("getWeekDates", () => {
+    it("devuelve las 7 fechas de lunes a domingo cuando la fecha dada es miércoles", () => {
+      expect(getWeekDates("2026-08-12")).toEqual([
+        "2026-08-10",
+        "2026-08-11",
+        "2026-08-12",
+        "2026-08-13",
+        "2026-08-14",
+        "2026-08-15",
+        "2026-08-16",
+      ]);
+    });
+
+    it("cuando la fecha dada es domingo, retorna la semana que termina ese domingo", () => {
+      expect(getWeekDates("2026-08-16")).toEqual([
+        "2026-08-10",
+        "2026-08-11",
+        "2026-08-12",
+        "2026-08-13",
+        "2026-08-14",
+        "2026-08-15",
+        "2026-08-16",
+      ]);
+    });
+
+    it("cuando la fecha dada es lunes, retorna esa misma semana", () => {
+      expect(getWeekDates("2026-08-10")).toEqual([
+        "2026-08-10",
+        "2026-08-11",
+        "2026-08-12",
+        "2026-08-13",
+        "2026-08-14",
+        "2026-08-15",
+        "2026-08-16",
+      ]);
+    });
+
+    it("cruza correctamente el límite de mes", () => {
+      expect(getWeekDates("2026-08-31")).toEqual([
+        "2026-08-31",
+        "2026-09-01",
+        "2026-09-02",
+        "2026-09-03",
+        "2026-09-04",
+        "2026-09-05",
+        "2026-09-06",
+      ]);
     });
   });
 
