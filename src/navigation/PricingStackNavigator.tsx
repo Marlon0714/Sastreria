@@ -1,6 +1,10 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { View } from "react-native";
 
 import { LogoutButton } from "../features/auth/components/LogoutButton";
+import { ProfileButton } from "../features/auth/components/ProfileButton";
+import MyAccountScreen from "../features/account/screens/MyAccountScreen";
+import MyActivityScreen from "../features/account/screens/MyActivityScreen";
 import PricingPlaceholderScreen from "../features/pricing/screens/PricingPlaceholderScreen";
 import PricingListScreen from "../features/pricing/screens/PricingListScreen";
 import PricingDetailScreen from "../features/pricing/screens/PricingDetailScreen";
@@ -17,7 +21,15 @@ export default function PricingStackNavigator() {
       <Stack.Screen
         name="PricingList"
         component={SwipeablePricingListScreen}
-        options={{ title: "Precios", headerRight: () => <LogoutButton /> }}
+        options={{
+          title: "Precios",
+          headerRight: () => (
+            <View style={{ flexDirection: "row" }}>
+              <ProfileButton />
+              <LogoutButton />
+            </View>
+          ),
+        }}
       />
       <Stack.Screen
         name="PricingDetail"
@@ -33,6 +45,16 @@ export default function PricingStackNavigator() {
         name="PricingPlaceholder"
         component={PricingPlaceholderScreen}
         options={{ title: "Placeholder" }}
+      />
+      <Stack.Screen
+        name="MyAccount"
+        component={MyAccountScreen}
+        options={{ title: "Mi cuenta" }}
+      />
+      <Stack.Screen
+        name="MyActivity"
+        component={MyActivityScreen}
+        options={{ title: "Mis arreglos" }}
       />
     </Stack.Navigator>
   );

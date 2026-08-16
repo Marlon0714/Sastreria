@@ -9,6 +9,15 @@ export function todayDateString(): string {
   return formatDateString(new Date());
 }
 
+/**
+ * Fecha local (no UTC) de un timestamp ISO (ej. readyAt/deliveredAt), para
+ * agrupar por "el día en que pasó" según la hora del dispositivo, no la de
+ * UTC — importante cerca de la medianoche.
+ */
+export function localDateFromIso(isoTimestamp: string): string {
+  return formatDateString(new Date(isoTimestamp));
+}
+
 export function shiftDateString(dateString: string, deltaDays: number): string {
   const [year, month, day] = dateString.split("-").map(Number);
   const date = new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);

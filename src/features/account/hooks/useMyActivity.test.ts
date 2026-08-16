@@ -1,0 +1,155 @@
+import { renderHook, waitFor } from "@testing-library/react-native";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+
+import { clientFactory } from "../../../__tests__/factories";
+import type { Client } from "../../clients/domain/types";
+import type { Schedule } from "../../schedule/domain/types";
+import { useIdentityStore } from "../../../shared/state/identityStore";
+import { useMyActivity } from "./useMyActivity";
+
+const mockGetAll = jest.fn<() => Promise<Schedule[]>>();
+const mockFindAll = jest.fn<() => Promise<Client[]>>();
+
+jest.mock("../../../data/local/scheduleDependencies", () => ({
+  getDefaultScheduleRepository: () => ({ getAll: () => mockGetAll() }),
+}));
+
+jest.mock("../../clients/hooks/ClientsDependenciesProvider", () => ({
+  useClientRepository: () => ({ findAll: () => mockFindAll() }),
+}));
+
+const baseSchedule: Schedule = {
+  id: "schedule-1",
+  clientId: "client-1",
+  operarioId: "op-1",
+  price: 40000,
+  isPriority: false,
+  category: "arreglo",
+  status: "listo_para_entregar",
+  statusLocked: false,
+  readyAt: "2026-08-15T14:00:00.000Z",
+  createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-15T14:00:00.000Z",
+  syncStatus: "pending",
+};
+
+const client = clientFactory({
+  id: "client-1",
+  firstName: "Ana",
+  lastName: "Torres",
+});
+
+describe("useMyActivity", () => {
+  beforeEach(() => {
+    mockGetAll.mockReset();
+    mockFindAll.mockReset();
+    mockFindAll.mockResolvedValue([client]);
+    useIdentityStore.getState().reset();
+    useIdentityStore.getState().setOwnProfile({
+      id: "op-1",
+      displayName: "Juan Pérez",
+      role: "operario",
+      isSharedDevice: false,
+    });
+  });
+
+  it("incluye un turno listo/entregado ese día por el propio operario, con el nombre del cliente", async () => {
+    mockGetAll.mockResolvedValue([baseSchedule]);
+
+    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0]!.clientLabel).toBe("Ana Torres");
+    expect(result.current.total).toBe(40000);
+  });
+
+  it("excluye turnos de OTRO operario", async () => {
+    mockGetAll.mockResolvedValue([
+      { ...baseSchedule, operarioId: "op-2" },
+    ]);
+
+    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.items).toHaveLength(0);
+    expect(result.current.total).toBe(0);
+  });
+
+  it("excluye turnos que aún no están listos/entregados", async () => {
+    mockGetAll.mockResolvedValue([
+      { ...baseSchedule, status: "en_proceso", readyAt: undefined },
+    ]);
+
+    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.items).toHaveLength(0);
+  });
+
+  it("agrupa por el día en que se marcó listo, no por la fecha agendada del turno", async () => {
+    mockGetAll.mockResolvedValue([
+      { ...baseSchedule, date: "2026-08-20", readyAt: "2026-08-15T14:00:00.000Z" },
+    ]);
+
+    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.items).toHaveLength(1);
+
+    const { result: otherDay } = renderHook(() => useMyActivity("2026-08-20"));
+    await waitFor(() => expect(otherDay.current.isLoading).toBe(false));
+    expect(otherDay.current.items).toHaveLength(0);
+  });
+
+  it("usa deliveredAt si el turno nunca pasó por listo_para_entregar", async () => {
+    mockGetAll.mockResolvedValue([
+      {
+        ...baseSchedule,
+        status: "entregado",
+        readyAt: undefined,
+        deliveredAt: "2026-08-16T09:00:00.000Z",
+      },
+    ]);
+
+    const { result } = renderHook(() => useMyActivity("2026-08-16"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.items).toHaveLength(1);
+  });
+
+  it("muestra 'Cliente eliminado' si el clientId ya no existe", async () => {
+    mockFindAll.mockResolvedValue([]);
+    mockGetAll.mockResolvedValue([baseSchedule]);
+
+    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.items[0]!.clientLabel).toBe("Cliente eliminado");
+  });
+
+  it("muestra el nombre sin registrar cuando el turno no tiene clientId", async () => {
+    mockGetAll.mockResolvedValue([
+      { ...baseSchedule, clientId: undefined, unregisteredClientName: "Pedro" },
+    ]);
+
+    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.items[0]!.clientLabel).toBe("Pedro");
+  });
+
+  it("suma el total de los precios de todos los arreglos del día", async () => {
+    mockGetAll.mockResolvedValue([
+      baseSchedule,
+      { ...baseSchedule, id: "schedule-2", price: 15000 },
+    ]);
+
+    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.total).toBe(55000);
+  });
+});

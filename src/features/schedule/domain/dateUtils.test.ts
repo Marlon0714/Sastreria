@@ -4,6 +4,7 @@ import {
   formatDateForDisplay,
   formatDateString,
   getWeekDates,
+  localDateFromIso,
   shiftDateString,
   todayDateString,
 } from "./dateUtils";
@@ -41,6 +42,17 @@ describe("dateUtils", () => {
 
     it("retorna la fecha de hoy formateada", () => {
       expect(todayDateString()).toBe("2026-08-15");
+    });
+  });
+
+  describe("localDateFromIso", () => {
+    it("extrae la fecha local (no UTC) del timestamp ISO", () => {
+      // Construido con componentes locales (mismo patrón que el resto de
+      // este archivo) para que el test no dependa de la zona horaria del
+      // entorno que lo corre: da igual el offset, el timestamp ISO
+      // resultante siempre representa ese mismo instante local.
+      const localMoment = new Date(2026, 7, 15, 23, 30, 0);
+      expect(localDateFromIso(localMoment.toISOString())).toBe("2026-08-15");
     });
   });
 
