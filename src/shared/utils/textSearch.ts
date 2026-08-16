@@ -38,3 +38,37 @@ export function findDuplicateByName<T extends NamedContact>(
     ) ?? null
   );
 }
+
+export interface PhoneContact {
+  id: string;
+  phone: string;
+  phones?: string[];
+}
+
+/**
+ * Busca si algún cliente ya tiene el teléfono dado (comparando su teléfono
+ * principal y los secundarios). Se excluye `excludeId` para no marcar como
+ * "duplicado" al propio cliente cuando se está editando.
+ */
+export function findDuplicateByPhone<T extends PhoneContact>(
+  items: readonly T[],
+  candidatePhone: string,
+  excludeId?: string,
+): T | null {
+  const normalizedTarget = normalizePhone(candidatePhone);
+  if (!normalizedTarget) {
+    return null;
+  }
+
+  return (
+    items.find((item) => {
+      if (item.id === excludeId) {
+        return false;
+      }
+      const itemPhones = [item.phone, ...(item.phones ?? [])];
+      return itemPhones.some(
+        (phone) => normalizePhone(phone) === normalizedTarget,
+      );
+    }) ?? null
+  );
+}

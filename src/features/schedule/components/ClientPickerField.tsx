@@ -1,4 +1,5 @@
 import { colors } from "../../../shared/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,9 +13,14 @@ import {
 
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
-import { normalizeDigitsInput } from "../../../shared/domain/textPatterns";
+import {
+  PERSON_NAME_PATTERN,
+  PHONE_DIGITS_PATTERN,
+  normalizeDigitsInput,
+} from "../../../shared/domain/textPatterns";
 import {
   findDuplicateByName,
+  findDuplicateByPhone,
   normalizePhone,
   normalizeText,
 } from "../../../shared/utils/textSearch";
@@ -135,12 +141,52 @@ export function ClientPickerField({
     }
   };
 
+  const proceedWithPhoneCheck = (firstName: string, lastName: string): void => {
+    const normalizedPhone = newPhone.trim()
+      ? normalizeDigitsInput(newPhone.trim())
+      : "";
+    const duplicatePhone = normalizedPhone
+      ? findDuplicateByPhone(clients, normalizedPhone)
+      : null;
+
+    if (duplicatePhone) {
+      Alert.alert(
+        "Teléfono ya registrado",
+        `Ya existe un cliente con este teléfono: ${duplicatePhone.firstName} ${duplicatePhone.lastName}. ¿Deseas guardarlo así de todos modos?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Guardar de todos modos",
+            onPress: () => void createNewClient(firstName, lastName),
+          },
+        ],
+      );
+      return;
+    }
+
+    void createNewClient(firstName, lastName);
+  };
+
   const handleRegisterPress = (): void => {
     const firstName = nameInput.trim();
     const lastName = newLastName.trim();
 
     if (!firstName || !lastName) {
       setRegisterError("Nombre y apellido son obligatorios.");
+      return;
+    }
+
+    if (
+      !PERSON_NAME_PATTERN.test(firstName) ||
+      !PERSON_NAME_PATTERN.test(lastName)
+    ) {
+      setRegisterError("Nombre y apellido solo pueden contener letras.");
+      return;
+    }
+
+    const trimmedPhone = newPhone.trim();
+    if (trimmedPhone && !PHONE_DIGITS_PATTERN.test(normalizeDigitsInput(trimmedPhone))) {
+      setRegisterError("El teléfono solo puede contener números.");
       return;
     }
 
@@ -159,14 +205,14 @@ export function ClientPickerField({
           },
           {
             text: "Crear de todos modos",
-            onPress: () => void createNewClient(firstName, lastName),
+            onPress: () => proceedWithPhoneCheck(firstName, lastName),
           },
         ],
       );
       return;
     }
 
-    void createNewClient(firstName, lastName);
+    proceedWithPhoneCheck(firstName, lastName);
   };
 
   if (isLoading) {
@@ -177,23 +223,30 @@ export function ClientPickerField({
     return (
       <View style={styles.container}>
         <View style={styles.selector}>
-          <Text style={styles.selectorText}>
-            {selectedClient.firstName} {selectedClient.lastName}
-          </Text>
-          {selectedClient.phone ? (
-            <Text style={styles.optionSubtext}>{selectedClient.phone}</Text>
-          ) : null}
+          <View style={styles.selectedInfo}>
+            <Text style={styles.selectorText}>
+              {selectedClient.firstName} {selectedClient.lastName}
+            </Text>
+            {selectedClient.phone ? (
+              <Text style={styles.optionSubtext}>{selectedClient.phone}</Text>
+            ) : null}
+          </View>
+          {/* Ícono chico y separado del texto a propósito — el botón de
+              texto anterior ("Cambiar") ocupaba todo el ancho justo debajo
+              del nombre y se tocaba sin querer, borrando el cliente ya
+              elegido. */}
+          <Pressable
+            accessibilityLabel="Cambiar cliente"
+            hitSlop={8}
+            style={styles.changeClientButton}
+            onPress={() => {
+              onChangeClientId(undefined);
+              setNameInput("");
+            }}
+          >
+            <Ionicons name="pencil" size={16} color={colors.textMuted} />
+          </Pressable>
         </View>
-        <Pressable
-          accessibilityLabel="Cambiar cliente"
-          style={styles.cancelButton}
-          onPress={() => {
-            onChangeClientId(undefined);
-            setNameInput("");
-          }}
-        >
-          <Text style={styles.cancelButtonText}>Cambiar</Text>
-        </Pressable>
       </View>
     );
   }
@@ -305,6 +358,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   selector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 10,
@@ -315,8 +372,16 @@ const styles = StyleSheet.create({
   selectorError: {
     borderColor: colors.danger,
   },
+  selectedInfo: {
+    flex: 1,
+  },
   selectorText: {
     color: "#0f172a",
+  },
+  changeClientButton: {
+    padding: 6,
+    borderRadius: 999,
+    backgroundColor: colors.background,
   },
   errorText: {
     color: colors.danger,
