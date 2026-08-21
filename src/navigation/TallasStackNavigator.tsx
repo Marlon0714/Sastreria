@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { LogoutButton } from "../features/auth/components/LogoutButton";
 import { getTallasDependencies } from "../data/local/tallasDependencies";
+import { TALLA_GARMENT_LABELS } from "../features/tallas/domain/types";
 import { TallasDependenciesProvider } from "../features/tallas/hooks/TallasDependenciesProvider";
 import TallasListScreen from "../features/tallas/screens/TallasListScreen";
 import TallaFormScreen from "../features/tallas/screens/TallaFormScreen";
@@ -15,16 +15,20 @@ export default function TallasStackNavigator() {
   const deps = useMemo(() => getTallasDependencies(), []);
   return (
     <TallasDependenciesProvider dependencies={deps}>
-      <Stack.Navigator screenOptions={{ headerShown: true }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen
           name="TallasList"
           component={SwipeableTallasListScreen}
-          options={{ title: "Tallas", headerRight: () => <LogoutButton /> }}
+          options={{ title: "Tallas" }}
         />
         <Stack.Screen
           name="TallaForm"
           component={TallaFormScreen}
-          options={{ title: "Talla" }}
+          options={({ route }) => ({
+            title: route.params.tallaId
+              ? `Editar talla — ${TALLA_GARMENT_LABELS[route.params.type]}`
+              : `Nueva talla — ${TALLA_GARMENT_LABELS[route.params.type]}`,
+          })}
         />
       </Stack.Navigator>
     </TallasDependenciesProvider>

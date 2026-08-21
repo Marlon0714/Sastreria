@@ -4,20 +4,13 @@ import { fireEvent, render } from "@testing-library/react-native";
 import { useIdentityStore } from "../../../shared/state/identityStore";
 import { ProfileButton } from "./ProfileButton";
 
-const mockNavigate = jest.fn();
-
-jest.mock("@react-navigation/native", () => ({
-  useNavigation: () => ({ navigate: mockNavigate }),
-}));
-
 describe("ProfileButton", () => {
   beforeEach(() => {
-    mockNavigate.mockReset();
     useIdentityStore.getState().reset();
   });
 
   it("no muestra nada si no hay perfil resuelto", () => {
-    const { queryByLabelText } = render(<ProfileButton />);
+    const { queryByLabelText } = render(<ProfileButton onPress={jest.fn()} />);
     expect(queryByLabelText("Mi cuenta")).toBeNull();
   });
 
@@ -29,7 +22,7 @@ describe("ProfileButton", () => {
       isSharedDevice: false,
     });
 
-    const { queryByLabelText } = render(<ProfileButton />);
+    const { queryByLabelText } = render(<ProfileButton onPress={jest.fn()} />);
     expect(queryByLabelText("Mi cuenta")).toBeNull();
   });
 
@@ -41,21 +34,22 @@ describe("ProfileButton", () => {
       isSharedDevice: true,
     });
 
-    const { queryByLabelText } = render(<ProfileButton />);
+    const { queryByLabelText } = render(<ProfileButton onPress={jest.fn()} />);
     expect(queryByLabelText("Mi cuenta")).toBeNull();
   });
 
-  it("muestra el botón para un operario en su cuenta personal y navega a Mi cuenta", () => {
+  it("muestra el botón para un operario en su cuenta personal y llama a onPress", () => {
     useIdentityStore.getState().setOwnProfile({
       id: "op-1",
       displayName: "Juan Pérez",
       role: "operario",
       isSharedDevice: false,
     });
+    const onPress = jest.fn();
 
-    const { getByLabelText } = render(<ProfileButton />);
+    const { getByLabelText } = render(<ProfileButton onPress={onPress} />);
     fireEvent.press(getByLabelText("Mi cuenta"));
 
-    expect(mockNavigate).toHaveBeenCalledWith("MyAccount");
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

@@ -20,7 +20,6 @@ import { MeasurementCard } from "../../clients/components/MeasurementCard";
 import { MeasurementGridSection } from "../../clients/components/MeasurementGridSection";
 import { MeasurementGroupCard } from "../../clients/components/MeasurementGroupCard";
 import type { TallaGarmentType, TallaTemplate } from "../domain/types";
-import { TALLA_GARMENT_LABELS } from "../domain/types";
 import { useTallaTemplateRepository } from "../hooks/TallasDependenciesProvider";
 import { useUpsertTallaTemplate } from "../hooks/useUpsertTallaTemplate";
 
@@ -174,14 +173,6 @@ export default function TallaFormScreen({ navigation, route }: Props) {
   useEffect(() => {
     void loadTemplate();
   }, [loadTemplate]);
-
-  useEffect(() => {
-    navigation.setOptions({
-      title: tallaId
-        ? `Editar talla — ${TALLA_GARMENT_LABELS[type]}`
-        : `Nueva talla — ${TALLA_GARMENT_LABELS[type]}`,
-    });
-  }, [navigation, type, tallaId]);
 
   const onSubmit = async (values: TallaFormValues) => {
     const name = values.name.trim();

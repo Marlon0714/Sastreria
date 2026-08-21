@@ -1,10 +1,8 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View } from "react-native";
 
-import { LogoutButton } from "../features/auth/components/LogoutButton";
-import { ProfileButton } from "../features/auth/components/ProfileButton";
 import MyAccountScreen from "../features/account/screens/MyAccountScreen";
 import MyActivityScreen from "../features/account/screens/MyActivityScreen";
+import { pricingStrings } from "../features/pricing/domain/strings";
 import PricingPlaceholderScreen from "../features/pricing/screens/PricingPlaceholderScreen";
 import PricingListScreen from "../features/pricing/screens/PricingListScreen";
 import PricingDetailScreen from "../features/pricing/screens/PricingDetailScreen";
@@ -17,19 +15,11 @@ const SwipeablePricingListScreen = withTabSwipeLock(PricingListScreen);
 
 export default function PricingStackNavigator() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="PricingList"
         component={SwipeablePricingListScreen}
-        options={{
-          title: "Precios",
-          headerRight: () => (
-            <View style={{ flexDirection: "row" }}>
-              <ProfileButton />
-              <LogoutButton />
-            </View>
-          ),
-        }}
+        options={{ title: "Precios" }}
       />
       <Stack.Screen
         name="PricingDetail"
@@ -39,7 +29,11 @@ export default function PricingStackNavigator() {
       <Stack.Screen
         name="PricingForm"
         component={PricingFormScreen}
-        options={{ title: "Editar/Crear precio" }}
+        options={({ route }) => ({
+          title: route.params?.id
+            ? pricingStrings.editPricing
+            : pricingStrings.addPricing,
+        })}
       />
       <Stack.Screen
         name="PricingPlaceholder"

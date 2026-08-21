@@ -1,8 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View } from "react-native";
 
-import { LogoutButton } from "../features/auth/components/LogoutButton";
-import { ProfileButton } from "../features/auth/components/ProfileButton";
 import MyAccountScreen from "../features/account/screens/MyAccountScreen";
 import MyActivityScreen from "../features/account/screens/MyActivityScreen";
 import ScheduleDayViewScreen from "../features/schedule/screens/ScheduleDayViewScreen";
@@ -17,19 +14,11 @@ const SwipeableScheduleDayViewScreen = withTabSwipeLock(
 
 export default function ScheduleStackNavigator() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="ScheduleDayView"
         component={SwipeableScheduleDayViewScreen}
-        options={{
-          title: "Agenda",
-          headerRight: () => (
-            <View style={{ flexDirection: "row" }}>
-              <ProfileButton />
-              <LogoutButton />
-            </View>
-          ),
-        }}
+        options={{ title: "Agenda" }}
       />
       <Stack.Screen
         name="ScheduleForm"

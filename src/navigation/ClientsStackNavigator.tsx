@@ -1,5 +1,4 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { LogoutButton } from "../features/auth/components/LogoutButton";
 import CamisaMeasurementDetailScreen from "../features/clients/screens/CamisaMeasurementDetailScreen";
 import ClientCreateScreen from "../features/clients/screens/ClientCreateScreen";
 import ClientDetailScreen from "../features/clients/screens/ClientDetailScreen";
@@ -18,11 +17,11 @@ const SwipeableClientListScreen = withTabSwipeLock(ClientListScreen);
 
 export default function ClientsStackNavigator() {
   return (
-    <Stack.Navigator initialRouteName="ClientList">
+    <Stack.Navigator initialRouteName="ClientList" screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="ClientList"
         component={SwipeableClientListScreen}
-        options={{ title: "Clientes", headerRight: () => <LogoutButton /> }}
+        options={{ title: "Clientes" }}
       />
       <Stack.Screen
         name="ClientCreate"

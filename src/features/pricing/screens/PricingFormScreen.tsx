@@ -1,5 +1,5 @@
 import { colors } from "../../../shared/theme/colors";
-import React, { useEffect } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -37,12 +37,6 @@ export default function PricingFormScreen() {
       onSuccess: () => navigation.goBack(),
       onError: (msg) => Alert.alert(pricingStrings.saveError, msg),
     });
-
-  useEffect(() => {
-    navigation.setOptions({
-      title: id ? pricingStrings.editPricing : pricingStrings.addPricing,
-    });
-  }, [navigation, id]);
 
   if (loading) return <LoadingView message="Cargando servicio..." />;
 
