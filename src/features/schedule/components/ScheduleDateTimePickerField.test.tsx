@@ -106,6 +106,27 @@ describe("ScheduleDateTimePickerField", () => {
       expect(getByText("Lunes, 10 de ago")).toBeTruthy();
     });
 
+    it("con variant='iconTrigger' solo muestra el ícono y abre el picker nativo igual", () => {
+      const onChange = jest.fn();
+      const { getByLabelText, queryByText } = render(
+        <ScheduleDateTimePickerField
+          mode="date"
+          variant="iconTrigger"
+          value="2026-08-10"
+          onChange={onChange}
+          placeholder="Sin fecha"
+          accessibilityLabel="Elegir fecha"
+        />,
+      );
+
+      expect(queryByText("10/08/2026")).toBeNull();
+
+      fireEvent.press(getByLabelText("Elegir fecha"));
+      fireEvent.press(getByLabelText("native-picker-confirm"));
+
+      expect(onChange).toHaveBeenCalledWith("2026-08-15");
+    });
+
     it("no muestra el botón de quitar cuando allowClear=false", () => {
       const { queryByLabelText } = render(
         <ScheduleDateTimePickerField
