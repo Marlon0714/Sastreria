@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import { clientFactory } from "../../../__tests__/factories";
@@ -8,10 +8,15 @@ import { useIdentityStore } from "../../../shared/state/identityStore";
 import { useMyActivity } from "./useMyActivity";
 
 const mockGetAll = jest.fn<() => Promise<Schedule[]>>();
+const mockUpdate =
+  jest.fn<(id: string, data: unknown) => Promise<Schedule>>();
 const mockFindAll = jest.fn<() => Promise<Client[]>>();
 
 jest.mock("../../../data/local/scheduleDependencies", () => ({
-  getDefaultScheduleRepository: () => ({ getAll: () => mockGetAll() }),
+  getDefaultScheduleRepository: () => ({
+    getAll: () => mockGetAll(),
+    update: (id: string, data: unknown) => mockUpdate(id, data),
+  }),
 }));
 
 jest.mock("../../clients/hooks/ClientsDependenciesProvider", () => ({
@@ -42,6 +47,7 @@ const client = clientFactory({
 describe("useMyActivity", () => {
   beforeEach(() => {
     mockGetAll.mockReset();
+    mockUpdate.mockReset();
     mockFindAll.mockReset();
     mockFindAll.mockResolvedValue([client]);
     useIdentityStore.getState().reset();
@@ -151,5 +157,40 @@ describe("useMyActivity", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.total).toBe(55000);
+  });
+
+  describe("addPrice", () => {
+    it("actualiza el precio del turno y recarga la lista", async () => {
+      mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
+      mockUpdate.mockResolvedValue({ ...baseSchedule, price: 25000 });
+
+      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      let ok = false;
+      await act(async () => {
+        ok = await result.current.addPrice("schedule-1", 25000);
+      });
+
+      expect(ok).toBe(true);
+      expect(mockUpdate).toHaveBeenCalledWith("schedule-1", { price: 25000 });
+      expect(mockGetAll).toHaveBeenCalledTimes(2);
+    });
+
+    it("retorna false y expone un error si falla", async () => {
+      mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
+      mockUpdate.mockRejectedValue(new Error("network error"));
+
+      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      let ok = true;
+      await act(async () => {
+        ok = await result.current.addPrice("schedule-1", 25000);
+      });
+
+      expect(ok).toBe(false);
+      expect(result.current.error).toBe("No se pudo guardar el precio.");
+    });
   });
 });

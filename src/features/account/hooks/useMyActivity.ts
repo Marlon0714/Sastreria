@@ -18,6 +18,8 @@ interface UseMyActivityResult {
   isLoading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  /** Completa el precio de un arreglo que quedó sin registrar. */
+  addPrice: (scheduleId: string, price: number) => Promise<boolean>;
 }
 
 /**
@@ -96,5 +98,19 @@ export function useMyActivity(date: string): UseMyActivityResult {
     0,
   );
 
-  return { items, total, isLoading, error, reload: load };
+  const addPrice = useCallback(
+    async (scheduleId: string, price: number): Promise<boolean> => {
+      try {
+        await getDefaultScheduleRepository().update(scheduleId, { price });
+        await load();
+        return true;
+      } catch {
+        setError("No se pudo guardar el precio.");
+        return false;
+      }
+    },
+    [load],
+  );
+
+  return { items, total, isLoading, error, reload: load, addPrice };
 }

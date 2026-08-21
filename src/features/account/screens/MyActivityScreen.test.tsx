@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import type { Schedule } from "../../schedule/domain/types";
 import MyActivityScreen from "./MyActivityScreen";
@@ -10,6 +10,7 @@ interface UseMyActivityResult {
   isLoading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  addPrice: (scheduleId: string, price: number) => Promise<boolean>;
 }
 
 const mockUseMyActivity = jest.fn<(date: string) => UseMyActivityResult>();
@@ -40,16 +41,24 @@ const baseSchedule: Schedule = {
   syncStatus: "pending",
 };
 
+function buildActivityResult(
+  overrides: Partial<UseMyActivityResult> = {},
+): UseMyActivityResult {
+  return {
+    items: [],
+    total: 0,
+    isLoading: false,
+    error: null,
+    reload: jest.fn(async () => Promise.resolve()),
+    addPrice: jest.fn(async () => Promise.resolve(true)),
+    ...overrides,
+  };
+}
+
 describe("MyActivityScreen", () => {
   beforeEach(() => {
     mockUseMyActivity.mockReset();
-    mockUseMyActivity.mockReturnValue({
-      items: [],
-      total: 0,
-      isLoading: false,
-      error: null,
-      reload: jest.fn(async () => Promise.resolve()),
-    });
+    mockUseMyActivity.mockReturnValue(buildActivityResult());
   });
 
   it("muestra un estado vacío cuando no hay arreglos ese día", () => {
@@ -60,19 +69,18 @@ describe("MyActivityScreen", () => {
   });
 
   it("muestra la lista de arreglos con su precio y el total del día", () => {
-    mockUseMyActivity.mockReturnValue({
-      items: [
-        { schedule: baseSchedule, clientLabel: "Ana Torres" },
-        {
-          schedule: { ...baseSchedule, id: "schedule-2", price: 15000 },
-          clientLabel: "Luis Gómez",
-        },
-      ],
-      total: 55000,
-      isLoading: false,
-      error: null,
-      reload: jest.fn(async () => Promise.resolve()),
-    });
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        items: [
+          { schedule: baseSchedule, clientLabel: "Ana Torres" },
+          {
+            schedule: { ...baseSchedule, id: "schedule-2", price: 15000 },
+            clientLabel: "Luis Gómez",
+          },
+        ],
+        total: 55000,
+      }),
+    );
 
     const { getByText } = render(<MyActivityScreen />);
 
@@ -83,14 +91,24 @@ describe("MyActivityScreen", () => {
     expect(getByText("$55.000")).toBeTruthy();
   });
 
-  it("navega al día anterior y siguiente con las flechas", () => {
+  it("muestra la tira de la semana y permite saltar a un día tocándolo", () => {
     const { getByLabelText } = render(<MyActivityScreen />);
 
-    fireEvent.press(getByLabelText("Día anterior"));
-    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-14");
+    expect(getByLabelText("Ir al Lun 10")).toBeTruthy();
 
-    fireEvent.press(getByLabelText("Día siguiente"));
-    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-15");
+    fireEvent.press(getByLabelText("Ir al Jue 13"));
+    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-13");
+  });
+
+  it("navega a la semana anterior/siguiente con las flechas de la tira", () => {
+    const { getByLabelText } = render(<MyActivityScreen />);
+
+    fireEvent.press(getByLabelText("Semana anterior"));
+    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-08");
+
+    fireEvent.press(getByLabelText("Semana siguiente"));
+    fireEvent.press(getByLabelText("Semana siguiente"));
+    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-22");
   });
 
   it("muestra 'Ir a hoy' solo tras navegar a otro día", () => {
@@ -100,7 +118,7 @@ describe("MyActivityScreen", () => {
 
     expect(queryByLabelText("Ir a hoy")).toBeNull();
 
-    fireEvent.press(getByLabelText("Día siguiente"));
+    fireEvent.press(getByLabelText("Ir al Jue 13"));
     expect(getByLabelText("Ir a hoy")).toBeTruthy();
 
     fireEvent.press(getByLabelText("Ir a hoy"));
@@ -108,16 +126,37 @@ describe("MyActivityScreen", () => {
   });
 
   it("muestra un error con reintentar si falla la carga", () => {
-    const reload = jest.fn(async () => Promise.resolve());
-    mockUseMyActivity.mockReturnValue({
-      items: [],
-      total: 0,
-      isLoading: false,
-      error: "No se pudieron cargar tus arreglos.",
-      reload,
-    });
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({ error: "No se pudieron cargar tus arreglos." }),
+    );
 
     const { getByText } = render(<MyActivityScreen />);
     expect(getByText("No se pudieron cargar tus arreglos.")).toBeTruthy();
+  });
+
+  it("permite agregar el precio de un arreglo que no lo tenía", async () => {
+    const addPrice = jest.fn(async () => Promise.resolve(true));
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        items: [
+          {
+            schedule: { ...baseSchedule, price: undefined },
+            clientLabel: "Ana Torres",
+          },
+        ],
+        addPrice,
+      }),
+    );
+
+    const { getByLabelText, queryByText } = render(<MyActivityScreen />);
+
+    expect(queryByText("$40.000")).toBeNull();
+    fireEvent.press(getByLabelText("Agregar precio de Ana Torres"));
+    fireEvent.changeText(getByLabelText("Precio del arreglo"), "30000");
+    fireEvent.press(getByLabelText("Guardar precio"));
+
+    await waitFor(() => {
+      expect(addPrice).toHaveBeenCalledWith("schedule-1", 30000);
+    });
   });
 });
