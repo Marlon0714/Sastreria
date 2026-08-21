@@ -247,6 +247,33 @@ describe("useAuth", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
+    it("resuelve el perfil ANTES de marcar isAuthenticated en true", async () => {
+      // Regresión: si isAuthenticated se marca antes de que el perfil
+      // resuelva, FeatureTabsNavigator monta con role=null (muestra las 4
+      // pestañas) y un instante después el perfil resuelve a "operario" y
+      // la lista baja a 2 — el tab navigator queda con el gesture-handler
+      // desincronizado (no responde a toques hasta cambiar de pestaña a
+      // mano).
+      let isAuthenticatedWhenProfileFetched: boolean | null = null;
+      const repo = makeRepo({
+        getProfile: jest.fn<SupabaseAuthRepositoryPort["getProfile"]>(
+          async () => {
+            isAuthenticatedWhenProfileFetched = result.current.isAuthenticated;
+            return testProfile;
+          },
+        ),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      await act(async () => {
+        await result.current.signIn("user@example.com", "password123");
+      });
+
+      expect(isAuthenticatedWhenProfileFetched).toBe(false);
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+
     it("autentica al usuario con credenciales correctas y carga su perfil", async () => {
       const repo = makeRepo();
       const { result } = renderHook(() => useAuth(repo));

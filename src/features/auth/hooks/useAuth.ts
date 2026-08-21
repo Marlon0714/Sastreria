@@ -169,8 +169,16 @@ export function useAuth(
       setIsSigningIn(true);
       try {
         const session = await repo.signIn(email, password);
-        setIsAuthenticated(true);
+        // Resuelve el perfil ANTES de marcar autenticado — si no, el tab
+        // navigator monta con role=null (muestra las 4 pestañas) y un
+        // instante después el perfil resuelve a "operario" y la lista baja
+        // a 2 pestañas, lo que deja el gesture-handler del tab navigator
+        // desincronizado (no responde a toques hasta cambiar de pestaña a
+        // mano). Al reabrir la app con sesión ya guardada esto no pasaba
+        // porque ese flujo ya esperaba resolveProfileForSession antes de
+        // marcar isLoading=false.
         await resolveProfileForSession(session.userId);
+        setIsAuthenticated(true);
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : "Error al iniciar sesión.",
