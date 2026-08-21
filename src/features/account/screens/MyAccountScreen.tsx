@@ -78,9 +78,12 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
       }
       const ok = await changeEmail(trimmed);
       if (ok) {
-        setSuccessMessage(
-          "Te enviamos un correo de confirmación a la nueva dirección. El cambio no se aplica hasta que lo confirmes.",
-        );
+        // El mensaje es deliberadamente neutro: si en Supabase está
+        // habilitada la confirmación de cambio de correo, el usuario recibe
+        // igual el correo pidiéndole confirmar; si está deshabilitada
+        // (Authentication → Settings en el dashboard), el cambio ya quedó
+        // aplicado. La app no controla ese comportamiento.
+        setSuccessMessage("Correo actualizado.");
         cancelEditing();
       }
       return;
@@ -119,7 +122,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={styles.container}
