@@ -1,6 +1,14 @@
 import { colors } from "../../../shared/theme/colors";
 import React, { useEffect } from "react";
-import { View, Text, StyleSheet, Alert, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
@@ -44,38 +52,46 @@ export default function PricingFormScreen() {
     : { ...initialValues, category: category ?? "arreglo" };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      {isOffline && (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>
-            ⚠ {pricingStrings.offlineBanner}
-          </Text>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {isOffline && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>
+              ⚠ {pricingStrings.offlineBanner}
+            </Text>
+          </View>
+        )}
+        {category && !id && (
+          <View style={styles.categoryHint}>
+            <Text style={styles.categoryHintText}>
+              Categoría: {PRICING_CATEGORY_LABELS[category]}
+            </Text>
+          </View>
+        )}
+        <View style={styles.formCard}>
+          <PricingForm
+            initialValues={mergedInitialValues}
+            onSubmit={onSubmit}
+            submitting={submitting}
+            error={error}
+          />
         </View>
-      )}
-      {category && !id && (
-        <View style={styles.categoryHint}>
-          <Text style={styles.categoryHintText}>
-            Categoría: {PRICING_CATEGORY_LABELS[category]}
-          </Text>
-        </View>
-      )}
-      <View style={styles.formCard}>
-        <PricingForm
-          initialValues={mergedInitialValues}
-          onSubmit={onSubmit}
-          submitting={submitting}
-          error={error}
-        />
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     padding: 16,
     paddingBottom: 40,
