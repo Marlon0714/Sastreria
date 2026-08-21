@@ -73,10 +73,6 @@ export default function MyActivityScreen() {
         }
       />
 
-      <Text style={styles.dateLabel} numberOfLines={1}>
-        {formatDateForDisplay(selectedDate)}
-      </Text>
-
       {selectedDate !== todayDateString() ? (
         <Pressable
           accessibilityLabel="Ir a hoy"
@@ -86,6 +82,10 @@ export default function MyActivityScreen() {
           <Text style={styles.todayButtonText}>Ir a hoy</Text>
         </Pressable>
       ) : null}
+
+      <Text style={styles.dateLabel} numberOfLines={1}>
+        {formatDateForDisplay(selectedDate)}
+      </Text>
 
       <ScrollView
         contentContainerStyle={styles.listContent}

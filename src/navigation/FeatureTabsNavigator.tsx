@@ -105,6 +105,13 @@ export default function FeatureTabsNavigator() {
     <Tab.Navigator
       initialRouteName={visibleTabs[0]?.name}
       tabBarPosition="bottom"
+      // Por defecto backBehavior="firstRoute" agrega una entrada de "volver
+      // a la primera pestaña" en el historial apenas se cambia a CUALQUIER
+      // otra pestaña — eso hacía que canGoBack() diera true en Tallas/
+      // Agenda/Precios (mostrando la flecha de volver del header en vez de
+      // Mi cuenta/Cerrar sesión), y solo en Clientes (la primera) diera
+      // false. "none" evita que cambiar de pestaña cuente como "atrás".
+      backBehavior="none"
       screenOptions={{
         swipeEnabled: true,
         animationEnabled: true,

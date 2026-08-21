@@ -150,6 +150,31 @@ describe("RootNavigator tabs composition", () => {
     expect(await findByText("Pantalla clientes")).toBeTruthy();
   });
 
+  it("muestra Cerrar sesión en el header (no la flecha de volver) en cualquier pestaña, no solo en la primera", async () => {
+    // Regresión: backBehavior por defecto ("firstRoute") agrega una entrada
+    // de "volver a la primera pestaña" en el historial apenas se cambia a
+    // CUALQUIER otra pestaña — eso hacía que canGoBack() diera true en
+    // Agenda/Precios/Tallas (mostrando la flecha de "Volver" del header en
+    // vez de "Cerrar sesión"), y solo en Clientes (la primera) diera false.
+    const { findByText, getByTestId, getByLabelText, queryByLabelText } =
+      renderRootNavigator();
+
+    expect(getByLabelText("Cerrar sesión")).toBeTruthy();
+    expect(queryByLabelText("Volver")).toBeNull();
+
+    fireEvent.press(getByTestId("tab-ScheduleTab"));
+    await findByText("Pantalla agenda");
+
+    expect(getByLabelText("Cerrar sesión")).toBeTruthy();
+    expect(queryByLabelText("Volver")).toBeNull();
+
+    fireEvent.press(getByTestId("tab-PricingTab"));
+    await findByText("Sin arreglos aún");
+
+    expect(getByLabelText("Cerrar sesión")).toBeTruthy();
+    expect(queryByLabelText("Volver")).toBeNull();
+  });
+
   it("muestra banner global en modo local-only", () => {
     useSyncStatusStore.getState().setMode("local-only");
 

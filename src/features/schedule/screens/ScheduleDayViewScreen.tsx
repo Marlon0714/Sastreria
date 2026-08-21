@@ -443,6 +443,16 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
             }
           />
 
+          {selectedDate !== todayDateString() ? (
+            <Pressable
+              accessibilityLabel="Ir a hoy"
+              style={styles.todayButton}
+              onPress={() => setSelectedDate(todayDateString())}
+            >
+              <Text style={styles.todayButtonText}>Ir a hoy</Text>
+            </Pressable>
+          ) : null}
+
           <View style={styles.header}>
             <Text style={styles.dateLabel} numberOfLines={1}>
               {formatDateForDisplay(selectedDate)}
@@ -458,16 +468,6 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
               accessibilityLabel="Elegir fecha"
             />
           </View>
-
-          {selectedDate !== todayDateString() ? (
-            <Pressable
-              accessibilityLabel="Ir a hoy"
-              style={styles.todayButton}
-              onPress={() => setSelectedDate(todayDateString())}
-            >
-              <Text style={styles.todayButtonText}>Ir a hoy</Text>
-            </Pressable>
-          ) : null}
         </>
       ) : null}
 
