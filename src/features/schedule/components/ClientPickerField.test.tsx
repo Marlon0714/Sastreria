@@ -10,11 +10,15 @@ function ControlledHarness({ initialClientId }: { initialClientId?: string }) {
   const [clientId, setClientId] = useState<string | undefined>(
     initialClientId,
   );
+  const [unregisteredName, setUnregisteredName] = useState<
+    string | undefined
+  >(undefined);
   return (
     <ClientPickerField
       clientId={clientId}
+      unregisteredName={unregisteredName}
       onChangeClientId={setClientId}
-      onChangeUnregisteredName={jest.fn()}
+      onChangeUnregisteredName={setUnregisteredName}
     />
   );
 }
@@ -167,14 +171,16 @@ describe("ClientPickerField", () => {
     expect(onChangeUnregisteredName).toHaveBeenCalledWith(undefined);
   });
 
-  it("permite cambiar un cliente ya vinculado para volver a escribir un nombre", async () => {
+  it("permite cambiar un cliente ya vinculado, dejando el nombre editable en vez de borrarlo", async () => {
     const { findByLabelText, getByLabelText } = render(
       <ControlledHarness initialClientId={clients[0]!.id} />,
     );
 
     fireEvent.press(await findByLabelText("Cambiar cliente"));
 
-    expect(getByLabelText("Nombre del cliente")).toBeTruthy();
+    expect(getByLabelText("Nombre del cliente").props.value).toBe(
+      "Ana Torres",
+    );
   });
 
   it("muestra un mensaje de error cuando se provee", async () => {

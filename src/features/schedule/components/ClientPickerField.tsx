@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -378,8 +379,13 @@ export const ClientPickerField = forwardRef<
             hitSlop={8}
             style={styles.changeClientButton}
             onPress={() => {
+              // Deja el nombre actual editable en vez de borrarlo — antes
+              // había que volver a escribir todo desde cero solo para
+              // corregir o buscar a alguien parecido.
+              const currentName = `${selectedClient.firstName} ${selectedClient.lastName}`;
               onChangeClientId(undefined);
-              setNameInput("");
+              setNameInput(currentName);
+              onChangeUnregisteredName(currentName);
             }}
           >
             <Ionicons name="pencil" size={16} color={colors.textMuted} />
@@ -407,7 +413,7 @@ export const ClientPickerField = forwardRef<
       ) : null}
 
       {suggestions.length > 0 ? (
-        <View style={styles.list}>
+        <ScrollView style={styles.list} nestedScrollEnabled>
           {suggestions.map((item) => (
             <Pressable
               key={item.id}
@@ -425,7 +431,7 @@ export const ClientPickerField = forwardRef<
               ) : null}
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       ) : null}
 
       {isRegistering ? (
@@ -554,6 +560,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 10,
+    overflow: "hidden",
   },
   option: {
     paddingHorizontal: 12,
