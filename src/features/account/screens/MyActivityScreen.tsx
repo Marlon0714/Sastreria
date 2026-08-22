@@ -28,7 +28,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 export default function MyActivityScreen() {
   const [selectedDate, setSelectedDate] = useState(todayDateString());
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
-  const { items, total, isLoading, error, reload, addPrice } =
+  const { items, total, isLoading, error, priceError, reload, addPrice } =
     useMyActivity(selectedDate);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [priceInput, setPriceInput] = useState("");
@@ -151,6 +151,10 @@ export default function MyActivityScreen() {
                   </Pressable>
                 </View>
               ) : null}
+
+              {editingPriceId === schedule.id && priceError ? (
+                <Text style={styles.priceErrorText}>{priceError}</Text>
+              ) : null}
             </View>
           ))
         )}
@@ -247,6 +251,10 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontWeight: "600",
     fontSize: 13,
+  },
+  priceErrorText: {
+    color: colors.danger,
+    fontSize: 12,
   },
   savePriceButton: {
     backgroundColor: colors.primary,

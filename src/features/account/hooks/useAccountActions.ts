@@ -10,6 +10,8 @@ interface UseAccountActionsResult {
   changeEmail: (newEmail: string) => Promise<boolean>;
   changePassword: (newPassword: string) => Promise<boolean>;
   changePin: (newPin: string) => Promise<boolean>;
+  /** Limpia el `error` de una acción anterior — útil al cambiar de modo de edición. */
+  clearError: () => void;
 }
 
 /**
@@ -86,6 +88,10 @@ export function useAccountActions(): UseAccountActionsResult {
     [],
   );
 
+  const clearError = useCallback((): void => {
+    setError(null);
+  }, []);
+
   const changePin = useCallback(async (newPin: string): Promise<boolean> => {
     setError(null);
     setIsSubmitting(true);
@@ -115,5 +121,6 @@ export function useAccountActions(): UseAccountActionsResult {
     changeEmail,
     changePassword,
     changePin,
+    clearError,
   };
 }

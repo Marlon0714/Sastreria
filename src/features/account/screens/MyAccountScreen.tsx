@@ -42,6 +42,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
     changeEmail,
     changePassword,
     changePin,
+    clearError,
   } = useAccountActions();
 
   const [editingField, setEditingField] = useState<EditableField | null>(
@@ -60,11 +61,16 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
     setConfirmValue("");
     setFormError(null);
     setSuccessMessage(null);
+    // Sin esto, el error de un intento anterior (ej. "Cambiar contraseña"
+    // fallido) queda pegado bajo el formulario de OTRO campo (ej. "PIN")
+    // que el usuario abre después, antes de haber enviado nada ahí.
+    clearError();
   };
 
   const cancelEditing = (): void => {
     setEditingField(null);
     setIsReauthed(false);
+    clearError();
   };
 
   const handleSubmit = async (): Promise<void> => {

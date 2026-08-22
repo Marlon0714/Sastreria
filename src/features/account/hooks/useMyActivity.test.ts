@@ -177,7 +177,7 @@ describe("useMyActivity", () => {
       expect(mockGetAll).toHaveBeenCalledTimes(2);
     });
 
-    it("retorna false y expone un error si falla", async () => {
+    it("retorna false y expone priceError (no error de pantalla completa) si falla", async () => {
       mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
       mockUpdate.mockRejectedValue(new Error("network error"));
 
@@ -190,7 +190,68 @@ describe("useMyActivity", () => {
       });
 
       expect(ok).toBe(false);
-      expect(result.current.error).toBe("No se pudo guardar el precio.");
+      expect(result.current.priceError).toBe("No se pudo guardar el precio.");
+      // El error de addPrice NUNCA debe tocar el `error` fatal de carga.
+      expect(result.current.error).toBeNull();
+    });
+
+    it("limpia priceError en el siguiente intento", async () => {
+      mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
+      mockUpdate.mockRejectedValueOnce(new Error("network error"));
+      mockUpdate.mockResolvedValueOnce({ ...baseSchedule, price: 25000 });
+
+      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      await act(async () => {
+        await result.current.addPrice("schedule-1", 25000);
+      });
+      expect(result.current.priceError).toBe("No se pudo guardar el precio.");
+
+      let ok = false;
+      await act(async () => {
+        ok = await result.current.addPrice("schedule-1", 25000);
+      });
+
+      expect(ok).toBe(true);
+      expect(result.current.priceError).toBeNull();
+    });
+
+    it("rechaza un precio negativo sin llamar al repositorio (priceError, no error fatal)", async () => {
+      mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
+
+      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      let ok = true;
+      await act(async () => {
+        ok = await result.current.addPrice("schedule-1", -100);
+      });
+
+      expect(ok).toBe(false);
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(result.current.priceError).toBe(
+        "El precio debe ser un número entero no negativo.",
+      );
+      expect(result.current.error).toBeNull();
+    });
+
+    it("rechaza un precio no entero sin llamar al repositorio", async () => {
+      mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
+
+      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      let ok = true;
+      await act(async () => {
+        ok = await result.current.addPrice("schedule-1", 25.5);
+      });
+
+      expect(ok).toBe(false);
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(result.current.priceError).toBe(
+        "El precio debe ser un número entero no negativo.",
+      );
     });
   });
 });

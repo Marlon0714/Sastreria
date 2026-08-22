@@ -111,6 +111,70 @@ describe("PricingServiceRepositoryImpl", () => {
     );
   });
 
+  describe("nombre único", () => {
+    it("create rechaza un nombre duplicado (case-insensitive, con espacios)", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "otro-id" });
+
+      await expect(
+        repo.create({
+          name: "  ARREGLO de Pantalón  ",
+          price: 15000,
+          category: "arreglo",
+        }),
+      ).rejects.toThrow("Ya existe un servicio con ese nombre.");
+      expect(mockRunAsync).not.toHaveBeenCalled();
+    });
+
+    it("create inserta normalmente si no hay ningún otro servicio con ese nombre", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      mockRunAsync.mockResolvedValueOnce(undefined);
+
+      const result = await repo.create({
+        name: "Nombre nuevo",
+        price: 15000,
+        category: "arreglo",
+      });
+
+      expect(result.name).toBe("Nombre nuevo");
+      expect(mockRunAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("update rechaza si el nuevo nombre coincide con OTRO servicio existente", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // getById(prev)
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "otro-id" }); // chequeo de duplicado
+
+      await expect(
+        repo.update(baseRow.id, { name: "Nombre de otro servicio" }),
+      ).rejects.toThrow("Ya existe un servicio con ese nombre.");
+      expect(mockRunAsync).not.toHaveBeenCalled();
+    });
+
+    it("update NO dispara el chequeo si mantiene su PROPIO nombre actual", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // getById(prev)
+      // El chequeo excluye el propio id — ninguna otra fila coincide.
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      mockRunAsync.mockResolvedValueOnce(undefined);
+
+      const result = await repo.update(baseRow.id, {
+        name: baseRow.name,
+        price: 30000,
+      });
+
+      expect(result.price).toBe(30000);
+      const [, , excludedId] = mockGetFirstAsync.mock.calls[1] ?? [];
+      expect(excludedId).toBe(baseRow.id);
+    });
+
+    it("update no chequea duplicado si el input no trae `name`", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // solo getById
+      mockRunAsync.mockResolvedValueOnce(undefined);
+
+      await repo.update(baseRow.id, { price: 30000 });
+
+      expect(mockGetFirstAsync).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("delete elimina el registro y registra entrada en sync_delete_log dentro de transacción", async () => {
     mockGenerateDomainUuid.mockReturnValueOnce(
       "cccccccc-cccc-4ccc-8ccc-cccccccccccc",

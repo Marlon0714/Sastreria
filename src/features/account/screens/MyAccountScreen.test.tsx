@@ -12,6 +12,7 @@ interface UseAccountActionsResult {
   changeEmail: (email: string) => Promise<boolean>;
   changePassword: (password: string) => Promise<boolean>;
   changePin: (pin: string) => Promise<boolean>;
+  clearError: () => void;
 }
 
 const mockUseAccountActions = jest.fn<() => UseAccountActionsResult>();
@@ -41,18 +42,26 @@ jest.mock("../components/ReauthStep", () => {
   };
 });
 
+function buildAccountActions(
+  overrides: Partial<UseAccountActionsResult> = {},
+): UseAccountActionsResult {
+  return {
+    currentEmail: "juan@example.com",
+    isLoadingEmail: false,
+    isSubmitting: false,
+    error: null,
+    changeEmail: jest.fn(async () => Promise.resolve(true)),
+    changePassword: jest.fn(async () => Promise.resolve(true)),
+    changePin: jest.fn(async () => Promise.resolve(true)),
+    clearError: jest.fn(),
+    ...overrides,
+  };
+}
+
 describe("MyAccountScreen", () => {
   beforeEach(() => {
     mockUseAccountActions.mockReset();
-    mockUseAccountActions.mockReturnValue({
-      currentEmail: "juan@example.com",
-      isLoadingEmail: false,
-      isSubmitting: false,
-      error: null,
-      changeEmail: jest.fn(async () => Promise.resolve(true)),
-      changePassword: jest.fn(async () => Promise.resolve(true)),
-      changePin: jest.fn(async () => Promise.resolve(true)),
-    });
+    mockUseAccountActions.mockReturnValue(buildAccountActions());
     useIdentityStore.getState().reset();
     useIdentityStore.getState().setOwnProfile({
       id: "op-1",
@@ -84,15 +93,9 @@ describe("MyAccountScreen", () => {
 
   it("cambia el correo tras confirmar identidad", async () => {
     const changeEmail = jest.fn(async () => Promise.resolve(true));
-    mockUseAccountActions.mockReturnValue({
-      currentEmail: "juan@example.com",
-      isLoadingEmail: false,
-      isSubmitting: false,
-      error: null,
-      changeEmail,
-      changePassword: jest.fn(async () => Promise.resolve(true)),
-      changePin: jest.fn(async () => Promise.resolve(true)),
-    });
+    mockUseAccountActions.mockReturnValue(
+      buildAccountActions({ changeEmail }),
+    );
 
     const { getByLabelText, findByText } = render(
       <MyAccountScreen navigation={{ navigate: jest.fn() }} />,
@@ -115,15 +118,9 @@ describe("MyAccountScreen", () => {
 
   it("rechaza cambiar la contraseña si no coincide con la confirmación", async () => {
     const changePassword = jest.fn(async () => Promise.resolve(true));
-    mockUseAccountActions.mockReturnValue({
-      currentEmail: "juan@example.com",
-      isLoadingEmail: false,
-      isSubmitting: false,
-      error: null,
-      changeEmail: jest.fn(async () => Promise.resolve(true)),
-      changePassword,
-      changePin: jest.fn(async () => Promise.resolve(true)),
-    });
+    mockUseAccountActions.mockReturnValue(
+      buildAccountActions({ changePassword }),
+    );
 
     const { getByLabelText, findByText } = render(
       <MyAccountScreen navigation={{ navigate: jest.fn() }} />,
@@ -145,15 +142,7 @@ describe("MyAccountScreen", () => {
 
   it("cambia el PIN tras confirmar identidad", async () => {
     const changePin = jest.fn(async () => Promise.resolve(true));
-    mockUseAccountActions.mockReturnValue({
-      currentEmail: "juan@example.com",
-      isLoadingEmail: false,
-      isSubmitting: false,
-      error: null,
-      changeEmail: jest.fn(async () => Promise.resolve(true)),
-      changePassword: jest.fn(async () => Promise.resolve(true)),
-      changePin,
-    });
+    mockUseAccountActions.mockReturnValue(buildAccountActions({ changePin }));
 
     const { getByLabelText } = render(
       <MyAccountScreen navigation={{ navigate: jest.fn() }} />,
@@ -168,5 +157,52 @@ describe("MyAccountScreen", () => {
     await waitFor(() => {
       expect(changePin).toHaveBeenCalledWith("5678");
     });
+  });
+
+  it("limpia el error de un modo de edición anterior al cambiar de campo", async () => {
+    // Escenario del bug: falla "Cambiar contraseña" (error visible del hook),
+    // el usuario cancela y abre "Cambiar PIN" — el error viejo de contraseña
+    // no debe seguir mostrándose bajo el nuevo formulario de PIN.
+    let currentError: string | null = null;
+    const changePassword = jest.fn(async () => {
+      currentError = "No se pudo cambiar la contraseña.";
+      return false;
+    });
+    const clearError = jest.fn(() => {
+      currentError = null;
+    });
+    mockUseAccountActions.mockImplementation(() =>
+      buildAccountActions({
+        error: currentError,
+        changePassword,
+        clearError,
+      }),
+    );
+
+    const { getByLabelText, getByText, queryByText, rerender } = render(
+      <MyAccountScreen navigation={{ navigate: jest.fn() }} />,
+    );
+
+    fireEvent.press(getByLabelText("Cambiar contraseña"));
+    fireEvent.press(getByLabelText("Confirmar identidad (mock)"));
+    fireEvent.changeText(getByLabelText("Nueva contraseña"), "clave123");
+    fireEvent.changeText(
+      getByLabelText("Confirmar contraseña nueva"),
+      "clave123",
+    );
+    fireEvent.press(getByLabelText("Guardar cambio"));
+
+    await waitFor(() => expect(changePassword).toHaveBeenCalled());
+    // El hook real dispararía este re-render solo (setState interno); acá
+    // el hook está mockeado, así que forzamos el re-render para reflejar
+    // el error que acaba de "propagar".
+    rerender(<MyAccountScreen navigation={{ navigate: jest.fn() }} />);
+    expect(getByText("No se pudo cambiar la contraseña.")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Cancelar cambio"));
+    fireEvent.press(getByLabelText("Cambiar PIN"));
+    fireEvent.press(getByLabelText("Confirmar identidad (mock)"));
+
+    expect(queryByText("No se pudo cambiar la contraseña.")).toBeNull();
   });
 });

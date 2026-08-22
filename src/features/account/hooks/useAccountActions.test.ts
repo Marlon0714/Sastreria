@@ -74,6 +74,27 @@ describe("useAccountActions", () => {
     );
   });
 
+  it("clearError limpia el error de un intento anterior", async () => {
+    mockUpdateUser.mockResolvedValue({
+      error: { message: "Password should be at least 6 characters" },
+    });
+    const { result } = renderHook(() => useAccountActions());
+    await waitFor(() => expect(result.current.isLoadingEmail).toBe(false));
+
+    await act(async () => {
+      await result.current.changePassword("123");
+    });
+    expect(result.current.error).toBe(
+      "Password should be at least 6 characters",
+    );
+
+    act(() => {
+      result.current.clearError();
+    });
+
+    expect(result.current.error).toBeNull();
+  });
+
   it("changePin llama al RPC set_own_pin (sin id de operario)", async () => {
     mockRpc.mockResolvedValue({ data: null, error: null });
     const { result } = renderHook(() => useAccountActions());

@@ -9,6 +9,7 @@ interface UseMyActivityResult {
   total: number;
   isLoading: boolean;
   error: string | null;
+  priceError: string | null;
   reload: () => Promise<void>;
   addPrice: (scheduleId: string, price: number) => Promise<boolean>;
 }
@@ -49,6 +50,7 @@ function buildActivityResult(
     total: 0,
     isLoading: false,
     error: null,
+    priceError: null,
     reload: jest.fn(async () => Promise.resolve()),
     addPrice: jest.fn(async () => Promise.resolve(true)),
     ...overrides,
@@ -132,6 +134,37 @@ describe("MyActivityScreen", () => {
 
     const { getByText } = render(<MyActivityScreen />);
     expect(getByText("No se pudieron cargar tus arreglos.")).toBeTruthy();
+  });
+
+  it("muestra priceError en línea junto a la fila en edición, sin tapar la lista ni el total", () => {
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        items: [
+          { schedule: baseSchedule, clientLabel: "Ana Torres" },
+          {
+            schedule: { ...baseSchedule, id: "schedule-2", price: undefined },
+            clientLabel: "Luis Gómez",
+          },
+        ],
+        total: 12345,
+        priceError: "No se pudo guardar el precio.",
+      }),
+    );
+
+    const { getByLabelText, getByText, queryByText } = render(
+      <MyActivityScreen />,
+    );
+
+    // Sin editar ninguna fila todavía, el priceError no se muestra en ningún lado.
+    expect(queryByText("No se pudo guardar el precio.")).toBeNull();
+
+    fireEvent.press(getByLabelText("Agregar precio de Luis Gómez"));
+
+    // Ahora sí se muestra, en línea, sin reemplazar la lista ni el total.
+    expect(getByText("No se pudo guardar el precio.")).toBeTruthy();
+    expect(getByText(/Ana Torres/)).toBeTruthy();
+    expect(getByText("$40.000")).toBeTruthy();
+    expect(getByText("$12.345")).toBeTruthy();
   });
 
   it("permite agregar el precio de un arreglo que no lo tenía", async () => {

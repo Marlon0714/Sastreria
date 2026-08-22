@@ -16,7 +16,10 @@ interface UseMyActivityResult {
   items: MyActivityItem[];
   total: number;
   isLoading: boolean;
+  /** Falla FATAL de carga (turnos del día) — dispara el ErrorView de pantalla completa. */
   error: string | null;
+  /** Falla puntual de `addPrice` — se muestra en línea, junto a la fila que se está editando. */
+  priceError: string | null;
   reload: () => Promise<void>;
   /** Completa el precio de un arreglo que quedó sin registrar. */
   addPrice: (scheduleId: string, price: number) => Promise<boolean>;
@@ -37,6 +40,7 @@ export function useMyActivity(date: string): UseMyActivityResult {
   const [items, setItems] = useState<MyActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     setError(null);
@@ -100,17 +104,25 @@ export function useMyActivity(date: string): UseMyActivityResult {
 
   const addPrice = useCallback(
     async (scheduleId: string, price: number): Promise<boolean> => {
+      setPriceError(null);
+      // Único resguardo antes del repositorio: ScheduleRepositoryImpl.update()
+      // no corre updateScheduleSchema (ver schedule/domain/schemas.ts), así
+      // que sin esto un precio inválido pasaría directo a la base de datos.
+      if (!Number.isInteger(price) || price < 0) {
+        setPriceError("El precio debe ser un número entero no negativo.");
+        return false;
+      }
       try {
         await getDefaultScheduleRepository().update(scheduleId, { price });
         await load();
         return true;
       } catch {
-        setError("No se pudo guardar el precio.");
+        setPriceError("No se pudo guardar el precio.");
         return false;
       }
     },
     [load],
   );
 
-  return { items, total, isLoading, error, reload: load, addPrice };
+  return { items, total, isLoading, error, priceError, reload: load, addPrice };
 }
