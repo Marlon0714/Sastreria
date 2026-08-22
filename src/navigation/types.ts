@@ -56,6 +56,10 @@ export type ScheduleStackParamList = {
     /** Preselecciona la categoría al crear un turno nuevo (según el segmento activo en la Agenda). */
     category?: "arreglo" | "confeccion";
   };
+  /** Autoservicio del operario: ver correo/PIN y cambiarlos, y acceso a "Mis arreglos". */
+  MyAccount: undefined;
+  /** Arreglos que el operario marcó listo/entregado en un día, con su precio (para calcular su comisión). */
+  MyActivity: undefined;
 };
 
 export type PricingStackParamList = {
@@ -63,6 +67,10 @@ export type PricingStackParamList = {
   PricingDetail: { id: string };
   PricingForm: { id?: string; category?: "arreglo" | "confeccion" };
   PricingPlaceholder: undefined;
+  /** Autoservicio del operario: ver correo/PIN y cambiarlos, y acceso a "Mis arreglos". */
+  MyAccount: undefined;
+  /** Arreglos que el operario marcó listo/entregado en un día, con su precio (para calcular su comisión). */
+  MyActivity: undefined;
 };
 
 export type TallasStackParamList = {

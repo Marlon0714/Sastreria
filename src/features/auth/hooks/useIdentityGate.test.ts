@@ -226,6 +226,57 @@ describe("useIdentityGate", () => {
     expect(result.current.isPinPromptVisible).toBe(true);
   });
 
+  it("bloquea nuevos intentos tras 5 PIN incorrectos seguidos, y el contador se resetea tras un éxito", async () => {
+    useSyncStatusStore.getState().setConnectivity("online");
+    useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
+    mockRpc.mockResolvedValue({ data: [], error: null });
+    const { result } = renderHook(() => useIdentityGate());
+
+    act(() => {
+      void result.current.requireIdentity();
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await act(async () => {
+        await result.current.submitPin("0000");
+      });
+    }
+
+    expect(mockRpc).toHaveBeenCalledTimes(5);
+    expect(result.current.pinError).toBe(
+      "Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo.",
+    );
+
+    // Mientras dura el cooldown, un intento adicional ni siquiera llama al RPC.
+    await act(async () => {
+      await result.current.submitPin("0000");
+    });
+    expect(mockRpc).toHaveBeenCalledTimes(5);
+    expect(result.current.pinError).toBe(
+      "Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo.",
+    );
+
+    // Cerrar y reabrir el modal para una acción distinta resetea el contador.
+    act(() => {
+      result.current.cancelPinPrompt();
+    });
+    act(() => {
+      void result.current.requireIdentity();
+    });
+
+    mockRpc.mockResolvedValue({
+      data: [{ id: "user-2", display_name: "Juan Pérez", role: "operario" }],
+      error: null,
+    });
+    await act(async () => {
+      await result.current.submitPin("1234");
+    });
+
+    expect(mockRpc).toHaveBeenCalledTimes(6);
+    expect(result.current.pinError).toBeNull();
+    expect(useIdentityStore.getState().resolvedActor).not.toBeNull();
+  });
+
   it("resuelve a null si se cancela el prompt de PIN", async () => {
     useSyncStatusStore.getState().setConnectivity("online");
     useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);

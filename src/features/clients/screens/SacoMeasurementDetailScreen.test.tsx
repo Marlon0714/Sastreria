@@ -11,6 +11,7 @@ const mockNavigate = jest.fn();
 const mockReplace = jest.fn();
 const mockUpsertSaco = jest.fn();
 const mockReload = jest.fn();
+const mockValidate = jest.fn(() => ({}) as Record<string, unknown>);
 
 jest.mock("../hooks/useSacoMeasurement", () => ({
   useSacoMeasurement: jest.fn(),
@@ -21,6 +22,7 @@ jest.mock("../hooks/useUpsertSaco", () => ({
     upsertSaco: mockUpsertSaco,
     isSubmitting: false,
     error: null,
+    validate: mockValidate,
   }),
 }));
 const mockUseSaco = useSacoMeasurement as jest.Mock;
@@ -38,6 +40,8 @@ describe("SacoMeasurementDetailScreen", () => {
     mockReplace.mockReset();
     mockUpsertSaco.mockReset();
     mockReload.mockReset();
+    mockValidate.mockReset();
+    mockValidate.mockReturnValue({});
   });
 
   it("renders loading state", () => {
@@ -118,5 +122,34 @@ describe("SacoMeasurementDetailScreen", () => {
       </ClientsDependenciesProvider>,
     );
     expect(getByText("Sin conexión")).toBeTruthy();
+  });
+
+  it("muestra el error de campo y no guarda cuando una medida está fuera de rango", async () => {
+    mockUseSaco.mockReturnValue({
+      measurement: null,
+      isLoading: false,
+      error: null,
+      reload: mockReload,
+    });
+    mockValidate.mockReturnValue({
+      espalda: {
+        type: "zod",
+        message: "Número debe ser menor o igual a 300",
+      },
+    });
+
+    const { getByLabelText, getByText } = render(
+      <ClientsDependenciesProvider dependencies={noopDependencies}>
+        <SacoMeasurementDetailScreen {...buildProps("c-2")} />
+      </ClientsDependenciesProvider>,
+    );
+
+    fireEvent.changeText(getByLabelText("Espalda (cm)"), "500");
+    fireEvent.press(getByLabelText("Guardar medidas de saco"));
+
+    await waitFor(() => {
+      expect(getByText("Número debe ser menor o igual a 300")).toBeTruthy();
+    });
+    expect(mockUpsertSaco).not.toHaveBeenCalled();
   });
 });

@@ -1,10 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,7 +21,10 @@ import { ErrorView, LoadingView } from "../../../shared/components";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
-import { ClientPickerField } from "../components/ClientPickerField";
+import {
+  ClientPickerField,
+  type ClientPickerFieldHandle,
+} from "../components/ClientPickerField";
 import { OperarioPickerField } from "../components/OperarioPickerField";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleHistoryList } from "../components/ScheduleHistoryList";
@@ -36,6 +41,8 @@ import {
   type ScheduleStatus,
 } from "../domain/types";
 import { colors } from "../../../shared/theme/colors";
+import { computeSaldo } from "../domain/saldo";
+import { formatPrice } from "../../pricing/domain/strings";
 import { useDeleteSchedule } from "../hooks/useDeleteSchedule";
 import { useScheduleForm } from "../hooks/useScheduleForm";
 import { useScheduleStatusActions } from "../hooks/useScheduleStatusActions";
@@ -84,13 +91,16 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   // sobrescriba silenciosamente lo que la otra acababa de guardar. Un solo
   // flag "ocupado" que deshabilita TODAS las acciones mientras cualquiera
   // esté en curso evita esa ventana.
-  const isBusy = isSubmitting || statusActions.isProcessing || isDeleting;
   const [displaySchedule, setDisplaySchedule] = useState<Schedule | null>(
     null,
   );
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [hasTime, setHasTime] = useState(false);
+  const [isResolvingClient, setIsResolvingClient] = useState(false);
+  const clientPickerRef = useRef<ClientPickerFieldHandle>(null);
+  const isBusy =
+    isSubmitting || statusActions.isProcessing || isDeleting || isResolvingClient;
 
   const {
     control,
@@ -106,6 +116,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       clientId: undefined,
       unregisteredClientName: "",
       price: undefined,
+      abono: undefined,
       operarioId: undefined,
       notes: "",
       isPriority: false,
@@ -114,6 +125,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   });
 
   const dateValue = useWatch({ control, name: "date" });
+  const priceValue = useWatch({ control, name: "price" });
+  const abonoValue = useWatch({ control, name: "abono" });
+  const saldo = computeSaldo({ price: priceValue, abono: abonoValue });
 
   useEffect(() => {
     setDisplaySchedule(schedule);
@@ -128,6 +142,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       clientId: schedule.clientId,
       unregisteredClientName: schedule.unregisteredClientName ?? "",
       price: schedule.price,
+      abono: schedule.abono,
       operarioId: schedule.operarioId,
       notes: schedule.notes ?? "",
       isPriority: schedule.isPriority,
@@ -142,6 +157,14 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       setValue("isPriority", false);
     }
   }, [dateValue, setValue]);
+
+  // El abono solo tiene sentido si hay un precio del que descontarlo — si se
+  // borra el precio, el campo (y su valor) deja de mostrarse.
+  useEffect(() => {
+    if (priceValue == null) {
+      setValue("abono", undefined);
+    }
+  }, [priceValue, setValue]);
 
   const handleMarkReady = async (): Promise<void> => {
     const updated = await statusActions.markReady();
@@ -195,6 +218,19 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     }
   });
 
+  const handleSavePress = async (): Promise<void> => {
+    // Si se abrió "Registrar cliente" pero nunca se presionó el botón,
+    // resuelve esos datos (registra el cliente o los deja como "sin
+    // registrar") ANTES de validar/guardar, para no perderlos.
+    setIsResolvingClient(true);
+    try {
+      await clientPickerRef.current?.resolvePendingRegistration();
+    } finally {
+      setIsResolvingClient(false);
+    }
+    await onSubmit();
+  };
+
   const onDelete = () => {
     if (!scheduleId) return;
     Alert.alert(
@@ -229,10 +265,14 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
       {displaySchedule ? (
         <View style={styles.statusBadge}>
           <Text style={styles.statusBadgeText}>
@@ -276,6 +316,40 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             </View>
           )}
         />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Cliente</Text>
+
+        <View style={styles.fieldGroup}>
+          <Controller
+            control={control}
+            name="clientId"
+            render={({ field: { onChange: onChangeClientId, value: clientIdValue } }) => (
+              <Controller
+                control={control}
+                name="unregisteredClientName"
+                render={({
+                  field: {
+                    onChange: onChangeUnregisteredName,
+                    value: unregisteredNameValue,
+                  },
+                }) => (
+                  <ClientPickerField
+                    ref={clientPickerRef}
+                    clientId={clientIdValue}
+                    unregisteredName={unregisteredNameValue ?? undefined}
+                    onChangeClientId={onChangeClientId}
+                    onChangeUnregisteredName={(name) =>
+                      onChangeUnregisteredName(name ?? "")
+                    }
+                    errorMessage={errors.clientId?.message}
+                  />
+                )}
+              />
+            )}
+          />
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -363,36 +437,6 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         <Text style={styles.cardTitle}>Detalles</Text>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Cliente</Text>
-          <Controller
-            control={control}
-            name="clientId"
-            render={({ field: { onChange: onChangeClientId, value: clientIdValue } }) => (
-              <Controller
-                control={control}
-                name="unregisteredClientName"
-                render={({
-                  field: {
-                    onChange: onChangeUnregisteredName,
-                    value: unregisteredNameValue,
-                  },
-                }) => (
-                  <ClientPickerField
-                    clientId={clientIdValue}
-                    unregisteredName={unregisteredNameValue ?? undefined}
-                    onChangeClientId={onChangeClientId}
-                    onChangeUnregisteredName={(name) =>
-                      onChangeUnregisteredName(name ?? "")
-                    }
-                    errorMessage={errors.clientId?.message}
-                  />
-                )}
-              />
-            )}
-          />
-        </View>
-
-        <View style={styles.fieldGroup}>
           <Text style={styles.label}>Precio (opcional)</Text>
           <Controller
             control={control}
@@ -422,6 +466,40 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             <Text style={styles.errorText}>{errors.price.message}</Text>
           ) : null}
         </View>
+
+        {priceValue != null ? (
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Abono (opcional)</Text>
+            <Controller
+              control={control}
+              name="abono"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  style={[styles.input, errors.abono && styles.inputError]}
+                  placeholder="Ej: 5000"
+                  placeholderTextColor={colors.textPlaceholder}
+                  keyboardType="numeric"
+                  onBlur={onBlur}
+                  onChangeText={(text) => {
+                    const digitsOnly = text.replace(/[^0-9]/g, "");
+                    onChange(
+                      digitsOnly === "" ? undefined : parseInt(digitsOnly, 10),
+                    );
+                  }}
+                  value={value === undefined ? "" : String(value)}
+                />
+              )}
+            />
+            {errors.abono ? (
+              <Text style={styles.errorText}>{errors.abono.message}</Text>
+            ) : null}
+            {saldo != null ? (
+              <Text style={styles.helperText}>
+                Saldo pendiente: {formatPrice(saldo)}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {scheduleId ? (
           <View style={styles.fieldGroup}>
@@ -468,12 +546,12 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           isBusy ? styles.buttonDisabled : null,
           pressed && !isBusy ? styles.saveButtonPressed : null,
         ]}
-        onPress={() => void onSubmit()}
+        onPress={() => void handleSavePress()}
         disabled={isBusy}
       >
         <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         <Text style={styles.saveButtonText}>
-          {isSubmitting ? "Guardando..." : "Guardar turno"}
+          {isSubmitting || isResolvingClient ? "Guardando..." : "Guardar turno"}
         </Text>
       </Pressable>
 
@@ -597,11 +675,15 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         onSelect={identityGate.submitOfflineActor}
         onCancel={identityGate.cancelOfflineActorPicker}
       />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     padding: 16,
     gap: 16,

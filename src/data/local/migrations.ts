@@ -74,6 +74,11 @@ export const MIGRATIONS: readonly Migration[] = [
         updated_at TEXT NOT NULL,
         sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
         UNIQUE(client_id, type),
+        -- ON DELETE CASCADE declarado por documentación del esquema, pero NO
+        -- está activo: PRAGMA foreign_keys nunca se enciende en src/data/local/,
+        -- así que SQLite no lo aplica. El borrado en cascada de client_tallas
+        -- al eliminar un cliente se maneja manualmente en
+        -- ClientRepositoryImpl.delete() y en SupabasePullSync.pullDeleteLogIncremental.
         FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
       );
       `,
@@ -581,6 +586,15 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_schedules_client_id ON schedules (client_id);`,
       `CREATE INDEX IF NOT EXISTS idx_schedules_operario_id ON schedules (operario_id);`,
     ],
+  },
+  {
+    // Pedido del dueño (2026-08-16): poder registrar un abono al agendar un
+    // arreglo/confección, y calcular el saldo pendiente (price - abono).
+    // El saldo no se guarda: se deriva en el código para no arriesgar que
+    // quede desincronizado si luego se corrige el precio o el abono.
+    version: 27,
+    name: "v27_schedule_abono",
+    statements: [`ALTER TABLE schedules ADD COLUMN abono REAL;`],
   },
 ];
 

@@ -35,6 +35,7 @@ export interface Schedule extends BaseEntity {
   date?: string; // YYYY-MM-DD
   time?: string; // HH:mm
   price?: number;
+  abono?: number; // dinero ya pagado a cuenta del price; el saldo se calcula (price - abono), no se guarda
   operarioId?: string;
   notes?: string;
   isPriority: boolean; // marca un turno ya agendado (con fecha) como más urgente que el resto del día
@@ -55,6 +56,7 @@ export interface CreateScheduleDTO {
   date?: string;
   time?: string;
   price?: number;
+  abono?: number;
   operarioId?: string;
   notes?: string;
   isPriority?: boolean;
@@ -67,6 +69,7 @@ export interface UpdateScheduleDTO {
   date?: string;
   time?: string;
   price?: number;
+  abono?: number;
   operarioId?: string;
   notes?: string;
   isPriority?: boolean;

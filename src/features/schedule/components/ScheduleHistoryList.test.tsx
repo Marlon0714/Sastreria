@@ -92,6 +92,28 @@ describe("ScheduleHistoryList", () => {
     expect(await findByText("Prioridad: No → Sí")).toBeTruthy();
   });
 
+  it("formatea el diff de abono y de cliente sin registrar con sus etiquetas", async () => {
+    const abonoEvent: ScheduleEvent = {
+      ...statusEvent,
+      id: "event-4",
+      action: "updated",
+      changes: JSON.stringify({
+        abono: { before: null, after: 30000 },
+        unregisteredClientName: { before: null, after: "Pedro Ramírez" },
+      }),
+    };
+    mockGetByScheduleId.mockResolvedValueOnce([abonoEvent]);
+
+    const { findByText } = render(
+      <ScheduleHistoryList scheduleId="schedule-1" refreshToken={0} />,
+    );
+
+    expect(await findByText("Abono: — → 30000")).toBeTruthy();
+    expect(
+      await findByText("Cliente (sin registrar): — → Pedro Ramírez"),
+    ).toBeTruthy();
+  });
+
   it("marca los eventos sin verificar (PIN offline)", async () => {
     mockGetByScheduleId.mockResolvedValueOnce([statusEvent]);
 

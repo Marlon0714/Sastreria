@@ -191,6 +191,7 @@ interface ScheduleQueueRow {
   date: string | null;
   time: string | null;
   price: number | null;
+  abono: number | null;
   operario_id: string | null;
   client_id: string | null;
   unregistered_client_name: string | null;
@@ -229,6 +230,8 @@ interface DeleteQueueRow {
     | "client"
     | "camisa_measurement"
     | "pantalon_measurement"
+    | "saco_measurement"
+    | "chaleco_measurement"
     | "client_talla"
     | "pricing_service"
     | "schedule"
@@ -512,6 +515,7 @@ function toScheduleQueueItem(row: ScheduleQueueRow): SyncScheduleQueueItem {
       date: row.date ?? undefined,
       time: row.time ?? undefined,
       price: row.price ?? undefined,
+      abono: row.abono ?? undefined,
       operarioId: row.operario_id ?? undefined,
       clientId: row.client_id ?? undefined,
       unregisteredClientName: row.unregistered_client_name ?? undefined,
@@ -852,6 +856,7 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         date,
         time,
         price,
+        abono,
         operario_id,
         client_id,
         unregistered_client_name,

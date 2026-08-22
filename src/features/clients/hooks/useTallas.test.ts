@@ -276,6 +276,55 @@ describe("useTallas", () => {
     expect(mockUpsert).not.toHaveBeenCalled();
   });
 
+  it("validate reporta el error de campo cuando value está vacío, sin llamar al repositorio", async () => {
+    // Arrange
+    mockFindByClientId.mockResolvedValue([]);
+
+    const { result } = renderHook(() => useTallas(CLIENT_ID), {
+      wrapper: createWrapper({
+        clientRepository: noopClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: mockTallaRepository,
+      }),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Act
+    const errors = result.current.validate({
+      clientId: CLIENT_ID,
+      type: "camisa",
+      value: "",
+    });
+
+    // Assert
+    expect(errors.value?.message).toBe("La talla es obligatoria");
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it("validate no reporta errores cuando los valores son válidos", async () => {
+    // Arrange
+    mockFindByClientId.mockResolvedValue([]);
+
+    const { result } = renderHook(() => useTallas(CLIENT_ID), {
+      wrapper: createWrapper({
+        clientRepository: noopClientRepository,
+        measurementRepository: noopMeasurementRepository,
+        tallaRepository: mockTallaRepository,
+      }),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Act
+    const errors = result.current.validate({
+      clientId: CLIENT_ID,
+      type: "camisa",
+      value: "M",
+    });
+
+    // Assert
+    expect(errors).toEqual({});
+  });
+
   it("deleteTalla llama repo.delete con el id correcto y retorna true", async () => {
     // Arrange
     mockFindByClientId.mockResolvedValue([]);

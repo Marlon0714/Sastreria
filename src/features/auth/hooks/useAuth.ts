@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 
 import type { SupabaseAuthRepositoryPort } from "../../../data/supabase/SupabaseAuthRepository";
-import { SupabaseAuthRepository } from "../../../data/supabase/SupabaseAuthRepository";
+import {
+  AuthNetworkError,
+  SupabaseAuthRepository,
+} from "../../../data/supabase/SupabaseAuthRepository";
 import { isSupabaseConfigured } from "../../../data/supabase/config";
 import { useIdentityStore } from "../../../shared/state/identityStore";
 import type { Profile } from "../domain/profile";
@@ -101,14 +104,35 @@ export function useAuth(
   );
 
   const resolveProfileForSession = useCallback(
-    async (userId: string): Promise<void> => {
+    /**
+     * `requireResolution` distingue el arranque en frío (aceptable seguir
+     * con el perfil cacheado aunque el fetch fresco falle, incluso si no
+     * hay caché — ya existía una sesión válida) del login nuevo en
+     * `signIn()`: ahí, si el fetch falla Y no hay ninguna caché vigente
+     * (no vencida), no hay ninguna base para confiar en `role` y se debe
+     * tratar como fallo de login en vez de dejar pasar un perfil `null`
+     * que expondría las pestañas de dueño (`role === null` se interpreta
+     * como "no restringir" en modo local-only).
+     */
+    async (userId: string, options?: { requireResolution?: boolean }): Promise<void> => {
       try {
         const fetched = await repo.getProfile(userId);
         applyProfile(fetched);
         await cacheProfile(fetched);
       } catch {
         const cached = await loadCachedProfile();
-        applyProfile(cached);
+        if (cached) {
+          applyProfile(cached);
+          return;
+        }
+
+        applyProfile(null);
+
+        if (options?.requireResolution) {
+          throw new Error(
+            "No se pudo verificar tu cuenta. Revisa tu conexión e intenta de nuevo.",
+          );
+        }
       }
     },
     [repo, applyProfile],
@@ -135,13 +159,26 @@ export function useAuth(
           await resolveProfileForSession(session.userId);
         }
       })
-      .catch(() => {
+      .catch(async (err: unknown) => {
+        if (err instanceof AuthNetworkError) {
+          // Sin red justo cuando el access token expiró: no hay forma de
+          // confirmar si la sesión sigue viva. En vez de mandar a un
+          // operario legítimo al login (que requiere conexión), confiamos
+          // en el perfil cacheado (TTL 72h) si todavía es válido.
+          const cached = await loadCachedProfile();
+          if (cached) {
+            applyProfile(cached);
+            setIsAuthenticated(true);
+            return;
+          }
+        }
+
         setIsAuthenticated(false);
       })
       .finally(() => {
         setIsLoading(false);
       });
-  }, [repo, resolveProfileForSession]);
+  }, [repo, resolveProfileForSession, applyProfile]);
 
   // Detecta cuando Supabase invalida la sesión por su cuenta (ej. refresh
   // token muerto tras estar mucho tiempo sin red) — sin este listener la app
@@ -169,8 +206,18 @@ export function useAuth(
       setIsSigningIn(true);
       try {
         const session = await repo.signIn(email, password);
+        // Resuelve el perfil ANTES de marcar autenticado — si no, el tab
+        // navigator monta con role=null (muestra las 4 pestañas) y un
+        // instante después el perfil resuelve a "operario" y la lista baja
+        // a 2 pestañas, lo que deja el gesture-handler del tab navigator
+        // desincronizado (no responde a toques hasta cambiar de pestaña a
+        // mano). Al reabrir la app con sesión ya guardada esto no pasaba
+        // porque ese flujo ya esperaba resolveProfileForSession antes de
+        // marcar isLoading=false.
+        await resolveProfileForSession(session.userId, {
+          requireResolution: true,
+        });
         setIsAuthenticated(true);
-        await resolveProfileForSession(session.userId);
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : "Error al iniciar sesión.",

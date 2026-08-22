@@ -877,6 +877,165 @@ NOTIFY pgrst, 'reload schema';
 
 ---
 
+### v32_schedule_abono (2026-08-16)
+
+**Contexto:** pedido del dueño para poder registrar un abono al agendar un arreglo/confección. Se guarda solo `abono`; el saldo pendiente se calcula en el código (`price - abono`) y no se persiste, para que nunca quede desincronizado si luego se corrige cualquiera de los dos valores.
+
+```sql
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS abono NUMERIC;
+```
+
+---
+
+### v33_operario_pin_reliability_fix (2026-08-16)
+
+**Contexto:** el dueño reportó que `set_operario_pin` "no funcionó" — la corrió, no dio error, pero el operario no pudo entrar con el PIN nuevo. Causa real encontrada revisando el SQL de `v23_operario_pin_integrity`: `set_operario_pin` hace `UPDATE profiles ... WHERE id = operario_id` **sin verificar si esa fila existía**. Si el UUID pegado a mano en el SQL Editor no era exactamente el correcto (fácil de pasar por alto sobre el placeholder `<uuid-del-operario>` de la guía), el `UPDATE` afecta 0 filas, la función termina igual sin ningún error visible, y el PIN viejo sigue siendo el válido — se ve idéntico a "guardó pero no sirve". No es un problema de encriptación: `crypt()`/`gen_salt('bf')` son los mismos en `set_operario_pin` y en `resolve_operario_by_pin`.
+
+Esta migración solo reemplaza las 3 funciones (no toca ninguna tabla ni fila existente):
+- `set_operario_pin`/`create_operario_with_pin` ahora **fallan con un error explícito** si el UUID no corresponde a ningún operario, en vez de terminar en silencio.
+- Las tres funciones aplican `trim()` al PIN recibido, por si se pegó con un espacio de más.
+- Las tres funciones fijan `SET search_path = public, extensions` — buena práctica para funciones `SECURITY DEFINER` (evita que teóricamente resuelvan `crypt`/`gen_salt` de un esquema distinto según quién las llame), aunque no era la causa de este caso puntual.
+
+```sql
+CREATE OR REPLACE FUNCTION create_operario_with_pin(
+  operario_id UUID,
+  operario_display_name TEXT,
+  candidate_pin TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_pin TEXT := trim(candidate_pin);
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM profiles
+    WHERE role = 'operario' AND pin_hash IS NOT NULL
+      AND pin_hash = crypt(trimmed_pin, pin_hash)
+  ) THEN
+    RAISE EXCEPTION 'Ya existe un operario con ese PIN. Elige un PIN distinto.';
+  END IF;
+
+  INSERT INTO profiles (id, display_name, role, is_shared_device, pin_hash)
+  VALUES (operario_id, operario_display_name, 'operario', false, crypt(trimmed_pin, gen_salt('bf')));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION set_operario_pin(
+  operario_id UUID,
+  candidate_pin TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_pin TEXT := trim(candidate_pin);
+  updated_count INT;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id <> operario_id AND role = 'operario' AND pin_hash IS NOT NULL
+      AND pin_hash = crypt(trimmed_pin, pin_hash)
+  ) THEN
+    RAISE EXCEPTION 'Ya existe un operario con ese PIN. Elige un PIN distinto.';
+  END IF;
+
+  UPDATE profiles
+  SET pin_hash = crypt(trimmed_pin, gen_salt('bf')), updated_at = now()
+  WHERE id = operario_id AND role = 'operario';
+
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  IF updated_count = 0 THEN
+    RAISE EXCEPTION 'No se encontró un operario con id=%. Verifica el UUID con: SELECT id, display_name FROM profiles WHERE role = ''operario'';', operario_id;
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION resolve_operario_by_pin(candidate_pin TEXT)
+RETURNS TABLE (id UUID, display_name TEXT, role TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_pin TEXT := trim(candidate_pin);
+  match_count INT;
+BEGIN
+  SELECT COUNT(*) INTO match_count
+  FROM profiles p
+  WHERE p.role = 'operario' AND p.pin_hash IS NOT NULL
+    AND p.pin_hash = crypt(trimmed_pin, p.pin_hash);
+
+  IF match_count <> 1 THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT p.id, p.display_name, p.role FROM profiles p
+  WHERE p.role = 'operario' AND p.pin_hash IS NOT NULL
+    AND p.pin_hash = crypt(trimmed_pin, p.pin_hash);
+END;
+$$;
+```
+
+**Después de correr esto**, para arreglar el PIN del operario afectado:
+
+```sql
+-- 1. Confirma el UUID exacto del operario (cópialo de acá, no de memoria):
+SELECT id, display_name FROM profiles WHERE role = 'operario';
+
+-- 2. Ahora si el UUID estaba mal, esto te lo dirá con un error en vez de fallar en silencio:
+SELECT set_operario_pin('<uuid-copiado-del-paso-1>', '<pin-nuevo>');
+```
+
+Si el problema era el UUID equivocado, ahora te va a marcar el error inmediatamente en vez de fallar en silencio. Si el error persiste con el UUID correcto, es otra causa y hay que seguir investigando desde ahí.
+
+---
+
+### v34_operario_self_service_pin (2026-08-16)
+
+**Contexto:** para la pantalla de autoservicio (P4 — el operario ve sus arreglos del día y puede cambiar su correo/contraseña/PIN desde su celular), la app necesita poder cambiar el PIN llamando una función por RPC. `set_operario_pin(operario_id, candidate_pin)` **no sirve para esto tal cual**: no verifica que quien la llama sea el dueño de ese `operario_id` — cualquier operario autenticado podría, en teoría, pasar el UUID de OTRO operario y cambiarle el PIN sin que se dé cuenta. Esa función se deja intacta (la sigue usando el dueño manualmente desde el SQL Editor para casos excepcionales, ej. resetear el PIN de alguien que quedó bloqueado — ahí `auth.uid()` no aplica porque no hay sesión de la app).
+
+En vez de agregarle un chequeo a `set_operario_pin` (que rompería ese uso manual del dueño, porque el SQL Editor no tiene `auth.uid()`), se crea una función nueva y separada **sin parámetro `operario_id`**: siempre opera sobre `auth.uid()` (quien está autenticado en la sesión que hace la llamada), así que es estructuralmente imposible pedirle que cambie el PIN de otra persona.
+
+```sql
+CREATE OR REPLACE FUNCTION set_own_pin(candidate_pin TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_pin TEXT := trim(candidate_pin);
+  caller_id UUID := auth.uid();
+BEGIN
+  IF caller_id IS NULL THEN
+    RAISE EXCEPTION 'No autenticado.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id <> caller_id AND role = 'operario' AND pin_hash IS NOT NULL
+      AND pin_hash = crypt(trimmed_pin, pin_hash)
+  ) THEN
+    RAISE EXCEPTION 'Ya existe un operario con ese PIN. Elige un PIN distinto.';
+  END IF;
+
+  UPDATE profiles
+  SET pin_hash = crypt(trimmed_pin, gen_salt('bf')), updated_at = now()
+  WHERE id = caller_id;
+END;
+$$;
+```
+
+Para cambiar correo o contraseña no hace falta ninguna función nueva: la app usa directamente `supabase.auth.updateUser({ email })` / `supabase.auth.updateUser({ password })`, que por diseño de Supabase Auth solo pueden tocar la sesión propia — no requieren ni permiten pasar el id de otra persona.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

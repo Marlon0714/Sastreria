@@ -1,8 +1,10 @@
 export type ScheduleDiffableField =
   | "clientId"
+  | "unregisteredClientName"
   | "date"
   | "time"
   | "price"
+  | "abono"
   | "operarioId"
   | "notes"
   | "isPriority"
@@ -10,9 +12,11 @@ export type ScheduleDiffableField =
 
 const DIFFABLE_FIELDS: readonly ScheduleDiffableField[] = [
   "clientId",
+  "unregisteredClientName",
   "date",
   "time",
   "price",
+  "abono",
   "operarioId",
   "notes",
   "isPriority",

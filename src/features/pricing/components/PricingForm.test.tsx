@@ -116,6 +116,40 @@ describe("PricingForm", () => {
     expect(onSubmitMock).not.toHaveBeenCalled();
   });
 
+  it("rechaza guardar con precio vacío (no lo trata como $0) y muestra un error de campo", async () => {
+    const onSubmitMock = jest.fn();
+    const { findByText, getByPlaceholderText, getByText } = render(
+      <PricingForm onSubmit={onSubmitMock} submitting={false} />,
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText("Ej: Dobladillo pantalón"),
+      "Ajuste de manga",
+    );
+    // El precio se deja intacto (vacío) — no se escribe nada en el input.
+    fireEvent.press(getByText(pricingStrings.save));
+
+    expect(await findByText("El precio es obligatorio")).toBeTruthy();
+    expect(onSubmitMock).not.toHaveBeenCalled();
+  });
+
+  it("rechaza un precio de 0 con un error de campo claro", async () => {
+    const onSubmitMock = jest.fn();
+    const { findByText, getByPlaceholderText, getByText } = render(
+      <PricingForm onSubmit={onSubmitMock} submitting={false} />,
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText("Ej: Dobladillo pantalón"),
+      "Ajuste de manga",
+    );
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "0");
+    fireEvent.press(getByText(pricingStrings.save));
+
+    expect(await findByText("El precio debe ser mayor a 0")).toBeTruthy();
+    expect(onSubmitMock).not.toHaveBeenCalled();
+  });
+
   it("muestra error del servidor cuando llega por props", () => {
     // Arrange
     const onSubmitMock = jest.fn();

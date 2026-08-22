@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { FieldErrors } from "react-hook-form";
 
 import {
   createTallaSchema,
@@ -9,6 +10,42 @@ import {
 import type { ClientTalla } from "../domain/types";
 import { useTallaRepository } from "./ClientsDependenciesProvider";
 
+type TallaFieldErrors = FieldErrors<
+  Pick<CreateTallaSchemaInput, "type" | "value" | "notes">
+>;
+
+/**
+ * Valida los campos editables del formulario de talla (tipo/valor/notas) sin
+ * depender de `clientId` (no forma parte del formulario, ya llega desde la
+ * ruta) — reutiliza el mismo schema que `upsertTalla` usa internamente para
+ * la coerción, evitando así que la única señal de error visible sea el
+ * banner genérico de `error`.
+ */
+function mapValidationErrors(
+  input: CreateTallaSchemaInput | UpdateTallaSchemaInput,
+): TallaFieldErrors {
+  const schema = "id" in input ? updateTallaSchema : createTallaSchema;
+  const parsed = schema.safeParse(input);
+
+  if (parsed.success) {
+    return {};
+  }
+
+  const fieldErrors = parsed.error.flatten().fieldErrors;
+
+  return {
+    type: fieldErrors.type?.[0]
+      ? { type: "zod", message: fieldErrors.type[0] }
+      : undefined,
+    value: fieldErrors.value?.[0]
+      ? { type: "zod", message: fieldErrors.value[0] }
+      : undefined,
+    notes: fieldErrors.notes?.[0]
+      ? { type: "zod", message: fieldErrors.notes[0] }
+      : undefined,
+  };
+}
+
 export function useTallas(clientId: string): {
   tallas: ClientTalla[];
   isLoading: boolean;
@@ -17,6 +54,9 @@ export function useTallas(clientId: string): {
   upsertTalla: (
     input: CreateTallaSchemaInput | UpdateTallaSchemaInput,
   ) => Promise<ClientTalla | null>;
+  validate: (
+    input: CreateTallaSchemaInput | UpdateTallaSchemaInput,
+  ) => TallaFieldErrors;
   deleteTalla: (id: string) => Promise<boolean>;
   reload: () => Promise<void>;
 } {
@@ -137,6 +177,7 @@ export function useTallas(clientId: string): {
     isSubmitting,
     error,
     upsertTalla,
+    validate: mapValidationErrors,
     deleteTalla,
     reload,
   };

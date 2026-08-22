@@ -41,6 +41,7 @@ export default function TallasScreen({ route }: Props) {
     isSubmitting,
     error,
     upsertTalla,
+    validate,
     deleteTalla,
     reload,
   } = useTallas(clientId);
@@ -52,6 +53,7 @@ export default function TallasScreen({ route }: Props) {
     control,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<TallaFormValues>({
     defaultValues: TALLA_FORM_DEFAULTS,
@@ -93,28 +95,43 @@ export default function TallasScreen({ route }: Props) {
 
   const onSubmit = useCallback(
     async (values: TallaFormValues) => {
-      let result: ClientTalla | null;
-      if (editingTalla) {
-        result = await upsertTalla({
-          id: editingTalla.id,
-          clientId,
-          type: values.type,
-          value: values.value,
-          notes: values.notes,
-        });
-      } else {
-        result = await upsertTalla({
-          clientId,
-          type: values.type,
-          value: values.value,
-          notes: values.notes,
-        });
+      const input = editingTalla
+        ? {
+            id: editingTalla.id,
+            clientId,
+            type: values.type,
+            value: values.value,
+            notes: values.notes,
+          }
+        : {
+            clientId,
+            type: values.type,
+            value: values.value,
+            notes: values.notes,
+          };
+
+      const validationErrors = validate(input);
+      const keys: (keyof TallaFormValues)[] = ["type", "value", "notes"];
+
+      let hasErrors = false;
+      for (const key of keys) {
+        const validationError = validationErrors[key];
+        if (validationError?.message) {
+          hasErrors = true;
+          setError(key, { type: "manual", message: validationError.message });
+        }
       }
+
+      if (hasErrors) {
+        return;
+      }
+
+      const result = await upsertTalla(input);
       if (result) {
         closeModal();
       }
     },
-    [clientId, editingTalla, upsertTalla, closeModal],
+    [clientId, closeModal, editingTalla, setError, upsertTalla, validate],
   );
 
   const submitForm = useCallback(

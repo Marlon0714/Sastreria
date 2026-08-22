@@ -7,7 +7,8 @@ import { SAFE_FREE_TEXT_PATTERN } from "../../../shared/domain/textPatterns";
  *
  * Reglas de negocio:
  * - name: obligatorio, 2-60 caracteres, único por taller (validar en backend futuro)
- * - price: obligatorio, >= 0, máximo $1.000.000 COP
+ * - price: obligatorio, > 0 (un precio de $0 se trata como "no provisto", no
+ *   como un precio real), máximo $1.000.000 COP
  * - category: 'arreglo' | 'confeccion'
  * - notes: opcional, máximo 200 caracteres
  * - id: UUID v4
@@ -34,7 +35,7 @@ export const pricingServiceSchema = z.object({
     .regex(SAFE_FREE_TEXT_PATTERN, "El nombre contiene caracteres no permitidos"),
   price: z
     .number()
-    .min(0, "El precio no puede ser negativo")
+    .positive("El precio debe ser mayor a 0")
     .max(1000000, "Precio máximo $1.000.000"),
   category: z.enum(PRICING_CATEGORIES),
   notes: z.string().max(200, "Máximo 200 caracteres").optional().nullable(),
@@ -45,13 +46,40 @@ export const pricingServiceSchema = z.object({
 
 export type PricingService = z.infer<typeof pricingServiceSchema>;
 
-export const createPricingServiceSchema = pricingServiceSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  syncStatus: true,
-});
+export const createPricingServiceSchema = pricingServiceSchema
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    syncStatus: true,
+  })
+  .extend({
+    // .optional() + .refine() + .transform() (en vez de .preprocess()) para
+    // que z.input<> de este campo siga siendo `number | undefined` (no
+    // `unknown`) — así react-hook-form puede tipar el value/onChange del
+    // TextInput controlado mientras el campo llega vacío (ver
+    // PricingForm.tsx), mientras que z.output<> (lo que usan onSubmit y el
+    // repositorio) sigue siendo `number`: el .refine() exige que al enviar
+    // el formulario el precio ya haya sido provisto.
+    price: z
+      .number()
+      .positive("El precio debe ser mayor a 0")
+      .max(1000000, "Precio máximo $1.000.000")
+      .optional()
+      .refine((value) => value !== undefined, {
+        message: "El precio es obligatorio",
+      })
+      .transform((value) => value as number),
+  });
 
 export type CreatePricingServiceInput = z.infer<
+  typeof createPricingServiceSchema
+>;
+
+// Tipo de ENTRADA (antes de validar) para el formulario: price puede llegar
+// `undefined` mientras el usuario escribe — el resolver de Zod exige que al
+// enviar ya sea un número positivo (ver CreatePricingServiceInput, el tipo de
+// SALIDA que usan onSubmit/el repositorio).
+export type CreatePricingServiceFormInput = z.input<
   typeof createPricingServiceSchema
 >;

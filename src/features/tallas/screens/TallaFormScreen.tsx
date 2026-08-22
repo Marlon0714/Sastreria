@@ -20,7 +20,6 @@ import { MeasurementCard } from "../../clients/components/MeasurementCard";
 import { MeasurementGridSection } from "../../clients/components/MeasurementGridSection";
 import { MeasurementGroupCard } from "../../clients/components/MeasurementGroupCard";
 import type { TallaGarmentType, TallaTemplate } from "../domain/types";
-import { TALLA_GARMENT_LABELS } from "../domain/types";
 import { useTallaTemplateRepository } from "../hooks/TallasDependenciesProvider";
 import { useUpsertTallaTemplate } from "../hooks/useUpsertTallaTemplate";
 
@@ -128,9 +127,63 @@ function toFormValues(t: TallaTemplate): TallaFormValues {
 }
 
 function parseNum(v: string): number | null {
-  const n = parseFloat(v);
+  const trimmed = v.trim();
+  if (trimmed === "") return null;
+  const n = parseFloat(trimmed.replace(",", "."));
   return isNaN(n) ? null : n;
 }
+
+// Mismo criterio de rango que `optionalMeasurementField` en
+// `clients/domain/schemas.ts` (positivo, máximo 300 cm) — replicado acá
+// porque esta pantalla guarda DTOs numéricos directamente vía el repositorio
+// de plantillas de talla, sin pasar por ese schema Zod.
+const MAX_MEASUREMENT_VALUE = 300;
+
+function validateMeasurementValue(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+
+  const n = Number(trimmed.replace(",", "."));
+  if (!Number.isFinite(n)) return "Debe ser un número válido";
+  if (n <= 0) return "Debe ser mayor que 0";
+  if (n > MAX_MEASUREMENT_VALUE) {
+    return `No puede ser mayor que ${MAX_MEASUREMENT_VALUE}`;
+  }
+  return null;
+}
+
+// Todos los campos numéricos de medida del formulario (todo menos
+// name/notes) — se validan siempre; los que no aplican al `type` actual
+// quedan vacíos ("") y por lo tanto pasan la validación sin error.
+const MEASUREMENT_FIELD_KEYS: (keyof TallaFormValues)[] = [
+  "espalda",
+  "hombro",
+  "talleDelantero",
+  "talleTrasero",
+  "distancia",
+  "separacion",
+  "pechoAjustado",
+  "pechoAncho",
+  "cintura",
+  "cinturaAjustado",
+  "cinturaAncho",
+  "base",
+  "baseAjustado",
+  "baseAncho",
+  "largo",
+  "mangaLarga",
+  "mangaCorta",
+  "escote",
+  "cuelloNormal",
+  "cuelloCruce",
+  "brazo",
+  "puno",
+  "entrepierna",
+  "tiro",
+  "pierna",
+  "rodilla",
+  "bota",
+];
 
 export default function TallaFormScreen({ navigation, route }: Props) {
   const { type, tallaId } = route.params;
@@ -145,6 +198,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
     control,
     handleSubmit,
     setValue,
+    setError,
     watch,
     formState: { errors },
   } = useForm<TallaFormValues>({ defaultValues: DEFAULTS });
@@ -175,14 +229,6 @@ export default function TallaFormScreen({ navigation, route }: Props) {
     void loadTemplate();
   }, [loadTemplate]);
 
-  useEffect(() => {
-    navigation.setOptions({
-      title: tallaId
-        ? `Editar talla — ${TALLA_GARMENT_LABELS[type]}`
-        : `Nueva talla — ${TALLA_GARMENT_LABELS[type]}`,
-    });
-  }, [navigation, type, tallaId]);
-
   const onSubmit = async (values: TallaFormValues) => {
     const name = values.name.trim();
     if (!name) {
@@ -196,6 +242,23 @@ export default function TallaFormScreen({ navigation, route }: Props) {
       );
       return;
     }
+
+    // Antes de guardar: valida rango (positivo, máximo 300 cm) de cada
+    // medida numérica y muestra el error puntual en su propio campo — sin
+    // esto, un valor fuera de rango se guardaba tal cual (parseNum solo
+    // descartaba NaN, nunca valores negativos o absurdamente altos).
+    let hasMeasurementErrors = false;
+    for (const key of MEASUREMENT_FIELD_KEYS) {
+      const message = validateMeasurementValue(values[key]);
+      if (message) {
+        hasMeasurementErrors = true;
+        setError(key, { type: "manual", message });
+      }
+    }
+    if (hasMeasurementErrors) {
+      return;
+    }
+
     const nums = {
       espalda: parseNum(values.espalda),
       hombro: parseNum(values.hombro),

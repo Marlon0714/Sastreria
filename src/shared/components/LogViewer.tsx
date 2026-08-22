@@ -1,22 +1,15 @@
-import React from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Button,
-  StyleSheet,
-  Platform,
-} from "react-native";
+import React, { useState } from "react";
+import { View, Text, ScrollView, Button, StyleSheet } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useLogStore } from "../state/logStore";
 
-function copyLogsToClipboard(text: string) {
-  if (Platform.OS === "web") {
-    void navigator.clipboard.writeText(text);
-  }
+async function copyLogsToClipboard(text: string) {
+  await Clipboard.setStringAsync(text);
 }
 
 export const LogViewer = () => {
   const { logs, clearLogs, logViewerEnabled, toggleLogViewer } = useLogStore();
+  const [copied, setCopied] = useState(false);
 
   if (!logViewerEnabled) return null;
 
@@ -24,20 +17,23 @@ export const LogViewer = () => {
     const text = logs
       .map((l) => `[${l.timestamp}] ${l.level.toUpperCase()}: ${l.message}`)
       .join("\n");
-    copyLogsToClipboard(text);
+    void copyLogsToClipboard(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Button title="Ocultar" onPress={toggleLogViewer} />
-        <Button title="Copiar" onPress={handleCopy} />
+        <Button title={copied ? "¡Copiado!" : "Copiar"} onPress={handleCopy} />
         <Button title="Limpiar" onPress={clearLogs} />
       </View>
       <ScrollView style={styles.scroll}>
-        {logs.map((log, i) => (
+        {logs.map((log) => (
           <Text
-            key={i}
+            key={log.id}
             style={[
               styles.text,
               log.level === "error" && styles.error,

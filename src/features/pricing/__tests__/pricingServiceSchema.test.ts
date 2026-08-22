@@ -40,6 +40,22 @@ describe("pricingServiceSchema", () => {
     expect(result.error?.issues[0].path).toContain("price");
   });
 
+  it("falla si el precio es 0 (se trata como 'no provisto', no como un precio real)", () => {
+    const result = pricingServiceSchema.safeParse({
+      ...validService,
+      price: 0,
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toContain("price");
+  });
+
+  it("falla si falta el precio", () => {
+    const { price: _price, ...noPrice } = validService;
+    const result = pricingServiceSchema.safeParse(noPrice);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toContain("price");
+  });
+
   it("falla si falta un campo requerido", () => {
     const { createdAt: _, ...noCreatedAt } = validService;
     const result = pricingServiceSchema.safeParse(noCreatedAt);
@@ -131,6 +147,26 @@ describe("createPricingServiceSchema", () => {
       category: "arreglo",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("falla si falta el precio (no lo trata como $0)", () => {
+    const result = createPricingServiceSchema.safeParse({
+      name: "Basta de dobladillo",
+      category: "arreglo",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toContain("price");
+    expect(result.error?.issues[0].message).toBe("El precio es obligatorio");
+  });
+
+  it("falla si el precio es 0", () => {
+    const result = createPricingServiceSchema.safeParse({
+      name: "Basta de dobladillo",
+      price: 0,
+      category: "arreglo",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toContain("price");
   });
 
   it("acepta notes opcional", () => {

@@ -11,6 +11,7 @@ const mockNavigate = jest.fn();
 const mockReplace = jest.fn();
 const mockUpsertCamisa = jest.fn();
 const mockReload = jest.fn();
+const mockValidate = jest.fn(() => ({}) as Record<string, unknown>);
 
 jest.mock("../hooks/useCamisaMeasurement", () => ({
   useCamisaMeasurement: jest.fn(),
@@ -21,6 +22,7 @@ jest.mock("../hooks/useUpsertCamisa", () => ({
     upsertCamisa: mockUpsertCamisa,
     isSubmitting: false,
     error: null,
+    validate: mockValidate,
   }),
 }));
 const mockUseCamisa = useCamisaMeasurement as jest.Mock;
@@ -38,6 +40,8 @@ describe("CamisaMeasurementDetailScreen", () => {
     mockReplace.mockReset();
     mockUpsertCamisa.mockReset();
     mockReload.mockReset();
+    mockValidate.mockReset();
+    mockValidate.mockReturnValue({});
   });
 
   it("renders loading state", () => {
@@ -117,5 +121,34 @@ describe("CamisaMeasurementDetailScreen", () => {
       </ClientsDependenciesProvider>,
     );
     expect(getByText("Error de red")).toBeTruthy();
+  });
+
+  it("muestra el error de campo y no guarda cuando una medida está fuera de rango", async () => {
+    mockUseCamisa.mockReturnValue({
+      measurement: null,
+      isLoading: false,
+      error: null,
+      reload: mockReload,
+    });
+    mockValidate.mockReturnValue({
+      espalda: {
+        type: "zod",
+        message: "Número debe ser menor o igual a 300",
+      },
+    });
+
+    const { getByLabelText, getByText } = render(
+      <ClientsDependenciesProvider dependencies={noopDependencies}>
+        <CamisaMeasurementDetailScreen {...buildProps("c-1")} />
+      </ClientsDependenciesProvider>,
+    );
+
+    fireEvent.changeText(getByLabelText("Espalda (cm)"), "500");
+    fireEvent.press(getByLabelText("Guardar medidas de camisa"));
+
+    await waitFor(() => {
+      expect(getByText("Número debe ser menor o igual a 300")).toBeTruthy();
+    });
+    expect(mockUpsertCamisa).not.toHaveBeenCalled();
   });
 });

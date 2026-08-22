@@ -11,6 +11,8 @@ type DeleteEntityType =
   | "client"
   | "camisa_measurement"
   | "pantalon_measurement"
+  | "saco_measurement"
+  | "chaleco_measurement"
   | "client_talla"
   | "pricing_service"
   | "schedule"
@@ -183,6 +185,7 @@ interface ScheduleRow {
   date: string | null;
   time: string | null;
   price: number | null;
+  abono: number | null;
   operario_id: string | null;
   client_id: string | null;
   unregistered_client_name: string | null;
@@ -244,6 +247,25 @@ function getLastCursor<T extends { id: string }>(
   }
 
   return createCursor(last.id, timestampAccessor(last));
+}
+
+/**
+ * Normaliza un timestamp traído de Supabase a ISO-8601 canónico (precisión
+ * fija de milisegundos + sufijo "Z"), el mismo formato que produce
+ * localmente `new Date().toISOString()`.
+ *
+ * Postgres/PostgREST puede devolver el mismo instante recortando los ceros
+ * decimales finales (ej. "...10:05:00.5+00:00" en vez de
+ * "...10:05:00.500Z"). Si ese valor se compara como texto plano en el
+ * `WHERE excluded.updated_at >= tabla.updated_at` del upsert, el caracter
+ * '+' (0x2B) es menor que '0' (0x30) en orden lexicográfico: una fila
+ * remota igual o más reciente podía perder la comparación y la fila local
+ * quedaba en sync_status = 'pending' para siempre, reintentando sync sin
+ * fin. Normalizar ambos lados a este formato antes de bindear el parámetro
+ * restaura el orden lexicográfico correcto.
+ */
+function normalizeTimestamp(value: string): string {
+  return new Date(value).toISOString();
 }
 
 export class SupabasePullSync {
@@ -358,7 +380,7 @@ export class SupabasePullSync {
           row.cedula ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -464,7 +486,7 @@ export class SupabasePullSync {
           row.changed_at ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -547,7 +569,7 @@ export class SupabasePullSync {
           row.changed_at ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -609,7 +631,7 @@ export class SupabasePullSync {
           row.value,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -673,7 +695,7 @@ export class SupabasePullSync {
           row.category,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -778,7 +800,7 @@ export class SupabasePullSync {
           row.puno ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -863,7 +885,7 @@ export class SupabasePullSync {
           row.escote ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -991,7 +1013,7 @@ export class SupabasePullSync {
           row.bota ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -1011,7 +1033,7 @@ export class SupabasePullSync {
     let query = supabase
       .from("schedules")
       .select(
-        "id, date, time, price, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
+        "id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -1036,12 +1058,13 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO schedules
-            (id, date, time, price, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+            (id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             date                      = excluded.date,
             time                      = excluded.time,
             price                     = excluded.price,
+            abono                     = excluded.abono,
             operario_id               = excluded.operario_id,
             client_id                 = excluded.client_id,
             unregistered_client_name  = excluded.unregistered_client_name,
@@ -1060,6 +1083,7 @@ export class SupabasePullSync {
           row.date,
           row.time,
           row.price,
+          row.abono,
           row.operario_id,
           row.client_id,
           row.unregistered_client_name ?? null,
@@ -1071,7 +1095,7 @@ export class SupabasePullSync {
           row.ready_at,
           row.delivered_at,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -1192,7 +1216,7 @@ export class SupabasePullSync {
           row.display_name,
           row.role,
           row.is_shared_device ? 1 : 0,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });

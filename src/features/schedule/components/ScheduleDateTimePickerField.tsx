@@ -1,4 +1,5 @@
 import { colors } from "../../../shared/theme/colors";
+import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import DateTimePicker, {
@@ -6,7 +7,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 
 type PickerMode = "date" | "time";
-type PickerVariant = "field" | "dayNavigator";
+type PickerVariant = "field" | "dayNavigator" | "iconTrigger";
 
 interface ScheduleDateTimePickerFieldProps {
   mode: PickerMode;
@@ -22,6 +23,9 @@ interface ScheduleDateTimePickerFieldProps {
    * otros inputs (ej. ScheduleFormScreen). "dayNavigator": look de botón
    * destacado sin borde, para el selector de día de ScheduleDayViewScreen —
    * ahí la fecha es el elemento principal de la pantalla, no un campo más.
+   * "iconTrigger": solo un ícono de calendario (sin mostrar la fecha) — para
+   * abrir el selector de fecha exacta junto a la tira de 7 días, sin
+   * duplicar la lógica de parseo/formato en otro componente.
    */
   variant?: PickerVariant;
 }
@@ -75,7 +79,7 @@ function formatDisplay(
     if (variant === "dayNavigator") {
       return capitalize(
         date.toLocaleDateString("es-CO", {
-          weekday: "short",
+          weekday: "long",
           day: "numeric",
           month: "short",
         }),
@@ -119,6 +123,28 @@ export function ScheduleDateTimePickerField({
 
   const displayValue = formatDisplay(mode, variant, value);
   const isDayNavigator = variant === "dayNavigator";
+
+  if (variant === "iconTrigger") {
+    return (
+      <View>
+        <Pressable
+          accessibilityLabel={accessibilityLabel}
+          style={styles.iconTriggerButton}
+          onPress={() => setIsPickerVisible(true)}
+        >
+          <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+        </Pressable>
+        {isPickerVisible ? (
+          <DateTimePicker
+            value={parseValue(mode, value)}
+            mode={mode}
+            display="default"
+            onChange={handleChange}
+          />
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -165,6 +191,14 @@ export function ScheduleDateTimePickerField({
 }
 
 const styles = StyleSheet.create({
+  iconTriggerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primarySoft,
+  },
   container: {
     gap: 6,
   },

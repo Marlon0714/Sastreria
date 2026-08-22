@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
   createPricingServiceSchema,
+  type CreatePricingServiceFormInput,
   type CreatePricingServiceInput,
   PRICING_CATEGORIES,
   PRICING_CATEGORY_LABELS,
@@ -39,11 +40,11 @@ export default function PricingForm({
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<CreatePricingServiceInput>({
+  } = useForm<CreatePricingServiceFormInput, unknown, CreatePricingServiceInput>({
     resolver: zodResolver(createPricingServiceSchema),
     defaultValues: {
       name: initialValues?.name ?? "",
-      price: initialValues?.price ?? 0,
+      price: initialValues?.price,
       category: initialValues?.category ?? "arreglo",
       notes: initialValues?.notes ?? "",
     },
@@ -138,10 +139,11 @@ export default function PricingForm({
                 // "15.000" (como se ve en cualquier otra pantalla) se leería
                 // como 15 en vez de 15000.
                 const digitsOnly = v.replace(/[^0-9]/g, "");
-                const n = digitsOnly === "" ? 0 : parseInt(digitsOnly, 10);
-                onChange(n);
+                onChange(
+                  digitsOnly === "" ? undefined : parseInt(digitsOnly, 10),
+                );
               }}
-              value={value === 0 ? "" : String(value)}
+              value={value === undefined ? "" : String(value)}
             />
           )}
         />

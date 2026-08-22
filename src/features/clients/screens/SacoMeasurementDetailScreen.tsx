@@ -76,6 +76,35 @@ function toFormValues(
   };
 }
 
+// Campos de medida validados por upsertSacoSchema (vía `validate`, ya usado
+// para la conversión/coerción dentro del hook). Sin validarlos antes del
+// submit, los mensajes de error por campo quedaban "muertos": el hook
+// detectaba el valor fuera de rango en su `.parse()` interno pero solo
+// exponía un banner genérico.
+const SACO_MEASUREMENT_KEYS: (keyof SacoFormValues)[] = [
+  "espalda",
+  "hombro",
+  "talleDelantero",
+  "talleTrasero",
+  "distancia",
+  "separacion",
+  "pechoAjustado",
+  "pechoAncho",
+  "cinturaAjustado",
+  "cinturaAncho",
+  "baseAjustado",
+  "baseAncho",
+  "largo",
+  "mangaLarga",
+  "mangaCorta",
+  "escote",
+  "cuelloNormal",
+  "cuelloCruce",
+  "brazo",
+  "puno",
+  "notes",
+];
+
 export default function SacoMeasurementDetailScreen({
   navigation,
   route,
@@ -85,7 +114,12 @@ export default function SacoMeasurementDetailScreen({
 
   const { measurement, isLoading, error, reload } =
     useSacoMeasurement(clientId);
-  const { upsertSaco, isSubmitting, error: saveError } = useUpsertSaco();
+  const {
+    upsertSaco,
+    isSubmitting,
+    error: saveError,
+    validate,
+  } = useUpsertSaco();
 
   const [isEditing, setIsEditing] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
@@ -94,6 +128,7 @@ export default function SacoMeasurementDetailScreen({
     control,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<SacoFormValues>({ defaultValues: SACO_FORM_DEFAULTS });
 
@@ -111,6 +146,21 @@ export default function SacoMeasurementDetailScreen({
 
   const onSubmit = useCallback(
     async (values: SacoFormValues) => {
+      const validationErrors = validate({ ...values, clientId });
+
+      let hasErrors = false;
+      for (const key of SACO_MEASUREMENT_KEYS) {
+        const validationError = validationErrors[key];
+        if (validationError?.message) {
+          hasErrors = true;
+          setError(key, { type: "manual", message: validationError.message });
+        }
+      }
+
+      if (hasErrors) {
+        return;
+      }
+
       const result = await upsertSaco({ ...values, clientId });
       if (result) {
         await reload();
@@ -119,7 +169,7 @@ export default function SacoMeasurementDetailScreen({
         reset(toFormValues(result as unknown as Record<string, unknown>));
       }
     },
-    [clientId, reload, reset, upsertSaco],
+    [clientId, reload, reset, setError, upsertSaco, validate],
   );
 
   const startEdit = useCallback(() => {

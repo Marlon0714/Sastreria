@@ -34,6 +34,24 @@ describe("diffScheduleFields", () => {
     });
   });
 
+  it("detecta cambios en el abono", () => {
+    const before = { clientId: "c-1", price: 100000, abono: 30000 };
+    const after = { clientId: "c-1", price: 100000, abono: 50000 };
+
+    expect(diffScheduleFields(before, after)).toEqual({
+      abono: { before: 30000, after: 50000 },
+    });
+  });
+
+  it("detecta cambios en el nombre de cliente sin registrar", () => {
+    const before = { unregisteredClientName: "Pedro" };
+    const after = { unregisteredClientName: "Pedro Ramírez" };
+
+    expect(diffScheduleFields(before, after)).toEqual({
+      unregisteredClientName: { before: "Pedro", after: "Pedro Ramírez" },
+    });
+  });
+
   // No hay test runtime para "status" porque ScheduleDiffableField ni
   // siquiera lo admite como clave — el compilador ya lo garantiza.
 });

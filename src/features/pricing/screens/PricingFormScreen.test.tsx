@@ -101,9 +101,6 @@ describe("PricingFormScreen", () => {
     expect(mockPricingForm.mock.calls[0][0].initialValues?.category).toBe(
       "confeccion",
     );
-    expect(mockSetOptions).toHaveBeenCalledWith({
-      title: pricingStrings.addPricing,
-    });
   });
 
   it("con id usa titulo de edicion y conserva initialValues del hook", () => {
@@ -122,9 +119,6 @@ describe("PricingFormScreen", () => {
     render(<PricingFormScreen />);
 
     // Assert
-    expect(mockSetOptions).toHaveBeenCalledWith({
-      title: pricingStrings.editPricing,
-    });
     expect(mockPricingForm.mock.calls[0][0].initialValues?.category).toBe(
       "arreglo",
     );

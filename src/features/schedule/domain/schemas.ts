@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { capitalizeWords } from "../../../shared/domain/textPatterns";
+
 export const scheduleStatusSchema = z.enum([
   "pendiente",
   "agendado",
@@ -46,13 +48,32 @@ const CLIENT_FIELD_ERROR: { message: string; path: string[] } = {
   path: ["clientId"],
 };
 
+// El abono es dinero ya recibido a cuenta del precio — no tiene sentido que
+// supere el total del arreglo/confección.
+const abonoNotExceedingPrice = (data: {
+  price?: number;
+  abono?: number;
+}): boolean =>
+  data.abono == null || data.price == null || data.abono <= data.price;
+
+const ABONO_FIELD_ERROR: { message: string; path: string[] } = {
+  message: "El abono no puede ser mayor que el precio",
+  path: ["abono"],
+};
+
 export const scheduleSchema = z.object({
   id: z.string().uuid(),
   clientId: z.string().uuid("El cliente es inválido").optional(),
-  unregisteredClientName: z.string().trim().max(120).optional(),
+  unregisteredClientName: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .transform((v) => (v ? capitalizeWords(v) : v)),
   date: optionalDate,
   time: optionalTime,
   price: z.number().nonnegative("El precio no puede ser negativo").optional(),
+  abono: z.number().nonnegative("El abono no puede ser negativo").optional(),
   operarioId: z.string().uuid("El operario es inválido").optional(),
   notes: z.string().trim().max(500).optional(),
   isPriority: z.boolean().optional(),
@@ -77,10 +98,9 @@ const createScheduleObjectSchema = scheduleSchema.omit({
   syncStatus: true,
 });
 
-export const createScheduleSchema = createScheduleObjectSchema.refine(
-  exactlyOneClientField,
-  CLIENT_FIELD_ERROR,
-);
+export const createScheduleSchema = createScheduleObjectSchema
+  .refine(exactlyOneClientField, CLIENT_FIELD_ERROR)
+  .refine(abonoNotExceedingPrice, ABONO_FIELD_ERROR);
 
 // Sin el refine de createScheduleSchema: una actualización parcial legítima
 // (ej. solo cambiar el precio) no debe tocar clientId/unregisteredClientName

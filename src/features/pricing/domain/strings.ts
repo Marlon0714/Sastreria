@@ -3,14 +3,15 @@
 /**
  * Formatea un precio en pesos colombianos de forma determinista (no depende del locale del SO).
  * Ejemplo: 10000 → "$10.000"
+ * El signo (si lo hay) va ANTES del símbolo de moneda: -15000 → "-$15.000".
  */
 export function formatPrice(value: number): string {
-  return (
-    "$" +
-    Math.round(value)
-      .toString()
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-  );
+  const rounded = Math.round(value);
+  const sign = rounded < 0 ? "-" : "";
+  const digits = Math.abs(rounded)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${sign}$${digits}`;
 }
 
 export const pricingStrings = {

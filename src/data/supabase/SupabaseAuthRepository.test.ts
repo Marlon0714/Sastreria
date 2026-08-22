@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { AuthRetryableFetchError } from "@supabase/supabase-js";
 
-import { SupabaseAuthRepository } from "./SupabaseAuthRepository";
+import { AuthNetworkError, SupabaseAuthRepository } from "./SupabaseAuthRepository";
 
 type MockError = { message: string } | null;
 
@@ -84,6 +85,19 @@ describe("SupabaseAuthRepository", () => {
         repo.signIn("user@example.com", "wrong"),
       ).rejects.toThrow("[auth] Sign in failed. Check credentials and try again.");
     });
+
+    it("lanza un mensaje de red distinto cuando el fallo es de conectividad", async () => {
+      mockSignInWithPassword.mockResolvedValue({
+        data: { session: null },
+        error: new AuthRetryableFetchError("Failed to fetch", 0),
+      });
+
+      await expect(
+        repo.signIn("user@example.com", "password123"),
+      ).rejects.toThrow(
+        "No se pudo conectar. Revisa tu conexión e intenta de nuevo.",
+      );
+    });
   });
 
   describe("signOut", () => {
@@ -130,6 +144,15 @@ describe("SupabaseAuthRepository", () => {
 
       expect(result).toBeNull();
     });
+
+    it("lanza AuthNetworkError (no retorna null) cuando el refresh falla por conectividad", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: new AuthRetryableFetchError("Failed to fetch", 0),
+      });
+
+      await expect(repo.getSession()).rejects.toBeInstanceOf(AuthNetworkError);
+    });
   });
 
   describe("hasValidSession", () => {
@@ -146,6 +169,17 @@ describe("SupabaseAuthRepository", () => {
       mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
 
       await expect(repo.hasValidSession()).resolves.toBe(false);
+    });
+
+    it("propaga AuthNetworkError en vez de resolver false cuando el refresh falla por conectividad", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: new AuthRetryableFetchError("Failed to fetch", 0),
+      });
+
+      await expect(repo.hasValidSession()).rejects.toBeInstanceOf(
+        AuthNetworkError,
+      );
     });
   });
 

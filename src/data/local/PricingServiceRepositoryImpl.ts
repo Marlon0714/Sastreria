@@ -55,8 +55,37 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
     return row ? mapRow(row) : null;
   }
 
+  /**
+   * El nombre del servicio debe ser único por taller (ver comentario de
+   * dominio en pricingService.ts). Se compara normalizado (trim +
+   * case-insensitive) para que "Dobladillo" y " dobladillo " cuenten como
+   * el mismo servicio. `excludeId` se usa al actualizar, para no chocar
+   * contra el propio registro que se está editando.
+   */
+  private async assertNameNotDuplicated(
+    name: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const db = getDatabase();
+    const normalized = name.trim();
+    const existing = excludeId
+      ? await db.getFirstAsync<{ id: string }>(
+          `SELECT id FROM pricing_services WHERE LOWER(TRIM(name)) = LOWER(?) AND id != ? LIMIT 1;`,
+          normalized,
+          excludeId,
+        )
+      : await db.getFirstAsync<{ id: string }>(
+          `SELECT id FROM pricing_services WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1;`,
+          normalized,
+        );
+    if (existing) {
+      throw new Error("Ya existe un servicio con ese nombre.");
+    }
+  }
+
   async create(input: CreatePricingServiceInput): Promise<PricingService> {
     const db = getDatabase();
+    await this.assertNameNotDuplicated(input.name);
     const now = new Date().toISOString();
     const entity: PricingService = {
       id: generateDomainUuid(),
@@ -90,6 +119,10 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
     const db = getDatabase();
     const prev = await this.getById(id);
     if (!prev) throw new Error(`PricingService not found: ${id}`);
+
+    if (input.name !== undefined) {
+      await this.assertNameNotDuplicated(input.name, id);
+    }
 
     const now = new Date().toISOString();
     const updated: PricingService = {

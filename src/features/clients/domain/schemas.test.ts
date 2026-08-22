@@ -87,6 +87,20 @@ describe("clients schemas", () => {
       expect(result.success).toBe(true);
     });
 
+    it("formatea el nombre y apellido con la primera letra en mayúscula", () => {
+      const result = createClientSchema.safeParse({
+        firstName: "juan CARLOS",
+        lastName: "pérez-gómez",
+        phone: "",
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(result.data.firstName).toBe("Juan Carlos");
+      expect(result.data.lastName).toBe("Pérez-Gómez");
+    });
+
     it("rejects a phone containing letters or symbols used to bypass the old required validation", () => {
       const withLetters = createClientSchema.safeParse({
         firstName: "Ana",

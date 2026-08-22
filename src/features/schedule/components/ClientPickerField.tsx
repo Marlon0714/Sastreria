@@ -1,9 +1,18 @@
 import { colors } from "../../../shared/theme/colors";
-import { useEffect, useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,9 +21,15 @@ import {
 
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
-import { normalizeDigitsInput } from "../../../shared/domain/textPatterns";
+import {
+  PERSON_NAME_PATTERN,
+  PHONE_DIGITS_PATTERN,
+  capitalizeWords,
+  normalizeDigitsInput,
+} from "../../../shared/domain/textPatterns";
 import {
   findDuplicateByName,
+  findDuplicateByPhone,
   normalizePhone,
   normalizeText,
 } from "../../../shared/utils/textSearch";
@@ -29,13 +44,31 @@ interface ClientPickerFieldProps {
   errorMessage?: string;
 }
 
-export function ClientPickerField({
-  clientId,
-  unregisteredName,
-  onChangeClientId,
-  onChangeUnregisteredName,
-  errorMessage,
-}: ClientPickerFieldProps) {
+export interface ClientPickerFieldHandle {
+  /**
+   * Se llama justo antes de guardar el turno. Si quedó un registro de
+   * cliente a medio llenar (se abrió "Registrar cliente" pero nunca se
+   * presionó el botón), decide qué hacer con esos datos en vez de
+   * perderlos: con nombre+apellido+teléfono válidos, registra el cliente
+   * de una vez; con solo nombre+apellido, los deja como "cliente sin
+   * registrar" del turno.
+   */
+  resolvePendingRegistration: () => Promise<void>;
+}
+
+export const ClientPickerField = forwardRef<
+  ClientPickerFieldHandle,
+  ClientPickerFieldProps
+>(function ClientPickerField(
+  {
+    clientId,
+    unregisteredName,
+    onChangeClientId,
+    onChangeUnregisteredName,
+    errorMessage,
+  },
+  ref,
+) {
   const clientRepository = useClientRepository();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +79,12 @@ export function ClientPickerField({
   const [newPhone, setNewPhone] = useState("");
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
+  // Guarda el texto completo escrito antes de separarlo en nombre/apellido
+  // al abrir "Registrar cliente", para poder restaurarlo tal cual si se
+  // cancela el registro.
+  const [preSplitNameInput, setPreSplitNameInput] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -66,9 +105,23 @@ export function ClientPickerField({
     };
   }, [clientRepository]);
 
+  // Evita que el efecto de sincronización de abajo pise el texto recién
+  // prellenado al tocar el lápiz de "Cambiar cliente": ese tap suelta
+  // `clientId` (pasa a undefined) SIN tocar `unregisteredClientName` a
+  // propósito (ver Fix del lápiz más abajo), para no desvincular al cliente
+  // real hasta que el usuario realmente edite o confirme el cambio. Sin
+  // este flag, el cambio de `clientId` dispararía el efecto y volvería a
+  // fijar `nameInput` a "" (porque `unregisteredName` sigue undefined),
+  // borrando el nombre que se acaba de prellenar.
+  const skipNextSyncRef = useRef(false);
+
   // Mantiene el texto sincronizado si el nombre "sin registrar" cambia desde
   // afuera (ej. al cargar un turno existente en el formulario de edición).
   useEffect(() => {
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false;
+      return;
+    }
     if (!clientId) {
       setNameInput(unregisteredName ?? "");
     }
@@ -105,6 +158,7 @@ export function ClientPickerField({
     setNewLastName("");
     setNewPhone("");
     setRegisterError(null);
+    setPreSplitNameInput(null);
   };
 
   const selectClient = (client: Client): void => {
@@ -135,12 +189,55 @@ export function ClientPickerField({
     }
   };
 
-  const handleRegisterPress = (): void => {
-    const firstName = nameInput.trim();
-    const lastName = newLastName.trim();
+  const proceedWithPhoneCheck = (firstName: string, lastName: string): void => {
+    const normalizedPhone = newPhone.trim()
+      ? normalizeDigitsInput(newPhone.trim())
+      : "";
+    const duplicatePhone = normalizedPhone
+      ? findDuplicateByPhone(clients, normalizedPhone)
+      : null;
 
-    if (!firstName || !lastName) {
+    if (duplicatePhone) {
+      Alert.alert(
+        "Teléfono ya registrado",
+        `Ya existe un cliente con este teléfono: ${duplicatePhone.firstName} ${duplicatePhone.lastName}. ¿Deseas guardarlo así de todos modos?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Guardar de todos modos",
+            onPress: () => void createNewClient(firstName, lastName),
+          },
+        ],
+      );
+      return;
+    }
+
+    void createNewClient(firstName, lastName);
+  };
+
+  const handleRegisterPress = (): void => {
+    const rawFirstName = nameInput.trim();
+    const rawLastName = newLastName.trim();
+
+    if (!rawFirstName || !rawLastName) {
       setRegisterError("Nombre y apellido son obligatorios.");
+      return;
+    }
+
+    if (
+      !PERSON_NAME_PATTERN.test(rawFirstName) ||
+      !PERSON_NAME_PATTERN.test(rawLastName)
+    ) {
+      setRegisterError("Nombre y apellido solo pueden contener letras.");
+      return;
+    }
+
+    const firstName = capitalizeWords(rawFirstName);
+    const lastName = capitalizeWords(rawLastName);
+
+    const trimmedPhone = newPhone.trim();
+    if (trimmedPhone && !PHONE_DIGITS_PATTERN.test(normalizeDigitsInput(trimmedPhone))) {
+      setRegisterError("El teléfono solo puede contener números.");
       return;
     }
 
@@ -159,15 +256,118 @@ export function ClientPickerField({
           },
           {
             text: "Crear de todos modos",
-            onPress: () => void createNewClient(firstName, lastName),
+            onPress: () => proceedWithPhoneCheck(firstName, lastName),
           },
         ],
       );
       return;
     }
 
-    void createNewClient(firstName, lastName);
+    proceedWithPhoneCheck(firstName, lastName);
   };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      resolvePendingRegistration: () =>
+        new Promise<void>((resolve) => {
+          if (!isRegistering || clientId) {
+            resolve();
+            return;
+          }
+
+          const rawFirstName = nameInput.trim();
+          const rawLastName = newLastName.trim();
+          if (!rawFirstName || !rawLastName) {
+            resolve();
+            return;
+          }
+
+          const trimmedPhone = newPhone.trim();
+          const normalizedPhone = trimmedPhone
+            ? normalizeDigitsInput(trimmedPhone)
+            : "";
+          const canRegister =
+            PERSON_NAME_PATTERN.test(rawFirstName) &&
+            PERSON_NAME_PATTERN.test(rawLastName) &&
+            normalizedPhone !== "" &&
+            PHONE_DIGITS_PATTERN.test(normalizedPhone);
+
+          const firstName = capitalizeWords(rawFirstName);
+          const lastName = capitalizeWords(rawLastName);
+          const fullName = `${firstName} ${lastName}`;
+
+          if (!canRegister) {
+            // Sin teléfono válido no se registra como cliente — se guarda
+            // el nombre completo en el turno para no perder el apellido
+            // ya escrito.
+            onChangeUnregisteredName(fullName);
+            onChangeClientId(undefined);
+            resolve();
+            return;
+          }
+
+          const finishCreate = async (): Promise<void> => {
+            try {
+              const created = await clientRepository.create({
+                firstName,
+                lastName,
+                phone: normalizedPhone,
+              });
+              setClients((prev) => [...prev, created]);
+              onChangeClientId(created.id);
+              onChangeUnregisteredName(undefined);
+            } catch {
+              onChangeUnregisteredName(fullName);
+              onChangeClientId(undefined);
+            } finally {
+              resolve();
+            }
+          };
+
+          const duplicateName = findDuplicateByName(clients, firstName, lastName);
+          const duplicatePhone = findDuplicateByPhone(clients, normalizedPhone);
+          const duplicate = duplicateName ?? duplicatePhone;
+
+          if (duplicate) {
+            const message = duplicateName
+              ? `Ya existe un cliente con este nombre${
+                  duplicateName.phone ? `: ${duplicateName.phone}` : ""
+                }. ¿Deseas registrarlo de todos modos?`
+              : `Ya existe un cliente con este teléfono: ${duplicatePhone!.firstName} ${duplicatePhone!.lastName}. ¿Deseas registrarlo de todos modos?`;
+
+            Alert.alert("Cliente posiblemente duplicado", message, [
+              {
+                text: "No registrar, solo guardar el nombre",
+                onPress: () => {
+                  onChangeUnregisteredName(fullName);
+                  onChangeClientId(undefined);
+                  resolve();
+                },
+              },
+              {
+                text: "Registrar de todos modos",
+                onPress: () => void finishCreate(),
+              },
+            ]);
+            return;
+          }
+
+          void finishCreate();
+        }),
+    }),
+    [
+      isRegistering,
+      clientId,
+      nameInput,
+      newLastName,
+      newPhone,
+      clients,
+      clientRepository,
+      onChangeClientId,
+      onChangeUnregisteredName,
+    ],
+  );
 
   if (isLoading) {
     return <ActivityIndicator accessibilityLabel="Cargando clientes" />;
@@ -177,23 +377,47 @@ export function ClientPickerField({
     return (
       <View style={styles.container}>
         <View style={styles.selector}>
-          <Text style={styles.selectorText}>
-            {selectedClient.firstName} {selectedClient.lastName}
-          </Text>
-          {selectedClient.phone ? (
-            <Text style={styles.optionSubtext}>{selectedClient.phone}</Text>
-          ) : null}
+          <View style={styles.selectedInfo}>
+            <Text style={styles.selectorText}>
+              {selectedClient.firstName} {selectedClient.lastName}
+            </Text>
+            {selectedClient.phone ? (
+              <Text style={styles.optionSubtext}>{selectedClient.phone}</Text>
+            ) : null}
+          </View>
+          {/* Ícono chico y separado del texto a propósito — el botón de
+              texto anterior ("Cambiar") ocupaba todo el ancho justo debajo
+              del nombre y se tocaba sin querer, borrando el cliente ya
+              elegido. */}
+          <Pressable
+            accessibilityLabel="Cambiar cliente"
+            hitSlop={8}
+            style={styles.changeClientButton}
+            onPress={() => {
+              // Deja el nombre actual editable en vez de borrarlo — antes
+              // había que volver a escribir todo desde cero solo para
+              // corregir o buscar a alguien parecido.
+              //
+              // A propósito NO se llama a `onChangeUnregisteredName` acá:
+              // hacerlo escribiría de inmediato "cliente sin registrar" en
+              // el estado real del formulario, y si el usuario guarda el
+              // turno justo después de tocar el lápiz (sin editar nada
+              // más), se perdería el vínculo con el cliente real en
+              // silencio. Al dejar `clientId` y `unregisteredClientName`
+              // ambos sin definir, un guardado inmediato debe fallar la
+              // validación normal ("selecciona un cliente") en vez de
+              // sustituir el valor guardado por uno incorrecto. Solo cuando
+              // el usuario siga escribiendo (`onChangeText` de abajo) se
+              // reporta el nombre sin registrar.
+              const currentName = `${selectedClient.firstName} ${selectedClient.lastName}`;
+              skipNextSyncRef.current = true;
+              onChangeClientId(undefined);
+              setNameInput(currentName);
+            }}
+          >
+            <Ionicons name="pencil" size={16} color={colors.textMuted} />
+          </Pressable>
         </View>
-        <Pressable
-          accessibilityLabel="Cambiar cliente"
-          style={styles.cancelButton}
-          onPress={() => {
-            onChangeClientId(undefined);
-            setNameInput("");
-          }}
-        >
-          <Text style={styles.cancelButtonText}>Cambiar</Text>
-        </Pressable>
       </View>
     );
   }
@@ -216,7 +440,7 @@ export function ClientPickerField({
       ) : null}
 
       {suggestions.length > 0 ? (
-        <View style={styles.list}>
+        <ScrollView style={styles.list} nestedScrollEnabled>
           {suggestions.map((item) => (
             <Pressable
               key={item.id}
@@ -234,7 +458,7 @@ export function ClientPickerField({
               ) : null}
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       ) : null}
 
       {isRegistering ? (
@@ -279,7 +503,12 @@ export function ClientPickerField({
           <Pressable
             accessibilityLabel="Cancelar registro de cliente"
             style={styles.cancelButton}
-            onPress={resetRegisterState}
+            onPress={() => {
+              if (preSplitNameInput !== null) {
+                setNameInput(preSplitNameInput);
+              }
+              resetRegisterState();
+            }}
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </Pressable>
@@ -290,6 +519,16 @@ export function ClientPickerField({
           style={styles.addClientButton}
           onPress={() => {
             setRegisterError(null);
+            // Si ya se escribió el nombre completo buscando coincidencias
+            // (ej. "Juan Pérez"), se separa en nombre/apellido para no
+            // tener que volver a escribir el apellido.
+            const trimmed = nameInput.trim();
+            const spaceIndex = trimmed.indexOf(" ");
+            if (spaceIndex > 0) {
+              setPreSplitNameInput(trimmed);
+              setNameInput(trimmed.slice(0, spaceIndex));
+              setNewLastName(trimmed.slice(spaceIndex + 1).trim());
+            }
             setIsRegistering(true);
           }}
         >
@@ -298,13 +537,17 @@ export function ClientPickerField({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
     gap: 6,
   },
   selector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 10,
@@ -315,8 +558,16 @@ const styles = StyleSheet.create({
   selectorError: {
     borderColor: colors.danger,
   },
+  selectedInfo: {
+    flex: 1,
+  },
   selectorText: {
     color: "#0f172a",
+  },
+  changeClientButton: {
+    padding: 6,
+    borderRadius: 999,
+    backgroundColor: colors.background,
   },
   errorText: {
     color: colors.danger,
@@ -336,6 +587,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 10,
+    overflow: "hidden",
   },
   option: {
     paddingHorizontal: 12,

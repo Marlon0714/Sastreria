@@ -14,6 +14,8 @@ import {
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
 import { formatPrice } from "../../pricing/domain/strings";
+import { computeSaldo } from "../domain/saldo";
+import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
 import { normalizeText } from "../../../shared/utils/textSearch";
@@ -22,8 +24,10 @@ import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleQuickActionSheet } from "../components/ScheduleQuickActionSheet";
+import { WeekStrip } from "../components/WeekStrip";
 import {
   formatDateForDisplay,
+  getWeekDates,
   shiftDateString,
   todayDateString,
 } from "../domain/dateUtils";
@@ -74,6 +78,7 @@ const STATUS_COLORS: Record<ScheduleStatus, { bg: string; text: string }> = {
 
 export default function ScheduleDayViewScreen({ navigation }: Props) {
   const [selectedDate, setSelectedDate] = useState(todayDateString());
+  const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const [activeView, setActiveView] = useState<ActiveView>("dia");
   const [activeCategory, setActiveCategory] =
     useState<ScheduleCategory>("arreglo");
@@ -85,7 +90,9 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     reload,
   } = useScheduleDayView(selectedDate);
   const clientRepository = useClientRepository();
+  const scheduleRepository = useMemo(() => getDefaultScheduleRepository(), []);
   const [clientsById, setClientsById] = useState<Record<string, Client>>({});
+  const [allSchedules, setAllSchedules] = useState<Schedule[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sheetSchedule, setSheetSchedule] = useState<Schedule | null>(null);
   // Espeja `sheetSchedule` para leerse desde dentro de los handlers async de
@@ -138,10 +145,47 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     [allPendingSchedules, activeCategory, matchesSearch],
   );
 
+  // Mientras se busca en la vista "Día", en vez de solo filtrar el día
+  // seleccionado se muestran TODAS las coincidencias no entregadas, sin
+  // importar la fecha — antes solo mostraba las del día actual (o saltaba
+  // a una sola fecha "más cercana"), y era fácil no ver un turno agendado
+  // para otro día. Ordenados por fecha; los "sin fecha" al final.
+  const isSearchingDia = activeView === "dia" && searchTerm.trim().length > 0;
+  const searchResults = useMemo(() => {
+    if (!isSearchingDia) return [];
+    return allSchedules
+      .filter((item) => item.category === activeCategory)
+      .filter((item) => item.status !== "entregado")
+      .filter(matchesSearch)
+      .sort((a, b) => {
+        if (!a.date && !b.date) return 0;
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return (
+          a.date.localeCompare(b.date) ||
+          (a.time ?? "").localeCompare(b.time ?? "")
+        );
+      });
+  }, [isSearchingDia, allSchedules, activeCategory, matchesSearch]);
+
+  // Necesario para poder buscar coincidencias en fechas distintas a la
+  // seleccionada (ver `searchResults`) — la agenda normalmente solo carga
+  // el día seleccionado y los "sin fecha" por separado. Se reutiliza (no
+  // solo al enfocar la pantalla) para que las acciones del panel rápido
+  // (marcar listo/entregado, asignar operario) también refresquen los
+  // resultados de búsqueda de inmediato — de lo contrario un turno recién
+  // "entregado" seguía apareciendo en `searchResults` (que excluye ese
+  // status) hasta salir y reentrar a la pantalla.
+  const reloadAllSchedules = useCallback(async (): Promise<void> => {
+    const all = await scheduleRepository.getAll();
+    setAllSchedules(all);
+  }, [scheduleRepository]);
+
   useFocusEffect(
     useCallback(() => {
       void reload();
-    }, [reload]),
+      void reloadAllSchedules();
+    }, [reload, reloadAllSchedules]),
   );
 
   useEffect(() => {
@@ -189,6 +233,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         setSheetSchedule(updated);
       }
       void reload();
+      void reloadAllSchedules();
     }
   };
 
@@ -200,6 +245,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         setSheetSchedule(updated);
       }
       void reload();
+      void reloadAllSchedules();
     }
   };
 
@@ -213,6 +259,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         setSheetSchedule(updated);
       }
       void reload();
+      void reloadAllSchedules();
     }
   };
 
@@ -221,6 +268,12 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     const scheduleId = sheetSchedule.id;
     closeSheet();
     navigation.navigate("ScheduleForm", { scheduleId });
+  };
+
+  const formatSearchResultLabel = (item: Schedule): string => {
+    if (!item.date) return "Sin fecha";
+    const [, month, day] = item.date.split("-");
+    return item.time ? `${day}/${month} · ${item.time}` : `${day}/${month}`;
   };
 
   const renderCard = (item: Schedule, dateLabel: string) => {
@@ -247,7 +300,11 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         <View style={styles.cardSubRow}>
           <Text style={styles.cardDate}>{dateLabel}</Text>
           {item.price != null ? (
-            <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
+            <Text style={styles.cardPrice}>
+              {item.abono
+                ? `Saldo ${formatPrice(computeSaldo(item) ?? item.price)}`
+                : formatPrice(item.price)}
+            </Text>
           ) : null}
           {item.isPriority ? (
             <View style={styles.priorityBadge}>
@@ -255,6 +312,11 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
             </View>
           ) : null}
         </View>
+        {item.price != null && item.abono ? (
+          <Text style={styles.cardAbonoDetail}>
+            Precio {formatPrice(item.price)} · Abono {formatPrice(item.abono)}
+          </Text>
+        ) : null}
         {item.notes ? (
           <Text style={styles.cardNotes}>{item.notes}</Text>
         ) : null}
@@ -352,7 +414,9 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
                   const count =
                     view.key === "pendientes"
                       ? pendingSchedules.length
-                      : dateSchedules.length;
+                      : isSearchingDia
+                        ? searchResults.length
+                        : dateSchedules.length;
                   if (count === 0) return null;
                   return (
                     <View
@@ -380,45 +444,17 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
 
       {activeView === "dia" ? (
         <>
-          <View style={styles.header}>
-            <Pressable
-              accessibilityLabel="Día anterior"
-              style={styles.navButton}
-              onPress={() =>
-                setSelectedDate((current) => shiftDateString(current, -1))
-              }
-            >
-              <Ionicons name="chevron-back" size={20} color={colors.primary} />
-            </Pressable>
-
-            <View style={styles.dateSelector}>
-              <ScheduleDateTimePickerField
-                mode="date"
-                variant="dayNavigator"
-                value={selectedDate}
-                onChange={(value) => {
-                  if (value) setSelectedDate(value);
-                }}
-                placeholder="Elegir fecha"
-                accessibilityLabel="Elegir fecha"
-                allowClear={false}
-              />
-            </View>
-
-            <Pressable
-              accessibilityLabel="Día siguiente"
-              style={styles.navButton}
-              onPress={() =>
-                setSelectedDate((current) => shiftDateString(current, 1))
-              }
-            >
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.primary}
-              />
-            </Pressable>
-          </View>
+          <WeekStrip
+            weekDates={weekDates}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onPrevWeek={() =>
+              setSelectedDate((current) => shiftDateString(current, -7))
+            }
+            onNextWeek={() =>
+              setSelectedDate((current) => shiftDateString(current, 7))
+            }
+          />
 
           {selectedDate !== todayDateString() ? (
             <Pressable
@@ -429,21 +465,40 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
               <Text style={styles.todayButtonText}>Ir a hoy</Text>
             </Pressable>
           ) : null}
+
+          <View style={styles.header}>
+            <Text style={styles.dateLabel} numberOfLines={1}>
+              {formatDateForDisplay(selectedDate)}
+            </Text>
+            <ScheduleDateTimePickerField
+              mode="date"
+              variant="iconTrigger"
+              value={selectedDate}
+              onChange={(value) => {
+                if (value) setSelectedDate(value);
+              }}
+              placeholder="Elegir fecha"
+              accessibilityLabel="Elegir fecha"
+            />
+          </View>
         </>
       ) : null}
 
       <ScrollView contentContainerStyle={styles.listContent}>
         {activeView === "dia" ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {formatDateForDisplay(selectedDate)}
-            </Text>
-            {dateSchedules.length === 0 ? (
-              <Text style={styles.emptyText}>
-                {searchTerm
-                  ? "No hay turnos que coincidan con la búsqueda."
-                  : "No hay turnos para este día."}
-              </Text>
+            {isSearchingDia ? (
+              searchResults.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  No hay turnos que coincidan con la búsqueda.
+                </Text>
+              ) : (
+                searchResults.map((item) =>
+                  renderCard(item, formatSearchResultLabel(item)),
+                )
+              )
+            ) : dateSchedules.length === 0 ? (
+              <Text style={styles.emptyText}>No hay turnos para este día.</Text>
             ) : (
               dateSchedules.map((item) =>
                 renderCard(item, item.time ?? "Sin hora"),
@@ -598,20 +653,17 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
     paddingHorizontal: 16,
     paddingTop: 12,
   },
-  navButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primarySoft,
-  },
-  dateSelector: {
+  dateLabel: {
     flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    textTransform: "capitalize",
   },
   todayButton: {
     alignSelf: "center",
@@ -679,6 +731,10 @@ const styles = StyleSheet.create({
   },
   cardNotes: {
     fontSize: 13,
+    color: colors.textMuted,
+  },
+  cardAbonoDetail: {
+    fontSize: 12,
     color: colors.textMuted,
   },
   statusBadge: {

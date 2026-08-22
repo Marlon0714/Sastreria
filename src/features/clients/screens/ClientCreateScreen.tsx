@@ -16,7 +16,10 @@ import {
 } from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
-import { findDuplicateByName } from "../../../shared/utils/textSearch";
+import {
+  findDuplicateByName,
+  findDuplicateByPhone,
+} from "../../../shared/utils/textSearch";
 import type { Client } from "../domain/types";
 import type { CreateClientSchemaInput } from "../domain/schemas";
 import { useClientRepository } from "../hooks/ClientsDependenciesProvider";
@@ -95,6 +98,29 @@ export default function ClientCreateScreen({ navigation }: Props) {
       }
     };
 
+    const proceedWithPhoneCheck = (): void => {
+      const duplicatePhone = values.phone
+        ? findDuplicateByPhone(existingClients, values.phone)
+        : null;
+
+      if (duplicatePhone) {
+        Alert.alert(
+          "Teléfono ya registrado",
+          `Ya existe un cliente con este teléfono: ${duplicatePhone.firstName} ${duplicatePhone.lastName}. ¿Deseas guardarlo así de todos modos?`,
+          [
+            { text: "Cancelar", style: "cancel" },
+            {
+              text: "Guardar de todos modos",
+              onPress: () => void proceedCreate(),
+            },
+          ],
+        );
+        return;
+      }
+
+      void proceedCreate();
+    };
+
     const duplicate = findDuplicateByName(
       existingClients,
       values.firstName,
@@ -116,20 +142,20 @@ export default function ClientCreateScreen({ navigation }: Props) {
           },
           {
             text: "Crear de todos modos",
-            onPress: () => void proceedCreate(),
+            onPress: () => proceedWithPhoneCheck(),
           },
         ],
       );
       return;
     }
 
-    await proceedCreate();
+    proceedWithPhoneCheck();
   });
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={styles.content}

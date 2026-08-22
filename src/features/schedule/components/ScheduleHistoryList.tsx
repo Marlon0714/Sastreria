@@ -42,6 +42,7 @@ const FIELD_LABELS: Record<string, string> = {
   date: "Fecha",
   time: "Hora",
   price: "Precio",
+  abono: "Abono",
   operarioId: "Operario",
   notes: "Notas",
   status: "Estado",

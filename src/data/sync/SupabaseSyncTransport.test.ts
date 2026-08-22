@@ -562,6 +562,18 @@ describe("SupabaseSyncTransport", () => {
       const result = await transport.syncSchedule(baseSchedule);
       expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
     });
+
+    it("incluye el abono en el upsert", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncSchedule({ ...baseSchedule, price: 100000, abono: 30000 });
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({ price: 100000, abono: 30000 }),
+        { onConflict: "id" },
+      );
+    });
   });
 
   describe("syncScheduleEvent", () => {
