@@ -76,6 +76,35 @@ function toFormValues(
   };
 }
 
+// Campos de medida validados por upsertCamisaSchema (vía `validate`, ya usado
+// para la conversión/coerción dentro del hook). Sin validarlos antes del
+// submit, los mensajes de error por campo quedaban "muertos": el hook
+// detectaba el valor fuera de rango en su `.parse()` interno pero solo
+// exponía un banner genérico.
+const CAMISA_MEASUREMENT_KEYS: (keyof CamisaFormValues)[] = [
+  "espalda",
+  "hombro",
+  "talleDelantero",
+  "talleTrasero",
+  "distancia",
+  "separacion",
+  "pechoAjustado",
+  "pechoAncho",
+  "cinturaAjustado",
+  "cinturaAncho",
+  "baseAjustado",
+  "baseAncho",
+  "largo",
+  "mangaLarga",
+  "mangaCorta",
+  "escote",
+  "cuelloNormal",
+  "cuelloCruce",
+  "brazo",
+  "puno",
+  "notes",
+];
+
 export default function CamisaMeasurementDetailScreen({
   navigation,
   route,
@@ -85,7 +114,12 @@ export default function CamisaMeasurementDetailScreen({
 
   const { measurement, isLoading, error, reload } =
     useCamisaMeasurement(clientId);
-  const { upsertCamisa, isSubmitting, error: saveError } = useUpsertCamisa();
+  const {
+    upsertCamisa,
+    isSubmitting,
+    error: saveError,
+    validate,
+  } = useUpsertCamisa();
 
   // true mientras el formulario está activo para ingresar/editar datos
   const [isEditing, setIsEditing] = useState(false);
@@ -96,6 +130,7 @@ export default function CamisaMeasurementDetailScreen({
     control,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<CamisaFormValues>({ defaultValues: CAMISA_FORM_DEFAULTS });
 
@@ -116,6 +151,21 @@ export default function CamisaMeasurementDetailScreen({
 
   const onSubmit = useCallback(
     async (values: CamisaFormValues) => {
+      const validationErrors = validate({ ...values, clientId });
+
+      let hasErrors = false;
+      for (const key of CAMISA_MEASUREMENT_KEYS) {
+        const validationError = validationErrors[key];
+        if (validationError?.message) {
+          hasErrors = true;
+          setError(key, { type: "manual", message: validationError.message });
+        }
+      }
+
+      if (hasErrors) {
+        return;
+      }
+
       const result = await upsertCamisa({ ...values, clientId });
       if (result) {
         await reload();
@@ -125,7 +175,7 @@ export default function CamisaMeasurementDetailScreen({
         reset(toFormValues(result as unknown as Record<string, unknown>));
       }
     },
-    [clientId, reload, reset, upsertCamisa],
+    [clientId, reload, reset, setError, upsertCamisa, validate],
   );
 
   const startEdit = useCallback(() => {

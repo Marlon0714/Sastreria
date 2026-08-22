@@ -37,6 +37,23 @@ function toFormValues(
   };
 }
 
+// Campos de medida validados por upsertPantalonSchema (vía `validate`, ya
+// usado para la conversión/coerción dentro del hook). Sin validarlos antes
+// del submit, los mensajes de error por campo quedaban "muertos": el hook
+// detectaba el valor fuera de rango en su `.parse()` interno pero solo
+// exponía un banner genérico.
+const PANTALON_MEASUREMENT_KEYS: (keyof PantalonFormValues)[] = [
+  "largo",
+  "entrepierna",
+  "cintura",
+  "base",
+  "rodilla",
+  "bota",
+  "pierna",
+  "tiro",
+  "notes",
+];
+
 export default function PantalonMeasurementDetailScreen({
   navigation,
   route,
@@ -50,6 +67,7 @@ export default function PantalonMeasurementDetailScreen({
     upsertPantalon,
     isSubmitting,
     error: saveError,
+    validate,
   } = useUpsertPantalon();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -59,6 +77,7 @@ export default function PantalonMeasurementDetailScreen({
     control,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<PantalonFormValues>({ defaultValues: PANTALON_FORM_DEFAULTS });
 
@@ -76,6 +95,21 @@ export default function PantalonMeasurementDetailScreen({
 
   const onSubmit = useCallback(
     async (values: PantalonFormValues) => {
+      const validationErrors = validate({ ...values, clientId });
+
+      let hasErrors = false;
+      for (const key of PANTALON_MEASUREMENT_KEYS) {
+        const validationError = validationErrors[key];
+        if (validationError?.message) {
+          hasErrors = true;
+          setError(key, { type: "manual", message: validationError.message });
+        }
+      }
+
+      if (hasErrors) {
+        return;
+      }
+
       const result = await upsertPantalon({ ...values, clientId });
       if (result) {
         await reload();
@@ -84,7 +118,7 @@ export default function PantalonMeasurementDetailScreen({
         reset(toFormValues(result as unknown as Record<string, unknown>));
       }
     },
-    [clientId, reload, reset, upsertPantalon],
+    [clientId, reload, reset, setError, upsertPantalon, validate],
   );
 
   const startEdit = useCallback(() => {

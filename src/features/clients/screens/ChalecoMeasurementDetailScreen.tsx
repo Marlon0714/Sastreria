@@ -53,6 +53,25 @@ function toFormValues(
   };
 }
 
+// Campos de medida validados por upsertChalecoSchema (vía `validate`, ya
+// usado para la conversión/coerción dentro del hook). Sin validarlos antes
+// del submit, los mensajes de error por campo quedaban "muertos": el hook
+// detectaba el valor fuera de rango en su `.parse()` interno pero solo
+// exponía un banner genérico.
+const CHALECO_MEASUREMENT_KEYS: (keyof ChalecoFormValues)[] = [
+  "espalda",
+  "talleTrasero",
+  "largo",
+  "pechoAjustado",
+  "pechoAncho",
+  "cinturaAjustado",
+  "cinturaAncho",
+  "baseAjustado",
+  "baseAncho",
+  "escote",
+  "notes",
+];
+
 export default function ChalecoMeasurementDetailScreen({
   navigation,
   route,
@@ -62,7 +81,12 @@ export default function ChalecoMeasurementDetailScreen({
 
   const { measurement, isLoading, error, reload } =
     useChalecoMeasurement(clientId);
-  const { upsertChaleco, isSubmitting, error: saveError } = useUpsertChaleco();
+  const {
+    upsertChaleco,
+    isSubmitting,
+    error: saveError,
+    validate,
+  } = useUpsertChaleco();
 
   const [isEditing, setIsEditing] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
@@ -71,6 +95,7 @@ export default function ChalecoMeasurementDetailScreen({
     control,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<ChalecoFormValues>({ defaultValues: CHALECO_FORM_DEFAULTS });
 
@@ -88,6 +113,21 @@ export default function ChalecoMeasurementDetailScreen({
 
   const onSubmit = useCallback(
     async (values: ChalecoFormValues) => {
+      const validationErrors = validate({ ...values, clientId });
+
+      let hasErrors = false;
+      for (const key of CHALECO_MEASUREMENT_KEYS) {
+        const validationError = validationErrors[key];
+        if (validationError?.message) {
+          hasErrors = true;
+          setError(key, { type: "manual", message: validationError.message });
+        }
+      }
+
+      if (hasErrors) {
+        return;
+      }
+
       const result = await upsertChaleco({ ...values, clientId });
       if (result) {
         await reload();
@@ -96,7 +136,7 @@ export default function ChalecoMeasurementDetailScreen({
         reset(toFormValues(result as unknown as Record<string, unknown>));
       }
     },
-    [clientId, reload, reset, upsertChaleco],
+    [clientId, reload, reset, setError, upsertChaleco, validate],
   );
 
   const startEdit = useCallback(() => {
