@@ -12,6 +12,11 @@ interface ResolveOperarioByPinRow {
   role: Role;
 }
 
+// Disuasivo simple para una tablet compartida — no un control de seguridad
+// completo. No necesita persistir entre reinicios de la app.
+const MAX_PIN_ATTEMPTS = 5;
+const PIN_LOCKOUT_MS = 30 * 1000;
+
 /**
  * Resultado de resolver quién debe figurar como autor de una acción.
  * `verified: false` solo ocurre en dispositivo compartido sin conexión —
@@ -80,6 +85,28 @@ export function useIdentityGate(): UseIdentityGateResult {
   const pendingResolversRef = useRef<PendingResolve[]>([]);
   const isPinPromptVisibleRef = useRef(false);
   const isOfflineActorPickerVisibleRef = useRef(false);
+  // Disuasivo de intentos de PIN — en memoria, no necesita persistir entre
+  // reinicios de la app. Se resetea al acertar o al cerrar/reabrir el modal
+  // para una acción distinta.
+  const pinAttemptsRef = useRef(0);
+  const pinLockoutUntilRef = useRef<number | null>(null);
+
+  const resetPinAttempts = useCallback((): void => {
+    pinAttemptsRef.current = 0;
+    pinLockoutUntilRef.current = null;
+  }, []);
+
+  const registerFailedPinAttempt = useCallback((): void => {
+    pinAttemptsRef.current += 1;
+    if (pinAttemptsRef.current >= MAX_PIN_ATTEMPTS) {
+      pinLockoutUntilRef.current = Date.now() + PIN_LOCKOUT_MS;
+      setPinError(
+        "Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo.",
+      );
+    } else {
+      setPinError("PIN incorrecto. Intenta de nuevo.");
+    }
+  }, []);
 
   const resolveAllPending = useCallback(
     (identity: ResolvedIdentity | null): void => {
@@ -133,16 +160,29 @@ export function useIdentityGate(): UseIdentityGateResult {
     }
 
     setPinError(null);
+    resetPinAttempts();
     isPinPromptVisibleRef.current = true;
     setIsPinPromptVisible(true);
 
     return new Promise((resolve) => {
       pendingResolversRef.current.push(resolve);
     });
-  }, [ownProfile, resolvedActor, openOfflineActorPicker]);
+  }, [ownProfile, resolvedActor, openOfflineActorPicker, resetPinAttempts]);
 
   const submitPin = useCallback(
     async (pin: string): Promise<void> => {
+      const now = Date.now();
+      if (pinLockoutUntilRef.current !== null) {
+        if (now < pinLockoutUntilRef.current) {
+          setPinError(
+            "Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo.",
+          );
+          return;
+        }
+        // El cooldown ya terminó: se permite un nuevo intento desde cero.
+        resetPinAttempts();
+      }
+
       try {
         const supabase = getSupabaseClient();
         const { data, error } = await supabase.rpc("resolve_operario_by_pin", {
@@ -159,7 +199,7 @@ export function useIdentityGate(): UseIdentityGateResult {
         const row = (data as ResolveOperarioByPinRow[] | null)?.[0];
 
         if (!row) {
-          setPinError("PIN incorrecto. Intenta de nuevo.");
+          registerFailedPinAttempt();
           return;
         }
 
@@ -171,6 +211,7 @@ export function useIdentityGate(): UseIdentityGateResult {
         };
 
         setResolvedActor(resolvedProfile);
+        resetPinAttempts();
         isPinPromptVisibleRef.current = false;
         setIsPinPromptVisible(false);
         resolveAllPending({ profile: resolvedProfile, verified: true });
@@ -180,14 +221,15 @@ export function useIdentityGate(): UseIdentityGateResult {
         );
       }
     },
-    [setResolvedActor, resolveAllPending],
+    [setResolvedActor, resolveAllPending, resetPinAttempts, registerFailedPinAttempt],
   );
 
   const cancelPinPrompt = useCallback((): void => {
     isPinPromptVisibleRef.current = false;
     setIsPinPromptVisible(false);
+    resetPinAttempts();
     resolveAllPending(null);
-  }, [resolveAllPending]);
+  }, [resolveAllPending, resetPinAttempts]);
 
   const submitOfflineActor = useCallback(
     (profile: Profile): void => {

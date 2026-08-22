@@ -12,7 +12,7 @@ import {
 interface PinPromptModalProps {
   visible: boolean;
   error: string | null;
-  onSubmit: (pin: string) => void;
+  onSubmit: (pin: string) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -25,10 +25,18 @@ export function PinPromptModal({
   onCancel,
 }: PinPromptModalProps) {
   const [pin, setPin] = useState("");
+  // Evita que un doble-tap dispare dos verificaciones concurrentes del
+  // mismo PIN mientras la promesa de onSubmit está en curso.
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (): void => {
-    onSubmit(pin);
-    setPin("");
+  const handleSubmit = async (): Promise<void> => {
+    setIsSubmitting(true);
+    try {
+      await onSubmit(pin);
+    } finally {
+      setIsSubmitting(false);
+      setPin("");
+    }
   };
 
   const handleCancel = (): void => {
@@ -61,6 +69,7 @@ export function PinPromptModal({
             maxLength={PIN_LENGTH}
             accessibilityLabel="PIN"
             autoFocus
+            editable={!isSubmitting}
           />
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -68,6 +77,7 @@ export function PinPromptModal({
           <View style={styles.buttonRow}>
             <TouchableOpacity
               onPress={handleCancel}
+              disabled={isSubmitting}
               accessibilityLabel="Cancelar"
             >
               <Text style={styles.cancelText}>Cancelar</Text>
@@ -75,13 +85,17 @@ export function PinPromptModal({
             <TouchableOpacity
               style={[
                 styles.confirmButton,
-                pin.length !== PIN_LENGTH ? styles.confirmButtonDisabled : null,
+                pin.length !== PIN_LENGTH || isSubmitting
+                  ? styles.confirmButtonDisabled
+                  : null,
               ]}
               onPress={handleSubmit}
-              disabled={pin.length !== PIN_LENGTH}
+              disabled={pin.length !== PIN_LENGTH || isSubmitting}
               accessibilityLabel="Confirmar PIN"
             >
-              <Text style={styles.confirmText}>Confirmar</Text>
+              <Text style={styles.confirmText}>
+                {isSubmitting ? "Verificando..." : "Confirmar"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

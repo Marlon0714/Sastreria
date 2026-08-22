@@ -1,4 +1,5 @@
 import type { Session } from "@supabase/supabase-js";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 
 import type { Profile } from "../../features/auth/domain/profile";
 import { getSupabaseClient } from "./client";
@@ -8,10 +9,35 @@ export interface AuthSession {
   accessToken: string;
 }
 
+/**
+ * Se lanza desde `getSession()` (y por lo tanto desde `hasValidSession()`)
+ * cuando Supabase intentó refrescar el access token expirado y el intento
+ * falló por un problema de RED/reintentable — no porque el refresh token
+ * haya sido invalidado de verdad. Sin esta distinción, un dispositivo sin
+ * conexión en el momento exacto en que el token de 1h expira vería su
+ * sesión tratada como inexistente y sería mandado al login, algo que
+ * contradice el propósito offline-first de la app. Quien llame a
+ * `getSession()`/`hasValidSession()` debe capturar este error por separado
+ * y NO tratarlo como "no hay sesión".
+ */
+export class AuthNetworkError extends Error {
+  constructor(message = "[auth] Network error while checking session.") {
+    super(message);
+    this.name = "AuthNetworkError";
+  }
+}
+
 export interface SupabaseAuthRepositoryPort {
   signIn(email: string, password: string): Promise<AuthSession>;
   signOut(): Promise<void>;
+  /**
+   * Puede lanzar {@link AuthNetworkError} cuando el refresh del token
+   * expirado falla por conectividad — en ese caso NO significa que la
+   * sesión no exista, significa que no se pudo confirmar. Quien llama debe
+   * distinguir ese caso de un `null` real.
+   */
   getSession(): Promise<AuthSession | null>;
+  /** Puede lanzar {@link AuthNetworkError}; ver `getSession()`. */
   hasValidSession(): Promise<boolean>;
   getProfile(userId: string): Promise<Profile | null>;
   /**
@@ -39,6 +65,11 @@ export class SupabaseAuthRepository implements SupabaseAuthRepositoryPort {
     });
 
     if (error || !data.session) {
+      if (error && isAuthRetryableFetchError(error)) {
+        throw new Error(
+          "No se pudo conectar. Revisa tu conexión e intenta de nuevo.",
+        );
+      }
       // Sanitized error: do not expose email/password in message
       throw new Error("[auth] Sign in failed. Check credentials and try again.");
     }
@@ -59,7 +90,18 @@ export class SupabaseAuthRepository implements SupabaseAuthRepositoryPort {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.auth.getSession();
 
-    if (error || !data.session) {
+    if (error) {
+      if (isAuthRetryableFetchError(error)) {
+        // El access token expiró y supabase-js intentó refrescarlo por red;
+        // el intento falló por conectividad, no porque el refresh token
+        // haya sido invalidado. No sabemos si la sesión sigue siendo
+        // válida, así que NO la tratamos como inexistente.
+        throw new AuthNetworkError();
+      }
+      return null;
+    }
+
+    if (!data.session) {
       return null;
     }
 

@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import type { SupabaseAuthRepositoryPort } from "../../../data/supabase/SupabaseAuthRepository";
+import { AuthNetworkError } from "../../../data/supabase/SupabaseAuthRepository";
 import { useAuth } from "./useAuth";
 import { useIdentityStore } from "../../../shared/state/identityStore";
 
@@ -188,6 +189,62 @@ describe("useAuth", () => {
       expect(result.current.profile).toBeNull();
     });
 
+    it("sigue autenticado usando el perfil cacheado si el chequeo de arranque falla por un error de RED (no una invalidación real)", async () => {
+      // Escenario del fix crítico: el access token expiró justo cuando el
+      // dispositivo está sin conexión. supabase-js falla al refrescarlo por
+      // red — eso NO debe tratarse igual que una sesión invalidada de
+      // verdad, o un operario legítimo terminaría en LoginScreen (que
+      // requiere red), rompiendo el propósito offline-first de la app.
+      secureStoreData.set(
+        "sastreria_cached_profile",
+        JSON.stringify({ profile: testProfile, cachedAt: Date.now() }),
+      );
+      const repo = makeRepo({
+        hasValidSession: jest
+          .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
+          .mockRejectedValue(new AuthNetworkError()),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.profile).toEqual(testProfile);
+    });
+
+    it("no autentica si el chequeo de arranque falla por red y no hay ningún perfil cacheado", async () => {
+      const repo = makeRepo({
+        hasValidSession: jest
+          .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
+          .mockRejectedValue(new AuthNetworkError()),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.isAuthenticated).toBe(false);
+    });
+
+    it("cierra sesión ante una invalidación confirmada (error no relacionado a red) en el chequeo de arranque", async () => {
+      // Contraparte del caso anterior: un error de auth NO reintentable
+      // (ej. refresh token muerto de verdad) sí debe forzar el logout,
+      // incluso si hay perfil cacheado.
+      secureStoreData.set(
+        "sastreria_cached_profile",
+        JSON.stringify({ profile: testProfile, cachedAt: Date.now() }),
+      );
+      const repo = makeRepo({
+        hasValidSession: jest
+          .fn<SupabaseAuthRepositoryPort["hasValidSession"]>()
+          .mockRejectedValue(new Error("refresh_token_not_found")),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.isAuthenticated).toBe(false);
+    });
+
     it("ignora un perfil cacheado en formato viejo (sin cachedAt)", async () => {
       secureStoreData.set(
         "sastreria_cached_profile",
@@ -336,6 +393,53 @@ describe("useAuth", () => {
       });
 
       expect(result.current.error).toBe("Error al iniciar sesión.");
+    });
+
+    it("no autentica y setea un error claro si getProfile falla y no hay perfil cacheado (login nuevo en dispositivo nuevo)", async () => {
+      // Regresión: antes, resolveProfileForSession tragaba el error de
+      // getProfile y llamaba applyProfile(null) sin relanzar; signIn()
+      // seguía marcando isAuthenticated=true con role=null, lo que
+      // FeatureTabsNavigator interpreta como "no restringir" y expone las
+      // pestañas de dueño a un operario cuyo perfil nunca se resolvió.
+      const repo = makeRepo({
+        getProfile: jest
+          .fn<SupabaseAuthRepositoryPort["getProfile"]>()
+          .mockRejectedValue(new Error("network error")),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      await act(async () => {
+        await result.current.signIn("user@example.com", "password123");
+      });
+
+      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.error).toBe(
+        "No se pudo verificar tu cuenta. Revisa tu conexión e intenta de nuevo.",
+      );
+      expect(result.current.profile).toBeNull();
+    });
+
+    it("sí autentica usando el perfil cacheado si getProfile falla pero hay una cache vigente", async () => {
+      secureStoreData.set(
+        "sastreria_cached_profile",
+        JSON.stringify({ profile: testProfile, cachedAt: Date.now() }),
+      );
+      const repo = makeRepo({
+        getProfile: jest
+          .fn<SupabaseAuthRepositoryPort["getProfile"]>()
+          .mockRejectedValue(new Error("network error")),
+      });
+      const { result } = renderHook(() => useAuth(repo));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      await act(async () => {
+        await result.current.signIn("user@example.com", "password123");
+      });
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.error).toBeNull();
+      expect(result.current.profile).toEqual(testProfile);
     });
 
     it("limpia el error previo al intentar de nuevo", async () => {
