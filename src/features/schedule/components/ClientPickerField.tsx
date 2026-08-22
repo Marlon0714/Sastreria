@@ -5,6 +5,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -104,9 +105,23 @@ export const ClientPickerField = forwardRef<
     };
   }, [clientRepository]);
 
+  // Evita que el efecto de sincronización de abajo pise el texto recién
+  // prellenado al tocar el lápiz de "Cambiar cliente": ese tap suelta
+  // `clientId` (pasa a undefined) SIN tocar `unregisteredClientName` a
+  // propósito (ver Fix del lápiz más abajo), para no desvincular al cliente
+  // real hasta que el usuario realmente edite o confirme el cambio. Sin
+  // este flag, el cambio de `clientId` dispararía el efecto y volvería a
+  // fijar `nameInput` a "" (porque `unregisteredName` sigue undefined),
+  // borrando el nombre que se acaba de prellenar.
+  const skipNextSyncRef = useRef(false);
+
   // Mantiene el texto sincronizado si el nombre "sin registrar" cambia desde
   // afuera (ej. al cargar un turno existente en el formulario de edición).
   useEffect(() => {
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false;
+      return;
+    }
     if (!clientId) {
       setNameInput(unregisteredName ?? "");
     }
@@ -382,10 +397,22 @@ export const ClientPickerField = forwardRef<
               // Deja el nombre actual editable en vez de borrarlo — antes
               // había que volver a escribir todo desde cero solo para
               // corregir o buscar a alguien parecido.
+              //
+              // A propósito NO se llama a `onChangeUnregisteredName` acá:
+              // hacerlo escribiría de inmediato "cliente sin registrar" en
+              // el estado real del formulario, y si el usuario guarda el
+              // turno justo después de tocar el lápiz (sin editar nada
+              // más), se perdería el vínculo con el cliente real en
+              // silencio. Al dejar `clientId` y `unregisteredClientName`
+              // ambos sin definir, un guardado inmediato debe fallar la
+              // validación normal ("selecciona un cliente") en vez de
+              // sustituir el valor guardado por uno incorrecto. Solo cuando
+              // el usuario siga escribiendo (`onChangeText` de abajo) se
+              // reporta el nombre sin registrar.
               const currentName = `${selectedClient.firstName} ${selectedClient.lastName}`;
+              skipNextSyncRef.current = true;
               onChangeClientId(undefined);
               setNameInput(currentName);
-              onChangeUnregisteredName(currentName);
             }}
           >
             <Ionicons name="pencil" size={16} color={colors.textMuted} />

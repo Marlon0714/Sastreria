@@ -6,7 +6,13 @@ import { Alert } from "react-native";
 import type { Client, CreateClientDTO } from "../../clients/domain/types";
 import { ClientPickerField, type ClientPickerFieldHandle } from "./ClientPickerField";
 
-function ControlledHarness({ initialClientId }: { initialClientId?: string }) {
+function ControlledHarness({
+  initialClientId,
+  onChangeUnregisteredNameSpy,
+}: {
+  initialClientId?: string;
+  onChangeUnregisteredNameSpy?: (name: string | undefined) => void;
+}) {
   const [clientId, setClientId] = useState<string | undefined>(
     initialClientId,
   );
@@ -18,7 +24,10 @@ function ControlledHarness({ initialClientId }: { initialClientId?: string }) {
       clientId={clientId}
       unregisteredName={unregisteredName}
       onChangeClientId={setClientId}
-      onChangeUnregisteredName={setUnregisteredName}
+      onChangeUnregisteredName={(name) => {
+        onChangeUnregisteredNameSpy?.(name);
+        setUnregisteredName(name);
+      }}
     />
   );
 }
@@ -181,6 +190,28 @@ describe("ClientPickerField", () => {
     expect(getByLabelText("Nombre del cliente").props.value).toBe(
       "Ana Torres",
     );
+  });
+
+  it("tocar el lápiz no desvincula al cliente en silencio: solo prellena el texto, sin tocar unregisteredClientName", async () => {
+    const onChangeUnregisteredNameSpy = jest.fn();
+    const { findByLabelText, getByLabelText } = render(
+      <ControlledHarness
+        initialClientId={clients[0]!.id}
+        onChangeUnregisteredNameSpy={onChangeUnregisteredNameSpy}
+      />,
+    );
+
+    fireEvent.press(await findByLabelText("Cambiar cliente"));
+
+    // El texto visible ya muestra el nombre prellenado...
+    expect(getByLabelText("Nombre del cliente").props.value).toBe(
+      "Ana Torres",
+    );
+    // ...pero `unregisteredClientName` sigue sin definir: si el usuario
+    // guardara el turno en este momento (sin editar nada más), la
+    // validación XOR de clientId/unregisteredClientName debe fallar en vez
+    // de sustituir silenciosamente el vínculo real por este nombre.
+    expect(onChangeUnregisteredNameSpy).not.toHaveBeenCalled();
   });
 
   it("muestra un mensaje de error cuando se provee", async () => {

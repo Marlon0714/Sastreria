@@ -168,14 +168,24 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
       });
   }, [isSearchingDia, allSchedules, activeCategory, matchesSearch]);
 
+  // Necesario para poder buscar coincidencias en fechas distintas a la
+  // seleccionada (ver `searchResults`) — la agenda normalmente solo carga
+  // el día seleccionado y los "sin fecha" por separado. Se reutiliza (no
+  // solo al enfocar la pantalla) para que las acciones del panel rápido
+  // (marcar listo/entregado, asignar operario) también refresquen los
+  // resultados de búsqueda de inmediato — de lo contrario un turno recién
+  // "entregado" seguía apareciendo en `searchResults` (que excluye ese
+  // status) hasta salir y reentrar a la pantalla.
+  const reloadAllSchedules = useCallback(async (): Promise<void> => {
+    const all = await scheduleRepository.getAll();
+    setAllSchedules(all);
+  }, [scheduleRepository]);
+
   useFocusEffect(
     useCallback(() => {
       void reload();
-      // Necesario para poder buscar coincidencias en fechas distintas a la
-      // seleccionada (ver `searchResults`) — la agenda normalmente solo
-      // carga el día seleccionado y los "sin fecha" por separado.
-      void scheduleRepository.getAll().then(setAllSchedules);
-    }, [reload, scheduleRepository]),
+      void reloadAllSchedules();
+    }, [reload, reloadAllSchedules]),
   );
 
   useEffect(() => {
@@ -223,6 +233,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         setSheetSchedule(updated);
       }
       void reload();
+      void reloadAllSchedules();
     }
   };
 
@@ -234,6 +245,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         setSheetSchedule(updated);
       }
       void reload();
+      void reloadAllSchedules();
     }
   };
 
@@ -247,6 +259,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         setSheetSchedule(updated);
       }
       void reload();
+      void reloadAllSchedules();
     }
   };
 

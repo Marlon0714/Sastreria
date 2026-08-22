@@ -553,6 +553,63 @@ describe("ScheduleDayViewScreen", () => {
       });
     });
 
+    it("al marcar un turno como entregado con una búsqueda activa, desaparece de los resultados de búsqueda sin salir de la pantalla", async () => {
+      const searchedSchedule: Schedule = {
+        ...scheduledOne,
+        id: "schedule-buscado",
+        operarioId: "op-1",
+        date: "2026-08-20",
+        time: "10:00",
+      };
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload: jest.fn(async () => Promise.resolve()),
+      });
+      // Primera llamada (al enfocar la pantalla): el turno todavía no está
+      // entregado, aparece en los resultados. Segunda llamada (tras marcar
+      // entregado desde el panel rápido): `allSchedules` debe refrescarse
+      // para que `searchResults` deje de incluirlo de inmediato.
+      mockScheduleGetAll
+        .mockResolvedValueOnce([searchedSchedule])
+        .mockResolvedValueOnce([{ ...searchedSchedule, status: "entregado" }]);
+      mockMarkDelivered.mockResolvedValueOnce({
+        ...searchedSchedule,
+        status: "entregado",
+      });
+
+      const { getByLabelText, findByLabelText, queryByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.changeText(
+        getByLabelText("Buscar cliente en la agenda"),
+        "ana",
+      );
+
+      fireEvent.press(
+        await findByLabelText(
+          "Ver turno de Ana Torres (20/08 · 10:00, schedule-buscado)",
+        ),
+      );
+
+      fireEvent.press(await findByLabelText("Marcar entregado"));
+
+      await waitFor(() => {
+        expect(mockMarkDelivered).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(
+          queryByLabelText(
+            "Ver turno de Ana Torres (20/08 · 10:00, schedule-buscado)",
+          ),
+        ).toBeNull();
+      });
+    });
+
     it("cierra el panel al presionar Cerrar", async () => {
       mockUseScheduleDayView.mockReturnValue({
         dateSchedules: [scheduledOne],
