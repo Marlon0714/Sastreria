@@ -11,6 +11,8 @@ type DeleteEntityType =
   | "client"
   | "camisa_measurement"
   | "pantalon_measurement"
+  | "saco_measurement"
+  | "chaleco_measurement"
   | "client_talla"
   | "pricing_service"
   | "schedule"
@@ -247,6 +249,25 @@ function getLastCursor<T extends { id: string }>(
   return createCursor(last.id, timestampAccessor(last));
 }
 
+/**
+ * Normaliza un timestamp traído de Supabase a ISO-8601 canónico (precisión
+ * fija de milisegundos + sufijo "Z"), el mismo formato que produce
+ * localmente `new Date().toISOString()`.
+ *
+ * Postgres/PostgREST puede devolver el mismo instante recortando los ceros
+ * decimales finales (ej. "...10:05:00.5+00:00" en vez de
+ * "...10:05:00.500Z"). Si ese valor se compara como texto plano en el
+ * `WHERE excluded.updated_at >= tabla.updated_at` del upsert, el caracter
+ * '+' (0x2B) es menor que '0' (0x30) en orden lexicográfico: una fila
+ * remota igual o más reciente podía perder la comparación y la fila local
+ * quedaba en sync_status = 'pending' para siempre, reintentando sync sin
+ * fin. Normalizar ambos lados a este formato antes de bindear el parámetro
+ * restaura el orden lexicográfico correcto.
+ */
+function normalizeTimestamp(value: string): string {
+  return new Date(value).toISOString();
+}
+
 export class SupabasePullSync {
   // Mismo patrón de coalescing que SyncOrchestrator (push): si varios
   // triggers (bootstrap, foreground, realtime, network_recovered) disparan
@@ -359,7 +380,7 @@ export class SupabasePullSync {
           row.cedula ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -465,7 +486,7 @@ export class SupabasePullSync {
           row.changed_at ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -548,7 +569,7 @@ export class SupabasePullSync {
           row.changed_at ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -610,7 +631,7 @@ export class SupabasePullSync {
           row.value,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -674,7 +695,7 @@ export class SupabasePullSync {
           row.category,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -779,7 +800,7 @@ export class SupabasePullSync {
           row.puno ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -864,7 +885,7 @@ export class SupabasePullSync {
           row.escote ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -992,7 +1013,7 @@ export class SupabasePullSync {
           row.bota ?? null,
           row.notes ?? null,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -1074,7 +1095,7 @@ export class SupabasePullSync {
           row.ready_at,
           row.delivered_at,
           row.created_at,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });
@@ -1195,7 +1216,7 @@ export class SupabasePullSync {
           row.display_name,
           row.role,
           row.is_shared_device ? 1 : 0,
-          row.updated_at,
+          normalizeTimestamp(row.updated_at),
         );
       }
     });

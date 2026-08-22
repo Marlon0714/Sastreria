@@ -1076,6 +1076,98 @@ describe("SupabasePullSync", () => {
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledTimes(2);
   });
 
+  it("normaliza updated_at con offset +00:00 recortado antes de bindear el UPSERT (evita que la comparación de texto plano lo trate como más viejo)", async () => {
+    // Arrange — Postgres/PostgREST puede devolver el mismo instante que
+    // localmente se guardó como "...10:05:00.500Z" recortando los ceros
+    // decimales finales, ej. "...10:05:00.5+00:00". Comparados como texto
+    // plano, '+' (0x2B) < '0' (0x30), así que sin normalizar la fila remota
+    // (igual o más reciente) perdería la comparación
+    // `WHERE excluded.updated_at >= clients.updated_at` y la fila local
+    // quedaría en sync_status = 'pending' para siempre.
+    mockQueryResults.clients.push({
+      data: [
+        {
+          id: "c-tz",
+          first_name: "Carla",
+          last_name: "Ruiz",
+          phone: "3005551111",
+          notes: null,
+          created_at: "2026-05-01T10:00:00.000Z",
+          updated_at: "2026-05-01T10:05:00.5+00:00",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const clientCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO clients"),
+    );
+    expect(clientCalls).toHaveLength(1);
+    const [, ...params] = clientCalls[0] ?? [];
+
+    // El valor bindeado (usado tanto para el INSERT como para el lado
+    // "excluded.updated_at" de la comparación LWW) debe quedar en formato
+    // canónico ISO — igual al que produce localmente `new Date().toISOString()`
+    // — y NO conservar el offset "+00:00" original.
+    expect(params).toContain("2026-05-01T10:05:00.500Z");
+    expect(params).not.toContain("2026-05-01T10:05:00.5+00:00");
+
+    // El checkpoint también debe avanzar con el timestamp canónico.
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith("clients", {
+      id: "c-tz",
+      updatedAt: "2026-05-01T10:05:00.500Z",
+    });
+  });
+
+  it("normaliza updatedAt (camelCase) de pricing_services con offset recortado antes de bindear el UPSERT", async () => {
+    // Mismo escenario que clients, pero para la tabla que usa columnas
+    // camelCase (pricing_services.updatedAt) — confirma que la normalización
+    // se aplica de forma consistente sin importar el nombre de columna.
+    mockQueryResults.pricing_services.push({
+      data: [
+        {
+          id: "price-tz",
+          name: "Ajuste de basta",
+          price: 15000,
+          category: "arreglo",
+          notes: null,
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:05:00.5+00:00",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const pricingCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO pricing_services"),
+    );
+    expect(pricingCalls).toHaveLength(1);
+    const [, ...params] = pricingCalls[0] ?? [];
+
+    expect(params).toContain("2026-08-01T10:05:00.500Z");
+    expect(params).not.toContain("2026-08-01T10:05:00.5+00:00");
+    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
+      "pricing_services",
+      { id: "price-tz", updatedAt: "2026-08-01T10:05:00.500Z" },
+    );
+  });
+
   it("throws when clients incremental fetch fails", async () => {
     // Arrange
     mockQueryResults.clients.push({

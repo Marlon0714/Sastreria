@@ -74,6 +74,11 @@ export const MIGRATIONS: readonly Migration[] = [
         updated_at TEXT NOT NULL,
         sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'synced', 'error')),
         UNIQUE(client_id, type),
+        -- ON DELETE CASCADE declarado por documentación del esquema, pero NO
+        -- está activo: PRAGMA foreign_keys nunca se enciende en src/data/local/,
+        -- así que SQLite no lo aplica. El borrado en cascada de client_tallas
+        -- al eliminar un cliente se maneja manualmente en
+        -- ClientRepositoryImpl.delete() y en SupabasePullSync.pullDeleteLogIncremental.
         FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
       );
       `,

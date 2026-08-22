@@ -230,6 +230,8 @@ interface DeleteQueueRow {
     | "client"
     | "camisa_measurement"
     | "pantalon_measurement"
+    | "saco_measurement"
+    | "chaleco_measurement"
     | "client_talla"
     | "pricing_service"
     | "schedule"
