@@ -1036,6 +1036,113 @@ Para cambiar correo o contraseña no hace falta ninguna función nueva: la app u
 
 ---
 
+### v35_owner_pin_on_shared_device (2026-08-24)
+
+**Contexto:** el dueño a veces usa la tablet compartida del mostrador igual que un operario, y necesita poder identificarse ahí con un PIN propio. Las tres funciones de PIN (`resolve_operario_by_pin`, `set_operario_pin`, y el chequeo de duplicados de `create_operario_with_pin`) filtraban explícitamente `role = 'operario'`, así que un perfil `role = 'owner'` nunca podía tener PIN ni ser reconocido por él — `set_operario_pin` fallaba con "No se encontró un operario con id=..." y, aunque se hubiera guardado un hash a mano, `resolve_operario_by_pin` jamás lo iba a encontrar.
+
+Esta migración solo reemplaza las mismas 3 funciones (no toca ninguna tabla ni fila existente): se quita el filtro por `role` en la búsqueda/resolución por PIN, así que cualquier perfil con `pin_hash` (operario u owner) participa por igual. `create_operario_with_pin` sigue creando únicamente operarios nuevos (el `INSERT` sigue fijando `role = 'operario'`), solo se amplía su chequeo de "PIN duplicado" para que compare contra cualquier perfil, no solo operarios. No requiere ningún cambio de código ni build — `resolve_operario_by_pin` ya se llama igual desde la app instalada.
+
+```sql
+CREATE OR REPLACE FUNCTION create_operario_with_pin(
+  operario_id UUID,
+  operario_display_name TEXT,
+  candidate_pin TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_pin TEXT := trim(candidate_pin);
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM profiles
+    WHERE pin_hash IS NOT NULL
+      AND pin_hash = crypt(trimmed_pin, pin_hash)
+  ) THEN
+    RAISE EXCEPTION 'Ya existe otro usuario con ese PIN. Elige un PIN distinto.';
+  END IF;
+
+  INSERT INTO profiles (id, display_name, role, is_shared_device, pin_hash)
+  VALUES (operario_id, operario_display_name, 'operario', false, crypt(trimmed_pin, gen_salt('bf')));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION set_operario_pin(
+  operario_id UUID,
+  candidate_pin TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_pin TEXT := trim(candidate_pin);
+  updated_count INT;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id <> operario_id AND pin_hash IS NOT NULL
+      AND pin_hash = crypt(trimmed_pin, pin_hash)
+  ) THEN
+    RAISE EXCEPTION 'Ya existe otro usuario con ese PIN. Elige un PIN distinto.';
+  END IF;
+
+  UPDATE profiles
+  SET pin_hash = crypt(trimmed_pin, gen_salt('bf')), updated_at = now()
+  WHERE id = operario_id;
+
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  IF updated_count = 0 THEN
+    RAISE EXCEPTION 'No se encontró ningún perfil con id=%. Verifica el UUID con: SELECT id, display_name, role FROM profiles;', operario_id;
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION resolve_operario_by_pin(candidate_pin TEXT)
+RETURNS TABLE (id UUID, display_name TEXT, role TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_pin TEXT := trim(candidate_pin);
+  match_count INT;
+BEGIN
+  SELECT COUNT(*) INTO match_count
+  FROM profiles p
+  WHERE p.pin_hash IS NOT NULL
+    AND p.pin_hash = crypt(trimmed_pin, p.pin_hash);
+
+  IF match_count <> 1 THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT p.id, p.display_name, p.role FROM profiles p
+  WHERE p.pin_hash IS NOT NULL
+    AND p.pin_hash = crypt(trimmed_pin, p.pin_hash);
+END;
+$$;
+```
+
+**Después de correr esto**, para ponerle PIN al dueño:
+
+```sql
+-- 1. Confirma el UUID exacto del perfil del dueño:
+SELECT id, display_name, role FROM profiles WHERE role = 'owner';
+
+-- 2. Asigna el PIN (falla con error explícito si el UUID no corresponde a nadie,
+--    o si ese PIN ya lo tiene otra persona):
+SELECT set_operario_pin('<uuid-copiado-del-paso-1>', '<pin-nuevo-de-4-dígitos>');
+```
+
+Desde ahí, ese PIN funciona en la tablet compartida exactamente igual que el de un operario (el nombre de la función y del parámetro `operario_id` se quedan así por compatibilidad — ahora "quien tiene PIN", no solo "operario").
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
