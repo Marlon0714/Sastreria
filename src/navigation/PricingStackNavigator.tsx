@@ -7,19 +7,29 @@ import PricingPlaceholderScreen from "../features/pricing/screens/PricingPlaceho
 import PricingListScreen from "../features/pricing/screens/PricingListScreen";
 import PricingDetailScreen from "../features/pricing/screens/PricingDetailScreen";
 import PricingFormScreen from "../features/pricing/screens/PricingFormScreen";
+import { useIdentityStore } from "../shared/state/identityStore";
 import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { PricingStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<PricingStackParamList>();
 const SwipeablePricingListScreen = withTabSwipeLock(PricingListScreen);
+const SwipeableMyActivityScreen = withTabSwipeLock(MyActivityScreen);
 
 export default function PricingStackNavigator() {
+  // Un operario en su propio dispositivo no debe ver el catálogo de precios
+  // de todos los servicios — en esa posición de pestaña ve directamente su
+  // propia actividad del día ("Mis arreglos") en vez de la lista de precios.
+  const role = useIdentityStore((state) => state.ownProfile?.role ?? null);
+  const isOperario = role === "operario";
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="PricingList"
-        component={SwipeablePricingListScreen}
-        options={{ title: "Precios" }}
+        component={
+          isOperario ? SwipeableMyActivityScreen : SwipeablePricingListScreen
+        }
+        options={{ title: isOperario ? "Mis arreglos" : "Precios" }}
       />
       <Stack.Screen
         name="PricingDetail"

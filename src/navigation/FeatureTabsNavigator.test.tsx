@@ -33,6 +33,21 @@ jest.mock("../features/pricing/hooks/usePricingServices", () => ({
   }),
 }));
 
+// Para un operario, PricingTab ya no muestra la lista de precios sino "Mis
+// arreglos" (ver PricingStackNavigator) — se mockea igual que
+// usePricingServices arriba, sin datos, solo para que el tab cargue.
+jest.mock("../features/account/hooks/useMyActivity", () => ({
+  useMyActivity: () => ({
+    items: [],
+    total: 0,
+    isLoading: false,
+    error: null,
+    priceError: null,
+    reload: jest.fn(),
+    addPrice: jest.fn(),
+  }),
+}));
+
 jest.mock("./ClientsStackNavigator", () => {
   const React = jest.requireActual("react") as typeof import("react");
   const { Text } = jest.requireActual(
@@ -73,7 +88,7 @@ describe("RootNavigator tabs composition", () => {
     useIdentityStore.getState().reset();
   });
 
-  it("restringe a un operario en su propio dispositivo a solo Agenda", () => {
+  it("restringe a un operario en su propio dispositivo a Agenda y Mis arreglos (no el catálogo de precios)", async () => {
     useIdentityStore.getState().setOwnProfile({
       id: "user-1",
       displayName: "María Gómez",
@@ -81,12 +96,23 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: false,
     });
 
-    const { getByTestId, queryByTestId } = renderRootNavigator();
+    const { getByTestId, queryByTestId, getAllByText, findByText } =
+      renderRootNavigator();
 
     expect(queryByTestId("tab-ClientsTab")).toBeNull();
     expect(queryByTestId("tab-TallasTab")).toBeNull();
-    expect(queryByTestId("tab-PricingTab")).toBeNull();
     expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
+    expect(getByTestId("tab-PricingTab")).toBeTruthy();
+    // El label de esa pestaña ya no dice "Precios" para un operario (aparece
+    // tanto en el header como en la barra de pestañas).
+    expect(getAllByText("Mis arreglos").length).toBeGreaterThan(0);
+
+    fireEvent.press(getByTestId("tab-PricingTab"));
+
+    // Muestra el contenido de "Mis arreglos", no el catálogo de precios.
+    expect(
+      await findByText("No hiciste ningún arreglo este día."),
+    ).toBeTruthy();
   });
 
   it("muestra todas las tabs en la tablet compartida sin importar su role", () => {
