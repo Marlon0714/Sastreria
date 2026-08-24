@@ -79,6 +79,10 @@ export default function ClientListScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       void reload();
+      // Al volver a esta pestaña, vuelve a mostrar solo la primera página
+      // en vez de mantener todo lo que se hubiera cargado con "Cargar más"
+      // antes de cambiar de pestaña.
+      setVisibleCount(PAGE_SIZE);
     }, [reload]),
   );
 

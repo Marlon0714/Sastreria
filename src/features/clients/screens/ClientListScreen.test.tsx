@@ -525,4 +525,40 @@ describe("ClientListScreen", () => {
 
     expect(getByLabelText("Cargar más clientes")).toBeTruthy();
   });
+
+  it("resets the visible count when the screen regains focus after a tab switch", () => {
+    const clients = Array.from({ length: 25 }, (_, i) =>
+      clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
+    );
+    const reloadA = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients,
+      isLoading: false,
+      error: null,
+      reload: reloadA,
+    });
+
+    const { getByLabelText, getByText, queryByLabelText, rerender } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Cargar más clientes"));
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
+
+    // El mock de useFocusEffect solo vuelve a correr el efecto si su
+    // identidad cambia (no hay blur/focus real en este harness) — cambiar
+    // la referencia de `reload` simula "se volvió a enfocar la pantalla"
+    // (ej. se cambió de pestaña y se regresó a Clientes).
+    const reloadB = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients,
+      isLoading: false,
+      error: null,
+      reload: reloadB,
+    });
+    rerender(<ClientListScreen {...buildProps(jest.fn())} />);
+
+    expect(getByText("Mostrando 20 de 25")).toBeTruthy();
+    expect(getByLabelText("Cargar más clientes")).toBeTruthy();
+  });
 });
