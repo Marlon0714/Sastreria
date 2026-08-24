@@ -57,14 +57,17 @@ const ALL_TABS: TabConfig[] = [
 
 /**
  * Roles que pueden ver cada tab. Confirmado (2026-08-05): un operario en su
- * propio dispositivo solo ve Agenda y Precios; Clientes/Tallas quedan
- * reservadas al dueño.
+ * propio dispositivo solo ve Agenda; Clientes/Tallas/Precios quedan
+ * reservadas al dueño — Precios se sacó (2026-08-24) porque exponía el
+ * catálogo de precios de todos los servicios, no solo lo del operario. "Mi
+ * cuenta"/"Mis arreglos" siguen siendo accesibles desde el header en
+ * ScheduleTab (están duplicadas en ese stack, ver ScheduleStackNavigator).
  */
 const TAB_ROLES: Record<TabName, Role[]> = {
   ClientsTab: ["owner"],
   TallasTab: ["owner"],
   ScheduleTab: ["owner", "operario"],
-  PricingTab: ["owner", "operario"],
+  PricingTab: ["owner"],
 };
 
 function isTabVisibleForRole(

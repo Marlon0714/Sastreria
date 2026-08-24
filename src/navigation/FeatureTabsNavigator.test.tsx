@@ -73,7 +73,7 @@ describe("RootNavigator tabs composition", () => {
     useIdentityStore.getState().reset();
   });
 
-  it("restringe a un operario en su propio dispositivo a solo Agenda y Precios", () => {
+  it("restringe a un operario en su propio dispositivo a solo Agenda", () => {
     useIdentityStore.getState().setOwnProfile({
       id: "user-1",
       displayName: "María Gómez",
@@ -85,8 +85,8 @@ describe("RootNavigator tabs composition", () => {
 
     expect(queryByTestId("tab-ClientsTab")).toBeNull();
     expect(queryByTestId("tab-TallasTab")).toBeNull();
+    expect(queryByTestId("tab-PricingTab")).toBeNull();
     expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
-    expect(getByTestId("tab-PricingTab")).toBeTruthy();
   });
 
   it("muestra todas las tabs en la tablet compartida sin importar su role", () => {
