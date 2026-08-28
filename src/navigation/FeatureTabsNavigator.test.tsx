@@ -115,7 +115,7 @@ describe("RootNavigator tabs composition", () => {
     ).toBeTruthy();
   });
 
-  it("muestra todas las tabs en la tablet compartida sin importar su role", () => {
+  it("muestra todas las tabs en la tablet compartida sin importar su role", async () => {
     useIdentityStore.getState().setOwnProfile({
       id: "tablet-1",
       displayName: "Tablet mostrador",
@@ -123,12 +123,24 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: true,
     });
 
-    const { getByTestId } = renderRootNavigator();
+    const { getByTestId, getAllByText, findByText, queryByText } =
+      renderRootNavigator();
 
     expect(getByTestId("tab-ClientsTab")).toBeTruthy();
     expect(getByTestId("tab-TallasTab")).toBeTruthy();
     expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
     expect(getByTestId("tab-PricingTab")).toBeTruthy();
+
+    // Regresión: aunque el perfil de la tablet tenga role="operario", al
+    // ser dispositivo compartido esa pestaña debe seguir siendo el
+    // catálogo de precios (no "Mis arreglos", que quedaría vacío porque
+    // se filtraría por el id de la tablet, que no es el de ningún
+    // operario real).
+    expect(getAllByText("Precios").length).toBeGreaterThan(0);
+    expect(queryByText("Mis arreglos")).toBeNull();
+
+    fireEvent.press(getByTestId("tab-PricingTab"));
+    expect(await findByText("Sin arreglos aún")).toBeTruthy();
   });
 
   it("muestra todas las tabs para el dueño", () => {

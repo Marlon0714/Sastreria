@@ -79,12 +79,21 @@ export default function ClientListScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       void reload();
-      // Al volver a esta pestaña, vuelve a mostrar solo la primera página
-      // en vez de mantener todo lo que se hubiera cargado con "Cargar más"
-      // antes de cambiar de pestaña.
-      setVisibleCount(PAGE_SIZE);
     }, [reload]),
   );
+
+  useEffect(() => {
+    // Escucha el "focus" de la pestaña (el navigator padre), no el de esta
+    // pantalla: esta pantalla también se re-enfoca al volver de una
+    // pantalla hija del mismo stack (detalle, edición, tallas...), y ahí NO
+    // se debe perder la paginación cargada con "Cargar más". El evento del
+    // navigator padre solo dispara cuando se cambia de pestaña de verdad.
+    const parent = navigation.getParent();
+    const unsubscribe = parent?.addListener("focus", () => {
+      setVisibleCount(PAGE_SIZE);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const filteredClients = useMemo(() => {
     const normalizedQuery = normalizeText(searchTerm);

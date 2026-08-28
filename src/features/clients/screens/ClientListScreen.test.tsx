@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { fireEvent, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import type React from "react";
 
 import { clientFactory } from "../../../__tests__/factories";
@@ -41,10 +41,36 @@ jest.mock("../hooks/useClientList", () => {
 
 type ScreenProps = React.ComponentProps<typeof ClientListScreen>;
 
-function buildProps(navigate: jest.Mock): ScreenProps {
+interface FakeParentNavigator {
+  addListener: (event: string, cb: () => void) => () => void;
+  emit: (event: "focus") => void;
+}
+
+function createFakeParentNavigator(): FakeParentNavigator {
+  const listeners: Array<() => void> = [];
+  return {
+    addListener: (event: string, cb: () => void) => {
+      if (event !== "focus") return () => undefined;
+      listeners.push(cb);
+      return () => {
+        const index = listeners.indexOf(cb);
+        if (index !== -1) listeners.splice(index, 1);
+      };
+    },
+    emit: () => {
+      listeners.forEach((cb) => cb());
+    },
+  };
+}
+
+function buildProps(
+  navigate: jest.Mock,
+  parent: FakeParentNavigator | null = null,
+): ScreenProps {
   return {
     navigation: {
       navigate,
+      getParent: () => parent,
     } as unknown as ScreenProps["navigation"],
     route: {
       key: "ClientList-test",
@@ -526,7 +552,35 @@ describe("ClientListScreen", () => {
     expect(getByLabelText("Cargar más clientes")).toBeTruthy();
   });
 
-  it("resets the visible count when the screen regains focus after a tab switch", () => {
+  it("resets the visible count when the parent tab navigator regains focus (cambio real de pestaña)", () => {
+    const clients = Array.from({ length: 25 }, (_, i) =>
+      clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
+    );
+    mockUseClientList.mockReturnValue({
+      clients,
+      isLoading: false,
+      error: null,
+      reload: jest.fn<() => Promise<void>>().mockResolvedValue(),
+    });
+
+    const parent = createFakeParentNavigator();
+    const { getByLabelText, getByText, queryByLabelText } = render(
+      <ClientListScreen {...buildProps(jest.fn(), parent)} />,
+    );
+
+    fireEvent.press(getByLabelText("Cargar más clientes"));
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
+
+    // Simula que el usuario cambió a otra pestaña y volvió a Clientes: el
+    // navigator PADRE (la pestaña) es quien dispara "focus", no esta
+    // pantalla.
+    act(() => parent.emit("focus"));
+
+    expect(getByText("Mostrando 20 de 25")).toBeTruthy();
+    expect(getByLabelText("Cargar más clientes")).toBeTruthy();
+  });
+
+  it("NO resetea la paginación al volver de una pantalla hija del mismo stack (ej. detalle de cliente)", () => {
     const clients = Array.from({ length: 25 }, (_, i) =>
       clientFactory({ id: `client-${i}`, firstName: `Cliente${i}` }),
     );
@@ -538,17 +592,18 @@ describe("ClientListScreen", () => {
       reload: reloadA,
     });
 
-    const { getByLabelText, getByText, queryByLabelText, rerender } = render(
-      <ClientListScreen {...buildProps(jest.fn())} />,
+    const parent = createFakeParentNavigator();
+    const { getByLabelText, queryByLabelText, rerender } = render(
+      <ClientListScreen {...buildProps(jest.fn(), parent)} />,
     );
 
     fireEvent.press(getByLabelText("Cargar más clientes"));
     expect(queryByLabelText("Cargar más clientes")).toBeNull();
 
-    // El mock de useFocusEffect solo vuelve a correr el efecto si su
-    // identidad cambia (no hay blur/focus real en este harness) — cambiar
-    // la referencia de `reload` simula "se volvió a enfocar la pantalla"
-    // (ej. se cambió de pestaña y se regresó a Clientes).
+    // Simula "volver de ClientDetail/ClientEdit dentro del mismo stack":
+    // el useFocusEffect de ESTA pantalla vuelve a correr (cambia la
+    // identidad de `reload`), pero el navigator padre (la pestaña) NUNCA
+    // emite "focus" porque nunca se dejó de ver la pestaña de Clientes.
     const reloadB = jest.fn<() => Promise<void>>().mockResolvedValue();
     mockUseClientList.mockReturnValue({
       clients,
@@ -556,9 +611,8 @@ describe("ClientListScreen", () => {
       error: null,
       reload: reloadB,
     });
-    rerender(<ClientListScreen {...buildProps(jest.fn())} />);
+    rerender(<ClientListScreen {...buildProps(jest.fn(), parent)} />);
 
-    expect(getByText("Mostrando 20 de 25")).toBeTruthy();
-    expect(getByLabelText("Cargar más clientes")).toBeTruthy();
+    expect(queryByLabelText("Cargar más clientes")).toBeNull();
   });
 });

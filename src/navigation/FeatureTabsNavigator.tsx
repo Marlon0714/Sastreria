@@ -80,8 +80,16 @@ const TAB_ROLES: Record<TabName, Role[]> = {
  */
 function getPricingTabDisplay(
   role: Role | null,
+  isSharedDevice: boolean,
 ): Pick<TabConfig, "label" | "title" | "icon"> {
-  if (role === "operario") {
+  // La tablet compartida (mostrador) también tiene role="operario" en su
+  // propio perfil, pero la usan varias personas para tareas distintas
+  // (incluido cobrar/consultar precios) — igual que `isTabVisibleForRole`,
+  // el bypass de dispositivo compartido debe ganarle a la restricción por
+  // role. Si no, la tablet pierde el catálogo de precios y muestra "Mis
+  // arreglos" filtrado por el id de la tablet, que no es el de ningún
+  // operario real (pantalla vacía permanente).
+  if (role === "operario" && !isSharedDevice) {
     return { label: "Mis arreglos", title: "Mis arreglos", icon: "cash" };
   }
   return { label: "Precios", title: "Precios", icon: "pricetag" };
@@ -152,7 +160,9 @@ export default function FeatureTabsNavigator() {
     >
       {visibleTabs.map((tab) => {
         const display =
-          tab.name === "PricingTab" ? getPricingTabDisplay(role) : tab;
+          tab.name === "PricingTab"
+            ? getPricingTabDisplay(role, isSharedDevice)
+            : tab;
         return (
           <Tab.Screen
             key={tab.name}
