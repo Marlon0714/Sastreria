@@ -116,6 +116,13 @@ export default function ClientListScreen({ navigation }: Props) {
             normalizePhone(phone).includes(numericQuery),
           )
         : false;
+      // Incluye la cédula como criterio adicional del filtro "Todos" — el
+      // dato ya se captura y se muestra en el detalle, pero antes no era
+      // buscable desde el listado (mismo estilo de comparación por
+      // substring ya usado para nombre/teléfono).
+      const matchesCedula = client.cedula
+        ? normalizeText(client.cedula).includes(normalizedQuery)
+        : false;
 
       if (filterBy === "name") {
         return normalizedName.includes(normalizedQuery);
@@ -125,7 +132,9 @@ export default function ClientListScreen({ navigation }: Props) {
         return matchesPhone;
       }
 
-      return normalizedName.includes(normalizedQuery) || matchesPhone;
+      return (
+        normalizedName.includes(normalizedQuery) || matchesPhone || matchesCedula
+      );
     });
   }, [clients, filterBy, searchTerm]);
 

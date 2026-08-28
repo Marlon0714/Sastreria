@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import type { TallasDependencies } from "../../../data/local/tallasDependencies";
 import type { TallaTemplate } from "../domain/types";
@@ -83,6 +84,50 @@ describe("TallaFormScreen", () => {
     await waitFor(() => {
       expect(getByText("Debe ser mayor que 0")).toBeTruthy();
     });
+    expect(mockCreateTemplate).not.toHaveBeenCalled();
+  });
+
+  it("muestra el error inline bajo el campo nombre cuando se guarda sin nombre, sin usar Alert", async () => {
+    const alertSpy = jest.spyOn(Alert, "alert");
+
+    const { getByText } = render(
+      <TallasDependenciesProvider dependencies={dependencies}>
+        <TallaFormScreen {...buildProps()} />
+      </TallasDependenciesProvider>,
+    );
+
+    fireEvent.press(getByText("Guardar talla"));
+
+    await waitFor(() => {
+      expect(getByText("El nombre es obligatorio")).toBeTruthy();
+    });
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(mockCreateTemplate).not.toHaveBeenCalled();
+  });
+
+  it("muestra el error inline bajo el campo nombre cuando el formato del nombre es inválido, sin usar Alert", async () => {
+    const alertSpy = jest.spyOn(Alert, "alert");
+
+    const { getByText, getByPlaceholderText } = render(
+      <TallasDependenciesProvider dependencies={dependencies}>
+        <TallaFormScreen {...buildProps()} />
+      </TallasDependenciesProvider>,
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText('Ej: M, 38, "Talla única"'),
+      "M@#!",
+    );
+    fireEvent.press(getByText("Guardar talla"));
+
+    await waitFor(() => {
+      expect(
+        getByText(
+          'El nombre de la talla solo puede contener letras, números, espacios, "/" y "-".',
+        ),
+      ).toBeTruthy();
+    });
+    expect(alertSpy).not.toHaveBeenCalled();
     expect(mockCreateTemplate).not.toHaveBeenCalled();
   });
 

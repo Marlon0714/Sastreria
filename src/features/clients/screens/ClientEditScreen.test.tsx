@@ -319,4 +319,109 @@ describe("ClientEditScreen", () => {
     fireEvent.press(getByLabelText("Agregar teléfono adicional"));
     expect(queryByLabelText("Eliminar teléfono 3")).toBeNull();
   });
+
+  it("detecta como duplicado un teléfono ya registrado como principal de otro cliente cuando se escribe en Teléfono 2", async () => {
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+      firstName: "Ana",
+      lastName: "Torres",
+      phone: "3001234567",
+      phones: [],
+    });
+    const otroCliente = clientFactory({
+      id: "22222222-2222-4222-8222-222222222222",
+      firstName: "Luis",
+      lastName: "Gómez",
+      phone: "3119990000",
+    });
+    mockFindAll.mockResolvedValue([client, otroCliente]);
+
+    const updateClient =
+      jest.fn<(values: UpdateClientSchemaInput) => Promise<Client | null>>();
+    updateClient.mockResolvedValue(client);
+
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload: jest.fn<() => Promise<void>>().mockResolvedValue(),
+    });
+    mockUseUpdateClient.mockReturnValue({
+      isSubmitting: false,
+      error: null,
+      updateClient,
+      validate: () => ({}),
+    });
+
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+      const saveAnyway = buttons?.find(
+        (b) => b.text === "Guardar de todos modos",
+      );
+      void saveAnyway?.onPress?.();
+    });
+
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ClientEditScreen {...buildProps()} />,
+    );
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
+
+    fireEvent.press(getByLabelText("Agregar teléfono adicional"));
+    fireEvent.changeText(
+      getByPlaceholderText("Ej. 3101234567"),
+      otroCliente.phone,
+    );
+    fireEvent.press(getByLabelText("Guardar cambios del cliente"));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Teléfono ya registrado",
+        expect.stringContaining(otroCliente.firstName),
+        expect.anything(),
+      );
+    });
+    expect(updateClient).toHaveBeenCalled();
+  });
+
+  it("al borrar manualmente Teléfono 2 dejando Teléfono 3 con valor, guarda ese número como Teléfono 2 (sin intercambio silencioso)", async () => {
+    const client = clientFactory({
+      id: "11111111-1111-4111-8111-111111111111",
+      firstName: "Ana",
+      lastName: "Torres",
+      phone: "3001234567",
+      phones: ["3202223344", "3505556677"],
+    });
+
+    const updateClient =
+      jest.fn<(values: UpdateClientSchemaInput) => Promise<Client | null>>();
+    updateClient.mockResolvedValue(client);
+
+    mockUseClientDetail.mockReturnValue({
+      client,
+      isLoading: false,
+      error: null,
+      reload: jest.fn<() => Promise<void>>().mockResolvedValue(),
+    });
+    mockUseUpdateClient.mockReturnValue({
+      isSubmitting: false,
+      error: null,
+      updateClient,
+      validate: () => ({}),
+    });
+
+    const { getByLabelText, getByDisplayValue } = render(
+      <ClientEditScreen {...buildProps()} />,
+    );
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
+    await waitFor(() => expect(getByDisplayValue("3202223344")).toBeTruthy());
+
+    // Borra manualmente el texto de Teléfono 2 (sin usar el ícono "x")
+    fireEvent.changeText(getByDisplayValue("3202223344"), "");
+    fireEvent.press(getByLabelText("Guardar cambios del cliente"));
+
+    await waitFor(() => {
+      expect(updateClient).toHaveBeenCalledWith(
+        expect.objectContaining({ phone2: "3505556677", phone3: "" }),
+      );
+    });
+  });
 });

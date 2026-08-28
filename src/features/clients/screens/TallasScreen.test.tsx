@@ -100,4 +100,68 @@ describe("TallasScreen", () => {
       expect(mockUpsertTalla).toHaveBeenCalled();
     });
   });
+
+  it("al añadir una talla nueva para un tipo sin talla, bloquea el selector de tipo y no afecta la talla de OTRO tipo ya registrado", async () => {
+    // Pantalón ya tiene talla registrada; Chaleco no. Al tocar "Añadir" bajo
+    // Chaleco, el chip de tipo NO debe poder cambiarse a Pantalón (evita que
+    // TallaRepositoryImpl.upsert() sobrescriba la fila de Pantalón por
+    // buscarla via clientId+type cuando no llega un id).
+    mockUseTallas.mockReturnValue({
+      tallas: [
+        {
+          id: "t-pantalon",
+          clientId: "client-1",
+          type: "pantalon",
+          value: "38",
+          notes: null,
+        } as ClientTalla,
+      ],
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      upsertTalla: mockUpsertTalla,
+      validate: mockValidate,
+      deleteTalla: mockDeleteTalla,
+      reload: mockReload,
+    });
+    mockUpsertTalla.mockResolvedValueOnce({
+      id: "t-chaleco",
+      clientId: "client-1",
+      type: "chaleco",
+      value: "M",
+      notes: null,
+    } as ClientTalla);
+
+    const { getByLabelText, queryByLabelText, getByText } = render(
+      <ClientsDependenciesProvider dependencies={noopDependencies}>
+        <TallasScreen {...buildProps()} />
+      </ClientsDependenciesProvider>,
+    );
+
+    fireEvent.press(getByLabelText("Añadir talla de chaleco"));
+
+    // El selector de tipo (chips) no debe estar presente para NINGÚN tipo:
+    // el tipo queda fijo en "chaleco" (modal de creación).
+    expect(queryByLabelText("Tipo Camisa")).toBeNull();
+    expect(queryByLabelText("Tipo Pantalón")).toBeNull();
+    expect(queryByLabelText("Tipo Saco")).toBeNull();
+    expect(queryByLabelText("Tipo Chaleco")).toBeNull();
+    expect(getByText("Nueva talla")).toBeTruthy();
+
+    fireEvent.changeText(getByLabelText("Valor de talla"), "L");
+    fireEvent.press(getByLabelText("Guardar talla"));
+
+    await waitFor(() => {
+      expect(mockUpsertTalla).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "chaleco", value: "L" }),
+      );
+    });
+    // No se envía ningún id, ni se toca el tipo "pantalon".
+    const submittedInput = mockUpsertTalla.mock.calls[0]?.[0] as {
+      id?: string;
+      type: string;
+    };
+    expect(submittedInput.id).toBeUndefined();
+    expect(submittedInput.type).not.toBe("pantalon");
+  });
 });

@@ -215,4 +215,75 @@ describe("ClientCreateScreen", () => {
     fireEvent.press(getByLabelText("Agregar teléfono adicional"));
     expect(queryByLabelText("Eliminar teléfono 3")).toBeNull();
   });
+
+  it("detecta como duplicado un teléfono ya registrado como principal de otro cliente cuando se escribe en Teléfono 2", async () => {
+    const created = clientFactory({
+      id: "new-4",
+      firstName: "Marta",
+      lastName: "Ruiz",
+    });
+    mockCreate.mockResolvedValueOnce(created);
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+      const saveAnyway = buttons?.find(
+        (b) => b.text === "Guardar de todos modos",
+      );
+      void saveAnyway?.onPress?.();
+    });
+    const replace = jest.fn();
+
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ClientCreateScreen {...buildProps(replace)} />,
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
+
+    fireEvent.changeText(getByPlaceholderText("Ej. Ana"), "Marta");
+    fireEvent.changeText(getByPlaceholderText("Ej. Torres"), "Ruiz");
+    fireEvent.press(getByLabelText("Agregar teléfono adicional"));
+    fireEvent.changeText(
+      getByPlaceholderText("Ej. 3101234567"),
+      existingClient.phone,
+    );
+    fireEvent.press(getByLabelText("Guardar cliente"));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Teléfono ya registrado",
+        expect.stringContaining(existingClient.firstName),
+        expect.anything(),
+      );
+    });
+    expect(mockCreate).toHaveBeenCalled();
+  });
+
+  it("al borrar manualmente Teléfono 2 dejando Teléfono 3 con valor, guarda ese número como Teléfono 2 (sin intercambio silencioso)", async () => {
+    const created = clientFactory({ id: "new-5", firstName: "Pedro", lastName: "Lara" });
+    mockCreate.mockResolvedValueOnce(created);
+    const replace = jest.fn();
+
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ClientCreateScreen {...buildProps(replace)} />,
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(mockFindAll).toHaveBeenCalled());
+
+    fireEvent.changeText(getByPlaceholderText("Ej. Ana"), "Pedro");
+    fireEvent.changeText(getByPlaceholderText("Ej. Torres"), "Lara");
+    fireEvent.press(getByLabelText("Agregar teléfono adicional"));
+    fireEvent.changeText(getByPlaceholderText("Ej. 3101234567"), "3202223344");
+    fireEvent.press(getByLabelText("Agregar teléfono adicional"));
+    fireEvent.changeText(getByPlaceholderText("Ej. 6011234567"), "3505556677");
+
+    // Borra manualmente el texto de Teléfono 2 (sin usar el ícono "x")
+    fireEvent.changeText(getByPlaceholderText("Ej. 3101234567"), "");
+    fireEvent.press(getByLabelText("Guardar cliente"));
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ phones: ["3505556677"] }),
+      );
+    });
+  });
 });

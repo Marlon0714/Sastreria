@@ -232,14 +232,19 @@ export default function TallaFormScreen({ navigation, route }: Props) {
   const onSubmit = async (values: TallaFormValues) => {
     const name = values.name.trim();
     if (!name) {
-      Alert.alert("Campo requerido", "El nombre de la talla es obligatorio.");
+      // El error se muestra inline bajo el campo (igual que el resto de
+      // campos de esta pantalla) en vez de un Alert, que quedaba
+      // desconectado del borde rojo y del texto de error ya presentes en
+      // el JSX pero que nunca llegaban a mostrarse.
+      setError("name", { type: "manual", message: "El nombre es obligatorio" });
       return;
     }
     if (!SIZE_VALUE_PATTERN.test(name)) {
-      Alert.alert(
-        "Formato inválido",
-        'El nombre de la talla solo puede contener letras, números, espacios, "/" y "-".',
-      );
+      setError("name", {
+        type: "manual",
+        message:
+          'El nombre de la talla solo puede contener letras, números, espacios, "/" y "-".',
+      });
       return;
     }
 
@@ -343,7 +348,9 @@ export default function TallaFormScreen({ navigation, route }: Props) {
           autoCapitalize="characters"
         />
         {errors.name && (
-          <Text style={styles.errorText}>El nombre es obligatorio</Text>
+          <Text style={styles.errorText}>
+            {errors.name.message ?? "El nombre es obligatorio"}
+          </Text>
         )}
       </View>
 

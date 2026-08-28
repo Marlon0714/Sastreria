@@ -47,7 +47,7 @@ interface FakeParentNavigator {
 }
 
 function createFakeParentNavigator(): FakeParentNavigator {
-  const listeners: Array<() => void> = [];
+  const listeners: (() => void)[] = [];
   return {
     addListener: (event: string, cb: () => void) => {
       if (event !== "focus") return () => undefined;
@@ -327,6 +327,43 @@ describe("ClientListScreen", () => {
     fireEvent.changeText(
       getByLabelText("Buscar cliente por nombre o telefono"),
       "300555",
+    );
+
+    expect(getByText("María García")).toBeTruthy();
+    expect(queryByText("Juan Pérez")).toBeNull();
+  });
+
+  it("finds a client by cedula", () => {
+    const reload = jest.fn<() => Promise<void>>().mockResolvedValue();
+    mockUseClientList.mockReturnValue({
+      clients: [
+        clientFactory({
+          id: "aaaa-1",
+          firstName: "María",
+          lastName: "García",
+          phone: "3001112233",
+          cedula: "1020304050",
+        }),
+        clientFactory({
+          id: "aaaa-2",
+          firstName: "Juan",
+          lastName: "Pérez",
+          phone: "3009998877",
+          cedula: "9988776655",
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      reload,
+    });
+
+    const { getByLabelText, getByText, queryByText } = render(
+      <ClientListScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente por nombre o telefono"),
+      "1020304050",
     );
 
     expect(getByText("María García")).toBeTruthy();

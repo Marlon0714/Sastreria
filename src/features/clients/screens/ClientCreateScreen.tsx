@@ -66,7 +66,22 @@ export default function ClientCreateScreen({ navigation }: Props) {
     },
   });
 
-  const onSubmit = handleSubmit(async (values) => {
+  const onSubmit = handleSubmit(async (rawValues) => {
+    // Si "Teléfono 2" quedó vacío pero "Teléfono 3" tiene contenido (por
+    // ejemplo, se borró manualmente el texto de Teléfono 2 sin usar el
+    // ícono "x" que limpia ambos), se desplaza el valor de Teléfono 3 a
+    // Teléfono 2 antes de guardar — mismo comportamiento que ya aplica el
+    // botón "+ Agregar teléfono", para no intercambiar las etiquetas en
+    // silencio cuando el array de teléfonos se compacte.
+    const values = { ...rawValues };
+    if (!values.phone2?.trim() && values.phone3?.trim()) {
+      values.phone2 = values.phone3;
+      values.phone3 = "";
+      setValue("phone2", values.phone2);
+      setValue("phone3", "");
+      setShowPhone3(false);
+    }
+
     const validationErrors = validate(values);
     const keys: (keyof CreateClientSchemaInput)[] = [
       "firstName",
@@ -99,9 +114,20 @@ export default function ClientCreateScreen({ navigation }: Props) {
     };
 
     const proceedWithPhoneCheck = (): void => {
-      const duplicatePhone = values.phone
-        ? findDuplicateByPhone(existingClients, values.phone)
-        : null;
+      // Revisa los 3 teléfonos del formulario (no solo el principal): un
+      // número repetido escrito en "Teléfono 2" o "Teléfono 3" también debe
+      // detectarse como duplicado contra el catálogo existente.
+      const candidatePhones = [values.phone, values.phone2, values.phone3];
+      let duplicatePhone: Client | null = null;
+      for (const candidate of candidatePhones) {
+        if (!candidate) {
+          continue;
+        }
+        duplicatePhone = findDuplicateByPhone(existingClients, candidate);
+        if (duplicatePhone) {
+          break;
+        }
+      }
 
       if (duplicatePhone) {
         Alert.alert(
