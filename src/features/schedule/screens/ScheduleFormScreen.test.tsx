@@ -523,6 +523,59 @@ describe("ScheduleFormScreen", () => {
     expect(callOrder).toEqual(["resolvePendingRegistration", "submit"]);
   });
 
+  it("muestra un error si las notas superan los 500 caracteres", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByLabelText, getByPlaceholderText, findByText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+    const longNotes = "a".repeat(501);
+    fireEvent.changeText(getByPlaceholderText("Detalles del turno"), longNotes);
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    expect(
+      await findByText(/expected string to have <=500 characters/i),
+    ).toBeTruthy();
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("permite asignar operario al crear un turno nuevo, sin pasar por una edición posterior", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    const newOperarioId = "33333333-3333-4333-8333-333333333333";
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+    fireEvent.changeText(getByLabelText("Operario"), newOperarioId);
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ operarioId: newOperarioId }),
+      );
+    });
+  });
+
   it("pre-fills fields, muestra el estado y el botón de eliminar en modo edición", async () => {
     mockUseScheduleForm.mockReturnValue({
       schedule,
@@ -572,6 +625,46 @@ describe("ScheduleFormScreen", () => {
 
     fireEvent.press(getByText("Volver"));
     expect(goBack).toHaveBeenCalled();
+  });
+
+  it("muestra el mensaje de error y no navega hacia atrás si falla la eliminación", async () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(schedule)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+    const deleteSchedule = jest.fn(async () => Promise.resolve(false));
+    mockUseDeleteSchedule.mockReturnValue({
+      isDeleting: false,
+      error: "No se pudo eliminar el turno. Intenta nuevamente.",
+      deleteSchedule,
+    });
+    const goBack = jest.fn();
+
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+      const confirm = buttons?.find((b) => b.text === "Eliminar");
+      void confirm?.onPress?.();
+    });
+
+    const { getByLabelText, findByText } = render(
+      <ScheduleFormScreen
+        {...buildProps(jest.fn(), goBack, schedule.id)}
+      />,
+    );
+
+    fireEvent.press(getByLabelText("Eliminar turno"));
+
+    await waitFor(() => {
+      expect(deleteSchedule).toHaveBeenCalledWith(schedule.id);
+    });
+
+    expect(
+      await findByText("No se pudo eliminar el turno. Intenta nuevamente."),
+    ).toBeTruthy();
+    expect(goBack).not.toHaveBeenCalled();
   });
 
   it("deletes the schedule after confirming and navigates back", async () => {
@@ -751,6 +844,83 @@ describe("ScheduleFormScreen", () => {
 
       expect(await findByText("Estado: Listo para entregar")).toBeTruthy();
       expect(markReady).toHaveBeenCalledTimes(1);
+    });
+
+    it("al marcar entregado con saldo pendiente, pide confirmación indicando el monto", async () => {
+      jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+      mockUseScheduleForm.mockReturnValue({
+        schedule: {
+          ...schedule,
+          status: "listo_para_entregar",
+          operarioId: "op-1",
+          price: 100000,
+          abono: 30000,
+        },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const markDelivered = jest.fn(async () =>
+        Promise.resolve({ ...schedule, status: "entregado" as const }),
+      );
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: false,
+        error: null,
+        markReady: jest.fn(async () => Promise.resolve(null)),
+        markDelivered,
+        applyCorrection: jest.fn(async () => Promise.resolve(null)),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Saldo pendiente",
+        expect.stringContaining("$70.000"),
+        expect.anything(),
+      );
+      expect(markDelivered).not.toHaveBeenCalled();
+    });
+
+    it("al marcar entregado sin saldo pendiente, se marca directo sin pedir confirmación", async () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: {
+          ...schedule,
+          status: "listo_para_entregar",
+          operarioId: "op-1",
+          price: 100000,
+          abono: 100000,
+        },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const markDelivered = jest.fn(async () =>
+        Promise.resolve({ ...schedule, status: "entregado" as const }),
+      );
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: false,
+        error: null,
+        markReady: jest.fn(async () => Promise.resolve(null)),
+        markDelivered,
+        applyCorrection: jest.fn(async () => Promise.resolve(null)),
+      });
+
+      const { getByLabelText, findByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+
+      expect(await findByText("Estado: Entregado")).toBeTruthy();
+      expect(markDelivered).toHaveBeenCalledTimes(1);
     });
 
     it("corrección manual pide confirmación antes de aplicar el nuevo estado", async () => {

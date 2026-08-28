@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../../../shared/theme/colors";
+import { formatPrice } from "../../pricing/domain/strings";
+import { computeSaldo } from "../domain/saldo";
 import type { Schedule, ScheduleStatus } from "../domain/types";
 import { OperarioPickerField } from "./OperarioPickerField";
 
@@ -55,6 +57,24 @@ export function ScheduleQuickActionSheet({
   const hasOperario = Boolean(schedule.operarioId);
   const canMarkReady = isPending && hasOperario;
   const canMarkDelivered = !isDelivered && hasOperario;
+
+  const handleMarkDeliveredPress = (): void => {
+    const saldoPendiente = computeSaldo(schedule);
+    if (saldoPendiente != null && saldoPendiente > 0) {
+      Alert.alert(
+        "Saldo pendiente",
+        `Este turno tiene un saldo pendiente de ${formatPrice(
+          saldoPendiente,
+        )}. ¿Marcar como entregado de todas formas?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Confirmar", onPress: onMarkDelivered },
+        ],
+      );
+      return;
+    }
+    onMarkDelivered();
+  };
 
   return (
     <Modal
@@ -112,7 +132,7 @@ export function ScheduleQuickActionSheet({
           <Pressable
             accessibilityLabel="Marcar entregado"
             style={[styles.actionButton, isProcessing && styles.buttonDisabled]}
-            onPress={onMarkDelivered}
+            onPress={handleMarkDeliveredPress}
             disabled={isProcessing}
           >
             <Ionicons name="checkmark-done" size={18} color="#ffffff" />

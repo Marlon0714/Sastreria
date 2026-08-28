@@ -1,5 +1,6 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import type { Schedule } from "../domain/types";
 import { ScheduleQuickActionSheet } from "./ScheduleQuickActionSheet";
@@ -26,6 +27,10 @@ const baseSchedule: Schedule = {
 };
 
 describe("ScheduleQuickActionSheet", () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("no renderiza nada si no hay turno", () => {
     const { queryByText } = render(
       <ScheduleQuickActionSheet
@@ -209,6 +214,60 @@ describe("ScheduleQuickActionSheet", () => {
       deliveredButton.props.accessibilityState?.disabled ??
         deliveredButton.props.disabled,
     ).toBe(true);
+  });
+
+  it("al marcar entregado con saldo pendiente, pide confirmación indicando el monto", () => {
+    jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    const onMarkDelivered = jest.fn();
+
+    const { getByLabelText } = render(
+      <ScheduleQuickActionSheet
+        visible
+        schedule={{ ...baseSchedule, price: 100000, abono: 30000 }}
+        clientLabel="Ana Torres"
+        isProcessing={false}
+        error={null}
+        onMarkReady={jest.fn()}
+        onMarkDelivered={onMarkDelivered}
+        onAssignOperario={jest.fn()}
+        onViewDetail={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(getByLabelText("Marcar entregado"));
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      "Saldo pendiente",
+      expect.stringContaining("$70.000"),
+      expect.anything(),
+    );
+    expect(onMarkDelivered).not.toHaveBeenCalled();
+  });
+
+  it("al marcar entregado sin saldo pendiente, marca directo sin pedir confirmación", () => {
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    const onMarkDelivered = jest.fn();
+
+    const { getByLabelText } = render(
+      <ScheduleQuickActionSheet
+        visible
+        schedule={{ ...baseSchedule, price: 100000, abono: 100000 }}
+        clientLabel="Ana Torres"
+        isProcessing={false}
+        error={null}
+        onMarkReady={jest.fn()}
+        onMarkDelivered={onMarkDelivered}
+        onAssignOperario={jest.fn()}
+        onViewDetail={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(getByLabelText("Marcar entregado"));
+
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(onMarkDelivered).toHaveBeenCalledTimes(1);
   });
 
   it("muestra el mensaje de error cuando se provee", () => {

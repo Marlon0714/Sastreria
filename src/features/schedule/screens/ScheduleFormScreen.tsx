@@ -82,7 +82,11 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     submit,
     syncScheduleSnapshot,
   } = useScheduleForm(scheduleId, identityGate);
-  const { deleteSchedule, isDeleting } = useDeleteSchedule(identityGate);
+  const {
+    deleteSchedule,
+    isDeleting,
+    error: deleteError,
+  } = useDeleteSchedule(identityGate);
   const statusActions = useScheduleStatusActions(scheduleId ?? "", identityGate);
   // Guardar, marcar listo/entregado, corregir y eliminar mutan el mismo
   // turno con lecturas-y-reescrituras independientes (sin control de
@@ -180,13 +184,33 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleMarkDelivered = async (): Promise<void> => {
+  const performMarkDelivered = async (): Promise<void> => {
     const updated = await statusActions.markDelivered();
     if (updated) {
       setDisplaySchedule(updated);
       syncScheduleSnapshot(updated);
       setHistoryRefreshToken((token) => token + 1);
     }
+  };
+
+  const handleMarkDelivered = (): void => {
+    const saldoPendiente = displaySchedule
+      ? computeSaldo(displaySchedule)
+      : undefined;
+    if (saldoPendiente != null && saldoPendiente > 0) {
+      Alert.alert(
+        "Saldo pendiente",
+        `Este turno tiene un saldo pendiente de ${formatPrice(
+          saldoPendiente,
+        )}. ¿Marcar como entregado de todas formas?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Confirmar", onPress: () => void performMarkDelivered() },
+        ],
+      );
+      return;
+    }
+    void performMarkDelivered();
   };
 
   const handleApplyCorrection = (newStatus: ScheduleStatus): void => {
@@ -501,22 +525,20 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        {scheduleId ? (
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Operario asignado (opcional)</Text>
-            <Controller
-              control={control}
-              name="operarioId"
-              render={({ field: { onChange, value } }) => (
-                <OperarioPickerField
-                  value={value}
-                  onChange={onChange}
-                  errorMessage={errors.operarioId?.message}
-                />
-              )}
-            />
-          </View>
-        ) : null}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Operario asignado (opcional)</Text>
+          <Controller
+            control={control}
+            name="operarioId"
+            render={({ field: { onChange, value } }) => (
+              <OperarioPickerField
+                value={value}
+                onChange={onChange}
+                errorMessage={errors.operarioId?.message}
+              />
+            )}
+          />
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -526,15 +548,23 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           name="notes"
           render={({ field: { onChange, value } }) => (
             <TextInput
-              style={[styles.input, styles.notesInput]}
+              style={[
+                styles.input,
+                styles.notesInput,
+                errors.notes && styles.inputError,
+              ]}
               placeholder="Detalles del turno"
               placeholderTextColor={colors.textPlaceholder}
               value={value}
               onChangeText={onChange}
               multiline
+              maxLength={500}
             />
           )}
         />
+        {errors.notes ? (
+          <Text style={styles.errorText}>{errors.notes.message}</Text>
+        ) : null}
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -596,7 +626,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                 styles.statusActionButton,
                 isBusy ? styles.buttonDisabled : null,
               ]}
-              onPress={() => void handleMarkDelivered()}
+              onPress={handleMarkDelivered}
               disabled={isBusy}
             >
               <Ionicons name="checkmark-done" size={18} color="#ffffff" />
@@ -639,17 +669,22 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       ) : null}
 
       {scheduleId ? (
-        <Pressable
-          accessibilityLabel="Eliminar turno"
-          style={[styles.deleteButton, isBusy ? styles.buttonDisabled : null]}
-          onPress={onDelete}
-          disabled={isBusy}
-        >
-          <Ionicons name="trash-outline" size={18} color={colors.danger} />
-          <Text style={styles.deleteButtonText}>
-            {isDeleting ? "Eliminando..." : "Eliminar turno"}
-          </Text>
-        </Pressable>
+        <>
+          <Pressable
+            accessibilityLabel="Eliminar turno"
+            style={[styles.deleteButton, isBusy ? styles.buttonDisabled : null]}
+            onPress={onDelete}
+            disabled={isBusy}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            <Text style={styles.deleteButtonText}>
+              {isDeleting ? "Eliminando..." : "Eliminar turno"}
+            </Text>
+          </Pressable>
+          {deleteError ? (
+            <Text style={styles.errorText}>{deleteError}</Text>
+          ) : null}
+        </>
       ) : null}
 
       {scheduleId ? (
