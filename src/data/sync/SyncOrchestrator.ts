@@ -16,7 +16,7 @@ export class SyncOrchestrator {
   private rerunRequested = false;
   private lastTriggerSource: SyncTriggerSource = "manual";
   private lastNetworkRecoveredTriggerAt = 0;
-  private networkRecoveredCooldownMs: number;
+  private readonly networkRecoveredCooldownMs: number;
   private readonly now: () => number;
 
   constructor(
@@ -38,7 +38,15 @@ export class SyncOrchestrator {
 
     if (source === "network_recovered") {
       this.lastNetworkRecoveredTriggerAt = this.now();
-      this.networkRecoveredCooldownMs = this.calculateDynamicCooldown(); // Ajuste dinámico
+      // El cooldown es FIJO (this.networkRecoveredCooldownMs, configurado en
+      // el constructor) — no hay ninguna medición real de latencia de red
+      // hoy. Antes había una capa `getNetworkLatency()`/
+      // `calculateDynamicCooldown()` que aparentaba ajustar el cooldown
+      // dinámicamente, pero `getNetworkLatency()` siempre devolvía 0, así
+      // que el "ajuste" nunca variaba nada en producción — solo confundía a
+      // quien leyera el código pensando que existía lógica de red real
+      // detrás. Si algún día se agrega una medición real, este es el lugar
+      // para reintroducir el ajuste.
     }
 
     if (this.activeRunPromise) {
@@ -56,19 +64,6 @@ export class SyncOrchestrator {
 
   getLastTriggerSource(): SyncTriggerSource {
     return this.lastTriggerSource;
-  }
-
-  getNetworkLatency(): number {
-    // Default implementation returns 0; can be overridden in tests or injected
-    return 0;
-  }
-
-  calculateDynamicCooldown(): number {
-    const latency = this.getNetworkLatency();
-    if (latency > 1000) {
-      return latency * 2;
-    }
-    return this.networkRecoveredCooldownMs;
   }
 
   private shouldThrottle(source: SyncTriggerSource): boolean {

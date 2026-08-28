@@ -1143,6 +1143,29 @@ Desde ahí, ese PIN funciona en la tablet compartida exactamente igual que el de
 
 ---
 
+### v36_sync_status_indexes (2026-08-28)
+
+**Contexto:** rendimiento (bajo riesgo, aditivo) — ninguna de las 10 tablas que participan del ciclo de sync tenía índice sobre `sync_status`, a diferencia de `sync_delete_log` (que sí lo tiene desde el principio). Mismo cambio que `v28_sync_status_indexes` en SQLite local (`migrations.ts`). Postgres no lo necesita con la misma urgencia que SQLite (el volumen de filas por taller es bajo y Postgres suele resolver estos filtros razonablemente bien sin índice), pero se agrega por completitud y para que el plan de consultas no se degrade a medida que crece el histórico.
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_clients_sync_status ON clients (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_camisa_measurements_sync_status ON camisa_measurements (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_pantalon_measurements_sync_status ON pantalon_measurements (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_client_tallas_sync_status ON client_tallas (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_pricing_services_sync_status ON pricing_services (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_saco_measurements_sync_status ON saco_measurements (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_chaleco_measurements_sync_status ON chaleco_measurements (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_talla_templates_sync_status ON talla_templates (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_schedules_sync_status ON schedules (sync_status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_schedule_events_sync_status ON schedule_events (sync_status, created_at);
+```
+
+**Nota:** en Supabase, `pricing_services` ya usa `created_at`/`updated_at` snake_case (ver `v15_pricing_services_fix_column_case`), a diferencia de SQLite local donde la tabla conserva `updatedAt` camelCase — por eso el índice de arriba usa `updated_at` para esta tabla, distinto del nombre de columna usado en `migrations.ts`. `schedule_events` usa `created_at` en vez de `updated_at` porque es append-only y nunca se actualiza (mismo motivo que en SQLite).
+
+**Importante:** no bloquea ningún build — es un cambio puramente de índices, sin tocar columnas ni datos. Se puede aplicar en cualquier momento.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

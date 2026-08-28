@@ -23,9 +23,12 @@ export class SyncLifecycleController implements SyncLifecycleControllerPort {
       this.currentState = nextState;
 
       if (!wasForeground && isForeground) {
+        // onEnterForeground es quien dispara el sync real (ver App.tsx) —
+        // antes había un `syncOnForeground()` privado que solo hacía
+        // console.log() sin sincronizar nada, dejando la falsa impresión en
+        // los logs de producción de que ahí ocurría un sync que en
+        // realidad nunca pasaba por este archivo.
         this.onEnterForeground();
-        // Disparar sincronización inmediata al entrar en foreground
-        this.syncOnForeground();
       }
     });
   }
@@ -33,10 +36,5 @@ export class SyncLifecycleController implements SyncLifecycleControllerPort {
   stop(): void {
     this.subscription?.remove();
     this.subscription = null;
-  }
-
-  private syncOnForeground(): void {
-    // Lógica para iniciar sincronización inmediata
-    console.log("Sincronización inmediata al entrar en foreground");
   }
 }

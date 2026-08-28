@@ -112,41 +112,64 @@ export class PricingServiceRepositoryImpl implements PricingServiceRepository {
     return entity;
   }
 
+  /**
+   * Lee la fila actual y la reescribe completa dentro de la MISMA
+   * transacción (mismo patrón que delete(), ver database.ts: la cola de
+   * serializeTransactions garantiza que ninguna otra escritura, ej. un pull
+   * de sync que llega por reconexión/realtime, se intercale entre el SELECT
+   * y el UPDATE). Sin esto, dos escrituras casi simultáneas sobre el mismo
+   * servicio podían perder una de las dos: la segunda leía la fila ANTES
+   * del commit de la primera y su UPDATE reescribía todas las columnas con
+   * ese valor viejo, pisando el cambio recién commiteado (y reenviándolo
+   * así también a Supabase).
+   */
   async update(
     id: string,
     input: Partial<CreatePricingServiceInput>,
   ): Promise<PricingService> {
     const db = getDatabase();
-    const prev = await this.getById(id);
-    if (!prev) throw new Error(`PricingService not found: ${id}`);
+    let updated: PricingService | null = null;
 
-    if (input.name !== undefined) {
-      await this.assertNameNotDuplicated(input.name, id);
-    }
+    await db.withTransactionAsync(async () => {
+      const prevRow = await db.getFirstAsync<PricingServiceRow>(
+        `SELECT id, name, price, category, notes, createdAt, updatedAt, sync_status FROM pricing_services WHERE id = ? LIMIT 1;`,
+        id,
+      );
+      if (!prevRow) throw new Error(`PricingService not found: ${id}`);
+      const prev = mapRow(prevRow);
 
-    const now = new Date().toISOString();
-    const updated: PricingService = {
-      ...prev,
-      name: input.name !== undefined ? input.name.trim() : prev.name,
-      price: input.price !== undefined ? input.price : prev.price,
-      category: input.category !== undefined ? input.category : prev.category,
-      notes:
-        input.notes !== undefined ? (input.notes?.trim() ?? null) : prev.notes,
-      updatedAt: now,
-      syncStatus: "pending",
-    };
+      if (input.name !== undefined) {
+        await this.assertNameNotDuplicated(input.name, id);
+      }
 
-    await db.runAsync(
-      `UPDATE pricing_services SET name = ?, price = ?, category = ?, notes = ?, updatedAt = ?, sync_status = 'pending' WHERE id = ?;`,
-      updated.name,
-      updated.price,
-      updated.category,
-      updated.notes ?? null,
-      updated.updatedAt,
-      id,
-    );
+      const now = new Date().toISOString();
+      updated = {
+        ...prev,
+        name: input.name !== undefined ? input.name.trim() : prev.name,
+        price: input.price !== undefined ? input.price : prev.price,
+        category:
+          input.category !== undefined ? input.category : prev.category,
+        notes:
+          input.notes !== undefined
+            ? (input.notes?.trim() ?? null)
+            : prev.notes,
+        updatedAt: now,
+        syncStatus: "pending",
+      };
+
+      await db.runAsync(
+        `UPDATE pricing_services SET name = ?, price = ?, category = ?, notes = ?, updatedAt = ?, sync_status = 'pending' WHERE id = ?;`,
+        updated.name,
+        updated.price,
+        updated.category,
+        updated.notes ?? null,
+        updated.updatedAt,
+        id,
+      );
+    });
+
     notifyWriteCommitted(this.options);
-    return updated;
+    return updated!;
   }
 
   async delete(id: string): Promise<void> {

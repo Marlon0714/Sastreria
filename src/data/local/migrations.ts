@@ -8,6 +8,31 @@ interface Migration {
 
 export const MIGRATIONS: readonly Migration[] = [
   {
+    // Rendimiento (bajo riesgo, aditivo): las 10 tablas que participan del
+    // ciclo de sync (push: filtra por sync_status='pending'/'error'; pull:
+    // ordena por updated_at para el cursor incremental) no tenían ningún
+    // índice sobre sync_status, a diferencia de sync_delete_log (que sí lo
+    // tiene desde v4). En una tabla grande, cada ciclo de sync termina
+    // haciendo un full table scan. schedule_events es append-only y nunca
+    // se actualiza (ver ScheduleEventRepositoryImpl: updatedAt = created_at
+    // siempre), así que usa created_at en vez de updated_at — es la única
+    // de las 10 sin columna updated_at propia.
+    version: 28,
+    name: "v28_sync_status_indexes",
+    statements: [
+      `CREATE INDEX IF NOT EXISTS idx_clients_sync_status ON clients (sync_status, updated_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_camisa_measurements_sync_status ON camisa_measurements (sync_status, updated_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_pantalon_measurements_sync_status ON pantalon_measurements (sync_status, updated_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_client_tallas_sync_status ON client_tallas (sync_status, updated_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_pricing_services_sync_status ON pricing_services (sync_status, updatedAt);`,
+      `CREATE INDEX IF NOT EXISTS idx_saco_measurements_sync_status ON saco_measurements (sync_status, updated_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_chaleco_measurements_sync_status ON chaleco_measurements (sync_status, updated_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_talla_templates_sync_status ON talla_templates (sync_status, updated_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_sync_status ON schedules (sync_status, updated_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_schedule_events_sync_status ON schedule_events (sync_status, created_at);`,
+    ],
+  },
+  {
     version: 12,
     name: "v12_talla_templates",
     statements: [

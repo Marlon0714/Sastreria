@@ -172,4 +172,59 @@ describe("TallaTemplateRepositoryImpl", () => {
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("concurrencia", () => {
+    it("dos updates casi simultáneos sobre la misma plantilla no pierden ningún cambio (SELECT+UPDATE atómico)", async () => {
+      // Reemplaza el mock "ingenuo" de withTransactionAsync (`await
+      // callback()` inmediato) por uno que reproduce la misma serialización
+      // de serializeTransactions en database.ts: solo una transacción corre
+      // a la vez, y la siguiente espera a que la anterior termine POR
+      // COMPLETO (incluida su escritura) antes de arrancar su propio SELECT.
+      // Este test es el último del archivo a propósito: mockGetFirstAsync/
+      // mockRunAsync quedan con una implementación persistente (no "Once")
+      // que no se limpia con jest.clearAllMocks() en el beforeEach.
+      let queue: Promise<void> = Promise.resolve();
+      mockWithTransactionAsync.mockImplementation((callback) => {
+        const run = (): Promise<void> => callback();
+        const result = queue.then(run, run);
+        queue = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        return result;
+      });
+
+      let row: Omit<typeof baseRow, "espalda" | "hombro"> & {
+        espalda: number | null;
+        hombro: number | null;
+      } = { ...baseRow };
+      mockGetFirstAsync.mockImplementation(async () => ({ ...row }));
+      mockRunAsync.mockImplementation(
+        async (_sql: string, ...params: unknown[]) => {
+          const [, espalda, hombro] = params as unknown[];
+          row = {
+            ...row,
+            espalda: espalda as number | null,
+            hombro: hombro as number | null,
+          };
+          return undefined;
+        },
+      );
+
+      const repo = new TallaTemplateRepositoryImpl();
+
+      // Simula un pull de sync cambiando `hombro` justo mientras el usuario
+      // cambia `espalda` desde la UI, casi al mismo tiempo (ninguna de las
+      // dos llamadas espera a que la otra termine).
+      const [resultA, resultB] = await Promise.all([
+        repo.update({ id: baseRow.id, espalda: 46 }),
+        repo.update({ id: baseRow.id, hombro: 16 }),
+      ]);
+
+      expect(row.espalda).toBe(46);
+      expect(row.hombro).toBe(16);
+      expect([resultA.espalda, resultB.espalda]).toContain(46);
+      expect([resultA.hombro, resultB.hombro]).toContain(16);
+    });
+  });
 });

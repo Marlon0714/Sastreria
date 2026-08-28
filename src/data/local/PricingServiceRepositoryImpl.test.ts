@@ -240,4 +240,58 @@ describe("PricingServiceRepositoryImpl", () => {
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("concurrencia", () => {
+    it("dos updates casi simultáneos sobre el mismo servicio no pierden ningún cambio (SELECT+UPDATE atómico)", async () => {
+      // Reemplaza el mock "ingenuo" de withTransactionAsync (`await
+      // callback()` inmediato) por uno que reproduce la misma serialización
+      // de serializeTransactions en database.ts: solo una transacción corre
+      // a la vez, y la siguiente espera a que la anterior termine POR
+      // COMPLETO (incluida su escritura) antes de arrancar su propio SELECT.
+      // Este test es el último del archivo a propósito: mockGetFirstAsync/
+      // mockRunAsync quedan con una implementación persistente (no "Once")
+      // que no se limpia con jest.clearAllMocks() en el beforeEach.
+      let queue: Promise<void> = Promise.resolve();
+      mockWithTransactionAsync.mockImplementation((callback) => {
+        const run = (): Promise<void> => callback();
+        const result = queue.then(run, run);
+        queue = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        return result;
+      });
+
+      let row: Omit<typeof baseRow, "notes"> & { notes: string | null } = {
+        ...baseRow,
+      };
+      mockGetFirstAsync.mockImplementation(async () => ({ ...row }));
+      mockRunAsync.mockImplementation(
+        async (_sql: string, ...params: unknown[]) => {
+          const [, price, , notes] = params as unknown[];
+          row = {
+            ...row,
+            price: price as number,
+            notes: notes as string | null,
+          };
+          return undefined;
+        },
+      );
+
+      // Simula un pull de sync cambiando `notes` justo mientras el usuario
+      // cambia el `price` desde la UI, casi al mismo tiempo (ninguna de las
+      // dos llamadas espera a que la otra termine).
+      const [resultA, resultB] = await Promise.all([
+        repo.update(baseRow.id, { price: 30000 }),
+        repo.update(baseRow.id, { notes: "Cliente pidió urgencia" }),
+      ]);
+
+      expect(row.price).toBe(30000);
+      expect(row.notes).toBe("Cliente pidió urgencia");
+      expect([resultA.price, resultB.price]).toContain(30000);
+      expect([resultA.notes, resultB.notes]).toContain(
+        "Cliente pidió urgencia",
+      );
+    });
+  });
 });

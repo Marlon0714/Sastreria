@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { SupabaseSyncTransport } from "./SupabaseSyncTransport";
 
 // Mock the Supabase client module
-type MockError = { code: string } | null;
+type MockError = { code: string; message?: string } | null;
 const mockUpsert = jest.fn<() => Promise<{ error: MockError }>>();
 const mockDelete = jest.fn<() => { eq: jest.Mock }>();
 const mockUpdate = jest.fn<() => { eq: jest.Mock }>();
@@ -794,6 +794,184 @@ describe("SupabaseSyncTransport", () => {
       const transport = new SupabaseSyncTransport();
 
       const result = await transport.syncDeleteLogEntry(baseDeleteLog);
+      expect(result).toEqual({ outcome: "deferred_offline" });
+    });
+
+    it("deletes only saco_measurements when entityType is saco_measurement", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const sacoDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "saco_measurement" as const,
+        entityId: "saco-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(sacoDeleteLog);
+
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockFrom).toHaveBeenCalledWith("saco_measurements");
+      expect(mockFrom).not.toHaveBeenCalledWith("clients");
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns failed when saco_measurement delete fails", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+      const sacoDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "saco_measurement" as const,
+        entityId: "saco-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(sacoDeleteLog);
+
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+
+    it("deletes only chaleco_measurements when entityType is chaleco_measurement", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const chalecoDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "chaleco_measurement" as const,
+        entityId: "chaleco-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(chalecoDeleteLog);
+
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockFrom).toHaveBeenCalledWith("chaleco_measurements");
+      expect(mockFrom).not.toHaveBeenCalledWith("clients");
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns failed when chaleco_measurement delete fails", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+      const chalecoDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "chaleco_measurement" as const,
+        entityId: "chaleco-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(chalecoDeleteLog);
+
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+
+    it("deletes only schedule_events when entityType is schedule_event", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const scheduleEventDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "schedule_event" as const,
+        entityId: "event-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(scheduleEventDeleteLog);
+
+      expect(result).toEqual({ outcome: "synced" });
+      expect(mockFrom).toHaveBeenCalledWith("schedule_events");
+      expect(mockFrom).not.toHaveBeenCalledWith("clients");
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns failed when schedule_event delete fails", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      mockEq.mockResolvedValueOnce({ error: { code: "42501" } });
+      const transport = new SupabaseSyncTransport();
+      const scheduleEventDeleteLog = {
+        ...baseDeleteLog,
+        entityType: "schedule_event" as const,
+        entityId: "event-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(scheduleEventDeleteLog);
+
+      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
+    });
+
+    it("nunca reporta synced (sin haber borrado nada) para un entityType desconocido — falla ruidosamente", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+      const unknownDeleteLog = {
+        ...baseDeleteLog,
+        // Simula un SyncEntityType nuevo agregado a types.ts sin su rama
+        // correspondiente en executeCloudDelete — el `default` exhaustivo
+        // debe lanzar, nunca devolver `null` (que el caller confundiría
+        // con "no hacía falta borrar nada" y marcaría como sincronizado).
+        entityType: "unknown_entity" as unknown as typeof baseDeleteLog.entityType,
+        entityId: "x-1",
+      };
+
+      const result = await transport.syncDeleteLogEntry(unknownDeleteLog);
+
+      expect(result.outcome).toBe("failed");
+      expect(mockDelete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("clasificación de errores de red vs errores desconocidos", () => {
+    it("un error con código de red conocido (ECONNREFUSED) se trata como offline aunque el mensaje no lo mencione", async () => {
+      mockUpsert.mockResolvedValueOnce({
+        error: { code: "ECONNREFUSED", message: "connect failed" },
+      });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncClient(baseClient);
+
+      expect(result).toEqual({ outcome: "deferred_offline" });
+    });
+
+    it("un error de red genérico sin código pero con mensaje reconocible se trata como offline", async () => {
+      mockUpsert.mockResolvedValueOnce({
+        error: { code: "", message: "Network request failed" },
+      });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncClient(baseClient);
+
+      expect(result).toEqual({ outcome: "deferred_offline" });
+    });
+
+    it("un error totalmente desconocido, sin código ni evidencia de red, se trata como fallo real (no offline)", async () => {
+      // Antes: `!errorCode` por sí solo bastaba para asumir offline, así que
+      // este caso (ej. un error de esquema/RLS sin `.code`) quedaba
+      // atascado como backlog offline para siempre, sin consumir
+      // reintentos ni llegar nunca a markAsError.
+      mockUpsert.mockResolvedValueOnce({
+        error: { code: "", message: "Malformed payload for column price" },
+      });
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncClient(baseClient);
+
+      expect(result.outcome).toBe("failed");
+    });
+
+    it("una excepción JS desconocida (no de red) lanzada antes de la respuesta HTTP se trata como fallo real", async () => {
+      mockUpsert.mockRejectedValueOnce(
+        new TypeError("Cannot read properties of undefined (reading 'id')"),
+      );
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncClient(baseClient);
+
+      expect(result.outcome).toBe("failed");
+      expect(result).toMatchObject({ errorCode: "unexpected_error" });
+    });
+
+    it("una excepción JS de red (fetch failed) lanzada antes de la respuesta HTTP se sigue tratando como offline", async () => {
+      mockUpsert.mockRejectedValueOnce(new TypeError("Network request failed"));
+      const transport = new SupabaseSyncTransport();
+
+      const result = await transport.syncClient(baseClient);
+
       expect(result).toEqual({ outcome: "deferred_offline" });
     });
   });
