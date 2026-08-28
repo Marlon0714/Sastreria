@@ -4,6 +4,19 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { Schedule } from "../../schedule/domain/types";
 import MyActivityScreen from "./MyActivityScreen";
 
+jest.mock("@react-navigation/native", () => {
+  const ReactModule = jest.requireActual("react") as typeof import("react");
+
+  return {
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      ReactModule.useEffect(() => {
+        const cleanup = effect();
+        return cleanup;
+      }, [effect]);
+    },
+  };
+});
+
 interface UseMyActivityResult {
   items: { schedule: Schedule; clientLabel: string }[];
   total: number;
@@ -63,6 +76,15 @@ describe("MyActivityScreen", () => {
     mockUseMyActivity.mockReturnValue(buildActivityResult());
   });
 
+  it("recarga los datos al recibir foco (ej. al volver de marcar un arreglo listo en Agenda)", () => {
+    const reload = jest.fn(async () => Promise.resolve());
+    mockUseMyActivity.mockReturnValue(buildActivityResult({ reload }));
+
+    render(<MyActivityScreen />);
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
   it("muestra un estado vacío cuando no hay arreglos ese día", () => {
     const { getByText } = render(<MyActivityScreen />);
     expect(
@@ -90,6 +112,7 @@ describe("MyActivityScreen", () => {
     expect(getByText(/Luis Gómez/)).toBeTruthy();
     expect(getByText("$40.000")).toBeTruthy();
     expect(getByText("$15.000")).toBeTruthy();
+    expect(getByText("Total bruto del día")).toBeTruthy();
     expect(getByText("$55.000")).toBeTruthy();
   });
 
