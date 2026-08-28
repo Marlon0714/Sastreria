@@ -49,7 +49,7 @@ export function OfflineActorPickerModal({
               keyExtractor={(item) => item.id}
               ListEmptyComponent={
                 <Text style={styles.emptyText}>
-                  No hay operarios disponibles sin conexión.
+                  No hay personas disponibles para identificarse sin conexión.
                 </Text>
               }
               renderItem={({ item }) => (

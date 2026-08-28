@@ -34,6 +34,8 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
   const displayName = useIdentityStore(
     (state) => state.ownProfile?.displayName ?? "",
   );
+  const role = useIdentityStore((state) => state.ownProfile?.role ?? null);
+  const roleLabel = role === "owner" ? "Dueño" : "Operario";
   const {
     currentEmail,
     isLoadingEmail,
@@ -136,7 +138,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
       >
         <View style={styles.card}>
           <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.role}>Operario</Text>
+          <Text style={styles.role}>{roleLabel}</Text>
         </View>
 
         <Pressable

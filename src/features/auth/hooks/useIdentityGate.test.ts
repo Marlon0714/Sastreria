@@ -15,10 +15,12 @@ jest.mock("../../../data/supabase/client", () => ({
 }));
 
 const mockGetOperarios = jest.fn<() => Promise<unknown[]>>();
+const mockGetIdentityCandidates = jest.fn<() => Promise<unknown[]>>();
 
 jest.mock("../../../data/local/profilesCacheDependencies", () => ({
   getDefaultProfilesCacheRepository: () => ({
     getOperarios: () => mockGetOperarios(),
+    getIdentityCandidates: () => mockGetIdentityCandidates(),
   }),
 }));
 
@@ -42,6 +44,7 @@ describe("useIdentityGate", () => {
     useIdentityStore.getState().reset();
     useSyncStatusStore.getState().reset();
     mockGetOperarios.mockResolvedValue([]);
+    mockGetIdentityCandidates.mockResolvedValue([]);
   });
 
   it("no pide PIN y retorna ownProfile de inmediato si no es dispositivo compartido", async () => {
@@ -179,8 +182,42 @@ describe("useIdentityGate", () => {
       await result.current.submitPin("0000");
     });
 
-    expect(result.current.pinError).toBe("PIN incorrecto. Intenta de nuevo.");
+    expect(result.current.pinError).toBe(
+      "PIN incorrecto. Te quedan 4 intentos.",
+    );
     expect(result.current.isPinPromptVisible).toBe(true);
+  });
+
+  it("decrementa los intentos restantes mostrados en cada fallo consecutivo, hasta el bloqueo", async () => {
+    useSyncStatusStore.getState().setConnectivity("online");
+    useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
+    mockRpc.mockResolvedValue({ data: [], error: null });
+    const { result } = renderHook(() => useIdentityGate());
+
+    act(() => {
+      void result.current.requireIdentity();
+    });
+
+    const expectedMessages = [
+      "PIN incorrecto. Te quedan 4 intentos.",
+      "PIN incorrecto. Te quedan 3 intentos.",
+      "PIN incorrecto. Te quedan 2 intentos.",
+      "PIN incorrecto. Te quedan 1 intento.",
+    ];
+
+    for (const expectedMessage of expectedMessages) {
+      await act(async () => {
+        await result.current.submitPin("0000");
+      });
+      expect(result.current.pinError).toBe(expectedMessage);
+    }
+
+    await act(async () => {
+      await result.current.submitPin("0000");
+    });
+    expect(result.current.pinError).toBe(
+      "Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo.",
+    );
   });
 
   it("muestra un error de conexión (no 'PIN incorrecto') si el RPC falla", async () => {
@@ -298,13 +335,13 @@ describe("useIdentityGate", () => {
   });
 
   describe("sin conexión en dispositivo compartido", () => {
-    it("abre el selector offline en vez de pedir PIN y carga los operarios cacheados", async () => {
+    it("abre el selector offline en vez de pedir PIN y carga los perfiles cacheados", async () => {
       useSyncStatusStore.getState().setConnectivity("offline");
       useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
       const operarios = [
         { id: "op-1", displayName: "Juan Pérez", role: "operario" as const, isSharedDevice: false },
       ];
-      mockGetOperarios.mockResolvedValue(operarios);
+      mockGetIdentityCandidates.mockResolvedValue(operarios);
       const { result } = renderHook(() => useIdentityGate());
 
       act(() => {
@@ -328,7 +365,7 @@ describe("useIdentityGate", () => {
         role: "operario" as const,
         isSharedDevice: false,
       };
-      mockGetOperarios.mockResolvedValue([operario]);
+      mockGetIdentityCandidates.mockResolvedValue([operario]);
       const { result } = renderHook(() => useIdentityGate());
 
       let identityPromise: Promise<unknown>;
@@ -360,7 +397,7 @@ describe("useIdentityGate", () => {
         role: "operario" as const,
         isSharedDevice: false,
       };
-      mockGetOperarios.mockResolvedValue([operario]);
+      mockGetIdentityCandidates.mockResolvedValue([operario]);
       const { result } = renderHook(() => useIdentityGate());
 
       let firstPromise: Promise<unknown>;
@@ -373,7 +410,7 @@ describe("useIdentityGate", () => {
         expect(result.current.isLoadingOfflineOperarios).toBe(false),
       );
 
-      expect(mockGetOperarios).toHaveBeenCalledTimes(1);
+      expect(mockGetIdentityCandidates).toHaveBeenCalledTimes(1);
 
       act(() => {
         result.current.submitOfflineActor(operario);
@@ -387,6 +424,27 @@ describe("useIdentityGate", () => {
       const expected = { profile: operario, verified: false };
       expect(firstResolved).toEqual(expected);
       expect(secondResolved).toEqual(expected);
+    });
+
+    it("incluye al dueño (role='owner') con PIN configurado en la lista offline de la tablet compartida", async () => {
+      useSyncStatusStore.getState().setConnectivity("offline");
+      useIdentityStore.getState().setOwnProfile(sharedDeviceProfile);
+      const owner = {
+        id: "owner-1",
+        displayName: "Ana Ruiz",
+        role: "owner" as const,
+        isSharedDevice: false,
+      };
+      mockGetIdentityCandidates.mockResolvedValue([owner]);
+      const { result } = renderHook(() => useIdentityGate());
+
+      act(() => {
+        void result.current.requireIdentity();
+      });
+
+      await waitFor(() =>
+        expect(result.current.offlineOperarios).toEqual([owner]),
+      );
     });
 
     it("resuelve a null si se cancela el selector offline", async () => {

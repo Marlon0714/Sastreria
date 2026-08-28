@@ -50,4 +50,53 @@ describe("ProfilesCacheRepositoryImpl", () => {
 
     expect(result).toEqual([]);
   });
+
+  describe("getIdentityCandidates", () => {
+    it("incluye perfiles owner con PIN configurado, no solo operarios, para identificarse offline en la tablet compartida", async () => {
+      mockGetAllAsync.mockResolvedValueOnce([
+        {
+          id: "owner-1",
+          display_name: "Ana Ruiz",
+          role: "owner",
+          is_shared_device: 0,
+        },
+        {
+          id: "user-1",
+          display_name: "María Gómez",
+          role: "operario",
+          is_shared_device: 0,
+        },
+      ]);
+      const repository = new ProfilesCacheRepositoryImpl();
+
+      const result = await repository.getIdentityCandidates();
+
+      expect(result).toEqual([
+        {
+          id: "owner-1",
+          displayName: "Ana Ruiz",
+          role: "owner",
+          isSharedDevice: false,
+        },
+        {
+          id: "user-1",
+          displayName: "María Gómez",
+          role: "operario",
+          isSharedDevice: false,
+        },
+      ]);
+      const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("WHERE is_shared_device = 0");
+      expect(sql).not.toContain("role =");
+    });
+
+    it("retorna una lista vacía si no hay perfiles cacheados", async () => {
+      mockGetAllAsync.mockResolvedValueOnce([]);
+      const repository = new ProfilesCacheRepositoryImpl();
+
+      const result = await repository.getIdentityCandidates();
+
+      expect(result).toEqual([]);
+    });
+  });
 });

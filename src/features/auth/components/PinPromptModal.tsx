@@ -1,5 +1,5 @@
 import { colors } from "../../../shared/theme/colors";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Modal,
   StyleSheet,
@@ -9,6 +9,8 @@ import {
   View,
 } from "react-native";
 
+import { PIN_LOCKOUT_MS } from "../hooks/useIdentityGate";
+
 interface PinPromptModalProps {
   visible: boolean;
   error: string | null;
@@ -17,6 +19,13 @@ interface PinPromptModalProps {
 }
 
 const PIN_LENGTH = 4;
+
+// Prefijo fijo del mensaje que useIdentityGate.registerFailedPinAttempt()
+// setea al llegar al límite de intentos — se usa para distinguir "está en
+// cooldown" de un simple "PIN incorrecto" sin acoplar este componente a la
+// lógica interna del hook.
+const LOCKOUT_MESSAGE_PREFIX = "Demasiados intentos fallidos.";
+const PIN_LOCKOUT_SECONDS = Math.ceil(PIN_LOCKOUT_MS / 1000);
 
 export function PinPromptModal({
   visible,
@@ -28,6 +37,43 @@ export function PinPromptModal({
   // Evita que un doble-tap dispare dos verificaciones concurrentes del
   // mismo PIN mientras la promesa de onSubmit está en curso.
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isLockedOut = error?.startsWith(LOCKOUT_MESSAGE_PREFIX) ?? false;
+  // Cuenta regresiva visible durante el cooldown de 30s — antes el mensaje
+  // era estático y el botón Confirmar seguía habilitado (solo se cortaba
+  // la llamada al backend al presionarlo).
+  const [lockoutSecondsLeft, setLockoutSecondsLeft] = useState<number | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!isLockedOut) {
+      setLockoutSecondsLeft(null);
+      return;
+    }
+
+    setLockoutSecondsLeft(PIN_LOCKOUT_SECONDS);
+    const intervalId = setInterval(() => {
+      setLockoutSecondsLeft((seconds) => {
+        if (seconds === null || seconds <= 1) {
+          return 0;
+        }
+        return seconds - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [isLockedOut]);
+
+  const isLockedOutNow = isLockedOut && (lockoutSecondsLeft ?? 0) > 0;
+  const displayError =
+    isLockedOutNow && lockoutSecondsLeft !== null
+      ? `${LOCKOUT_MESSAGE_PREFIX} Espera ${lockoutSecondsLeft} ${
+          lockoutSecondsLeft === 1 ? "segundo" : "segundos"
+        } e intenta de nuevo.`
+      : error;
+  const isConfirmDisabled =
+    pin.length !== PIN_LENGTH || isSubmitting || isLockedOutNow;
 
   const handleSubmit = async (): Promise<void> => {
     setIsSubmitting(true);
@@ -72,7 +118,7 @@ export function PinPromptModal({
             editable={!isSubmitting}
           />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {displayError && <Text style={styles.error}>{displayError}</Text>}
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
@@ -85,12 +131,10 @@ export function PinPromptModal({
             <TouchableOpacity
               style={[
                 styles.confirmButton,
-                pin.length !== PIN_LENGTH || isSubmitting
-                  ? styles.confirmButtonDisabled
-                  : null,
+                isConfirmDisabled ? styles.confirmButtonDisabled : null,
               ]}
               onPress={handleSubmit}
-              disabled={pin.length !== PIN_LENGTH || isSubmitting}
+              disabled={isConfirmDisabled}
               accessibilityLabel="Confirmar PIN"
             >
               <Text style={styles.confirmText}>

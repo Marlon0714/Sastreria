@@ -1,5 +1,12 @@
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import { describe, expect, it, jest } from "@jest/globals";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 
 import { PinPromptModal } from "./PinPromptModal";
 
@@ -167,5 +174,91 @@ describe("PinPromptModal", () => {
     );
 
     expect(getByText("PIN incorrecto. Intenta de nuevo.")).toBeTruthy();
+  });
+
+  describe("cuenta regresiva del bloqueo por intentos fallidos", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("muestra los segundos restantes y los actualiza cada segundo mientras dura el bloqueo", () => {
+      const { getByText, queryByText } = render(
+        <PinPromptModal
+          visible={true}
+          error="Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo."
+          onSubmit={jest.fn<(pin: string) => void>()}
+          onCancel={jest.fn()}
+        />,
+      );
+
+      expect(
+        getByText(
+          "Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo.",
+        ),
+      ).toBeTruthy();
+
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(
+        getByText(
+          "Demasiados intentos fallidos. Espera 29 segundos e intenta de nuevo.",
+        ),
+      ).toBeTruthy();
+
+      act(() => {
+        jest.advanceTimersByTime(28_000);
+      });
+
+      expect(
+        getByText(
+          "Demasiados intentos fallidos. Espera 1 segundo e intenta de nuevo.",
+        ),
+      ).toBeTruthy();
+
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(
+        queryByText(
+          "Demasiados intentos fallidos. Espera 0 segundos e intenta de nuevo.",
+        ),
+      ).toBeNull();
+    });
+
+    it("deshabilita el botón Confirmar mientras dura el bloqueo, aunque el PIN tenga 4 dígitos", () => {
+      const { getByLabelText } = render(
+        <PinPromptModal
+          visible={true}
+          error="Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo."
+          onSubmit={jest.fn<(pin: string) => void>()}
+          onCancel={jest.fn()}
+        />,
+      );
+
+      const input = getByLabelText("PIN");
+      fireEvent.changeText(input, "1234");
+      const confirmButton = getByLabelText("Confirmar PIN");
+
+      expect(
+        confirmButton.props.accessibilityState?.disabled ??
+          confirmButton.props.disabled,
+      ).toBe(true);
+
+      act(() => {
+        jest.advanceTimersByTime(30_000);
+      });
+
+      expect(
+        confirmButton.props.accessibilityState?.disabled ??
+          confirmButton.props.disabled,
+      ).toBe(false);
+    });
   });
 });
