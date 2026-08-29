@@ -12,6 +12,7 @@ const mockCreateTemplate =
   jest.fn<(dto: unknown) => Promise<TallaTemplate | null>>();
 const mockUpdateTemplate = jest.fn();
 const mockDeleteTemplate = jest.fn();
+let mockUpsertError: string | null = null;
 
 jest.mock("../hooks/useUpsertTallaTemplate", () => ({
   useUpsertTallaTemplate: () => ({
@@ -19,7 +20,7 @@ jest.mock("../hooks/useUpsertTallaTemplate", () => ({
     updateTemplate: mockUpdateTemplate,
     deleteTemplate: mockDeleteTemplate,
     isSubmitting: false,
-    error: null,
+    error: mockUpsertError,
   }),
 }));
 
@@ -51,6 +52,7 @@ describe("TallaFormScreen", () => {
     mockCreateTemplate.mockReset();
     mockUpdateTemplate.mockReset();
     mockDeleteTemplate.mockReset();
+    mockUpsertError = null;
   });
 
   it("muestra un error de campo y no guarda cuando una medida está fuera de rango", async () => {
@@ -147,5 +149,20 @@ describe("TallaFormScreen", () => {
     await waitFor(() => {
       expect(mockCreateTemplate).toHaveBeenCalled();
     });
+  });
+
+  it("muestra el mensaje de nombre duplicado que devuelve el repositorio", () => {
+    mockUpsertError =
+      "Ya existe una plantilla de talla 'M' para Camisa.";
+
+    const { getByText } = render(
+      <TallasDependenciesProvider dependencies={dependencies}>
+        <TallaFormScreen {...buildProps()} />
+      </TallasDependenciesProvider>,
+    );
+
+    expect(
+      getByText("Ya existe una plantilla de talla 'M' para Camisa."),
+    ).toBeTruthy();
   });
 });

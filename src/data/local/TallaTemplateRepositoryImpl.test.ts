@@ -98,8 +98,9 @@ describe("TallaTemplateRepositoryImpl", () => {
 
   describe("onWriteCommitted", () => {
     it("se llama una vez después de create()", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(null); // chequeo de nombre duplicado
       mockRunAsync.mockResolvedValueOnce(undefined);
-      mockGetFirstAsync.mockResolvedValueOnce(baseRow);
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // fetch posterior al INSERT
       const onWriteCommitted = jest.fn<() => void>();
       const repo = new TallaTemplateRepositoryImpl({ onWriteCommitted });
 
@@ -170,6 +171,83 @@ describe("TallaTemplateRepositoryImpl", () => {
       await repo.delete(baseRow.id);
 
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("nombre único por tipo de prenda", () => {
+    it("create rechaza un nombre duplicado dentro del MISMO tipo de prenda", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "otro-id" });
+      const repo = new TallaTemplateRepositoryImpl();
+
+      await expect(
+        repo.create({ name: "  m  ", type: "camisa" }),
+      ).rejects.toThrow(
+        "Ya existe una plantilla de talla 'm' para Camisa.",
+      );
+      expect(mockRunAsync).not.toHaveBeenCalled();
+
+      const [sql, type, name] = mockGetFirstAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("WHERE type = ?");
+      expect(sql).toContain("LOWER(TRIM(name)) = LOWER(?)");
+      expect(type).toBe("camisa");
+      expect(name).toBe("m");
+    });
+
+    it("permite el mismo nombre en un tipo de prenda DISTINTO", async () => {
+      // El chequeo de duplicado filtra por `type`, así que una plantilla "M"
+      // de pantalón no choca con una "M" de camisa ya existente.
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      mockGetFirstAsync.mockResolvedValueOnce({ ...baseRow, type: "pantalon" });
+
+      const repo = new TallaTemplateRepositoryImpl();
+      const result = await repo.create({ name: "M", type: "pantalon" });
+
+      expect(result.name).toBe("Molde estándar");
+      expect(mockRunAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("update rechaza si el nuevo nombre coincide con OTRA plantilla del mismo tipo", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // SELECT existente dentro de la transacción
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "otro-id" }); // chequeo de duplicado
+      const repo = new TallaTemplateRepositoryImpl();
+
+      await expect(
+        repo.update({ id: baseRow.id, name: "Otra plantilla" }),
+      ).rejects.toThrow(
+        "Ya existe una plantilla de talla 'Otra plantilla' para Camisa.",
+      );
+      expect(mockRunAsync).not.toHaveBeenCalled();
+    });
+
+    it("update NO dispara el chequeo si mantiene su PROPIO nombre actual", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // SELECT existente
+      // El chequeo excluye el propio id — ninguna otra fila coincide.
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // fetch posterior al UPDATE
+      const repo = new TallaTemplateRepositoryImpl();
+
+      const result = await repo.update({
+        id: baseRow.id,
+        name: baseRow.name,
+      });
+
+      expect(result.name).toBe(baseRow.name);
+      // Params de la query de duplicado: (sql, type, normalized, excludeId).
+      const [, , , excludeId] = mockGetFirstAsync.mock.calls[1] ?? [];
+      expect(excludeId).toBe(baseRow.id);
+    });
+
+    it("update no chequea duplicado si el DTO no trae `name`", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // solo el SELECT existente
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow);
+      const repo = new TallaTemplateRepositoryImpl();
+
+      await repo.update({ id: baseRow.id, espalda: 44 });
+
+      expect(mockGetFirstAsync).toHaveBeenCalledTimes(2);
     });
   });
 

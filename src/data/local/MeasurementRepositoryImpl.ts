@@ -5,6 +5,7 @@ import {
 } from "./writeCommitted";
 
 import type { MeasurementRepository } from "../../features/clients/domain/repository";
+import type { SyncEntityType } from "../sync/types";
 import {
   type CamisaMeasurement,
   type PantalonMeasurement,
@@ -792,5 +793,95 @@ export class MeasurementRepositoryImpl implements MeasurementRepository {
       `,
       clientId,
     );
+  }
+
+  async deleteCamisa(clientId: string): Promise<void> {
+    await this.deleteMeasurementByClientId(
+      "camisa_measurements",
+      "camisa_measurement",
+      clientId,
+    );
+  }
+
+  async deletePantalon(clientId: string): Promise<void> {
+    await this.deleteMeasurementByClientId(
+      "pantalon_measurements",
+      "pantalon_measurement",
+      clientId,
+    );
+  }
+
+  async deleteSaco(clientId: string): Promise<void> {
+    await this.deleteMeasurementByClientId(
+      "saco_measurements",
+      "saco_measurement",
+      clientId,
+    );
+  }
+
+  async deleteChaleco(clientId: string): Promise<void> {
+    await this.deleteMeasurementByClientId(
+      "chaleco_measurements",
+      "chaleco_measurement",
+      clientId,
+    );
+  }
+
+  /**
+   * Borra la medida (una sola por cliente y tipo, UNIQUE por client_id) y
+   * registra la entrada en `sync_delete_log` que dispara el DELETE en
+   * Supabase (ver `executeCloudDelete` en SupabaseSyncTransport.ts, que ya
+   * tiene rama para los 4 tipos de medida). El SELECT del id y el DELETE
+   * corren dentro de la MISMA transacción (mismo patrón que
+   * `PricingServiceRepositoryImpl.update()`), para que ninguna otra
+   * escritura (ej. un pull de sync) se intercale entre ambos.
+   *
+   * Si el cliente no tiene esa medida guardada, es un no-op idempotente: no
+   * se escribe nada y no se notifica el commit, para no disparar un ciclo de
+   * sync sin ningún cambio real que sincronizar.
+   */
+  private async deleteMeasurementByClientId(
+    table:
+      | "camisa_measurements"
+      | "pantalon_measurements"
+      | "saco_measurements"
+      | "chaleco_measurements",
+    entityType: SyncEntityType,
+    clientId: string,
+  ): Promise<void> {
+    const db = getDatabase();
+    const nowIso = new Date().toISOString();
+    const deleteLogId = generateDomainUuid();
+    let hadMeasurement = false;
+
+    await db.withTransactionAsync(async () => {
+      const existing = await db.getFirstAsync<{ id: string }>(
+        `SELECT id FROM ${table} WHERE client_id = ? LIMIT 1;`,
+        clientId,
+      );
+
+      if (!existing) {
+        return;
+      }
+
+      hadMeasurement = true;
+
+      await db.runAsync(`DELETE FROM ${table} WHERE client_id = ?;`, clientId);
+      await db.runAsync(
+        `
+        INSERT INTO sync_delete_log (id, entity_type, entity_id, deleted_at, sync_status)
+        VALUES (?, ?, ?, ?, ?);
+        `,
+        deleteLogId,
+        entityType,
+        existing.id,
+        nowIso,
+        "pending",
+      );
+    });
+
+    if (hadMeasurement) {
+      notifyWriteCommitted(this.options);
+    }
   }
 }

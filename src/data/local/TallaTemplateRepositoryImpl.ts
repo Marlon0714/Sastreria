@@ -1,5 +1,6 @@
 import { getDatabase } from "./database";
 import type { TallaTemplateRepository } from "../../features/tallas/domain/repository";
+import { TALLA_GARMENT_LABELS } from "../../features/tallas/domain/types";
 import type {
   TallaTemplate,
   CreateTallaTemplateDTO,
@@ -126,8 +127,44 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
     return rows.map(mapRow);
   }
 
+  /**
+   * El nombre de una plantilla debe ser único DENTRO de su mismo tipo de
+   * prenda (una "M" de camisa y una "M" de pantalón no son duplicado entre
+   * sí, son tipos distintos). Se compara normalizado (trim +
+   * case-insensitive), mismo patrón que
+   * `PricingServiceRepositoryImpl.assertNameNotDuplicated`. `excludeId` se
+   * usa al actualizar, para no chocar contra el propio registro que se está
+   * editando.
+   */
+  private async assertNameNotDuplicated(
+    name: string,
+    type: TallaGarmentType,
+    excludeId?: string,
+  ): Promise<void> {
+    const db = getDatabase();
+    const normalized = name.trim();
+    const existing = excludeId
+      ? await db.getFirstAsync<{ id: string }>(
+          `SELECT id FROM talla_templates WHERE type = ? AND LOWER(TRIM(name)) = LOWER(?) AND id != ? LIMIT 1;`,
+          type,
+          normalized,
+          excludeId,
+        )
+      : await db.getFirstAsync<{ id: string }>(
+          `SELECT id FROM talla_templates WHERE type = ? AND LOWER(TRIM(name)) = LOWER(?) LIMIT 1;`,
+          type,
+          normalized,
+        );
+    if (existing) {
+      throw new Error(
+        `Ya existe una plantilla de talla '${normalized}' para ${TALLA_GARMENT_LABELS[type]}.`,
+      );
+    }
+  }
+
   async create(dto: CreateTallaTemplateDTO): Promise<TallaTemplate> {
     const db = getDatabase();
+    await this.assertNameNotDuplicated(dto.name, dto.type);
     const now = new Date().toISOString();
     const id = generateDomainUuid();
     await db.runAsync(
@@ -205,6 +242,11 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
       if (!existing) {
         throw new Error("Plantilla de talla no encontrada");
       }
+
+      if (dto.name !== undefined) {
+        await this.assertNameNotDuplicated(dto.name, existing.type, dto.id);
+      }
+
       const now = new Date().toISOString();
 
       // update() es un contrato PARCIAL (UpdateTallaTemplateDTO extiende

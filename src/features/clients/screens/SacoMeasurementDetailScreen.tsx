@@ -2,7 +2,14 @@ import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
@@ -11,6 +18,7 @@ import {
   SACO_FORM_DEFAULTS,
   type SacoFormValues,
 } from "../components/SacoMeasurementForm";
+import { useMeasurementRepository } from "../hooks/ClientsDependenciesProvider";
 import { useSacoMeasurement } from "../hooks/useSacoMeasurement";
 import { useUpsertSaco } from "../hooks/useUpsertSaco";
 
@@ -120,9 +128,12 @@ export default function SacoMeasurementDetailScreen({
     error: saveError,
     validate,
   } = useUpsertSaco();
+  const measurementRepository = useMeasurementRepository();
 
   const [isEditing, setIsEditing] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const {
     control,
@@ -182,6 +193,38 @@ export default function SacoMeasurementDetailScreen({
     setIsEditing(false);
   }, [measurement, reset]);
 
+  const handleDelete = useCallback(async () => {
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      await measurementRepository.deleteSaco(clientId);
+      await reload();
+    } catch {
+      setDeleteError(
+        "No se pudo eliminar la medida de saco. Intenta nuevamente.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [clientId, measurementRepository, reload]);
+
+  const confirmDelete = useCallback(() => {
+    if (isDeleting) return;
+
+    Alert.alert(
+      "Eliminar medida",
+      "¿Seguro que deseas eliminar esta medida de saco? Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => void handleDelete(),
+        },
+      ],
+    );
+  }, [handleDelete, isDeleting]);
+
   if (isLoading) return <LoadingView message="Cargando medidas..." />;
   if (error) return <ErrorView message={error} onRetry={() => void reload()} />;
 
@@ -238,6 +281,27 @@ export default function SacoMeasurementDetailScreen({
         )}
       </View>
 
+      {measurement && !isEditing ? (
+        <>
+          <Pressable
+            accessibilityLabel="Eliminar medida de saco"
+            disabled={isDeleting}
+            style={[
+              styles.deleteButton,
+              isDeleting ? styles.deleteButtonDisabled : null,
+            ]}
+            onPress={confirmDelete}
+          >
+            <Text style={styles.deleteButtonText}>
+              {isDeleting ? "Eliminando..." : "Eliminar medida"}
+            </Text>
+          </Pressable>
+          {deleteError ? (
+            <Text style={styles.deleteErrorText}>{deleteError}</Text>
+          ) : null}
+        </>
+      ) : null}
+
       {showSkip ? (
         <Pressable
           accessibilityLabel="Continuar sin medidas"
@@ -272,6 +336,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryButtonText: { color: "#334155", fontWeight: "600", fontSize: 16 },
+  deleteButton: {
+    borderColor: colors.danger,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  deleteButtonDisabled: { opacity: 0.6 },
+  deleteButtonText: { color: colors.danger, fontWeight: "700", fontSize: 16 },
+  deleteErrorText: { color: colors.danger, fontSize: 13 },
   skipButton: { paddingVertical: 12, alignItems: "center" },
   skipButtonText: {
     color: "#64748b",

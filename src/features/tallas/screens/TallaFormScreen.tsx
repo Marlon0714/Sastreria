@@ -188,8 +188,13 @@ const MEASUREMENT_FIELD_KEYS: (keyof TallaFormValues)[] = [
 export default function TallaFormScreen({ navigation, route }: Props) {
   const { type, tallaId } = route.params;
   const repo = useTallaTemplateRepository();
-  const { createTemplate, updateTemplate, deleteTemplate, isSubmitting } =
-    useUpsertTallaTemplate();
+  const {
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    isSubmitting,
+    error: saveError,
+  } = useUpsertTallaTemplate();
 
   const [isLoading, setIsLoading] = useState(!!tallaId);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -378,6 +383,13 @@ export default function TallaFormScreen({ navigation, route }: Props) {
           onChangeText={(v) => setValue("notes", v)}
         />
       </View>
+
+      {/* Error de guardado (ej. nombre duplicado) */}
+      {saveError ? (
+        <View style={styles.saveErrorBanner}>
+          <Text style={styles.saveErrorText}>{saveError}</Text>
+        </View>
+      ) : null}
 
       {/* Botones */}
       <Pressable
@@ -789,6 +801,15 @@ const styles = StyleSheet.create({
   },
   gridWrapper: {
     gap: 12,
+  },
+  saveErrorBanner: {
+    backgroundColor: colors.dangerSoft,
+    borderRadius: 8,
+    padding: 12,
+  },
+  saveErrorText: {
+    color: colors.danger,
+    fontSize: 14,
   },
   notesSection: {
     backgroundColor: colors.surface,

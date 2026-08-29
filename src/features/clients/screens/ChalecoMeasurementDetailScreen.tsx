@@ -2,7 +2,14 @@ import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import type { ClientsStackParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView } from "../../../shared/components";
@@ -11,6 +18,7 @@ import {
   CHALECO_FORM_DEFAULTS,
   type ChalecoFormValues,
 } from "../components/ChalecoMeasurementForm";
+import { useMeasurementRepository } from "../hooks/ClientsDependenciesProvider";
 import { useChalecoMeasurement } from "../hooks/useChalecoMeasurement";
 import { useUpsertChaleco } from "../hooks/useUpsertChaleco";
 
@@ -87,9 +95,12 @@ export default function ChalecoMeasurementDetailScreen({
     error: saveError,
     validate,
   } = useUpsertChaleco();
+  const measurementRepository = useMeasurementRepository();
 
   const [isEditing, setIsEditing] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const {
     control,
@@ -149,6 +160,38 @@ export default function ChalecoMeasurementDetailScreen({
     setIsEditing(false);
   }, [measurement, reset]);
 
+  const handleDelete = useCallback(async () => {
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      await measurementRepository.deleteChaleco(clientId);
+      await reload();
+    } catch {
+      setDeleteError(
+        "No se pudo eliminar la medida de chaleco. Intenta nuevamente.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [clientId, measurementRepository, reload]);
+
+  const confirmDelete = useCallback(() => {
+    if (isDeleting) return;
+
+    Alert.alert(
+      "Eliminar medida",
+      "¿Seguro que deseas eliminar esta medida de chaleco? Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => void handleDelete(),
+        },
+      ],
+    );
+  }, [handleDelete, isDeleting]);
+
   if (isLoading) return <LoadingView message="Cargando medidas..." />;
   if (error) return <ErrorView message={error} onRetry={() => void reload()} />;
 
@@ -205,6 +248,27 @@ export default function ChalecoMeasurementDetailScreen({
         )}
       </View>
 
+      {measurement && !isEditing ? (
+        <>
+          <Pressable
+            accessibilityLabel="Eliminar medida de chaleco"
+            disabled={isDeleting}
+            style={[
+              styles.deleteButton,
+              isDeleting ? styles.deleteButtonDisabled : null,
+            ]}
+            onPress={confirmDelete}
+          >
+            <Text style={styles.deleteButtonText}>
+              {isDeleting ? "Eliminando..." : "Eliminar medida"}
+            </Text>
+          </Pressable>
+          {deleteError ? (
+            <Text style={styles.deleteErrorText}>{deleteError}</Text>
+          ) : null}
+        </>
+      ) : null}
+
       {showSkip ? (
         <Pressable
           accessibilityLabel="Continuar sin medidas"
@@ -239,6 +303,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryButtonText: { color: "#334155", fontWeight: "600", fontSize: 16 },
+  deleteButton: {
+    borderColor: colors.danger,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  deleteButtonDisabled: { opacity: 0.6 },
+  deleteButtonText: { color: colors.danger, fontWeight: "700", fontSize: 16 },
+  deleteErrorText: { color: colors.danger, fontSize: 13 },
   skipButton: { paddingVertical: 12, alignItems: "center" },
   skipButtonText: {
     color: "#64748b",
