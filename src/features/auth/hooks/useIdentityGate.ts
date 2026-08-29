@@ -15,7 +15,9 @@ interface ResolveOperarioByPinRow {
 // Disuasivo simple para una tablet compartida — no un control de seguridad
 // completo. No necesita persistir entre reinicios de la app.
 const MAX_PIN_ATTEMPTS = 5;
-const PIN_LOCKOUT_MS = 30 * 1000;
+// Exportado para que PinPromptModal pueda mostrar una cuenta regresiva
+// visible sin duplicar el valor del cooldown.
+export const PIN_LOCKOUT_MS = 30 * 1000;
 
 /**
  * Resultado de resolver quién debe figurar como autor de una acción.
@@ -104,7 +106,12 @@ export function useIdentityGate(): UseIdentityGateResult {
         "Demasiados intentos fallidos. Espera 30 segundos e intenta de nuevo.",
       );
     } else {
-      setPinError("PIN incorrecto. Intenta de nuevo.");
+      const remainingAttempts = MAX_PIN_ATTEMPTS - pinAttemptsRef.current;
+      setPinError(
+        `PIN incorrecto. Te quedan ${remainingAttempts} ${
+          remainingAttempts === 1 ? "intento" : "intentos"
+        }.`,
+      );
     }
   }, []);
 
@@ -123,7 +130,7 @@ export function useIdentityGate(): UseIdentityGateResult {
     setIsLoadingOfflineOperarios(true);
 
     getDefaultProfilesCacheRepository()
-      .getOperarios()
+      .getIdentityCandidates()
       .then(setOfflineOperarios)
       .catch(() => setOfflineOperarios([]))
       .finally(() => setIsLoadingOfflineOperarios(false));

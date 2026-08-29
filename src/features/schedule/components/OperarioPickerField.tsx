@@ -27,17 +27,28 @@ export function OperarioPickerField({
 }: OperarioPickerFieldProps) {
   const [operarios, setOperarios] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  // Se incrementa desde "Reintentar" para forzar un nuevo intento de carga
+  // sin duplicar la lógica del efecto.
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setIsLoading(true);
+    setLoadError(null);
     const repo = getDefaultProfilesCacheRepository();
     repo
       .getOperarios()
       .then((result) => {
         if (!cancelled) {
           setOperarios(result);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError("No se pudo cargar la lista de operarios.");
         }
       })
       .finally(() => {
@@ -48,7 +59,7 @@ export function OperarioPickerField({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryToken]);
 
   const selectedOperario = useMemo(
     () => operarios.find((operario) => operario.id === value) ?? null,
@@ -67,6 +78,21 @@ export function OperarioPickerField({
 
   if (isLoading) {
     return <ActivityIndicator accessibilityLabel="Cargando operarios" />;
+  }
+
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>{loadError}</Text>
+        <Pressable
+          accessibilityLabel="Reintentar cargar operarios"
+          style={styles.retryButton}
+          onPress={() => setRetryToken((token) => token + 1)}
+        >
+          <Text style={styles.retryButtonText}>Reintentar</Text>
+        </Pressable>
+      </View>
+    );
   }
 
   if (!isOpen) {
@@ -167,6 +193,18 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.danger,
     fontSize: 13,
+  },
+  retryButton: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: "dashed",
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  retryButtonText: {
+    color: colors.primary,
+    fontWeight: "600",
   },
   searchInput: {
     borderWidth: 1,

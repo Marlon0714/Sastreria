@@ -241,10 +241,16 @@ export default function TallasScreen({ route }: Props) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{modalTitle}</Text>
+            {/* El tipo de prenda queda fijo tanto al editar como al crear
+                desde un tipo específico (ej. "Añadir" bajo Chaleco): si se
+                permitiera cambiar el chip en creación, guardar con el tipo
+                de OTRA prenda ya existente sobrescribiría esa talla en
+                silencio (TallaRepositoryImpl.upsert busca por clientId+type
+                cuando no recibe id). */}
             <TallaForm
               control={control}
               errors={errors}
-              lockType={editingTalla !== null}
+              lockType={editingType !== null}
             />
             {error ? <Text style={styles.modalError}>{error}</Text> : null}
             <View style={styles.modalActions}>

@@ -29,4 +29,15 @@ export class ProfilesCacheRepositoryImpl implements ProfilesCacheRepository {
     );
     return rows.map(mapRow);
   }
+
+  async getIdentityCandidates(): Promise<Profile[]> {
+    const db = getDatabase();
+    const rows = await db.getAllAsync<ProfileCacheRow>(
+      `SELECT id, display_name, role, is_shared_device
+       FROM profiles_cache
+       WHERE is_shared_device = 0
+       ORDER BY display_name ASC`,
+    );
+    return rows.map(mapRow);
+  }
 }

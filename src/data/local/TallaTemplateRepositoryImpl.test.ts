@@ -98,8 +98,9 @@ describe("TallaTemplateRepositoryImpl", () => {
 
   describe("onWriteCommitted", () => {
     it("se llama una vez después de create()", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(null); // chequeo de nombre duplicado
       mockRunAsync.mockResolvedValueOnce(undefined);
-      mockGetFirstAsync.mockResolvedValueOnce(baseRow);
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // fetch posterior al INSERT
       const onWriteCommitted = jest.fn<() => void>();
       const repo = new TallaTemplateRepositoryImpl({ onWriteCommitted });
 
@@ -170,6 +171,138 @@ describe("TallaTemplateRepositoryImpl", () => {
       await repo.delete(baseRow.id);
 
       expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("nombre único por tipo de prenda", () => {
+    it("create rechaza un nombre duplicado dentro del MISMO tipo de prenda", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "otro-id" });
+      const repo = new TallaTemplateRepositoryImpl();
+
+      await expect(
+        repo.create({ name: "  m  ", type: "camisa" }),
+      ).rejects.toThrow(
+        "Ya existe una plantilla de talla 'm' para Camisa.",
+      );
+      expect(mockRunAsync).not.toHaveBeenCalled();
+
+      const [sql, type, name] = mockGetFirstAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("WHERE type = ?");
+      expect(sql).toContain("LOWER(TRIM(name)) = LOWER(?)");
+      expect(type).toBe("camisa");
+      expect(name).toBe("m");
+    });
+
+    it("permite el mismo nombre en un tipo de prenda DISTINTO", async () => {
+      // El chequeo de duplicado filtra por `type`, así que una plantilla "M"
+      // de pantalón no choca con una "M" de camisa ya existente.
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      mockGetFirstAsync.mockResolvedValueOnce({ ...baseRow, type: "pantalon" });
+
+      const repo = new TallaTemplateRepositoryImpl();
+      const result = await repo.create({ name: "M", type: "pantalon" });
+
+      expect(result.name).toBe("Molde estándar");
+      expect(mockRunAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("update rechaza si el nuevo nombre coincide con OTRA plantilla del mismo tipo", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // SELECT existente dentro de la transacción
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "otro-id" }); // chequeo de duplicado
+      const repo = new TallaTemplateRepositoryImpl();
+
+      await expect(
+        repo.update({ id: baseRow.id, name: "Otra plantilla" }),
+      ).rejects.toThrow(
+        "Ya existe una plantilla de talla 'Otra plantilla' para Camisa.",
+      );
+      expect(mockRunAsync).not.toHaveBeenCalled();
+    });
+
+    it("update NO dispara el chequeo si mantiene su PROPIO nombre actual", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // SELECT existente
+      // El chequeo excluye el propio id — ninguna otra fila coincide.
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // fetch posterior al UPDATE
+      const repo = new TallaTemplateRepositoryImpl();
+
+      const result = await repo.update({
+        id: baseRow.id,
+        name: baseRow.name,
+      });
+
+      expect(result.name).toBe(baseRow.name);
+      // Params de la query de duplicado: (sql, type, normalized, excludeId).
+      const [, , , excludeId] = mockGetFirstAsync.mock.calls[1] ?? [];
+      expect(excludeId).toBe(baseRow.id);
+    });
+
+    it("update no chequea duplicado si el DTO no trae `name`", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow); // solo el SELECT existente
+      mockRunAsync.mockResolvedValueOnce(undefined);
+      mockGetFirstAsync.mockResolvedValueOnce(baseRow);
+      const repo = new TallaTemplateRepositoryImpl();
+
+      await repo.update({ id: baseRow.id, espalda: 44 });
+
+      expect(mockGetFirstAsync).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("concurrencia", () => {
+    it("dos updates casi simultáneos sobre la misma plantilla no pierden ningún cambio (SELECT+UPDATE atómico)", async () => {
+      // Reemplaza el mock "ingenuo" de withTransactionAsync (`await
+      // callback()` inmediato) por uno que reproduce la misma serialización
+      // de serializeTransactions en database.ts: solo una transacción corre
+      // a la vez, y la siguiente espera a que la anterior termine POR
+      // COMPLETO (incluida su escritura) antes de arrancar su propio SELECT.
+      // Este test es el último del archivo a propósito: mockGetFirstAsync/
+      // mockRunAsync quedan con una implementación persistente (no "Once")
+      // que no se limpia con jest.clearAllMocks() en el beforeEach.
+      let queue: Promise<void> = Promise.resolve();
+      mockWithTransactionAsync.mockImplementation((callback) => {
+        const run = (): Promise<void> => callback();
+        const result = queue.then(run, run);
+        queue = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        return result;
+      });
+
+      let row: Omit<typeof baseRow, "espalda" | "hombro"> & {
+        espalda: number | null;
+        hombro: number | null;
+      } = { ...baseRow };
+      mockGetFirstAsync.mockImplementation(async () => ({ ...row }));
+      mockRunAsync.mockImplementation(
+        async (_sql: string, ...params: unknown[]) => {
+          const [, espalda, hombro] = params as unknown[];
+          row = {
+            ...row,
+            espalda: espalda as number | null,
+            hombro: hombro as number | null,
+          };
+          return undefined;
+        },
+      );
+
+      const repo = new TallaTemplateRepositoryImpl();
+
+      // Simula un pull de sync cambiando `hombro` justo mientras el usuario
+      // cambia `espalda` desde la UI, casi al mismo tiempo (ninguna de las
+      // dos llamadas espera a que la otra termine).
+      const [resultA, resultB] = await Promise.all([
+        repo.update({ id: baseRow.id, espalda: 46 }),
+        repo.update({ id: baseRow.id, hombro: 16 }),
+      ]);
+
+      expect(row.espalda).toBe(46);
+      expect(row.hombro).toBe(16);
+      expect([resultA.espalda, resultB.espalda]).toContain(46);
+      expect([resultA.hombro, resultB.hombro]).toContain(16);
     });
   });
 });

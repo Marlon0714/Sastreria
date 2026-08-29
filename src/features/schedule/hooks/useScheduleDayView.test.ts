@@ -89,6 +89,43 @@ describe("useScheduleDayView", () => {
     expect(result.current.error).toBe("No se pudo cargar la agenda.");
   });
 
+  it("descarta una respuesta obsoleta si una carga más nueva ya se disparó (doble tap cambiando de fecha)", async () => {
+    // La primera carga (día 10) queda pendiente; se dispara una segunda
+    // (día 11) que resuelve ANTES. Cuando la primera finalmente resuelve,
+    // su resultado no debe pisar el estado ya actualizado por la segunda.
+    let resolveFirst: ((schedules: Schedule[]) => void) | undefined;
+    const firstPromise = new Promise<Schedule[]>((resolve) => {
+      resolveFirst = resolve;
+    });
+
+    mockGetByDate.mockImplementationOnce(() => firstPromise);
+    mockGetWithoutDate.mockResolvedValueOnce([]);
+
+    const { result, rerender } = renderHook(
+      ({ date }: { date: string }) => useScheduleDayView(date),
+      { initialProps: { date: "2026-08-10" } },
+    );
+
+    // Se dispara la segunda carga (día 11) antes de que la primera resuelva.
+    mockGetByDate.mockResolvedValueOnce([scheduledOne]);
+    mockGetWithoutDate.mockResolvedValueOnce([pendingOne]);
+    rerender({ date: "2026-08-11" });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.dateSchedules).toEqual([scheduledOne]);
+
+    // Ahora resuelve la primera carga (obsoleta) — no debe sobreescribir
+    // el estado que ya corresponde al día 11.
+    await act(async () => {
+      resolveFirst?.([]);
+      await Promise.resolve();
+    });
+
+    expect(result.current.dateSchedules).toEqual([scheduledOne]);
+    expect(result.current.pendingSchedules).toEqual([pendingOne]);
+    expect(result.current.isLoading).toBe(false);
+  });
+
   it("reload() vuelve a consultar ambos repositorios", async () => {
     mockGetByDate.mockResolvedValue([]);
     mockGetWithoutDate.mockResolvedValue([]);

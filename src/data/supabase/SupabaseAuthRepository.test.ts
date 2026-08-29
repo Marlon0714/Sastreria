@@ -83,7 +83,7 @@ describe("SupabaseAuthRepository", () => {
 
       await expect(
         repo.signIn("user@example.com", "wrong"),
-      ).rejects.toThrow("[auth] Sign in failed. Check credentials and try again.");
+      ).rejects.toThrow("Correo o contraseña incorrectos.");
     });
 
     it("lanza un mensaje de red distinto cuando el fallo es de conectividad", async () => {

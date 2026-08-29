@@ -24,6 +24,10 @@ export const noopDependencies: ClientsDependencies = {
     findPantalonByClientId: async () => Promise.resolve(null),
     findSacoByClientId: async () => Promise.resolve(null),
     findChalecoByClientId: async () => Promise.resolve(null),
+    deleteCamisa: async () => Promise.reject(new Error("noop")),
+    deletePantalon: async () => Promise.reject(new Error("noop")),
+    deleteSaco: async () => Promise.reject(new Error("noop")),
+    deleteChaleco: async () => Promise.reject(new Error("noop")),
   },
   tallaRepository: {
     upsert: async () => Promise.reject(new Error("noop")),

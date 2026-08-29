@@ -155,58 +155,57 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
   }
 
   async update(id: string, data: UpdateScheduleDTO): Promise<Schedule> {
-    const existing = await this.getById(id);
-    if (!existing) throw new Error("Turno no encontrado");
+    return this.persistUpdate(id, (existing) => {
+      const merged = { ...existing, ...data };
+      const status =
+        existing.statusLocked || isStickyStatus(existing.status)
+          ? existing.status
+          : deriveScheduleStatus(merged);
 
-    const merged = { ...existing, ...data };
-    const status =
-      existing.statusLocked || isStickyStatus(existing.status)
-        ? existing.status
-        : deriveScheduleStatus(merged);
+      // Un turno ya listo/entregado no puede quedarse sin operario — sería
+      // deshacer por la puerta de atrás la regla que exige asignar uno antes
+      // de llegar a esos estados (ver markReady/markDelivered). Sin esto,
+      // OperarioPickerField's "Sin operario asignado" podía dejarlo en un
+      // estado que las acciones de marcar listo/entregado ya no permiten crear.
+      if (isStickyStatus(status) && !merged.operarioId) {
+        throw new ScheduleValidationError(
+          "No puedes quitar el operario de un turno ya listo para entregar o entregado.",
+        );
+      }
 
-    // Un turno ya listo/entregado no puede quedarse sin operario — sería
-    // deshacer por la puerta de atrás la regla que exige asignar uno antes
-    // de llegar a esos estados (ver markReady/markDelivered). Sin esto,
-    // OperarioPickerField's "Sin operario asignado" podía dejarlo en un
-    // estado que las acciones de marcar listo/entregado ya no permiten crear.
-    if (isStickyStatus(status) && !merged.operarioId) {
-      throw new ScheduleValidationError(
-        "No puedes quitar el operario de un turno ya listo para entregar o entregado.",
-      );
-    }
-
-    return this.persistUpdate({ ...merged, status });
+      return { ...merged, status };
+    });
   }
 
   async markReady(id: string): Promise<Schedule> {
-    const existing = await this.getById(id);
-    if (!existing) throw new Error("Turno no encontrado");
-    if (!existing.operarioId) {
-      throw new ScheduleValidationError(
-        "Asigna un operario antes de marcar el turno como listo para entregar.",
-      );
-    }
+    return this.persistUpdate(id, (existing) => {
+      if (!existing.operarioId) {
+        throw new ScheduleValidationError(
+          "Asigna un operario antes de marcar el turno como listo para entregar.",
+        );
+      }
 
-    return this.persistUpdate({
-      ...existing,
-      status: "listo_para_entregar",
-      readyAt: new Date().toISOString(),
+      return {
+        ...existing,
+        status: "listo_para_entregar",
+        readyAt: new Date().toISOString(),
+      };
     });
   }
 
   async markDelivered(id: string): Promise<Schedule> {
-    const existing = await this.getById(id);
-    if (!existing) throw new Error("Turno no encontrado");
-    if (!existing.operarioId) {
-      throw new ScheduleValidationError(
-        "Asigna un operario antes de marcar el turno como entregado.",
-      );
-    }
+    return this.persistUpdate(id, (existing) => {
+      if (!existing.operarioId) {
+        throw new ScheduleValidationError(
+          "Asigna un operario antes de marcar el turno como entregado.",
+        );
+      }
 
-    return this.persistUpdate({
-      ...existing,
-      status: "entregado",
-      deliveredAt: new Date().toISOString(),
+      return {
+        ...existing,
+        status: "entregado",
+        deliveredAt: new Date().toISOString(),
+      };
     });
   }
 
@@ -214,51 +213,74 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     id: string,
     newStatus: ScheduleStatus,
   ): Promise<Schedule> {
-    const existing = await this.getById(id);
-    if (!existing) throw new Error("Turno no encontrado");
-
     // Queda "bloqueado": una corrección manual es una excepción deliberada,
     // no debe perderse en el siguiente update() de un campo cualquiera solo
     // porque la derivación automática (ej. operario asignado) diga otra cosa.
-    return this.persistUpdate({
+    return this.persistUpdate(id, (existing) => ({
       ...existing,
       status: newStatus,
       statusLocked: true,
-    });
+    }));
   }
 
+  /**
+   * Lee la fila actual, la mezcla con los cambios y la reescribe completa —
+   * todo dentro de la MISMA transacción (mismo patrón que delete(), ver
+   * database.ts: la cola de serializeTransactions garantiza que ninguna otra
+   * escritura, ej. un pull de sync que llega por reconexión/realtime, se
+   * intercale entre el SELECT y el UPDATE). Sin esto, dos escrituras casi
+   * simultáneas sobre el mismo turno podían perder una de las dos: la
+   * segunda leía la fila ANTES del commit de la primera y su UPDATE
+   * reescribía todas las columnas con ese valor viejo, pisando el cambio
+   * recién commiteado (y reenviándolo así también a Supabase).
+   */
   private async persistUpdate(
-    next: Omit<Schedule, "updatedAt" | "syncStatus">,
+    id: string,
+    computeNext: (
+      existing: Schedule,
+    ) => Omit<Schedule, "updatedAt" | "syncStatus">,
   ): Promise<Schedule> {
     const db = getDatabase();
-    const updated: Schedule = {
-      ...next,
-      updatedAt: new Date().toISOString(),
-      syncStatus: "pending",
-    };
+    let updated: Schedule | null = null;
 
-    await db.runAsync(
-      `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, abono = ?, operario_id = ?, notes = ?, is_priority = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
-      updated.clientId ?? null,
-      updated.unregisteredClientName ?? null,
-      updated.date ?? null,
-      updated.time ?? null,
-      updated.price ?? null,
-      updated.abono ?? null,
-      updated.operarioId ?? null,
-      updated.notes ?? null,
-      updated.isPriority ? 1 : 0,
-      updated.category,
-      updated.status,
-      updated.statusLocked ? 1 : 0,
-      updated.readyAt ?? null,
-      updated.deliveredAt ?? null,
-      updated.updatedAt,
-      updated.syncStatus,
-      updated.id,
-    );
+    await db.withTransactionAsync(async () => {
+      const row = await db.getFirstAsync<ScheduleRow>(
+        "SELECT * FROM schedules WHERE id = ?",
+        id,
+      );
+      if (!row) throw new Error("Turno no encontrado");
+
+      const next = computeNext(mapRow(row));
+      updated = {
+        ...next,
+        updatedAt: new Date().toISOString(),
+        syncStatus: "pending",
+      };
+
+      await db.runAsync(
+        `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, abono = ?, operario_id = ?, notes = ?, is_priority = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
+        updated.clientId ?? null,
+        updated.unregisteredClientName ?? null,
+        updated.date ?? null,
+        updated.time ?? null,
+        updated.price ?? null,
+        updated.abono ?? null,
+        updated.operarioId ?? null,
+        updated.notes ?? null,
+        updated.isPriority ? 1 : 0,
+        updated.category,
+        updated.status,
+        updated.statusLocked ? 1 : 0,
+        updated.readyAt ?? null,
+        updated.deliveredAt ?? null,
+        updated.updatedAt,
+        updated.syncStatus,
+        updated.id,
+      );
+    });
+
     notifyWriteCommitted(this.options);
-    return updated;
+    return updated!;
   }
 
   async delete(id: string): Promise<void> {

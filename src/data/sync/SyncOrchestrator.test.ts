@@ -149,21 +149,37 @@ describe("SyncOrchestrator", () => {
     expect(processor.runOnce).toHaveBeenCalledTimes(2);
   });
 
-  it("debería ajustar cooldown dinámicamente basado en métricas de red", async () => {
+  it("el cooldown de network_recovered es fijo, no se ajusta dinámicamente (no hay medición real de latencia)", async () => {
+    // Regresión de código fantasma: antes existían `getNetworkLatency()`
+    // (siempre devolvía 0) y `calculateDynamicCooldown()`, que aparentaban
+    // ajustar el cooldown según la latencia de red — pero como
+    // getNetworkLatency() nunca devolvía otra cosa que 0, el "ajuste" nunca
+    // cambiaba nada. Se eliminó esa capa; este test fija el contrato real:
+    // el cooldown configurado se respeta tal cual, sin importar cuántos
+    // triggers de network_recovered ocurran.
     const processor = {
-      runOnce: jest.fn(async () => ({
-        processed: 1,
-        synced: 1,
-        deferred: 0,
-        failed: 0,
-      })),
+      runOnce: jest
+        .fn<() => Promise<SyncRunResult>>()
+        .mockResolvedValue(emptyResult()),
     };
-    const orchestrator = new SyncOrchestrator(processor);
-    // Mock del método getNetworkLatency
-    orchestrator.getNetworkLatency = jest.fn(() => 2000);
 
-    const cooldown = orchestrator.calculateDynamicCooldown();
-    expect(cooldown).toBe(4000);
+    // Arranca en 1000 (no en 0): `lastNetworkRecoveredTriggerAt === 0` es el
+    // centinela interno de "todavía no hubo ningún trigger" — usar 0 como
+    // primer valor de now() confundiría el propio mecanismo de throttle.
+    let nowValue = 1000;
+    const orchestrator = new SyncOrchestrator(processor, {
+      networkRecoveredCooldownMs: 4000,
+      now: () => nowValue,
+    });
+
+    await orchestrator.requestRun("network_recovered");
+    nowValue += 3999; // todavía dentro del cooldown fijo de 4000ms
+    await orchestrator.requestRun("network_recovered");
+    expect(processor.runOnce).toHaveBeenCalledTimes(1);
+
+    nowValue += 2; // ahora sí supera los 4000ms desde el primer trigger
+    await orchestrator.requestRun("network_recovered");
+    expect(processor.runOnce).toHaveBeenCalledTimes(2);
   });
 
   it("maneja excepciones en processor.runOnce", async () => {

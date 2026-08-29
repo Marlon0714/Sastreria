@@ -12,17 +12,22 @@ import { MeasurementRepositoryImpl } from "./MeasurementRepositoryImpl";
 interface MockDatabase {
   runAsync: (sql: string, ...params: unknown[]) => Promise<unknown>;
   getFirstAsync: <T>(sql: string, ...params: unknown[]) => Promise<T | null>;
+  withTransactionAsync: (callback: () => Promise<void>) => Promise<void>;
 }
 
 const mockRunAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown>>();
 const mockGetFirstAsync =
   jest.fn<(sql: string, ...params: unknown[]) => Promise<unknown | null>>();
+const mockWithTransactionAsync =
+  jest.fn<(callback: () => Promise<void>) => Promise<void>>();
 
 const mockDatabase: MockDatabase = {
   runAsync: (sql: string, ...params: unknown[]) => mockRunAsync(sql, ...params),
   getFirstAsync: <T>(sql: string, ...params: unknown[]) =>
     mockGetFirstAsync(sql, ...params) as Promise<T | null>,
+  withTransactionAsync: (callback: () => Promise<void>) =>
+    mockWithTransactionAsync(callback),
 };
 
 const mockGenerateDomainUuid = jest.fn<() => string>();
@@ -49,6 +54,11 @@ describe("MeasurementRepositoryImpl", () => {
     mockRunAsync.mockReset();
     mockGetFirstAsync.mockReset();
     mockGenerateDomainUuid.mockReset();
+    mockWithTransactionAsync.mockReset();
+
+    mockWithTransactionAsync.mockImplementation(async (callback) => {
+      await callback();
+    });
 
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-04-29T13:00:00.000Z"));
@@ -501,5 +511,117 @@ describe("MeasurementRepositoryImpl", () => {
         clientId: "11111111-1111-4111-8111-111111111111",
       }),
     ).rejects.toThrow("disk full");
+  });
+
+  describe("deleteCamisa / deletePantalon / deleteSaco / deleteChaleco", () => {
+    it("deleteCamisa borra la fila local y registra sync_delete_log dentro de una transacción", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "camisa-1" });
+      mockRunAsync.mockResolvedValue({});
+      mockGenerateDomainUuid.mockReturnValueOnce("delete-log-1");
+      const repository = new MeasurementRepositoryImpl();
+
+      await repository.deleteCamisa("11111111-1111-4111-8111-111111111111");
+
+      expect(mockWithTransactionAsync).toHaveBeenCalledTimes(1);
+      const [selectSql, selectClientId] = mockGetFirstAsync.mock.calls[0] ?? [];
+      expect(selectSql).toContain("SELECT id FROM camisa_measurements");
+      expect(selectClientId).toBe("11111111-1111-4111-8111-111111111111");
+
+      expect(mockRunAsync).toHaveBeenCalledTimes(2);
+      const [deleteSql, deleteClientId] = mockRunAsync.mock.calls[0] ?? [];
+      expect(deleteSql).toContain(
+        "DELETE FROM camisa_measurements WHERE client_id = ?",
+      );
+      expect(deleteClientId).toBe("11111111-1111-4111-8111-111111111111");
+
+      const [insertSql, ...insertParams] = mockRunAsync.mock.calls[1] ?? [];
+      expect(insertSql).toContain("INSERT INTO sync_delete_log");
+      expect(insertParams[0]).toBe("delete-log-1");
+      expect(insertParams[1]).toBe("camisa_measurement");
+      expect(insertParams[2]).toBe("camisa-1");
+      expect(insertParams[4]).toBe("pending");
+    });
+
+    it("deletePantalon borra la fila local y registra sync_delete_log con entity_type pantalon_measurement", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "pantalon-1" });
+      mockRunAsync.mockResolvedValue({});
+      mockGenerateDomainUuid.mockReturnValueOnce("delete-log-2");
+      const repository = new MeasurementRepositoryImpl();
+
+      await repository.deletePantalon("11111111-1111-4111-8111-111111111111");
+
+      const [deleteSql] = mockRunAsync.mock.calls[0] ?? [];
+      expect(deleteSql).toContain(
+        "DELETE FROM pantalon_measurements WHERE client_id = ?",
+      );
+      const [, ...insertParams] = mockRunAsync.mock.calls[1] ?? [];
+      expect(insertParams[1]).toBe("pantalon_measurement");
+      expect(insertParams[2]).toBe("pantalon-1");
+    });
+
+    it("deleteSaco borra la fila local y registra sync_delete_log con entity_type saco_measurement", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "saco-1" });
+      mockRunAsync.mockResolvedValue({});
+      mockGenerateDomainUuid.mockReturnValueOnce("delete-log-3");
+      const repository = new MeasurementRepositoryImpl();
+
+      await repository.deleteSaco("11111111-1111-4111-8111-111111111111");
+
+      const [deleteSql] = mockRunAsync.mock.calls[0] ?? [];
+      expect(deleteSql).toContain(
+        "DELETE FROM saco_measurements WHERE client_id = ?",
+      );
+      const [, ...insertParams] = mockRunAsync.mock.calls[1] ?? [];
+      expect(insertParams[1]).toBe("saco_measurement");
+      expect(insertParams[2]).toBe("saco-1");
+    });
+
+    it("deleteChaleco borra la fila local y registra sync_delete_log con entity_type chaleco_measurement", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "chaleco-1" });
+      mockRunAsync.mockResolvedValue({});
+      mockGenerateDomainUuid.mockReturnValueOnce("delete-log-4");
+      const repository = new MeasurementRepositoryImpl();
+
+      await repository.deleteChaleco("11111111-1111-4111-8111-111111111111");
+
+      const [deleteSql] = mockRunAsync.mock.calls[0] ?? [];
+      expect(deleteSql).toContain(
+        "DELETE FROM chaleco_measurements WHERE client_id = ?",
+      );
+      const [, ...insertParams] = mockRunAsync.mock.calls[1] ?? [];
+      expect(insertParams[1]).toBe("chaleco_measurement");
+      expect(insertParams[2]).toBe("chaleco-1");
+    });
+
+    it("es idempotente: si el cliente no tiene la medida, no borra ni escribe sync_delete_log", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      const repository = new MeasurementRepositoryImpl();
+
+      await repository.deleteCamisa("11111111-1111-4111-8111-111111111111");
+
+      expect(mockWithTransactionAsync).toHaveBeenCalledTimes(1);
+      expect(mockRunAsync).not.toHaveBeenCalled();
+    });
+
+    it("llama onWriteCommitted después de un delete exitoso", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({ id: "camisa-2" });
+      mockRunAsync.mockResolvedValue({});
+      const onWriteCommitted = jest.fn<() => void>();
+      const repository = new MeasurementRepositoryImpl({ onWriteCommitted });
+
+      await repository.deleteCamisa("11111111-1111-4111-8111-111111111111");
+
+      expect(onWriteCommitted).toHaveBeenCalledTimes(1);
+    });
+
+    it("NO llama onWriteCommitted cuando el delete es un no-op (sin medida existente)", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce(null);
+      const onWriteCommitted = jest.fn<() => void>();
+      const repository = new MeasurementRepositoryImpl({ onWriteCommitted });
+
+      await repository.deleteCamisa("11111111-1111-4111-8111-111111111111");
+
+      expect(onWriteCommitted).not.toHaveBeenCalled();
+    });
   });
 });

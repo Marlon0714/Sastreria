@@ -70,6 +70,18 @@ function buildMeasurementRepositoryContract(): MeasurementRepository {
       async (_clientId: string): Promise<ChalecoMeasurement | null> =>
         Promise.resolve(null),
     ),
+    deleteCamisa: jest.fn(
+      async (_clientId: string): Promise<void> => Promise.resolve(),
+    ),
+    deletePantalon: jest.fn(
+      async (_clientId: string): Promise<void> => Promise.resolve(),
+    ),
+    deleteSaco: jest.fn(
+      async (_clientId: string): Promise<void> => Promise.resolve(),
+    ),
+    deleteChaleco: jest.fn(
+      async (_clientId: string): Promise<void> => Promise.resolve(),
+    ),
   };
 }
 

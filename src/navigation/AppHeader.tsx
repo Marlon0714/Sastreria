@@ -17,9 +17,11 @@ function navigateToMyAccount(
   navigationRef: NavigationContainerRefWithCurrent<RootTabParamList>,
   activeTab: string | undefined,
 ): void {
-  // Solo Agenda y Precios registran "MyAccount" en su stack (son las únicas
-  // pestañas que ve un operario) — si por alguna razón el ícono se llegara a
-  // mostrar en otra pestaña, no hay a dónde navegar y no se hace nada.
+  // Agenda y Precios registran "MyAccount" en su stack — un operario en su
+  // propio dispositivo ve ambas (Precios le muestra "Mis arreglos" en vez
+  // del catálogo, ver PricingStackNavigator). Si por alguna razón el ícono
+  // se llegara a mostrar en otra pestaña, no hay a dónde navegar y no se
+  // hace nada.
   if (activeTab === "ScheduleTab") {
     navigationRef.navigate("ScheduleTab", { screen: "MyAccount" });
   } else if (activeTab === "PricingTab") {

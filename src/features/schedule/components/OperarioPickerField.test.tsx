@@ -98,4 +98,23 @@ describe("OperarioPickerField", () => {
 
     expect(await findByText("El operario es inválido")).toBeTruthy();
   });
+
+  it("muestra un mensaje distinto y permite reintentar si falla la carga", async () => {
+    mockGetOperarios.mockReset();
+    mockGetOperarios.mockRejectedValueOnce(new Error("boom"));
+
+    const { findByText, getByLabelText, queryByText } = render(
+      <OperarioPickerField onChange={jest.fn()} />,
+    );
+
+    expect(
+      await findByText("No se pudo cargar la lista de operarios."),
+    ).toBeTruthy();
+    expect(queryByText("No hay operarios que coincidan.")).toBeNull();
+
+    mockGetOperarios.mockResolvedValueOnce(operarios);
+    fireEvent.press(getByLabelText("Reintentar cargar operarios"));
+
+    expect(await findByText("Sin operario asignado")).toBeTruthy();
+  });
 });

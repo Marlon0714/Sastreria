@@ -1,5 +1,6 @@
 import { getDatabase } from "./database";
 import type { TallaTemplateRepository } from "../../features/tallas/domain/repository";
+import { TALLA_GARMENT_LABELS } from "../../features/tallas/domain/types";
 import type {
   TallaTemplate,
   CreateTallaTemplateDTO,
@@ -126,8 +127,44 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
     return rows.map(mapRow);
   }
 
+  /**
+   * El nombre de una plantilla debe ser único DENTRO de su mismo tipo de
+   * prenda (una "M" de camisa y una "M" de pantalón no son duplicado entre
+   * sí, son tipos distintos). Se compara normalizado (trim +
+   * case-insensitive), mismo patrón que
+   * `PricingServiceRepositoryImpl.assertNameNotDuplicated`. `excludeId` se
+   * usa al actualizar, para no chocar contra el propio registro que se está
+   * editando.
+   */
+  private async assertNameNotDuplicated(
+    name: string,
+    type: TallaGarmentType,
+    excludeId?: string,
+  ): Promise<void> {
+    const db = getDatabase();
+    const normalized = name.trim();
+    const existing = excludeId
+      ? await db.getFirstAsync<{ id: string }>(
+          `SELECT id FROM talla_templates WHERE type = ? AND LOWER(TRIM(name)) = LOWER(?) AND id != ? LIMIT 1;`,
+          type,
+          normalized,
+          excludeId,
+        )
+      : await db.getFirstAsync<{ id: string }>(
+          `SELECT id FROM talla_templates WHERE type = ? AND LOWER(TRIM(name)) = LOWER(?) LIMIT 1;`,
+          type,
+          normalized,
+        );
+    if (existing) {
+      throw new Error(
+        `Ya existe una plantilla de talla '${normalized}' para ${TALLA_GARMENT_LABELS[type]}.`,
+      );
+    }
+  }
+
   async create(dto: CreateTallaTemplateDTO): Promise<TallaTemplate> {
     const db = getDatabase();
+    await this.assertNameNotDuplicated(dto.name, dto.type);
     const now = new Date().toISOString();
     const id = generateDomainUuid();
     await db.runAsync(
@@ -182,75 +219,96 @@ export class TallaTemplateRepositoryImpl implements TallaTemplateRepository {
     return mapRow(row!);
   }
 
+  /**
+   * Lee la fila actual, la mezcla con los cambios y la reescribe completa —
+   * todo dentro de la MISMA transacción (mismo patrón que delete(), ver
+   * database.ts: la cola de serializeTransactions garantiza que ninguna otra
+   * escritura, ej. un pull de sync que llega por reconexión/realtime, se
+   * intercale entre el SELECT y el UPDATE). Sin esto, dos escrituras casi
+   * simultáneas sobre la misma plantilla podían perder una de las dos: la
+   * segunda leía la fila ANTES del commit de la primera y su UPDATE
+   * reescribía todas las columnas con ese valor viejo, pisando el cambio
+   * recién commiteado (y reenviándolo así también a Supabase).
+   */
   async update(dto: UpdateTallaTemplateDTO): Promise<TallaTemplate> {
     const db = getDatabase();
-    const existing = await db.getFirstAsync<TallaTemplateRow>(
-      `SELECT * FROM talla_templates WHERE id = ?;`,
-      dto.id,
-    );
-    if (!existing) {
-      throw new Error("Plantilla de talla no encontrada");
-    }
-    const now = new Date().toISOString();
+    let updatedRow: TallaTemplateRow | null = null;
 
-    // update() es un contrato PARCIAL (UpdateTallaTemplateDTO extiende
-    // Partial<CreateTallaTemplateDTO>) — un campo omitido debe conservar su
-    // valor actual, no borrarse. Antes cada campo (salvo `name`, que sí
-    // usaba COALESCE) se sobreescribía siempre con `n(dto.campo)`, que
-    // convierte `undefined` en `NULL` — cualquier update parcial real
-    // (ej. renombrar la plantilla sin reenviar las 27 medidas) borraba
-    // todas las medidas existentes.
-    await db.runAsync(
-      `UPDATE talla_templates SET
-        name = COALESCE(?, name),
-        espalda = ?, hombro = ?, talle_delantero = ?, talle_trasero = ?,
-        distancia = ?, separacion = ?,
-        pecho_ajustado = ?, pecho_ancho = ?,
-        cintura = ?, cintura_ajustado = ?, cintura_ancho = ?,
-        base = ?, base_ajustado = ?, base_ancho = ?,
-        largo = ?, manga_larga = ?, manga_corta = ?, escote = ?,
-        cuello_normal = ?, cuello_cruce = ?,
-        brazo = ?, puno = ?, entrepierna = ?, tiro = ?, pierna = ?, rodilla = ?, bota = ?,
-        notes = ?, updated_at = ?, sync_status = 'pending'
-      WHERE id = ?;`,
-      dto.name ?? null,
-      mergeNum(dto.espalda, existing.espalda),
-      mergeNum(dto.hombro, existing.hombro),
-      mergeNum(dto.talleDelantero, existing.talle_delantero),
-      mergeNum(dto.talleTrasero, existing.talle_trasero),
-      mergeNum(dto.distancia, existing.distancia),
-      mergeNum(dto.separacion, existing.separacion),
-      mergeNum(dto.pechoAjustado, existing.pecho_ajustado),
-      mergeNum(dto.pechoAncho, existing.pecho_ancho),
-      mergeNum(dto.cintura, existing.cintura),
-      mergeNum(dto.cinturaAjustado, existing.cintura_ajustado),
-      mergeNum(dto.cinturaAncho, existing.cintura_ancho),
-      mergeNum(dto.base, existing.base),
-      mergeNum(dto.baseAjustado, existing.base_ajustado),
-      mergeNum(dto.baseAncho, existing.base_ancho),
-      mergeNum(dto.largo, existing.largo),
-      mergeNum(dto.mangaLarga, existing.manga_larga),
-      mergeNum(dto.mangaCorta, existing.manga_corta),
-      mergeNum(dto.escote, existing.escote),
-      mergeNum(dto.cuelloNormal, existing.cuello_normal),
-      mergeNum(dto.cuelloCruce, existing.cuello_cruce),
-      mergeNum(dto.brazo, existing.brazo),
-      mergeNum(dto.puno, existing.puno),
-      mergeNum(dto.entrepierna, existing.entrepierna),
-      mergeNum(dto.tiro, existing.tiro),
-      mergeNum(dto.pierna, existing.pierna),
-      mergeNum(dto.rodilla, existing.rodilla),
-      mergeNum(dto.bota, existing.bota),
-      dto.notes !== undefined ? dto.notes : existing.notes,
-      now,
-      dto.id,
-    );
-    const row = await db.getFirstAsync<TallaTemplateRow>(
-      `SELECT * FROM talla_templates WHERE id = ?;`,
-      dto.id,
-    );
+    await db.withTransactionAsync(async () => {
+      const existing = await db.getFirstAsync<TallaTemplateRow>(
+        `SELECT * FROM talla_templates WHERE id = ?;`,
+        dto.id,
+      );
+      if (!existing) {
+        throw new Error("Plantilla de talla no encontrada");
+      }
+
+      if (dto.name !== undefined) {
+        await this.assertNameNotDuplicated(dto.name, existing.type, dto.id);
+      }
+
+      const now = new Date().toISOString();
+
+      // update() es un contrato PARCIAL (UpdateTallaTemplateDTO extiende
+      // Partial<CreateTallaTemplateDTO>) — un campo omitido debe conservar su
+      // valor actual, no borrarse. Antes cada campo (salvo `name`, que sí
+      // usaba COALESCE) se sobreescribía siempre con `n(dto.campo)`, que
+      // convierte `undefined` en `NULL` — cualquier update parcial real
+      // (ej. renombrar la plantilla sin reenviar las 27 medidas) borraba
+      // todas las medidas existentes.
+      await db.runAsync(
+        `UPDATE talla_templates SET
+          name = COALESCE(?, name),
+          espalda = ?, hombro = ?, talle_delantero = ?, talle_trasero = ?,
+          distancia = ?, separacion = ?,
+          pecho_ajustado = ?, pecho_ancho = ?,
+          cintura = ?, cintura_ajustado = ?, cintura_ancho = ?,
+          base = ?, base_ajustado = ?, base_ancho = ?,
+          largo = ?, manga_larga = ?, manga_corta = ?, escote = ?,
+          cuello_normal = ?, cuello_cruce = ?,
+          brazo = ?, puno = ?, entrepierna = ?, tiro = ?, pierna = ?, rodilla = ?, bota = ?,
+          notes = ?, updated_at = ?, sync_status = 'pending'
+        WHERE id = ?;`,
+        dto.name ?? null,
+        mergeNum(dto.espalda, existing.espalda),
+        mergeNum(dto.hombro, existing.hombro),
+        mergeNum(dto.talleDelantero, existing.talle_delantero),
+        mergeNum(dto.talleTrasero, existing.talle_trasero),
+        mergeNum(dto.distancia, existing.distancia),
+        mergeNum(dto.separacion, existing.separacion),
+        mergeNum(dto.pechoAjustado, existing.pecho_ajustado),
+        mergeNum(dto.pechoAncho, existing.pecho_ancho),
+        mergeNum(dto.cintura, existing.cintura),
+        mergeNum(dto.cinturaAjustado, existing.cintura_ajustado),
+        mergeNum(dto.cinturaAncho, existing.cintura_ancho),
+        mergeNum(dto.base, existing.base),
+        mergeNum(dto.baseAjustado, existing.base_ajustado),
+        mergeNum(dto.baseAncho, existing.base_ancho),
+        mergeNum(dto.largo, existing.largo),
+        mergeNum(dto.mangaLarga, existing.manga_larga),
+        mergeNum(dto.mangaCorta, existing.manga_corta),
+        mergeNum(dto.escote, existing.escote),
+        mergeNum(dto.cuelloNormal, existing.cuello_normal),
+        mergeNum(dto.cuelloCruce, existing.cuello_cruce),
+        mergeNum(dto.brazo, existing.brazo),
+        mergeNum(dto.puno, existing.puno),
+        mergeNum(dto.entrepierna, existing.entrepierna),
+        mergeNum(dto.tiro, existing.tiro),
+        mergeNum(dto.pierna, existing.pierna),
+        mergeNum(dto.rodilla, existing.rodilla),
+        mergeNum(dto.bota, existing.bota),
+        dto.notes !== undefined ? dto.notes : existing.notes,
+        now,
+        dto.id,
+      );
+      updatedRow = await db.getFirstAsync<TallaTemplateRow>(
+        `SELECT * FROM talla_templates WHERE id = ?;`,
+        dto.id,
+      );
+    });
+
     notifyWriteCommitted(this.options);
-    return mapRow(row!);
+    return mapRow(updatedRow!);
   }
 
   async delete(id: string): Promise<void> {

@@ -188,8 +188,13 @@ const MEASUREMENT_FIELD_KEYS: (keyof TallaFormValues)[] = [
 export default function TallaFormScreen({ navigation, route }: Props) {
   const { type, tallaId } = route.params;
   const repo = useTallaTemplateRepository();
-  const { createTemplate, updateTemplate, deleteTemplate, isSubmitting } =
-    useUpsertTallaTemplate();
+  const {
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    isSubmitting,
+    error: saveError,
+  } = useUpsertTallaTemplate();
 
   const [isLoading, setIsLoading] = useState(!!tallaId);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -232,14 +237,19 @@ export default function TallaFormScreen({ navigation, route }: Props) {
   const onSubmit = async (values: TallaFormValues) => {
     const name = values.name.trim();
     if (!name) {
-      Alert.alert("Campo requerido", "El nombre de la talla es obligatorio.");
+      // El error se muestra inline bajo el campo (igual que el resto de
+      // campos de esta pantalla) en vez de un Alert, que quedaba
+      // desconectado del borde rojo y del texto de error ya presentes en
+      // el JSX pero que nunca llegaban a mostrarse.
+      setError("name", { type: "manual", message: "El nombre es obligatorio" });
       return;
     }
     if (!SIZE_VALUE_PATTERN.test(name)) {
-      Alert.alert(
-        "Formato inválido",
-        'El nombre de la talla solo puede contener letras, números, espacios, "/" y "-".',
-      );
+      setError("name", {
+        type: "manual",
+        message:
+          'El nombre de la talla solo puede contener letras, números, espacios, "/" y "-".',
+      });
       return;
     }
 
@@ -343,7 +353,9 @@ export default function TallaFormScreen({ navigation, route }: Props) {
           autoCapitalize="characters"
         />
         {errors.name && (
-          <Text style={styles.errorText}>El nombre es obligatorio</Text>
+          <Text style={styles.errorText}>
+            {errors.name.message ?? "El nombre es obligatorio"}
+          </Text>
         )}
       </View>
 
@@ -371,6 +383,13 @@ export default function TallaFormScreen({ navigation, route }: Props) {
           onChangeText={(v) => setValue("notes", v)}
         />
       </View>
+
+      {/* Error de guardado (ej. nombre duplicado) */}
+      {saveError ? (
+        <View style={styles.saveErrorBanner}>
+          <Text style={styles.saveErrorText}>{saveError}</Text>
+        </View>
+      ) : null}
 
       {/* Botones */}
       <Pressable
@@ -782,6 +801,15 @@ const styles = StyleSheet.create({
   },
   gridWrapper: {
     gap: 12,
+  },
+  saveErrorBanner: {
+    backgroundColor: colors.dangerSoft,
+    borderRadius: 8,
+    padding: 12,
+  },
+  saveErrorText: {
+    color: colors.danger,
+    fontSize: 14,
   },
   notesSection: {
     backgroundColor: colors.surface,

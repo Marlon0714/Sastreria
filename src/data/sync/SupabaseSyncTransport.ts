@@ -118,8 +118,8 @@ export class SupabaseSyncTransport implements SyncTransport {
       }
 
       return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
+    } catch (error) {
+      return this.classifyThrownError(error);
     }
   }
 
@@ -403,165 +403,273 @@ export class SupabaseSyncTransport implements SyncTransport {
       }
 
       return { outcome: "synced" };
-    } catch {
-      return { outcome: "deferred_offline" };
+    } catch (error) {
+      return this.classifyThrownError(error);
     }
   }
 
+  /**
+   * Ejecuta el DELETE real en Supabase para el tipo de entidad del registro
+   * de `sync_delete_log`. Es un `switch` EXHAUSTIVO a propósito (con
+   * `exhaustiveCheck: never` en el `default`, mismo patrón que
+   * `SyncQueueProcessor.syncItem`): antes, `saco_measurement`,
+   * `chaleco_measurement` y `schedule_event` no tenían rama y caían a un
+   * `return null` que el caller (`syncDeleteLogEntry`) interpreta como
+   * éxito — el registro se marcaba `synced` sin haber borrado NADA en la
+   * nube. Con el `default` lanzando un error explícito, un tipo nuevo sin
+   * rama falla ruidosamente (y el item de sync termina en `failed`, nunca
+   * en un falso "synced") en vez de fingir éxito en silencio.
+   */
   private async executeCloudDelete(
     supabase: ReturnType<typeof getSupabaseClient>,
     entry: SyncDeleteLogEntry,
   ): Promise<SyncTransportAttemptResult | null> {
-    if (entry.entityType === "client") {
-      // Delete measurements and schedules first (cascade), then the client
-      const { error: camisaError } = await supabase
-        .from("camisa_measurements")
-        .delete()
-        .eq("client_id", entry.entityId);
-      if (camisaError) {
-        return this.toAttemptFailure(camisaError.code, camisaError.message);
+    switch (entry.entityType) {
+      case "client":
+        return this.executeCloudDeleteClient(supabase, entry);
+      case "camisa_measurement": {
+        const { error } = await supabase
+          .from("camisa_measurements")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
       }
-
-      const { error: pantalonError } = await supabase
-        .from("pantalon_measurements")
-        .delete()
-        .eq("client_id", entry.entityId);
-      if (pantalonError) {
-        return this.toAttemptFailure(pantalonError.code, pantalonError.message);
+      case "pantalon_measurement": {
+        const { error } = await supabase
+          .from("pantalon_measurements")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
       }
-
-      const { error: sacoError } = await supabase
-        .from("saco_measurements")
-        .delete()
-        .eq("client_id", entry.entityId);
-      if (sacoError) {
-        return this.toAttemptFailure(sacoError.code, sacoError.message);
+      case "saco_measurement": {
+        const { error } = await supabase
+          .from("saco_measurements")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
       }
-
-      const { error: chalecoError } = await supabase
-        .from("chaleco_measurements")
-        .delete()
-        .eq("client_id", entry.entityId);
-      if (chalecoError) {
-        return this.toAttemptFailure(chalecoError.code, chalecoError.message);
+      case "chaleco_measurement": {
+        const { error } = await supabase
+          .from("chaleco_measurements")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
       }
-
-      // Se lee el nombre ANTES de borrar nada, mismo criterio que
-      // ClientRepositoryImpl.delete(): el turno conserva el nombre en vez
-      // de quedar sin ninguno.
-      const { data: clientRow } = await supabase
-        .from("clients")
-        .select("first_name, last_name")
-        .eq("id", entry.entityId)
-        .maybeSingle();
-      const deletedClientLabel = clientRow
-        ? `${clientRow.first_name} ${clientRow.last_name} (cliente eliminado)`
-        : "Cliente eliminado";
-
-      // Los turnos sobreviven al cliente borrado (ver ClientRepositoryImpl.delete()).
-      const { error: scheduleError } = await supabase
-        .from("schedules")
-        .update({
-          client_id: null,
-          unregistered_client_name: deletedClientLabel,
-        })
-        .eq("client_id", entry.entityId);
-      if (scheduleError) {
-        return this.toAttemptFailure(scheduleError.code, scheduleError.message);
+      case "client_talla": {
+        const { error } = await supabase
+          .from("client_tallas")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
       }
-
-      const { error: clientError } = await supabase
-        .from("clients")
-        .delete()
-        .eq("id", entry.entityId);
-      if (clientError) {
-        return this.toAttemptFailure(clientError.code, clientError.message);
+      case "pricing_service": {
+        const { error } = await supabase
+          .from("pricing_services")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
       }
+      case "schedule": {
+        const { error } = await supabase
+          .from("schedules")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
+      }
+      case "schedule_event": {
+        const { error } = await supabase
+          .from("schedule_events")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
+      }
+      case "talla_template": {
+        const { error } = await supabase
+          .from("talla_templates")
+          .delete()
+          .eq("id", entry.entityId);
+        if (error) {
+          return this.toAttemptFailure(error.code, error.message);
+        }
+        return null;
+      }
+      default: {
+        const exhaustiveCheck: never = entry.entityType;
+        throw new Error(
+          `Tipo de entidad de borrado no soportado: ${JSON.stringify(exhaustiveCheck)}`,
+        );
+      }
+    }
+  }
 
-      return null;
+  private async executeCloudDeleteClient(
+    supabase: ReturnType<typeof getSupabaseClient>,
+    entry: SyncDeleteLogEntry,
+  ): Promise<SyncTransportAttemptResult | null> {
+    // Delete measurements and schedules first (cascade), then the client
+    const { error: camisaError } = await supabase
+      .from("camisa_measurements")
+      .delete()
+      .eq("client_id", entry.entityId);
+    if (camisaError) {
+      return this.toAttemptFailure(camisaError.code, camisaError.message);
     }
 
-    if (entry.entityType === "camisa_measurement") {
-      const { error } = await supabase
-        .from("camisa_measurements")
-        .delete()
-        .eq("id", entry.entityId);
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-      return null;
+    const { error: pantalonError } = await supabase
+      .from("pantalon_measurements")
+      .delete()
+      .eq("client_id", entry.entityId);
+    if (pantalonError) {
+      return this.toAttemptFailure(pantalonError.code, pantalonError.message);
     }
 
-    if (entry.entityType === "pantalon_measurement") {
-      const { error } = await supabase
-        .from("pantalon_measurements")
-        .delete()
-        .eq("id", entry.entityId);
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-      return null;
+    const { error: sacoError } = await supabase
+      .from("saco_measurements")
+      .delete()
+      .eq("client_id", entry.entityId);
+    if (sacoError) {
+      return this.toAttemptFailure(sacoError.code, sacoError.message);
     }
 
-    if (entry.entityType === "client_talla") {
-      const { error } = await supabase
-        .from("client_tallas")
-        .delete()
-        .eq("id", entry.entityId);
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-      return null;
+    const { error: chalecoError } = await supabase
+      .from("chaleco_measurements")
+      .delete()
+      .eq("client_id", entry.entityId);
+    if (chalecoError) {
+      return this.toAttemptFailure(chalecoError.code, chalecoError.message);
     }
 
-    if (entry.entityType === "pricing_service") {
-      const { error } = await supabase
-        .from("pricing_services")
-        .delete()
-        .eq("id", entry.entityId);
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-      return null;
+    // Se lee el nombre ANTES de borrar nada, mismo criterio que
+    // ClientRepositoryImpl.delete(): el turno conserva el nombre en vez
+    // de quedar sin ninguno.
+    const { data: clientRow } = await supabase
+      .from("clients")
+      .select("first_name, last_name")
+      .eq("id", entry.entityId)
+      .maybeSingle();
+    const deletedClientLabel = clientRow
+      ? `${clientRow.first_name} ${clientRow.last_name} (cliente eliminado)`
+      : "Cliente eliminado";
+
+    // Los turnos sobreviven al cliente borrado (ver ClientRepositoryImpl.delete()).
+    const { error: scheduleError } = await supabase
+      .from("schedules")
+      .update({
+        client_id: null,
+        unregistered_client_name: deletedClientLabel,
+      })
+      .eq("client_id", entry.entityId);
+    if (scheduleError) {
+      return this.toAttemptFailure(scheduleError.code, scheduleError.message);
     }
 
-    if (entry.entityType === "schedule") {
-      const { error } = await supabase
-        .from("schedules")
-        .delete()
-        .eq("id", entry.entityId);
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-      return null;
-    }
-
-    if (entry.entityType === "talla_template") {
-      const { error } = await supabase
-        .from("talla_templates")
-        .delete()
-        .eq("id", entry.entityId);
-      if (error) {
-        return this.toAttemptFailure(error.code, error.message);
-      }
-      return null;
+    const { error: clientError } = await supabase
+      .from("clients")
+      .delete()
+      .eq("id", entry.entityId);
+    if (clientError) {
+      return this.toAttemptFailure(clientError.code, clientError.message);
     }
 
     return null;
+  }
+
+  /**
+   * Clasifica un fallo del transporte (respuesta con error de Supabase, o
+   * excepción JS lanzada antes de obtener respuesta HTTP — ej. red caída,
+   * DNS, timeout) como offline (reintentable sin consumir intentos) o como
+   * fallo real (consume intentos, eventualmente `markAsError`). Antes,
+   * `!errorCode` por sí solo bastaba para clasificar como "offline" —
+   * cualquier error sin `.code` (una excepción JS genuina, o una respuesta
+   * de Supabase sin ese campo, ej. algunos errores de esquema/RLS) quedaba
+   * atrapado como backlog offline PARA SIEMPRE, sin importar si tenía
+   * cualquier evidencia real de ser un problema de red. Ahora solo se
+   * asume offline si el nombre/mensaje del error tiene evidencia real de
+   * red (mismo criterio que `isAuthRetryableFetchError` en
+   * SupabaseAuthRepository.ts para distinguir fallos de red reintentables
+   * de errores genuinos) — un error desconocido sin esa evidencia se trata
+   * como fallo real.
+   */
+  private looksLikeNetworkError(
+    name: string,
+    message: string,
+    code?: string,
+  ): boolean {
+    const haystack = `${name} ${message} ${code ?? ""}`.toLowerCase();
+    return (
+      haystack.includes("network") ||
+      haystack.includes("fetch") ||
+      haystack.includes("offline") ||
+      // Códigos de error de red/conectividad conocidos que Node/undici (y
+      // por lo tanto supabase-js) pueden adjuntar a una excepción lanzada
+      // ANTES de obtener respuesta HTTP — nunca vienen de una respuesta real
+      // de Postgrest, así que no hay ambigüedad con un código de error de
+      // base de datos.
+      haystack.includes("econnrefused") ||
+      haystack.includes("econnreset") ||
+      haystack.includes("etimedout") ||
+      haystack.includes("enotfound") ||
+      haystack.includes("eai_again")
+    );
+  }
+
+  /**
+   * Clasifica una excepción JS lanzada ANTES de obtener respuesta HTTP (ej.
+   * `fetch` rechazado por falta de conexión). Se usa en los `catch` de
+   * `upsertSynced`/`syncDeleteLogEntry`, que antes devolvían
+   * `deferred_offline` incondicionalmente sin mirar el error — cualquier
+   * excepción real (ej. un bug, un payload mal formado) quedaba disfrazada
+   * de backlog offline, nunca consumía reintentos ni llegaba a
+   * `markAsError`. Ver `looksLikeNetworkError` para el criterio.
+   */
+  private classifyThrownError(error: unknown): SyncTransportAttemptResult {
+    const name = error instanceof Error ? error.name : "";
+    const message = error instanceof Error ? error.message : String(error);
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : undefined;
+
+    if (this.looksLikeNetworkError(name, message, code)) {
+      return { outcome: "deferred_offline" };
+    }
+
+    return {
+      outcome: "failed",
+      errorCode: "unexpected_error",
+      errorMessage: message,
+    };
   }
 
   private toAttemptFailure(
     errorCode?: string,
     errorMessage?: string,
   ): SyncTransportAttemptResult {
-    const message = (errorMessage ?? "").toLowerCase();
-    const looksOffline =
-      message.includes("network") ||
-      message.includes("fetch") ||
-      message.includes("offline") ||
-      !errorCode;
-
-    if (looksOffline) {
+    if (this.looksLikeNetworkError("", errorMessage ?? "", errorCode)) {
       return { outcome: "deferred_offline" };
     }
 

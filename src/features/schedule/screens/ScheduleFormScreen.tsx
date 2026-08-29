@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   Alert,
@@ -28,6 +28,12 @@ import {
 import { OperarioPickerField } from "../components/OperarioPickerField";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleHistoryList } from "../components/ScheduleHistoryList";
+import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
+import { formatDateForDisplay } from "../domain/dateUtils";
+import {
+  findDuplicateScheduleByName,
+  type NamedSchedule,
+} from "../domain/duplicateCheck";
 import {
   createScheduleSchema,
   type CreateScheduleSchemaInput,
@@ -74,6 +80,10 @@ const CORRECTION_STATUS_OPTIONS: ScheduleStatus[] = [
 export default function ScheduleFormScreen({ navigation, route }: Props) {
   const { scheduleId, category: categoryParam } = route.params;
   const identityGate = useIdentityGate();
+  // Solo se usa para chequear duplicados por fecha antes de guardar (ver
+  // handleDuplicateCheckedSubmit más abajo) — el guardado real sigue
+  // pasando por useScheduleForm.submit().
+  const scheduleRepo = useMemo(() => getDefaultScheduleRepository(), []);
   const {
     schedule,
     isLoading,
@@ -82,7 +92,11 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     submit,
     syncScheduleSnapshot,
   } = useScheduleForm(scheduleId, identityGate);
-  const { deleteSchedule, isDeleting } = useDeleteSchedule(identityGate);
+  const {
+    deleteSchedule,
+    isDeleting,
+    error: deleteError,
+  } = useDeleteSchedule(identityGate);
   const statusActions = useScheduleStatusActions(scheduleId ?? "", identityGate);
   // Guardar, marcar listo/entregado, corregir y eliminar mutan el mismo
   // turno con lecturas-y-reescrituras independientes (sin control de
@@ -180,13 +194,33 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleMarkDelivered = async (): Promise<void> => {
+  const performMarkDelivered = async (): Promise<void> => {
     const updated = await statusActions.markDelivered();
     if (updated) {
       setDisplaySchedule(updated);
       syncScheduleSnapshot(updated);
       setHistoryRefreshToken((token) => token + 1);
     }
+  };
+
+  const handleMarkDelivered = (): void => {
+    const saldoPendiente = displaySchedule
+      ? computeSaldo(displaySchedule)
+      : undefined;
+    if (saldoPendiente != null && saldoPendiente > 0) {
+      Alert.alert(
+        "Saldo pendiente",
+        `Este turno tiene un saldo pendiente de ${formatPrice(
+          saldoPendiente,
+        )}. ¿Marcar como entregado de todas formas?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Confirmar", onPress: () => void performMarkDelivered() },
+        ],
+      );
+      return;
+    }
+    void performMarkDelivered();
   };
 
   const handleApplyCorrection = (newStatus: ScheduleStatus): void => {
@@ -211,11 +245,57 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     );
   };
 
+  // Nombre a comparar de un turno (propio o ya guardado): si tiene
+  // clientId, el nombre completo del cliente registrado (resuelto desde la
+  // lista que ClientPickerField ya cargó en memoria, sin consultar de
+  // nuevo el repositorio de clientes); si no, el nombre sin registrar.
+  const resolveScheduleName = (item: NamedSchedule): string | undefined =>
+    item.clientId
+      ? clientPickerRef.current?.resolveClientFullName(item.clientId)
+      : item.unregisteredClientName;
+
   const onSubmit = handleSubmit(async (values) => {
-    const result = await submit(values);
-    if (result) {
-      navigation.goBack();
+    const proceedSubmit = async (): Promise<void> => {
+      const result = await submit(values);
+      if (result) {
+        navigation.goBack();
+      }
+    };
+
+    // La advertencia de "turno duplicado" solo aplica a turnos con fecha
+    // asignada — un turno "Pendiente" (sin fecha) no tiene día contra el
+    // cual comparar.
+    if (values.date) {
+      const candidateName = resolveScheduleName(values);
+      if (candidateName) {
+        const schedulesOnDate = await scheduleRepo.getByDate(values.date);
+        const duplicate = findDuplicateScheduleByName(
+          schedulesOnDate,
+          candidateName,
+          scheduleId,
+          resolveScheduleName,
+        );
+
+        if (duplicate) {
+          Alert.alert(
+            "Turno duplicado",
+            `Ya hay un turno de ${candidateName} agendado para el ${formatDateForDisplay(
+              values.date,
+            )}. ¿Deseas guardarlo de todas formas?`,
+            [
+              { text: "Cancelar", style: "cancel" },
+              {
+                text: "Guardar de todas formas",
+                onPress: () => void proceedSubmit(),
+              },
+            ],
+          );
+          return;
+        }
+      }
     }
+
+    await proceedSubmit();
   });
 
   const handleSavePress = async (): Promise<void> => {
@@ -501,22 +581,20 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        {scheduleId ? (
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Operario asignado (opcional)</Text>
-            <Controller
-              control={control}
-              name="operarioId"
-              render={({ field: { onChange, value } }) => (
-                <OperarioPickerField
-                  value={value}
-                  onChange={onChange}
-                  errorMessage={errors.operarioId?.message}
-                />
-              )}
-            />
-          </View>
-        ) : null}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Operario asignado (opcional)</Text>
+          <Controller
+            control={control}
+            name="operarioId"
+            render={({ field: { onChange, value } }) => (
+              <OperarioPickerField
+                value={value}
+                onChange={onChange}
+                errorMessage={errors.operarioId?.message}
+              />
+            )}
+          />
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -526,15 +604,23 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           name="notes"
           render={({ field: { onChange, value } }) => (
             <TextInput
-              style={[styles.input, styles.notesInput]}
+              style={[
+                styles.input,
+                styles.notesInput,
+                errors.notes && styles.inputError,
+              ]}
               placeholder="Detalles del turno"
               placeholderTextColor={colors.textPlaceholder}
               value={value}
               onChangeText={onChange}
               multiline
+              maxLength={500}
             />
           )}
         />
+        {errors.notes ? (
+          <Text style={styles.errorText}>{errors.notes.message}</Text>
+        ) : null}
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -596,7 +682,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                 styles.statusActionButton,
                 isBusy ? styles.buttonDisabled : null,
               ]}
-              onPress={() => void handleMarkDelivered()}
+              onPress={handleMarkDelivered}
               disabled={isBusy}
             >
               <Ionicons name="checkmark-done" size={18} color="#ffffff" />
@@ -639,17 +725,22 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       ) : null}
 
       {scheduleId ? (
-        <Pressable
-          accessibilityLabel="Eliminar turno"
-          style={[styles.deleteButton, isBusy ? styles.buttonDisabled : null]}
-          onPress={onDelete}
-          disabled={isBusy}
-        >
-          <Ionicons name="trash-outline" size={18} color={colors.danger} />
-          <Text style={styles.deleteButtonText}>
-            {isDeleting ? "Eliminando..." : "Eliminar turno"}
-          </Text>
-        </Pressable>
+        <>
+          <Pressable
+            accessibilityLabel="Eliminar turno"
+            style={[styles.deleteButton, isBusy ? styles.buttonDisabled : null]}
+            onPress={onDelete}
+            disabled={isBusy}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            <Text style={styles.deleteButtonText}>
+              {isDeleting ? "Eliminando..." : "Eliminar turno"}
+            </Text>
+          </Pressable>
+          {deleteError ? (
+            <Text style={styles.errorText}>{deleteError}</Text>
+          ) : null}
+        </>
       ) : null}
 
       {scheduleId ? (

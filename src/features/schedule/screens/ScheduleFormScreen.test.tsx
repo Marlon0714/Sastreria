@@ -32,6 +32,17 @@ jest.mock("../hooks/useDeleteSchedule", () => ({
   useDeleteSchedule: () => mockUseDeleteSchedule(),
 }));
 
+// Turnos ya agendados para la fecha consultada por el chequeo de
+// duplicados — por defecto vacío (sin duplicados) salvo que un test lo
+// sobreescriba con mockGetByDate.mockResolvedValueOnce(...).
+const mockGetByDate = jest.fn<(date: string) => Promise<Schedule[]>>();
+
+jest.mock("../../../data/local/scheduleDependencies", () => ({
+  getDefaultScheduleRepository: () => ({
+    getByDate: (date: string) => mockGetByDate(date),
+  }),
+}));
+
 interface UseScheduleStatusActionsResult {
   isProcessing: boolean;
   error: string | null;
@@ -48,6 +59,14 @@ jest.mock("../hooks/useScheduleStatusActions", () => ({
 }));
 
 const mockResolvePendingRegistration = jest.fn<() => Promise<void>>();
+// Simula el mapa clientId -> nombre completo que ClientPickerField ya tiene
+// cargado en memoria (ver `clientRepository.findAll()` dentro del propio
+// componente) — los tests que necesiten resolver un nombre lo configuran
+// llenando este objeto antes de renderizar.
+const mockClientNamesById: Record<string, string> = {};
+const mockResolveClientFullName = jest.fn<(id: string) => string | undefined>(
+  (id: string) => mockClientNamesById[id],
+);
 
 jest.mock("../components/ClientPickerField", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
@@ -73,6 +92,7 @@ jest.mock("../components/ClientPickerField", () => {
   ) {
     ReactModule.useImperativeHandle(ref, () => ({
       resolvePendingRegistration: mockResolvePendingRegistration,
+      resolveClientFullName: mockResolveClientFullName,
     }));
 
     return ReactModule.createElement(View, null, [
@@ -188,6 +208,16 @@ describe("ScheduleFormScreen", () => {
     mockUseDeleteSchedule.mockReset();
     mockResolvePendingRegistration.mockReset();
     mockResolvePendingRegistration.mockResolvedValue(undefined);
+    mockResolveClientFullName.mockClear();
+    for (const key of Object.keys(mockClientNamesById)) {
+      delete mockClientNamesById[key];
+    }
+    mockGetByDate.mockReset();
+    mockGetByDate.mockResolvedValue([]);
+    // Varios tests espían Alert.alert con jest.spyOn dentro del propio
+    // `it`; sin restaurarlo acá, el historial de llamadas (y la
+    // implementación) de un test se filtraría al siguiente.
+    jest.restoreAllMocks();
     mockUseDeleteSchedule.mockReturnValue({
       isDeleting: false,
       error: null,
@@ -523,6 +553,59 @@ describe("ScheduleFormScreen", () => {
     expect(callOrder).toEqual(["resolvePendingRegistration", "submit"]);
   });
 
+  it("muestra un error si las notas superan los 500 caracteres", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByLabelText, getByPlaceholderText, findByText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+    const longNotes = "a".repeat(501);
+    fireEvent.changeText(getByPlaceholderText("Detalles del turno"), longNotes);
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    expect(
+      await findByText(/expected string to have <=500 characters/i),
+    ).toBeTruthy();
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("permite asignar operario al crear un turno nuevo, sin pasar por una edición posterior", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    const newOperarioId = "33333333-3333-4333-8333-333333333333";
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+    fireEvent.changeText(getByLabelText("Operario"), newOperarioId);
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ operarioId: newOperarioId }),
+      );
+    });
+  });
+
   it("pre-fills fields, muestra el estado y el botón de eliminar en modo edición", async () => {
     mockUseScheduleForm.mockReturnValue({
       schedule,
@@ -572,6 +655,46 @@ describe("ScheduleFormScreen", () => {
 
     fireEvent.press(getByText("Volver"));
     expect(goBack).toHaveBeenCalled();
+  });
+
+  it("muestra el mensaje de error y no navega hacia atrás si falla la eliminación", async () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(schedule)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+    const deleteSchedule = jest.fn(async () => Promise.resolve(false));
+    mockUseDeleteSchedule.mockReturnValue({
+      isDeleting: false,
+      error: "No se pudo eliminar el turno. Intenta nuevamente.",
+      deleteSchedule,
+    });
+    const goBack = jest.fn();
+
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+      const confirm = buttons?.find((b) => b.text === "Eliminar");
+      void confirm?.onPress?.();
+    });
+
+    const { getByLabelText, findByText } = render(
+      <ScheduleFormScreen
+        {...buildProps(jest.fn(), goBack, schedule.id)}
+      />,
+    );
+
+    fireEvent.press(getByLabelText("Eliminar turno"));
+
+    await waitFor(() => {
+      expect(deleteSchedule).toHaveBeenCalledWith(schedule.id);
+    });
+
+    expect(
+      await findByText("No se pudo eliminar el turno. Intenta nuevamente."),
+    ).toBeTruthy();
+    expect(goBack).not.toHaveBeenCalled();
   });
 
   it("deletes the schedule after confirming and navigates back", async () => {
@@ -753,6 +876,83 @@ describe("ScheduleFormScreen", () => {
       expect(markReady).toHaveBeenCalledTimes(1);
     });
 
+    it("al marcar entregado con saldo pendiente, pide confirmación indicando el monto", async () => {
+      jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+      mockUseScheduleForm.mockReturnValue({
+        schedule: {
+          ...schedule,
+          status: "listo_para_entregar",
+          operarioId: "op-1",
+          price: 100000,
+          abono: 30000,
+        },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const markDelivered = jest.fn(async () =>
+        Promise.resolve({ ...schedule, status: "entregado" as const }),
+      );
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: false,
+        error: null,
+        markReady: jest.fn(async () => Promise.resolve(null)),
+        markDelivered,
+        applyCorrection: jest.fn(async () => Promise.resolve(null)),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Saldo pendiente",
+        expect.stringContaining("$70.000"),
+        expect.anything(),
+      );
+      expect(markDelivered).not.toHaveBeenCalled();
+    });
+
+    it("al marcar entregado sin saldo pendiente, se marca directo sin pedir confirmación", async () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: {
+          ...schedule,
+          status: "listo_para_entregar",
+          operarioId: "op-1",
+          price: 100000,
+          abono: 100000,
+        },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const markDelivered = jest.fn(async () =>
+        Promise.resolve({ ...schedule, status: "entregado" as const }),
+      );
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: false,
+        error: null,
+        markReady: jest.fn(async () => Promise.resolve(null)),
+        markDelivered,
+        applyCorrection: jest.fn(async () => Promise.resolve(null)),
+      });
+
+      const { getByLabelText, findByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+
+      expect(await findByText("Estado: Entregado")).toBeTruthy();
+      expect(markDelivered).toHaveBeenCalledTimes(1);
+    });
+
     it("corrección manual pide confirmación antes de aplicar el nuevo estado", async () => {
       jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
         const confirm = buttons?.find((b) => b.text === "Confirmar");
@@ -808,6 +1008,223 @@ describe("ScheduleFormScreen", () => {
 
       expect(queryByLabelText("Corregir a Agendado")).toBeNull();
       expect(getByLabelText("Corregir a Pendiente")).toBeTruthy();
+    });
+  });
+
+  describe("advertencia de turno duplicado", () => {
+    const existingDuplicate: Schedule = {
+      id: "44444444-4444-4444-8444-444444444444",
+      date: "2026-08-10",
+      clientId: schedule.clientId,
+      isPriority: false,
+      category: "arreglo",
+      status: "agendado",
+      statusLocked: false,
+      createdAt: "2026-08-01T10:00:00.000Z",
+      updatedAt: "2026-08-01T10:00:00.000Z",
+      syncStatus: "pending",
+    };
+
+    it("avisa si ya hay otro turno agendado ese mismo día para el mismo cliente, y cancelar no guarda", async () => {
+      mockClientNamesById[schedule.clientId as string] = "Juan Pérez";
+      mockGetByDate.mockResolvedValue([existingDuplicate]);
+      const submit = jest.fn(async () => Promise.resolve(schedule));
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit,
+        syncScheduleSnapshot: jest.fn(),
+      });
+      jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+        const cancel = buttons?.find((b) => b.text === "Cancelar");
+        void cancel?.onPress?.();
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+      fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
+      fireEvent.press(getByLabelText("Guardar turno"));
+
+      await waitFor(() => {
+        expect(mockGetByDate).toHaveBeenCalledWith("2026-08-10");
+      });
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Turno duplicado",
+        expect.stringContaining("Juan Pérez"),
+        expect.anything(),
+      );
+      expect(submit).not.toHaveBeenCalled();
+    });
+
+    it("confirmar 'Guardar de todas formas' sí guarda el turno duplicado", async () => {
+      mockClientNamesById[schedule.clientId as string] = "Juan Pérez";
+      mockGetByDate.mockResolvedValue([existingDuplicate]);
+      const submit = jest.fn(async () => Promise.resolve(schedule));
+      const goBack = jest.fn();
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit,
+        syncScheduleSnapshot: jest.fn(),
+      });
+      jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+        const confirm = buttons?.find((b) => b.text === "Guardar de todas formas");
+        void confirm?.onPress?.();
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+      fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
+      fireEvent.press(getByLabelText("Guardar turno"));
+
+      await waitFor(() => {
+        expect(submit).toHaveBeenCalled();
+      });
+      await waitFor(() => {
+        expect(goBack).toHaveBeenCalled();
+      });
+    });
+
+    it("editar un turno existente no lo compara contra sí mismo", async () => {
+      mockClientNamesById[schedule.clientId as string] = "Juan Pérez";
+      // El único turno de esa fecha es el propio turno en edición.
+      mockGetByDate.mockResolvedValue([schedule]);
+      const submit = jest.fn(async () => Promise.resolve(schedule));
+      const goBack = jest.fn();
+      mockUseScheduleForm.mockReturnValue({
+        schedule,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit,
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const alertSpy = jest.spyOn(Alert, "alert");
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), goBack, schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Guardar turno"));
+
+      await waitFor(() => {
+        expect(submit).toHaveBeenCalled();
+      });
+      expect(alertSpy).not.toHaveBeenCalledWith(
+        "Turno duplicado",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it("no avisa si el otro turno del mismo cliente es en una fecha distinta", async () => {
+      mockClientNamesById[schedule.clientId as string] = "Juan Pérez";
+      // getByDate ya filtra por fecha — para la fecha consultada no hay
+      // ningún otro turno de este cliente.
+      mockGetByDate.mockResolvedValue([]);
+      const submit = jest.fn(async () => Promise.resolve(schedule));
+      const goBack = jest.fn();
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit,
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const alertSpy = jest.spyOn(Alert, "alert");
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+      fireEvent.changeText(getByLabelText("Fecha"), "2026-08-20");
+      fireEvent.press(getByLabelText("Guardar turno"));
+
+      await waitFor(() => {
+        expect(mockGetByDate).toHaveBeenCalledWith("2026-08-20");
+      });
+      await waitFor(() => {
+        expect(submit).toHaveBeenCalled();
+      });
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it("un turno sin fecha (Pendientes) nunca avisa, sin consultar turnos existentes", async () => {
+      mockClientNamesById[schedule.clientId as string] = "Juan Pérez";
+      const submit = jest.fn(async () => Promise.resolve(schedule));
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit,
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const alertSpy = jest.spyOn(Alert, "alert");
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+      fireEvent.press(getByLabelText("Guardar turno"));
+
+      await waitFor(() => {
+        expect(submit).toHaveBeenCalled();
+      });
+      expect(mockGetByDate).not.toHaveBeenCalled();
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it("detecta la coincidencia con mayúsculas/espacios distintos (mismo criterio que normalizeText)", async () => {
+      const otherUnregistered: Schedule = {
+        ...existingDuplicate,
+        clientId: undefined,
+        unregisteredClientName: "Juan Pérez",
+      };
+      mockGetByDate.mockResolvedValue([otherUnregistered]);
+      const submit = jest.fn(async () => Promise.resolve(schedule));
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit,
+        syncScheduleSnapshot: jest.fn(),
+      });
+      jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+        const cancel = buttons?.find((b) => b.text === "Cancelar");
+        void cancel?.onPress?.();
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Nombre del cliente"), "juan perez ");
+      fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
+      fireEvent.press(getByLabelText("Guardar turno"));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalledWith(
+          "Turno duplicado",
+          expect.anything(),
+          expect.anything(),
+        );
+      });
+      expect(submit).not.toHaveBeenCalled();
     });
   });
 });

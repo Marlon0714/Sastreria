@@ -58,7 +58,11 @@ const ALL_TABS: TabConfig[] = [
 /**
  * Roles que pueden ver cada tab. Confirmado (2026-08-05): un operario en su
  * propio dispositivo solo ve Agenda y Precios; Clientes/Tallas quedan
- * reservadas al dueño.
+ * reservadas al dueño. Desde 2026-08-24, esa pestaña de "Precios" para un
+ * operario ya NO muestra el catálogo de precios (`PricingStackNavigator`
+ * decide, según el role, si el root de esa pestaña es la lista de precios o
+ * "Mis arreglos") — ver `getPricingTabDisplay` más abajo para el label/ícono
+ * que corresponde en cada caso.
  */
 const TAB_ROLES: Record<TabName, Role[]> = {
   ClientsTab: ["owner"],
@@ -66,6 +70,30 @@ const TAB_ROLES: Record<TabName, Role[]> = {
   ScheduleTab: ["owner", "operario"],
   PricingTab: ["owner", "operario"],
 };
+
+/**
+ * La pestaña "PricingTab" muestra contenido distinto según el role: el
+ * dueño ve el catálogo de precios, el operario ve "Mis arreglos" (su
+ * actividad del día) — el catálogo completo de precios no le corresponde a
+ * un operario. El componente que se renderiza ahí (`PricingStackNavigator`)
+ * decide eso mismo por su cuenta; acá solo se ajusta cómo se ve la pestaña.
+ */
+function getPricingTabDisplay(
+  role: Role | null,
+  isSharedDevice: boolean,
+): Pick<TabConfig, "label" | "title" | "icon"> {
+  // La tablet compartida (mostrador) también tiene role="operario" en su
+  // propio perfil, pero la usan varias personas para tareas distintas
+  // (incluido cobrar/consultar precios) — igual que `isTabVisibleForRole`,
+  // el bypass de dispositivo compartido debe ganarle a la restricción por
+  // role. Si no, la tablet pierde el catálogo de precios y muestra "Mis
+  // arreglos" filtrado por el id de la tablet, que no es el de ningún
+  // operario real (pantalla vacía permanente).
+  if (role === "operario" && !isSharedDevice) {
+    return { label: "Mis arreglos", title: "Mis arreglos", icon: "cash" };
+  }
+  return { label: "Precios", title: "Precios", icon: "pricetag" };
+}
 
 function isTabVisibleForRole(
   tab: TabName,
@@ -130,21 +158,27 @@ export default function FeatureTabsNavigator() {
         tabBarItemStyle: styles.tabBarItem,
       }}
     >
-      {visibleTabs.map((tab) => (
-        <Tab.Screen
-          key={tab.name}
-          name={tab.name}
-          component={tab.component}
-          options={{
-            title: tab.title,
-            tabBarLabel: tab.label,
-            tabBarButtonTestID: `tab-${tab.name}`,
-            tabBarIcon: ({ color }) => (
-              <Ionicons name={tab.icon} size={22} color={color} />
-            ),
-          }}
-        />
-      ))}
+      {visibleTabs.map((tab) => {
+        const display =
+          tab.name === "PricingTab"
+            ? getPricingTabDisplay(role, isSharedDevice)
+            : tab;
+        return (
+          <Tab.Screen
+            key={tab.name}
+            name={tab.name}
+            component={tab.component}
+            options={{
+              title: display.title,
+              tabBarLabel: display.label,
+              tabBarButtonTestID: `tab-${tab.name}`,
+              tabBarIcon: ({ color }) => (
+                <Ionicons name={display.icon} size={22} color={color} />
+              ),
+            }}
+          />
+        );
+      })}
     </Tab.Navigator>
   );
 }

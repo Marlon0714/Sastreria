@@ -70,8 +70,9 @@ export class SupabaseAuthRepository implements SupabaseAuthRepositoryPort {
           "No se pudo conectar. Revisa tu conexión e intenta de nuevo.",
         );
       }
-      // Sanitized error: do not expose email/password in message
-      throw new Error("[auth] Sign in failed. Check credentials and try again.");
+      // Mensaje sanitizado: no expone correo/contraseña, y va en español
+      // sin prefijo de debug porque llega tal cual hasta LoginScreen.
+      throw new Error("Correo o contraseña incorrectos.");
     }
 
     return toAuthSession(data.session);

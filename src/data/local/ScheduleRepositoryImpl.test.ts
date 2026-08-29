@@ -494,6 +494,67 @@ describe("ScheduleRepositoryImpl", () => {
     });
   });
 
+  describe("concurrencia", () => {
+    it("dos updates casi simultáneos sobre el mismo turno no pierden ningún cambio (SELECT+UPDATE atómico)", async () => {
+      // Reemplaza el mock "ingenuo" de withTransactionAsync (que solo hace
+      // `await callback()`) por uno que reproduce la MISMA serialización de
+      // serializeTransactions en database.ts: solo una transacción corre a
+      // la vez, y la siguiente espera a que la anterior termine por completo
+      // (incluida su escritura) antes de arrancar su propio SELECT. Así, si
+      // el fix de persistUpdate() es correcto, el segundo update() siempre
+      // lee el resultado YA COMMITEADO del primero, en vez de una foto vieja
+      // — que es justo el escenario de pérdida de datos que se corrigió.
+      let queue: Promise<void> = Promise.resolve();
+      mockWithTransactionAsync.mockImplementation((callback) => {
+        const run = (): Promise<void> => callback();
+        const result = queue.then(run, run);
+        queue = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        return result;
+      });
+
+      let row = { ...baseRow, notes: "Nota original", price: null as number | null };
+      mockGetFirstAsync.mockImplementation(async () => ({ ...row }));
+      mockRunAsync.mockImplementation(async (_sql: string, ...params: unknown[]) => {
+        const [
+          ,
+          ,
+          ,
+          ,
+          price,
+          ,
+          ,
+          notes,
+        ] = params as unknown[];
+        row = {
+          ...row,
+          price: price as number | null,
+          notes: notes as string,
+        };
+        return {};
+      });
+
+      const repository = new ScheduleRepositoryImpl();
+
+      // Simula un pull de sync actualizando `notes` justo mientras el
+      // usuario cambia el `price` desde la UI, casi al mismo tiempo (ninguna
+      // de las dos llamadas espera a que la otra termine).
+      const [resultA, resultB] = await Promise.all([
+        repository.update(baseRow.id, { notes: "Nota actualizada por sync" }),
+        repository.update(baseRow.id, { price: 150000 }),
+      ]);
+
+      expect(row.notes).toBe("Nota actualizada por sync");
+      expect(row.price).toBe(150000);
+      expect([resultA.notes, resultB.notes]).toContain(
+        "Nota actualizada por sync",
+      );
+      expect([resultA.price, resultB.price]).toContain(150000);
+    });
+  });
+
   it("delete borra el turno y registra entrada en sync_delete_log dentro de una transacción", async () => {
     mockGenerateDomainUuid.mockReturnValueOnce(
       "cccccccc-cccc-4ccc-8ccc-cccccccccccc",

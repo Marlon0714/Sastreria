@@ -82,6 +82,19 @@ export default function ClientListScreen({ navigation }: Props) {
     }, [reload]),
   );
 
+  useEffect(() => {
+    // Escucha el "focus" de la pestaña (el navigator padre), no el de esta
+    // pantalla: esta pantalla también se re-enfoca al volver de una
+    // pantalla hija del mismo stack (detalle, edición, tallas...), y ahí NO
+    // se debe perder la paginación cargada con "Cargar más". El evento del
+    // navigator padre solo dispara cuando se cambia de pestaña de verdad.
+    const parent = navigation.getParent();
+    const unsubscribe = parent?.addListener("focus", () => {
+      setVisibleCount(PAGE_SIZE);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const filteredClients = useMemo(() => {
     const normalizedQuery = normalizeText(searchTerm);
     if (!normalizedQuery) {
@@ -103,6 +116,13 @@ export default function ClientListScreen({ navigation }: Props) {
             normalizePhone(phone).includes(numericQuery),
           )
         : false;
+      // Incluye la cédula como criterio adicional del filtro "Todos" — el
+      // dato ya se captura y se muestra en el detalle, pero antes no era
+      // buscable desde el listado (mismo estilo de comparación por
+      // substring ya usado para nombre/teléfono).
+      const matchesCedula = client.cedula
+        ? normalizeText(client.cedula).includes(normalizedQuery)
+        : false;
 
       if (filterBy === "name") {
         return normalizedName.includes(normalizedQuery);
@@ -112,7 +132,9 @@ export default function ClientListScreen({ navigation }: Props) {
         return matchesPhone;
       }
 
-      return normalizedName.includes(normalizedQuery) || matchesPhone;
+      return (
+        normalizedName.includes(normalizedQuery) || matchesPhone || matchesCedula
+      );
     });
   }, [clients, filterBy, searchTerm]);
 

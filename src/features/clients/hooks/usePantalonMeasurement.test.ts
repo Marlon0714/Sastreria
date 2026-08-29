@@ -25,6 +25,10 @@ const mockMeasurementRepository: MeasurementRepository = {
     mockFindPantalonByClientId(clientId),
   findSacoByClientId: jest.fn(async () => Promise.resolve(null)),
   findChalecoByClientId: jest.fn(async () => Promise.resolve(null)),
+  deleteCamisa: jest.fn(async () => Promise.resolve()),
+  deletePantalon: jest.fn(async () => Promise.resolve()),
+  deleteSaco: jest.fn(async () => Promise.resolve()),
+  deleteChaleco: jest.fn(async () => Promise.resolve()),
 };
 
 const noopTallaRepository: TallaRepository = {

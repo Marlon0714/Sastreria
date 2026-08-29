@@ -67,7 +67,7 @@ describe("OfflineActorPickerModal", () => {
     expect(onSelect).toHaveBeenCalledWith(operarios[0]);
   });
 
-  it("muestra un mensaje si no hay operarios disponibles", () => {
+  it("muestra un mensaje si no hay perfiles disponibles", () => {
     const { getByText } = render(
       <OfflineActorPickerModal
         visible={true}
@@ -79,8 +79,28 @@ describe("OfflineActorPickerModal", () => {
     );
 
     expect(
-      getByText("No hay operarios disponibles sin conexión."),
+      getByText("No hay personas disponibles para identificarse sin conexión."),
     ).toBeTruthy();
+  });
+
+  it("incluye al dueño con PIN configurado en la lista offline (tablet compartida)", () => {
+    const owner: Profile = {
+      id: "owner-1",
+      displayName: "Ana Ruiz",
+      role: "owner",
+      isSharedDevice: false,
+    };
+    const { getByText } = render(
+      <OfflineActorPickerModal
+        visible={true}
+        operarios={[owner]}
+        isLoading={false}
+        onSelect={jest.fn()}
+        onCancel={jest.fn()}
+      />,
+    );
+
+    expect(getByText("Ana Ruiz")).toBeTruthy();
   });
 
   it("llama onCancel al presionar Cancelar", () => {

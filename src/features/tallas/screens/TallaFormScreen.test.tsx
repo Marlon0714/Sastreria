@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import type { TallasDependencies } from "../../../data/local/tallasDependencies";
 import type { TallaTemplate } from "../domain/types";
@@ -11,6 +12,7 @@ const mockCreateTemplate =
   jest.fn<(dto: unknown) => Promise<TallaTemplate | null>>();
 const mockUpdateTemplate = jest.fn();
 const mockDeleteTemplate = jest.fn();
+let mockUpsertError: string | null = null;
 
 jest.mock("../hooks/useUpsertTallaTemplate", () => ({
   useUpsertTallaTemplate: () => ({
@@ -18,7 +20,7 @@ jest.mock("../hooks/useUpsertTallaTemplate", () => ({
     updateTemplate: mockUpdateTemplate,
     deleteTemplate: mockDeleteTemplate,
     isSubmitting: false,
-    error: null,
+    error: mockUpsertError,
   }),
 }));
 
@@ -50,6 +52,7 @@ describe("TallaFormScreen", () => {
     mockCreateTemplate.mockReset();
     mockUpdateTemplate.mockReset();
     mockDeleteTemplate.mockReset();
+    mockUpsertError = null;
   });
 
   it("muestra un error de campo y no guarda cuando una medida está fuera de rango", async () => {
@@ -86,6 +89,50 @@ describe("TallaFormScreen", () => {
     expect(mockCreateTemplate).not.toHaveBeenCalled();
   });
 
+  it("muestra el error inline bajo el campo nombre cuando se guarda sin nombre, sin usar Alert", async () => {
+    const alertSpy = jest.spyOn(Alert, "alert");
+
+    const { getByText } = render(
+      <TallasDependenciesProvider dependencies={dependencies}>
+        <TallaFormScreen {...buildProps()} />
+      </TallasDependenciesProvider>,
+    );
+
+    fireEvent.press(getByText("Guardar talla"));
+
+    await waitFor(() => {
+      expect(getByText("El nombre es obligatorio")).toBeTruthy();
+    });
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(mockCreateTemplate).not.toHaveBeenCalled();
+  });
+
+  it("muestra el error inline bajo el campo nombre cuando el formato del nombre es inválido, sin usar Alert", async () => {
+    const alertSpy = jest.spyOn(Alert, "alert");
+
+    const { getByText, getByPlaceholderText } = render(
+      <TallasDependenciesProvider dependencies={dependencies}>
+        <TallaFormScreen {...buildProps()} />
+      </TallasDependenciesProvider>,
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText('Ej: M, 38, "Talla única"'),
+      "M@#!",
+    );
+    fireEvent.press(getByText("Guardar talla"));
+
+    await waitFor(() => {
+      expect(
+        getByText(
+          'El nombre de la talla solo puede contener letras, números, espacios, "/" y "-".',
+        ),
+      ).toBeTruthy();
+    });
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(mockCreateTemplate).not.toHaveBeenCalled();
+  });
+
   it("guarda la plantilla cuando las medidas están en rango", async () => {
     mockCreateTemplate.mockResolvedValueOnce({ id: "t-1" } as TallaTemplate);
 
@@ -102,5 +149,20 @@ describe("TallaFormScreen", () => {
     await waitFor(() => {
       expect(mockCreateTemplate).toHaveBeenCalled();
     });
+  });
+
+  it("muestra el mensaje de nombre duplicado que devuelve el repositorio", () => {
+    mockUpsertError =
+      "Ya existe una plantilla de talla 'M' para Camisa.";
+
+    const { getByText } = render(
+      <TallasDependenciesProvider dependencies={dependencies}>
+        <TallaFormScreen {...buildProps()} />
+      </TallasDependenciesProvider>,
+    );
+
+    expect(
+      getByText("Ya existe una plantilla de talla 'M' para Camisa."),
+    ).toBeTruthy();
   });
 });

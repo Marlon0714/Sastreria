@@ -33,6 +33,21 @@ jest.mock("../features/pricing/hooks/usePricingServices", () => ({
   }),
 }));
 
+// Para un operario, PricingTab ya no muestra la lista de precios sino "Mis
+// arreglos" (ver PricingStackNavigator) — se mockea igual que
+// usePricingServices arriba, sin datos, solo para que el tab cargue.
+jest.mock("../features/account/hooks/useMyActivity", () => ({
+  useMyActivity: () => ({
+    items: [],
+    total: 0,
+    isLoading: false,
+    error: null,
+    priceError: null,
+    reload: jest.fn(),
+    addPrice: jest.fn(),
+  }),
+}));
+
 jest.mock("./ClientsStackNavigator", () => {
   const React = jest.requireActual("react") as typeof import("react");
   const { Text } = jest.requireActual(
@@ -73,7 +88,7 @@ describe("RootNavigator tabs composition", () => {
     useIdentityStore.getState().reset();
   });
 
-  it("restringe a un operario en su propio dispositivo a solo Agenda y Precios", () => {
+  it("restringe a un operario en su propio dispositivo a Agenda y Mis arreglos (no el catálogo de precios)", async () => {
     useIdentityStore.getState().setOwnProfile({
       id: "user-1",
       displayName: "María Gómez",
@@ -81,15 +96,26 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: false,
     });
 
-    const { getByTestId, queryByTestId } = renderRootNavigator();
+    const { getByTestId, queryByTestId, getAllByText, findByText } =
+      renderRootNavigator();
 
     expect(queryByTestId("tab-ClientsTab")).toBeNull();
     expect(queryByTestId("tab-TallasTab")).toBeNull();
     expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
     expect(getByTestId("tab-PricingTab")).toBeTruthy();
+    // El label de esa pestaña ya no dice "Precios" para un operario (aparece
+    // tanto en el header como en la barra de pestañas).
+    expect(getAllByText("Mis arreglos").length).toBeGreaterThan(0);
+
+    fireEvent.press(getByTestId("tab-PricingTab"));
+
+    // Muestra el contenido de "Mis arreglos", no el catálogo de precios.
+    expect(
+      await findByText("No hiciste ningún arreglo este día."),
+    ).toBeTruthy();
   });
 
-  it("muestra todas las tabs en la tablet compartida sin importar su role", () => {
+  it("muestra todas las tabs en la tablet compartida sin importar su role", async () => {
     useIdentityStore.getState().setOwnProfile({
       id: "tablet-1",
       displayName: "Tablet mostrador",
@@ -97,12 +123,24 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: true,
     });
 
-    const { getByTestId } = renderRootNavigator();
+    const { getByTestId, getAllByText, findByText, queryByText } =
+      renderRootNavigator();
 
     expect(getByTestId("tab-ClientsTab")).toBeTruthy();
     expect(getByTestId("tab-TallasTab")).toBeTruthy();
     expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
     expect(getByTestId("tab-PricingTab")).toBeTruthy();
+
+    // Regresión: aunque el perfil de la tablet tenga role="operario", al
+    // ser dispositivo compartido esa pestaña debe seguir siendo el
+    // catálogo de precios (no "Mis arreglos", que quedaría vacío porque
+    // se filtraría por el id de la tablet, que no es el de ningún
+    // operario real).
+    expect(getAllByText("Precios").length).toBeGreaterThan(0);
+    expect(queryByText("Mis arreglos")).toBeNull();
+
+    fireEvent.press(getByTestId("tab-PricingTab"));
+    expect(await findByText("Sin arreglos aún")).toBeTruthy();
   });
 
   it("muestra todas las tabs para el dueño", () => {

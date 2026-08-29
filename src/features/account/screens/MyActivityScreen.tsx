@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { ErrorView, LoadingView } from "../../../shared/components";
 import { colors } from "../../../shared/theme/colors";
@@ -33,6 +34,17 @@ export default function MyActivityScreen() {
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [priceInput, setPriceInput] = useState("");
   const [isSavingPrice, setIsSavingPrice] = useState(false);
+
+  // Los tabs no desmontan esta pantalla al cambiar de pestaña, así que sin
+  // esto el operario podría volver a "Precios" (ahora raíz de la pestaña) y
+  // ver arreglos marcados "listo" en Agenda que ya no reflejan lo más
+  // reciente. `reload` es estable salvo que cambien `date`/`ownProfileId`
+  // (ver useMyActivity), así que esto no duplica el fetch inicial en bucle.
+  useFocusEffect(
+    useCallback(() => {
+      void reload();
+    }, [reload]),
+  );
 
   if (isLoading && items.length === 0) {
     return <LoadingView message="Cargando tus arreglos..." />;
@@ -162,7 +174,7 @@ export default function MyActivityScreen() {
 
       {items.length > 0 ? (
         <View style={styles.totalBar}>
-          <Text style={styles.totalLabel}>Total del día</Text>
+          <Text style={styles.totalLabel}>Total bruto del día</Text>
           <Text style={styles.totalValue}>{formatPrice(total)}</Text>
         </View>
       ) : null}

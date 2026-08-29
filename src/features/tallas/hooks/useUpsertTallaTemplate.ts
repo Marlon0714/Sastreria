@@ -29,8 +29,13 @@ export function useUpsertTallaTemplate(): UseUpsertTallaTemplateResult {
       setError(null);
       try {
         return await repo.create(dto);
-      } catch {
-        setError("No se pudo guardar la talla.");
+      } catch (err) {
+        // Propaga el mensaje del repositorio tal cual (ej. nombre
+        // duplicado) en vez de uno genérico — mismo patrón que
+        // `usePricingForm.onSubmit` para el mismo caso en Precios.
+        setError(
+          err instanceof Error ? err.message : "No se pudo guardar la talla.",
+        );
         return null;
       } finally {
         setIsSubmitting(false);
@@ -45,8 +50,12 @@ export function useUpsertTallaTemplate(): UseUpsertTallaTemplateResult {
       setError(null);
       try {
         return await repo.update(dto);
-      } catch {
-        setError("No se pudo actualizar la talla.");
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "No se pudo actualizar la talla.",
+        );
         return null;
       } finally {
         setIsSubmitting(false);
@@ -62,8 +71,10 @@ export function useUpsertTallaTemplate(): UseUpsertTallaTemplateResult {
       try {
         await repo.delete(id);
         return true;
-      } catch {
-        setError("No se pudo eliminar la talla.");
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "No se pudo eliminar la talla.",
+        );
         return false;
       } finally {
         setIsSubmitting(false);
