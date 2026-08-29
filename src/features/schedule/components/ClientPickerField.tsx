@@ -54,6 +54,14 @@ export interface ClientPickerFieldHandle {
    * registrar" del turno.
    */
   resolvePendingRegistration: () => Promise<void>;
+  /**
+   * Nombre completo (nombre + apellido) del cliente registrado con este id,
+   * usando la lista de clientes que este campo ya cargó en memoria — evita
+   * una consulta extra al repositorio de clientes solo para resolver un
+   * nombre que ya está disponible localmente. Devuelve `undefined` si el id
+   * no corresponde a ningún cliente cargado.
+   */
+  resolveClientFullName: (clientId: string) => string | undefined;
 }
 
 export const ClientPickerField = forwardRef<
@@ -269,6 +277,10 @@ export const ClientPickerField = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
+      resolveClientFullName: (id: string) => {
+        const client = clients.find((c) => c.id === id);
+        return client ? `${client.firstName} ${client.lastName}` : undefined;
+      },
       resolvePendingRegistration: () =>
         new Promise<void>((resolve) => {
           if (!isRegistering || clientId) {

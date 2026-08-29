@@ -647,4 +647,45 @@ describe("ClientPickerField", () => {
       expect(onChangeClientId).toHaveBeenCalledWith(undefined);
     });
   });
+
+  describe("resolveClientFullName (usado por el chequeo de turno duplicado)", () => {
+    it("devuelve el nombre completo de un cliente ya cargado en memoria, sin volver a consultar el repositorio", async () => {
+      const ref = createRef<ClientPickerFieldHandle>();
+      render(
+        <ClientPickerField
+          ref={ref}
+          onChangeClientId={jest.fn()}
+          onChangeUnregisteredName={jest.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(mockFindAll).toHaveBeenCalledTimes(1);
+      });
+
+      expect(ref.current?.resolveClientFullName(clients[1]!.id)).toBe(
+        "Juan Pérez",
+      );
+      // Una sola llamada: la resuelta desde la lista ya cargada, no una
+      // consulta nueva al repositorio.
+      expect(mockFindAll).toHaveBeenCalledTimes(1);
+    });
+
+    it("devuelve undefined si el id no corresponde a ningún cliente cargado", async () => {
+      const ref = createRef<ClientPickerFieldHandle>();
+      render(
+        <ClientPickerField
+          ref={ref}
+          onChangeClientId={jest.fn()}
+          onChangeUnregisteredName={jest.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(mockFindAll).toHaveBeenCalledTimes(1);
+      });
+
+      expect(ref.current?.resolveClientFullName("id-inexistente")).toBeUndefined();
+    });
+  });
 });

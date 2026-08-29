@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   Alert,
@@ -28,6 +28,12 @@ import {
 import { OperarioPickerField } from "../components/OperarioPickerField";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleHistoryList } from "../components/ScheduleHistoryList";
+import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
+import { formatDateForDisplay } from "../domain/dateUtils";
+import {
+  findDuplicateScheduleByName,
+  type NamedSchedule,
+} from "../domain/duplicateCheck";
 import {
   createScheduleSchema,
   type CreateScheduleSchemaInput,
@@ -74,6 +80,10 @@ const CORRECTION_STATUS_OPTIONS: ScheduleStatus[] = [
 export default function ScheduleFormScreen({ navigation, route }: Props) {
   const { scheduleId, category: categoryParam } = route.params;
   const identityGate = useIdentityGate();
+  // Solo se usa para chequear duplicados por fecha antes de guardar (ver
+  // handleDuplicateCheckedSubmit más abajo) — el guardado real sigue
+  // pasando por useScheduleForm.submit().
+  const scheduleRepo = useMemo(() => getDefaultScheduleRepository(), []);
   const {
     schedule,
     isLoading,
@@ -235,11 +245,57 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     );
   };
 
+  // Nombre a comparar de un turno (propio o ya guardado): si tiene
+  // clientId, el nombre completo del cliente registrado (resuelto desde la
+  // lista que ClientPickerField ya cargó en memoria, sin consultar de
+  // nuevo el repositorio de clientes); si no, el nombre sin registrar.
+  const resolveScheduleName = (item: NamedSchedule): string | undefined =>
+    item.clientId
+      ? clientPickerRef.current?.resolveClientFullName(item.clientId)
+      : item.unregisteredClientName;
+
   const onSubmit = handleSubmit(async (values) => {
-    const result = await submit(values);
-    if (result) {
-      navigation.goBack();
+    const proceedSubmit = async (): Promise<void> => {
+      const result = await submit(values);
+      if (result) {
+        navigation.goBack();
+      }
+    };
+
+    // La advertencia de "turno duplicado" solo aplica a turnos con fecha
+    // asignada — un turno "Pendiente" (sin fecha) no tiene día contra el
+    // cual comparar.
+    if (values.date) {
+      const candidateName = resolveScheduleName(values);
+      if (candidateName) {
+        const schedulesOnDate = await scheduleRepo.getByDate(values.date);
+        const duplicate = findDuplicateScheduleByName(
+          schedulesOnDate,
+          candidateName,
+          scheduleId,
+          resolveScheduleName,
+        );
+
+        if (duplicate) {
+          Alert.alert(
+            "Turno duplicado",
+            `Ya hay un turno de ${candidateName} agendado para el ${formatDateForDisplay(
+              values.date,
+            )}. ¿Deseas guardarlo de todas formas?`,
+            [
+              { text: "Cancelar", style: "cancel" },
+              {
+                text: "Guardar de todas formas",
+                onPress: () => void proceedSubmit(),
+              },
+            ],
+          );
+          return;
+        }
+      }
     }
+
+    await proceedSubmit();
   });
 
   const handleSavePress = async (): Promise<void> => {
