@@ -38,3 +38,38 @@ jobs:
 
             - name: Tests (CI)
               run: npm run test:ci
+
+    secrets-scan:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  # gitleaks necesita el historial completo (no solo el último commit)
+                  # para poder diffear correctamente contra la rama base en un PR.
+                  fetch-depth: 0
+
+            # Gate de secretos en CI: hoy `.github/hooks/quality-gate.json` detecta
+            # patrones de secretos (password=, api_key=, token=, etc.) pero SOLO corre
+            # como hook local durante una sesión de Claude Code — si alguien desarrolla
+            # sin ese hook activo (un colaborador humano nuevo, o editando directo en
+            # GitHub), esa protección no existe. Este job la reemplaza con un scanner
+            # real que corre siempre, para cualquiera. Ver needs-backlog.md N-057.
+            #
+            # gitleaks es el estándar de facto para esto (evita mantener a mano una
+            # lista de regex de secretos). El uso básico de la Action NO requiere
+            # licencia paga para repos personales (solo repos de una organización con
+            # más de un límite de uso lo requieren) — si este repo alguna vez pasa a
+            # vivir bajo una organización de GitHub y esta Action empieza a fallar por
+            # falta de `GITLEAKS_LICENSE`, la alternativa sin dependencias externas es
+            # reemplazar este step por un `grep -riE` sobre el diff del PR buscando los
+            # mismos patrones que `.github/hooks/quality-gate.json`
+            # (password=|secret=|api[_-]?key=|token=|private_key=).
+            - name: Gitleaks secret scan
+              uses: gitleaks/gitleaks-action@v2
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
