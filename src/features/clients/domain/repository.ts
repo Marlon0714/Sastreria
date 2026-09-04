@@ -1,14 +1,11 @@
 import type {
   CamisaMeasurement,
   Client,
-  ClientTalla,
   CreateClientDTO,
-  CreateTallaDTO,
   PantalonMeasurement,
   SacoMeasurement,
   ChalecoMeasurement,
   UpdateClientDTO,
-  UpdateTallaDTO,
   UpsertCamisaDTO,
   UpsertPantalonDTO,
   UpsertSacoDTO,
@@ -38,16 +35,9 @@ export interface MeasurementRepository {
   deleteChaleco(clientId: string): Promise<void>;
 }
 
-export interface TallaRepository {
-  upsert(input: CreateTallaDTO | UpdateTallaDTO): Promise<ClientTalla>;
-  findByClientId(clientId: string): Promise<ClientTalla[]>;
-  delete(id: string): Promise<void>;
-}
-
 export interface ClientsDependencies {
   clientRepository: ClientRepository;
   measurementRepository: MeasurementRepository;
-  tallaRepository: TallaRepository;
 }
 
 export type ClientsDependenciesOverrides = Partial<ClientsDependencies>;

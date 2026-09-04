@@ -87,6 +87,15 @@ export const MIGRATIONS: readonly Migration[] = [
   {
     version: 10,
     name: "v10_client_tallas",
+    // NOTA (N-069): la feature "Tallas por cliente" (TallasScreen, useTallas,
+    // TallaRepositoryImpl, y el tipo de entidad de sync "client_talla") fue
+    // retirada por completo del código porque nunca fue alcanzable desde
+    // ningún botón de la UI en producción — la ruta existía pero nadie pudo
+    // llegar ahí nunca. Como nunca fue alcanzable, es prácticamente seguro
+    // que no hay datos reales en esta tabla. Siguiendo el criterio de "nunca
+    // destructivo" del proyecto, la tabla `client_tallas` se deja intacta a
+    // propósito (no se borra ni se modifica su esquema): queda huérfana, sin
+    // ningún código en src/ que la lea o escriba.
     statements: [
       `
       CREATE TABLE IF NOT EXISTS client_tallas (
@@ -101,9 +110,9 @@ export const MIGRATIONS: readonly Migration[] = [
         UNIQUE(client_id, type),
         -- ON DELETE CASCADE declarado por documentación del esquema, pero NO
         -- está activo: PRAGMA foreign_keys nunca se enciende en src/data/local/,
-        -- así que SQLite no lo aplica. El borrado en cascada de client_tallas
-        -- al eliminar un cliente se maneja manualmente en
-        -- ClientRepositoryImpl.delete() y en SupabasePullSync.pullDeleteLogIncremental.
+        -- así que SQLite no lo aplica. Ya no hay código en src/ que borre
+        -- filas de esta tabla (ver nota arriba) — el ON DELETE CASCADE queda
+        -- solo como documentación del esquema, nunca ejecutado.
         FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
       );
       `,

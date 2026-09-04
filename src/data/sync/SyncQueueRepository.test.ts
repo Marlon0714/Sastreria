@@ -96,7 +96,6 @@ describe("SyncQueueRepository", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: "del-1",
@@ -123,22 +122,21 @@ describe("SyncQueueRepository", () => {
     expect(camisaItem.payload.changedBy).toBe("modista-1");
     expect(camisaItem.payload.changedAt).toBe("2026-04-30T08:59:00.000Z");
 
-    expect(mockGetAllAsync).toHaveBeenCalledTimes(11);
+    expect(mockGetAllAsync).toHaveBeenCalledTimes(10);
     const [clientSql, ...clientParams] = mockGetAllAsync.mock.calls[0] ?? [];
     const [camisaSql, ...camisaParams] = mockGetAllAsync.mock.calls[1] ?? [];
     const [pantalonSql, ...pantalonParams] =
       mockGetAllAsync.mock.calls[2] ?? [];
-    const [tallaSql, ...tallaParams] = mockGetAllAsync.mock.calls[3] ?? [];
-    const [pricingSql, ...pricingParams] = mockGetAllAsync.mock.calls[4] ?? [];
-    const [sacoSql, ...sacoParams] = mockGetAllAsync.mock.calls[5] ?? [];
-    const [chalecoSql, ...chalecoParams] = mockGetAllAsync.mock.calls[6] ?? [];
+    const [pricingSql, ...pricingParams] = mockGetAllAsync.mock.calls[3] ?? [];
+    const [sacoSql, ...sacoParams] = mockGetAllAsync.mock.calls[4] ?? [];
+    const [chalecoSql, ...chalecoParams] = mockGetAllAsync.mock.calls[5] ?? [];
     const [tallaTemplateSql, ...tallaTemplateParams] =
-      mockGetAllAsync.mock.calls[7] ?? [];
+      mockGetAllAsync.mock.calls[6] ?? [];
     const [scheduleSql, ...scheduleParams] =
-      mockGetAllAsync.mock.calls[8] ?? [];
+      mockGetAllAsync.mock.calls[7] ?? [];
     const [scheduleEventSql, ...scheduleEventParams] =
-      mockGetAllAsync.mock.calls[9] ?? [];
-    const [deleteSql, ...deleteParams] = mockGetAllAsync.mock.calls[10] ?? [];
+      mockGetAllAsync.mock.calls[8] ?? [];
+    const [deleteSql, ...deleteParams] = mockGetAllAsync.mock.calls[9] ?? [];
 
     expect(clientSql).toContain("FROM clients");
     expect(clientSql).toContain("sync_status IN (?, ?)");
@@ -156,10 +154,6 @@ describe("SyncQueueRepository", () => {
     expect(pantalonSql).toContain("FROM pantalon_measurements");
     expect(pantalonSql).toContain("sync_status IN (?, ?)");
     expect(pantalonParams).toEqual(["pending", "error", 1]);
-
-    expect(tallaSql).toContain("FROM client_tallas");
-    expect(tallaSql).toContain("sync_status IN (?, ?)");
-    expect(tallaParams).toEqual(["pending", "error", 1]);
 
     expect(pricingSql).toContain("FROM pricing_services");
     expect(pricingSql).toContain("sync_status IN (?, ?)");
@@ -215,7 +209,6 @@ describe("SyncQueueRepository", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
     const repository = new SyncQueueRepository();
@@ -237,7 +230,6 @@ describe("SyncQueueRepository", () => {
       .mockResolvedValueOnce([]) // clients
       .mockResolvedValueOnce([]) // camisa
       .mockResolvedValueOnce([]) // pantalon
-      .mockResolvedValueOnce([]) // client_talla
       .mockResolvedValueOnce([]) // pricing
       .mockResolvedValueOnce([]) // saco
       .mockResolvedValueOnce([]) // chaleco
@@ -319,21 +311,6 @@ describe("SyncQueueRepository", () => {
     expect(sql).toContain("WHERE id = ? AND updated_at = ?");
     expect(status).toBe("synced");
     expect(id).toBe("pan-1");
-    expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
-  });
-
-  it("marks client_talla row as synced using updated_at as an optimistic-concurrency guard", async () => {
-    mockRunAsync.mockResolvedValueOnce({});
-
-    const repository = new SyncQueueRepository();
-    await repository.markAsSynced("client_talla", "talla-1", "2026-08-01T10:00:00.000Z");
-
-    const [sql, status, id, updatedAt] = mockRunAsync.mock.calls[0] ?? [];
-    expect(sql).toContain("UPDATE client_tallas");
-    expect(sql).toMatch(/SET\s+sync_status\s*=\s*\?\s*\n\s*WHERE/);
-    expect(sql).toContain("WHERE id = ? AND updated_at = ?");
-    expect(status).toBe("synced");
-    expect(id).toBe("talla-1");
     expect(updatedAt).toBe("2026-08-01T10:00:00.000Z");
   });
 
@@ -458,7 +435,7 @@ describe("SyncQueueRepository", () => {
   });
 
   it("throws when fetching pending items fails", async () => {
-    // Las 11 queries de getPendingItems corren en paralelo (Promise.all), así
+    // Las 10 queries de getPendingItems corren en paralelo (Promise.all), así
     // que todas se disparan aunque la primera falle — solo el await conjunto
     // rechaza de inmediato con el primer error.
     mockGetAllAsync.mockRejectedValueOnce(new Error("db unavailable"));
@@ -469,6 +446,6 @@ describe("SyncQueueRepository", () => {
     await expect(repository.getPendingItems(10)).rejects.toThrow(
       "db unavailable",
     );
-    expect(mockGetAllAsync).toHaveBeenCalledTimes(11);
+    expect(mockGetAllAsync).toHaveBeenCalledTimes(10);
   });
 });

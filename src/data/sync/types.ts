@@ -2,7 +2,6 @@ import type {
   CamisaMeasurement,
   ChalecoMeasurement,
   Client,
-  ClientTalla,
   PantalonMeasurement,
   SacoMeasurement,
 } from "../../features/clients/domain/types";
@@ -16,7 +15,6 @@ export type SyncEntityType =
   | "client"
   | "camisa_measurement"
   | "pantalon_measurement"
-  | "client_talla"
   | "pricing_service"
   | "saco_measurement"
   | "chaleco_measurement"
@@ -31,7 +29,6 @@ export type SyncCheckpointScope =
   | "clients"
   | "camisa_measurements"
   | "pantalon_measurements"
-  | "client_tallas"
   | "pricing_services"
   | "saco_measurements"
   | "chaleco_measurements"
@@ -118,11 +115,6 @@ export interface SyncPantalonQueueItem extends SyncQueueItemBase {
   payload: PantalonMeasurement;
 }
 
-export interface SyncClientTallaQueueItem extends SyncQueueItemBase {
-  entityType: "client_talla";
-  payload: ClientTalla;
-}
-
 export interface SyncPricingServiceQueueItem extends SyncQueueItemBase {
   entityType: "pricing_service";
   payload: PricingService;
@@ -163,7 +155,6 @@ export type SyncQueueItem =
   | SyncClientQueueItem
   | SyncCamisaQueueItem
   | SyncPantalonQueueItem
-  | SyncClientTallaQueueItem
   | SyncPricingServiceQueueItem
   | SyncSacoQueueItem
   | SyncChalecoQueueItem

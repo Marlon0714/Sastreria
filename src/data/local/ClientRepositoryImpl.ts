@@ -261,11 +261,12 @@ export class ClientRepositoryImpl implements ClientRepository {
         `DELETE FROM chaleco_measurements WHERE client_id = ?;`,
         id,
       );
-      await db.runAsync(`DELETE FROM client_tallas WHERE client_id = ?;`, id);
       // Los turnos NO se borran — sobreviven como historial con clientId
       // vacío y el nombre del cliente conservado en unregistered_client_name
-      // (ver ScheduleDayViewScreen.clientLabel). Solo las medidas y tallas
-      // no tienen sentido sin el cliente, por eso esas sí se borran arriba.
+      // (ver ScheduleDayViewScreen.clientLabel). Solo las medidas no tienen
+      // sentido sin el cliente, por eso esas sí se borran arriba. (La tabla
+      // client_tallas quedó huérfana tras retirar la feature de "Tallas por
+      // cliente" nunca alcanzable — ver migrations.ts — y ya no se toca acá.)
       await db.runAsync(
         `UPDATE schedules SET client_id = NULL, unregistered_client_name = ? WHERE client_id = ?;`,
         deletedClientLabel,

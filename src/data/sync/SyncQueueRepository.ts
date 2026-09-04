@@ -5,7 +5,6 @@ import type {
   SyncCamisaQueueItem,
   SyncChalecoQueueItem,
   SyncClientQueueItem,
-  SyncClientTallaQueueItem,
   SyncDeleteQueueItem,
   SyncPantalonQueueItem,
   SyncPricingServiceQueueItem,
@@ -73,17 +72,6 @@ interface PantalonQueueRow {
   bota: number | null;
   changed_by: string | null;
   changed_at: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  sync_status: "pending" | "synced" | "error";
-}
-
-interface TallaQueueRow {
-  id: string;
-  client_id: string;
-  type: "camisa" | "pantalon" | "saco" | "chaleco";
-  value: string;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -232,7 +220,6 @@ interface DeleteQueueRow {
     | "pantalon_measurement"
     | "saco_measurement"
     | "chaleco_measurement"
-    | "client_talla"
     | "pricing_service"
     | "schedule"
     | "talla_template";
@@ -339,26 +326,6 @@ function toPantalonQueueItem(row: PantalonQueueRow): SyncPantalonQueueItem {
       bota: row.bota,
       changedBy: row.changed_by,
       changedAt: row.changed_at,
-      notes: row.notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      syncStatus: row.sync_status,
-    },
-  };
-}
-
-function toTallaQueueItem(row: TallaQueueRow): SyncClientTallaQueueItem {
-  return {
-    entityType: "client_talla",
-    id: row.id,
-    updatedAt: row.updated_at,
-    syncStatus: row.sync_status,
-    operationType: "upsert",
-    payload: {
-      id: row.id,
-      clientId: row.client_id,
-      type: row.type,
-      value: row.value,
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -598,7 +565,6 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       clientRows,
       camisaRows,
       pantalonRows,
-      tallaRows,
       pricingRows,
       sacoRows,
       chalecoRows,
@@ -689,26 +655,6 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
         updated_at,
         sync_status
       FROM pantalon_measurements
-      WHERE sync_status IN (?, ?)
-      ORDER BY updated_at ASC
-      LIMIT ?;
-      `,
-        statuses[0],
-        statuses[1],
-        limit,
-      ),
-      db.getAllAsync<TallaQueueRow>(
-        `
-      SELECT
-        id,
-        client_id,
-        type,
-        value,
-        notes,
-        created_at,
-        updated_at,
-        sync_status
-      FROM client_tallas
       WHERE sync_status IN (?, ?)
       ORDER BY updated_at ASC
       LIMIT ?;
@@ -923,7 +869,6 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       ...clientRows.map(toClientQueueItem),
       ...camisaRows.map(toCamisaQueueItem),
       ...pantalonRows.map(toPantalonQueueItem),
-      ...tallaRows.map(toTallaQueueItem),
       ...pricingRows.map(toPricingServiceQueueItem),
       ...sacoRows.map(toSacoQueueItem),
       ...chalecoRows.map(toChalecoQueueItem),
@@ -957,7 +902,6 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       clientsCount,
       camisaCount,
       pantalonCount,
-      tallaCount,
       pricingCount,
       sacoCount,
       chalecoCount,
@@ -969,7 +913,6 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       countQuery("clients"),
       countQuery("camisa_measurements"),
       countQuery("pantalon_measurements"),
-      countQuery("client_tallas"),
       countQuery("pricing_services"),
       countQuery("saco_measurements"),
       countQuery("chaleco_measurements"),
@@ -983,7 +926,6 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       clientsCount +
         camisaCount +
         pantalonCount +
-        tallaCount +
         pricingCount +
         sacoCount +
         chalecoCount +
@@ -1022,7 +964,6 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       client: "clients",
       camisa_measurement: "camisa_measurements",
       pantalon_measurement: "pantalon_measurements",
-      client_talla: "client_tallas",
       pricing_service: "pricing_services",
       saco_measurement: "saco_measurements",
       chaleco_measurement: "chaleco_measurements",
@@ -1044,7 +985,6 @@ export class SyncQueueRepository implements SyncQueueRepositoryPort {
       client: "updated_at",
       camisa_measurement: "updated_at",
       pantalon_measurement: "updated_at",
-      client_talla: "updated_at",
       pricing_service: "updatedAt",
       saco_measurement: "updated_at",
       chaleco_measurement: "updated_at",

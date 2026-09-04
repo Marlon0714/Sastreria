@@ -94,17 +94,6 @@ const basePantalon = {
   syncStatus: "pending" as const,
 };
 
-const baseTalla = {
-  id: "talla-1",
-  clientId: "c-1",
-  type: "camisa" as const,
-  value: "M",
-  notes: null,
-  createdAt: "2026-08-01T10:00:00.000Z",
-  updatedAt: "2026-08-01T10:00:00.000Z",
-  syncStatus: "pending" as const,
-};
-
 const basePricing = {
   id: "price-1",
   name: "Dobladillo",
@@ -378,35 +367,6 @@ describe("SupabaseSyncTransport", () => {
       const transport = new SupabaseSyncTransport();
 
       const result = await transport.syncPantalonMeasurement(basePantalon);
-      expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
-    });
-  });
-
-  describe("syncClientTalla", () => {
-    it("upserts to 'client_tallas' table on success", async () => {
-      mockUpsert.mockResolvedValueOnce({ error: null });
-      const transport = new SupabaseSyncTransport();
-
-      await transport.syncClientTalla(baseTalla);
-
-      expect(mockFrom).toHaveBeenCalledWith("client_tallas");
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          sync_status: "synced",
-          id: "talla-1",
-          client_id: "c-1",
-          type: "camisa",
-          value: "M",
-        }),
-        { onConflict: "id" },
-      );
-    });
-
-    it("returns failed outcome on Supabase failure", async () => {
-      mockUpsert.mockResolvedValueOnce({ error: { code: "42501" } });
-      const transport = new SupabaseSyncTransport();
-
-      const result = await transport.syncClientTalla(baseTalla);
       expect(result).toMatchObject({ outcome: "failed", errorCode: "42501" });
     });
   });
@@ -714,24 +674,6 @@ describe("SupabaseSyncTransport", () => {
 
       expect(result).toEqual({ outcome: "synced" });
       expect(mockFrom).toHaveBeenCalledWith("camisa_measurements");
-      expect(mockDelete).toHaveBeenCalledTimes(1);
-    });
-
-    it("deletes only client_tallas when entityType is client_talla", async () => {
-      mockUpsert.mockResolvedValueOnce({ error: null });
-      mockEq.mockResolvedValueOnce({ error: null });
-      const transport = new SupabaseSyncTransport();
-      const tallaDeleteLog = {
-        ...baseDeleteLog,
-        entityType: "client_talla" as const,
-        entityId: "talla-1",
-      };
-
-      const result = await transport.syncDeleteLogEntry(tallaDeleteLog);
-
-      expect(result).toEqual({ outcome: "synced" });
-      expect(mockFrom).toHaveBeenCalledWith("client_tallas");
-      expect(mockFrom).not.toHaveBeenCalledWith("clients");
       expect(mockDelete).toHaveBeenCalledTimes(1);
     });
 

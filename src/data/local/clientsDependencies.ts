@@ -4,13 +4,11 @@ import type {
   ClientsDependencies,
   ClientsDependenciesOverrides,
   MeasurementRepository,
-  TallaRepository,
 } from "../../features/clients/domain/repository";
 import type { SyncOrchestrator } from "../sync";
 
 let defaultClientRepository: ClientRepository | null = null;
 let defaultMeasurementRepository: MeasurementRepository | null = null;
-let defaultTallaRepository: TallaRepository | null = null;
 let defaultSyncOrchestrator: SyncOrchestrator | null = null;
 
 function scheduleSyncRun(): void {
@@ -109,21 +107,6 @@ function getDefaultMeasurementRepository(): MeasurementRepository {
   return defaultMeasurementRepository;
 }
 
-function getDefaultTallaRepository(): TallaRepository {
-  if (defaultTallaRepository) {
-    return defaultTallaRepository;
-  }
-
-  const { TallaRepositoryImpl } =
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require("./TallaRepositoryImpl") as typeof import("./TallaRepositoryImpl");
-
-  defaultTallaRepository = new TallaRepositoryImpl({
-    onWriteCommitted: scheduleSyncRun,
-  });
-  return defaultTallaRepository;
-}
-
 export { getClientsSyncOrchestrator, scheduleSyncRun };
 
 export function resolveClientRepository(
@@ -138,17 +121,10 @@ export function resolveMeasurementRepository(
   return repository ?? getDefaultMeasurementRepository();
 }
 
-export function resolveTallaRepository(
-  repository?: TallaRepository,
-): TallaRepository {
-  return repository ?? getDefaultTallaRepository();
-}
-
 export function getClientsDependencies(): ClientsDependencies {
   return {
     clientRepository: getDefaultClientRepository(),
     measurementRepository: getDefaultMeasurementRepository(),
-    tallaRepository: getDefaultTallaRepository(),
   };
 }
 
@@ -160,6 +136,5 @@ export function createClientsDependencies(
     measurementRepository: resolveMeasurementRepository(
       overrides.measurementRepository,
     ),
-    tallaRepository: resolveTallaRepository(overrides.tallaRepository),
   };
 }

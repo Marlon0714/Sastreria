@@ -21,7 +21,6 @@ const mockQueryResults: Record<string, MockQueryResult[]> = {
   clients: [],
   camisa_measurements: [],
   pantalon_measurements: [],
-  client_tallas: [],
   pricing_services: [],
   saco_measurements: [],
   chaleco_measurements: [],
@@ -36,7 +35,6 @@ const mockOrCalls: Record<string, string[]> = {
   clients: [],
   camisa_measurements: [],
   pantalon_measurements: [],
-  client_tallas: [],
   pricing_services: [],
   saco_measurements: [],
   chaleco_measurements: [],
@@ -102,7 +100,6 @@ describe("SupabasePullSync", () => {
     mockQueryResults.clients = [];
     mockQueryResults.camisa_measurements = [];
     mockQueryResults.pantalon_measurements = [];
-    mockQueryResults.client_tallas = [];
     mockQueryResults.pricing_services = [];
     mockQueryResults.saco_measurements = [];
     mockQueryResults.chaleco_measurements = [];
@@ -114,7 +111,6 @@ describe("SupabasePullSync", () => {
     mockOrCalls.clients = [];
     mockOrCalls.camisa_measurements = [];
     mockOrCalls.pantalon_measurements = [];
-    mockOrCalls.client_tallas = [];
     mockOrCalls.pricing_services = [];
     mockOrCalls.saco_measurements = [];
     mockOrCalls.chaleco_measurements = [];
@@ -424,43 +420,6 @@ describe("SupabasePullSync", () => {
     );
   });
 
-  it("applies client_tallas incremental upserts and advances checkpoint", async () => {
-    mockQueryResults.client_tallas.push({
-      data: [
-        {
-          id: "talla-1",
-          client_id: "c-1",
-          type: "camisa",
-          value: "M",
-          notes: null,
-          created_at: "2026-08-01T10:00:00.000Z",
-          updated_at: "2026-08-01T10:05:00.000Z",
-        },
-      ],
-      error: null,
-    });
-
-    const checkpointRepository = {
-      getCursor: jest.fn(async () => null),
-      advanceCursor: jest.fn(async () => Promise.resolve()),
-    };
-
-    const pullSync = new SupabasePullSync(checkpointRepository);
-    await pullSync.pullIncremental();
-
-    const tallaCalls = mockRunAsync.mock.calls.filter((call) =>
-      String(call[0]).includes("INSERT INTO client_tallas"),
-    );
-    expect(tallaCalls).toHaveLength(1);
-    const [, ...params] = tallaCalls[0] ?? [];
-    expect(params).toContain("camisa");
-    expect(params).toContain("M");
-    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
-      "client_tallas",
-      { id: "talla-1", updatedAt: "2026-08-01T10:05:00.000Z" },
-    );
-  });
-
   it("applies pricing_services incremental upserts and advances checkpoint", async () => {
     mockQueryResults.pricing_services.push({
       data: [
@@ -643,23 +602,6 @@ describe("SupabasePullSync", () => {
     expect(checkpointRepository.advanceCursor).not.toHaveBeenCalled();
   });
 
-  it("throws when client_tallas incremental fetch fails", async () => {
-    mockQueryResults.client_tallas.push({
-      data: [],
-      error: { code: "42503" },
-    });
-    const checkpointRepository = {
-      getCursor: jest.fn(async () => null),
-      advanceCursor: jest.fn(async () => Promise.resolve()),
-    };
-    const pullSync = new SupabasePullSync(checkpointRepository);
-
-    await expect(pullSync.pullIncremental()).rejects.toThrow(
-      "[pull] client_tallas incremental fetch failed: 42503",
-    );
-    expect(checkpointRepository.advanceCursor).not.toHaveBeenCalled();
-  });
-
   it("throws when pricing_services incremental fetch fails", async () => {
     mockQueryResults.pricing_services.push({
       data: [],
@@ -675,42 +617,6 @@ describe("SupabasePullSync", () => {
       "[pull] pricing_services incremental fetch failed: 42503",
     );
     expect(checkpointRepository.advanceCursor).not.toHaveBeenCalled();
-  });
-
-  it("applies client_talla delete by id when entity_type is client_talla", async () => {
-    mockQueryResults.sync_delete_log.push({
-      data: [
-        {
-          id: "del-4",
-          entity_type: "client_talla",
-          entity_id: "talla-99",
-          deleted_at: "2026-08-01T14:00:00.000Z",
-        },
-      ],
-      error: null,
-    });
-
-    const checkpointRepository = {
-      getCursor: jest.fn(async () => null),
-      advanceCursor: jest.fn(async () => Promise.resolve()),
-    };
-
-    const pullSync = new SupabasePullSync(checkpointRepository);
-    await pullSync.pullIncremental();
-
-    const sqlStatements = mockRunAsync.mock.calls.map((call) =>
-      String(call[0]),
-    );
-    expect(
-      sqlStatements.some((sql) => sql.includes("DELETE FROM client_tallas")),
-    ).toBe(true);
-    expect(
-      sqlStatements.some((sql) => sql.includes("DELETE FROM clients")),
-    ).toBe(false);
-    expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
-      "sync_delete_log",
-      { id: "del-4", updatedAt: "2026-08-01T14:00:00.000Z" },
-    );
   });
 
   it("applies pricing_service delete by id when entity_type is pricing_service", async () => {
@@ -940,11 +846,6 @@ describe("SupabasePullSync", () => {
     expect(
       sqlStatements.some((sql) =>
         sql.includes("DELETE FROM chaleco_measurements WHERE client_id = ?"),
-      ),
-    ).toBe(true);
-    expect(
-      sqlStatements.some((sql) =>
-        sql.includes("DELETE FROM client_tallas WHERE client_id = ?"),
       ),
     ).toBe(true);
     expect(

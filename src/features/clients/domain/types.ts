@@ -208,29 +208,3 @@ export interface UpsertChalecoDTO {
   escote?: number | null;
   notes?: string | null;
 }
-
-// ─── Tallas ───────────────────────────────────────────────────────────────────
-
-export type TallaType = "camisa" | "pantalon" | "saco" | "chaleco";
-
-export interface ClientTalla extends BaseEntity {
-  clientId: string;
-  type: TallaType;
-  value: string;
-  notes: string | null;
-}
-
-export interface CreateTallaDTO {
-  clientId: string;
-  type: TallaType;
-  value: string;
-  notes?: string;
-}
-
-export interface UpdateTallaDTO {
-  id: string;
-  clientId: string;
-  type: TallaType;
-  value: string;
-  notes?: string;
-}

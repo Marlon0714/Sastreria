@@ -14,7 +14,6 @@ type InvalidationTable =
   | "clients"
   | "camisa_measurements"
   | "pantalon_measurements"
-  | "client_tallas"
   | "pricing_services"
   | "saco_measurements"
   | "chaleco_measurements"
@@ -27,7 +26,6 @@ const SYNC_TABLES: readonly InvalidationTable[] = [
   "clients",
   "camisa_measurements",
   "pantalon_measurements",
-  "client_tallas",
   "pricing_services",
   "saco_measurements",
   "chaleco_measurements",

@@ -7,7 +7,6 @@ import type {
   ClientRepository,
   ClientsDependencies,
   MeasurementRepository,
-  TallaRepository,
 } from "../domain/repository";
 import type { Client } from "../domain/types";
 import { ClientsDependenciesProvider } from "./ClientsDependenciesProvider";
@@ -38,12 +37,6 @@ const noopMeasurementRepository: MeasurementRepository = {
   deleteChaleco: jest.fn(async () => Promise.resolve()),
 };
 
-const noopTallaRepository: TallaRepository = {
-  upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
-  findByClientId: jest.fn(async () => Promise.resolve([])),
-  delete: jest.fn(async () => Promise.reject(new Error("unused"))),
-};
-
 function createWrapper(dependencies: ClientsDependencies) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return createElement(
@@ -69,7 +62,6 @@ describe("useClientDetail", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -89,7 +81,6 @@ describe("useClientDetail", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -111,7 +102,6 @@ describe("useClientDetail", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 

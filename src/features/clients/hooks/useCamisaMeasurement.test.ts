@@ -6,7 +6,6 @@ import type {
   ClientRepository,
   ClientsDependencies,
   MeasurementRepository,
-  TallaRepository,
 } from "../domain/repository";
 import type { CamisaMeasurement } from "../domain/types";
 import { ClientsDependenciesProvider } from "./ClientsDependenciesProvider";
@@ -36,12 +35,6 @@ const noopClientRepository: ClientRepository = {
   findAll: jest.fn(async () => Promise.resolve([])),
   findById: jest.fn(async () => Promise.resolve(null)),
   update: jest.fn(async () => Promise.reject(new Error("unused"))),
-  delete: jest.fn(async () => Promise.reject(new Error("unused"))),
-};
-
-const noopTallaRepository: TallaRepository = {
-  upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
-  findByClientId: jest.fn(async () => Promise.resolve([])),
   delete: jest.fn(async () => Promise.reject(new Error("unused"))),
 };
 
@@ -99,7 +92,6 @@ describe("useCamisaMeasurement", () => {
         wrapper: createWrapper({
           clientRepository: noopClientRepository,
           measurementRepository: mockMeasurementRepository,
-          tallaRepository: noopTallaRepository,
         }),
       },
     );
@@ -153,7 +145,6 @@ describe("useCamisaMeasurement", () => {
         wrapper: createWrapper({
           clientRepository: noopClientRepository,
           measurementRepository: mockMeasurementRepository,
-          tallaRepository: noopTallaRepository,
         }),
       },
     );

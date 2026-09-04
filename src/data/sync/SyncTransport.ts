@@ -2,7 +2,6 @@ import type {
   CamisaMeasurement,
   ChalecoMeasurement,
   Client,
-  ClientTalla,
   PantalonMeasurement,
   SacoMeasurement,
 } from "../../features/clients/domain/types";
@@ -17,7 +16,6 @@ import type {
   SyncClientQueueItem,
   SyncCamisaQueueItem,
   SyncPantalonQueueItem,
-  SyncClientTallaQueueItem,
   SyncPricingServiceQueueItem,
   SyncSacoQueueItem,
   SyncChalecoQueueItem,
@@ -35,7 +33,6 @@ export interface SyncTransport {
   syncPantalonMeasurement(
     measurement: PantalonMeasurement,
   ): Promise<SyncTransportAttemptResult>;
-  syncClientTalla(talla: ClientTalla): Promise<SyncTransportAttemptResult>;
   syncPricingService(
     service: PricingService,
   ): Promise<SyncTransportAttemptResult>;
@@ -71,12 +68,6 @@ export class NoopSyncTransport implements SyncTransport {
 
   async syncPantalonMeasurement(
     _measurement: PantalonMeasurement,
-  ): Promise<SyncTransportAttemptResult> {
-    return Promise.resolve({ outcome: "deferred_local_only" });
-  }
-
-  async syncClientTalla(
-    _talla: ClientTalla,
   ): Promise<SyncTransportAttemptResult> {
     return Promise.resolve({ outcome: "deferred_local_only" });
   }
@@ -139,11 +130,6 @@ export class NoopSyncTransport implements SyncTransport {
             case "pantalon_measurement":
               await this.syncPantalonMeasurement(
                 (item as SyncPantalonQueueItem).payload,
-              );
-              break;
-            case "client_talla":
-              await this.syncClientTalla(
-                (item as SyncClientTallaQueueItem).payload,
               );
               break;
             case "pricing_service":

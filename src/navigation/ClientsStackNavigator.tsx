@@ -8,7 +8,6 @@ import MeasurementTypeSelectScreen from "../features/clients/screens/Measurement
 import PantalonMeasurementDetailScreen from "../features/clients/screens/PantalonMeasurementDetailScreen";
 import SacoMeasurementDetailScreen from "../features/clients/screens/SacoMeasurementDetailScreen";
 import ChalecoMeasurementDetailScreen from "../features/clients/screens/ChalecoMeasurementDetailScreen";
-import TallasScreen from "../features/clients/screens/TallasScreen";
 import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { ClientsStackParamList } from "./types";
 
@@ -62,11 +61,6 @@ export default function ClientsStackNavigator() {
         name="ChalecoMeasurementDetail"
         component={ChalecoMeasurementDetailScreen}
         options={{ title: "Medidas de chaleco" }}
-      />
-      <Stack.Screen
-        name="Tallas"
-        component={TallasScreen}
-        options={{ title: "Tallas del cliente" }}
       />
     </Stack.Navigator>
   );

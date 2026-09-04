@@ -13,7 +13,6 @@ type DeleteEntityType =
   | "pantalon_measurement"
   | "saco_measurement"
   | "chaleco_measurement"
-  | "client_talla"
   | "pricing_service"
   | "schedule"
   | "talla_template";
@@ -73,16 +72,6 @@ interface PantalonRow {
   bota: number | null;
   changed_by: string | null;
   changed_at: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface TallaRow {
-  id: string;
-  client_id: string;
-  type: "camisa" | "pantalon" | "saco" | "chaleco";
-  value: string;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -317,7 +306,6 @@ export class SupabasePullSync {
     await this.pullClientsIncremental();
     await this.pullCamisaMeasurementsIncremental();
     await this.pullPantalonMeasurementsIncremental();
-    await this.pullClientTallasIncremental();
     await this.pullPricingServicesIncremental();
     await this.pullSacoMeasurementsIncremental();
     await this.pullChalecoMeasurementsIncremental();
@@ -578,68 +566,6 @@ export class SupabasePullSync {
     if (nextCursor) {
       await this.checkpointRepository.advanceCursor(
         "pantalon_measurements",
-        nextCursor,
-      );
-    }
-  }
-
-  private async pullClientTallasIncremental(): Promise<void> {
-    const cursor = await this.checkpointRepository.getCursor("client_tallas");
-    const supabase = getSupabaseClient();
-    let query = supabase
-      .from("client_tallas")
-      .select("id, client_id, type, value, notes, created_at, updated_at")
-      .order("updated_at", { ascending: true })
-      .order("id", { ascending: true })
-      .limit(this.batchSize);
-
-    query = this.applyCursorFilter(query, cursor, "updated_at");
-
-    const { data, error } = await query;
-    const db = getDatabase();
-
-    if (error) {
-      throw new Error(
-        `[pull] client_tallas incremental fetch failed: ${error.code}`,
-      );
-    }
-
-    const rows = (data ?? []) as unknown as TallaRow[];
-    if (!rows.length) {
-      return;
-    }
-
-    await db.withTransactionAsync(async () => {
-      for (const row of rows) {
-        await db.runAsync(
-          `
-          INSERT INTO client_tallas
-            (id, client_id, type, value, notes, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'synced')
-          ON CONFLICT(id) DO UPDATE SET
-            client_id   = excluded.client_id,
-            type        = excluded.type,
-            value       = excluded.value,
-            notes       = excluded.notes,
-            updated_at  = excluded.updated_at,
-            sync_status = 'synced'
-          WHERE excluded.updated_at >= client_tallas.updated_at;
-          `,
-          row.id,
-          row.client_id,
-          row.type,
-          row.value,
-          row.notes ?? null,
-          row.created_at,
-          normalizeTimestamp(row.updated_at),
-        );
-      }
-    });
-
-    const nextCursor = getLastCursor(rows, (row) => row.updated_at);
-    if (nextCursor) {
-      await this.checkpointRepository.advanceCursor(
-        "client_tallas",
         nextCursor,
       );
     }
@@ -1285,10 +1211,6 @@ export class SupabasePullSync {
             `DELETE FROM chaleco_measurements WHERE client_id = ?;`,
             row.entity_id,
           );
-          await db.runAsync(
-            `DELETE FROM client_tallas WHERE client_id = ?;`,
-            row.entity_id,
-          );
           // Los turnos sobreviven al cliente borrado (ver ClientRepositoryImpl.delete()).
           await db.runAsync(
             `UPDATE schedules SET client_id = NULL, unregistered_client_name = ? WHERE client_id = ?;`,
@@ -1308,13 +1230,6 @@ export class SupabasePullSync {
         if (row.entity_type === "pantalon_measurement") {
           await db.runAsync(
             `DELETE FROM pantalon_measurements WHERE id = ?;`,
-            row.entity_id,
-          );
-        }
-
-        if (row.entity_type === "client_talla") {
-          await db.runAsync(
-            `DELETE FROM client_tallas WHERE id = ?;`,
             row.entity_id,
           );
         }

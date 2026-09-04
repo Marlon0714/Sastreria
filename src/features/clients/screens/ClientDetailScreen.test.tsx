@@ -56,19 +56,6 @@ jest.mock("../hooks/useDeleteClient", () => {
   };
 });
 
-jest.mock("../hooks/useTallas", () => {
-  return {
-    useTallas: () => ({
-      tallas: [],
-      isLoading: false,
-      error: null,
-      upsertTalla: jest.fn(),
-      deleteTalla: jest.fn(),
-      reload: jest.fn(),
-    }),
-  };
-});
-
 type ScreenProps = React.ComponentProps<typeof ClientDetailScreen>;
 
 function buildProps(navigate: jest.Mock, popToTop: jest.Mock): ScreenProps {

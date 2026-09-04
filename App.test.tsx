@@ -109,11 +109,6 @@ function buildDependencies(): ClientsDependencies {
   deleteSaco: jest.fn(async () => Promise.resolve()),
   deleteChaleco: jest.fn(async () => Promise.resolve()),
     },
-    tallaRepository: {
-      upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
-      findByClientId: jest.fn(async () => Promise.resolve([])),
-      delete: jest.fn(async () => Promise.resolve()),
-    },
   };
 }
 

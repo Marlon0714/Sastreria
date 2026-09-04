@@ -208,8 +208,6 @@ export class SyncQueueProcessor {
         return this.transport.syncCamisaMeasurement(item.payload);
       case "pantalon_measurement":
         return this.transport.syncPantalonMeasurement(item.payload);
-      case "client_talla":
-        return this.transport.syncClientTalla(item.payload);
       case "pricing_service":
         return this.transport.syncPricingService(item.payload);
       case "saco_measurement":

@@ -319,7 +319,7 @@ describe("ClientRepositoryImpl", () => {
     await repository.delete("11111111-1111-4111-8111-111111111111");
 
     expect(mockWithTransactionAsync).toHaveBeenCalledTimes(1);
-    expect(mockRunAsync).toHaveBeenCalledTimes(8);
+    expect(mockRunAsync).toHaveBeenCalledTimes(7);
 
     const [deleteCamisaSql, deleteCamisaId] = mockRunAsync.mock.calls[0] ?? [];
     const [deletePantalonSql, deletePantalonId] =
@@ -327,12 +327,10 @@ describe("ClientRepositoryImpl", () => {
     const [deleteSacoSql, deleteSacoId] = mockRunAsync.mock.calls[2] ?? [];
     const [deleteChalecoSql, deleteChalecoId] =
       mockRunAsync.mock.calls[3] ?? [];
-    const [deleteTallaSql, deleteTallaClientId] =
-      mockRunAsync.mock.calls[4] ?? [];
     const [deleteScheduleSql, deleteScheduleLabel, deleteScheduleClientId] =
-      mockRunAsync.mock.calls[5] ?? [];
-    const [deleteClientSql, deleteClientId] = mockRunAsync.mock.calls[6] ?? [];
-    const [insertLogSql, ...insertLogParams] = mockRunAsync.mock.calls[7] ?? [];
+      mockRunAsync.mock.calls[4] ?? [];
+    const [deleteClientSql, deleteClientId] = mockRunAsync.mock.calls[5] ?? [];
+    const [insertLogSql, ...insertLogParams] = mockRunAsync.mock.calls[6] ?? [];
 
     expect(deleteCamisaSql).toContain("DELETE FROM camisa_measurements");
     expect(deleteCamisaId).toBe("11111111-1111-4111-8111-111111111111");
@@ -342,8 +340,6 @@ describe("ClientRepositoryImpl", () => {
     expect(deleteSacoId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deleteChalecoSql).toContain("DELETE FROM chaleco_measurements");
     expect(deleteChalecoId).toBe("11111111-1111-4111-8111-111111111111");
-    expect(deleteTallaSql).toContain("DELETE FROM client_tallas");
-    expect(deleteTallaClientId).toBe("11111111-1111-4111-8111-111111111111");
     expect(deleteScheduleSql).toContain("UPDATE schedules SET client_id = NULL");
     expect(deleteScheduleLabel).toBe("Ana Gomez (cliente eliminado)");
     expect(deleteScheduleClientId).toBe("11111111-1111-4111-8111-111111111111");

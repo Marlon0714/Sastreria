@@ -6,7 +6,6 @@ import type {
   ClientRepository,
   ClientsDependencies,
   MeasurementRepository,
-  TallaRepository,
 } from "../domain/repository";
 import type { PantalonMeasurement, UpsertPantalonDTO } from "../domain/types";
 import { ClientsDependenciesProvider } from "./ClientsDependenciesProvider";
@@ -36,12 +35,6 @@ const noopClientRepository: ClientRepository = {
   findById: jest.fn(async () => Promise.resolve(null)),
   update: jest.fn(async () => Promise.reject(new Error("unused"))),
   delete: jest.fn(async () => Promise.reject(new Error("unused"))),
-};
-
-const noopTallaRepository: TallaRepository = {
-  upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
-  findByClientId: jest.fn(async () => Promise.resolve([])),
-  delete: jest.fn(async () => Promise.resolve()),
 };
 
 function createWrapper(dependencies: ClientsDependencies) {
@@ -84,7 +77,6 @@ describe("useUpsertPantalon", () => {
       wrapper: createWrapper({
         clientRepository: noopClientRepository,
         measurementRepository: mockMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -104,7 +96,6 @@ describe("useUpsertPantalon", () => {
       wrapper: createWrapper({
         clientRepository: noopClientRepository,
         measurementRepository: mockMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -142,7 +133,6 @@ describe("useUpsertPantalon", () => {
       wrapper: createWrapper({
         clientRepository: noopClientRepository,
         measurementRepository: mockMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -172,7 +162,6 @@ describe("useUpsertPantalon", () => {
       wrapper: createWrapper({
         clientRepository: noopClientRepository,
         measurementRepository: mockMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 

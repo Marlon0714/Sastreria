@@ -7,7 +7,6 @@ import type {
   ClientRepository,
   ClientsDependencies,
   MeasurementRepository,
-  TallaRepository,
 } from "../domain/repository";
 import type { Client, UpdateClientDTO } from "../domain/types";
 import type { UpdateClientSchemaInput } from "../domain/schemas";
@@ -37,12 +36,6 @@ const noopMeasurementRepository: MeasurementRepository = {
   deletePantalon: jest.fn(async () => Promise.resolve()),
   deleteSaco: jest.fn(async () => Promise.resolve()),
   deleteChaleco: jest.fn(async () => Promise.resolve()),
-};
-
-const noopTallaRepository: TallaRepository = {
-  upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
-  findByClientId: jest.fn(async () => Promise.resolve([])),
-  delete: jest.fn(async () => Promise.resolve()),
 };
 
 function createWrapper(dependencies: ClientsDependencies) {
@@ -83,7 +76,6 @@ describe("useUpdateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -127,7 +119,6 @@ describe("useUpdateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -160,7 +151,6 @@ describe("useUpdateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -204,7 +194,6 @@ describe("useUpdateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 
@@ -235,7 +224,6 @@ describe("useUpdateClient", () => {
       wrapper: createWrapper({
         clientRepository: mockClientRepository,
         measurementRepository: noopMeasurementRepository,
-        tallaRepository: noopTallaRepository,
       }),
     });
 

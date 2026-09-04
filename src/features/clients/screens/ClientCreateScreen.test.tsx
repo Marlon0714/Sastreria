@@ -9,7 +9,6 @@ import type {
   ClientRepository,
   ClientsDependencies,
   MeasurementRepository,
-  TallaRepository,
 } from "../domain/repository";
 import type { Client, CreateClientDTO } from "../domain/types";
 import { ClientsDependenciesProvider } from "../hooks/ClientsDependenciesProvider";
@@ -41,16 +40,9 @@ const noopMeasurementRepository: MeasurementRepository = {
   deleteChaleco: jest.fn(async () => Promise.resolve()),
 };
 
-const noopTallaRepository: TallaRepository = {
-  upsert: jest.fn(async () => Promise.reject(new Error("unused"))),
-  findByClientId: jest.fn(async () => Promise.resolve([])),
-  delete: jest.fn(async () => Promise.reject(new Error("unused"))),
-};
-
 const dependencies: ClientsDependencies = {
   clientRepository: mockClientRepository,
   measurementRepository: noopMeasurementRepository,
-  tallaRepository: noopTallaRepository,
 };
 
 function Wrapper({ children }: { children: ReactNode }) {

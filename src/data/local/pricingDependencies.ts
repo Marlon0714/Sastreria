@@ -8,8 +8,8 @@ export function getDefaultPricingServiceRepository(): PricingServiceRepository {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require("./PricingServiceRepositoryImpl") as typeof import("./PricingServiceRepositoryImpl");
 
-  // No se cachea instancia (a diferencia de getDefaultTallaRepository):
-  // los hooks de pricing mockean la clase por test y esperan una instancia
-  // nueva en cada llamada.
+  // No se cachea instancia (a diferencia de getDefaultClientRepository en
+  // clientsDependencies.ts): los hooks de pricing mockean la clase por test
+  // y esperan una instancia nueva en cada llamada.
   return new PricingServiceRepositoryImpl({ onWriteCommitted: scheduleSyncRun });
 }

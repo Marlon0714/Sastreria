@@ -58,7 +58,7 @@ describe("SupabaseRealtimeInvalidationSubscriber", () => {
 
     subscriber.start();
 
-    expect(mockOn).toHaveBeenCalledTimes(11);
+    expect(mockOn).toHaveBeenCalledTimes(10);
     callbacks[0]?.();
     callbacks[1]?.();
     callbacks[2]?.();

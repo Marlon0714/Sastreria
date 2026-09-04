@@ -45,8 +45,6 @@ export type ClientsStackParamList = {
     clientId: string;
     mode?: MeasurementTypeSelectMode;
   };
-  /** Gestión de tallas por cliente (acceso desde ClientDetail). */
-  Tallas: { clientId: string };
 };
 
 export type ScheduleStackParamList = {

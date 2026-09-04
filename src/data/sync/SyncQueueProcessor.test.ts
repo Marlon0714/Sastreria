@@ -118,24 +118,6 @@ const pantalonItem: SyncQueueItem = {
   },
 };
 
-const tallaItem: SyncQueueItem = {
-  entityType: "client_talla",
-  id: "talla-1",
-  updatedAt: "2026-08-01T09:00:00.000Z",
-  syncStatus: "pending",
-  operationType: "upsert",
-  payload: {
-    id: "talla-1",
-    clientId: "c-1",
-    type: "camisa",
-    value: "M",
-    notes: null,
-    createdAt: "2026-08-01T09:00:00.000Z",
-    updatedAt: "2026-08-01T09:00:00.000Z",
-    syncStatus: "pending",
-  },
-};
-
 const scheduleItem: SyncQueueItem = {
   entityType: "schedule",
   id: "schedule-1",
@@ -308,7 +290,6 @@ function makeMockTransport(): jest.Mocked<SyncTransport> {
     syncPantalonMeasurement: jest.fn(async () =>
       Promise.resolve(syncedResult()),
     ),
-    syncClientTalla: jest.fn(async () => Promise.resolve(syncedResult())),
     syncPricingService: jest.fn(async () => Promise.resolve(syncedResult())),
     syncSacoMeasurement: jest.fn(async () => Promise.resolve(syncedResult())),
     syncChalecoMeasurement: jest.fn(async () =>
@@ -431,28 +412,6 @@ describe("SyncQueueProcessor", () => {
       "pantalon_measurement",
       "pan-1",
       pantalonItem.updatedAt,
-    );
-  });
-
-  it("syncs client_talla items through talla transport method", async () => {
-    const queueRepository = {
-      getPendingItems: jest.fn(async () => [tallaItem]),
-      hasPendingItems: jest.fn(async () => false),
-      markAsSynced: jest.fn(async () => Promise.resolve()),
-      markAsError: jest.fn(async () => Promise.resolve()),
-    };
-    const transport = makeMockTransport();
-    const processor = new SyncQueueProcessor(queueRepository, transport);
-
-    const result = await processor.runOnce();
-
-    expect(result).toEqual({ processed: 1, synced: 1, deferred: 0, failed: 0 });
-    expect(transport.syncClientTalla).toHaveBeenCalledTimes(1);
-    expect(transport.syncPantalonMeasurement).not.toHaveBeenCalled();
-    expect(queueRepository.markAsSynced).toHaveBeenCalledWith(
-      "client_talla",
-      "talla-1",
-      tallaItem.updatedAt,
     );
   });
 

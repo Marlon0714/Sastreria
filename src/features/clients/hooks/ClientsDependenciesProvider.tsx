@@ -9,7 +9,6 @@ import type {
   ClientRepository,
   ClientsDependencies,
   MeasurementRepository,
-  TallaRepository,
 } from "../domain/repository";
 
 const ClientsDependenciesContext = createContext<ClientsDependencies | null>(
@@ -49,8 +48,4 @@ export function useClientRepository(): ClientRepository {
 
 export function useMeasurementRepository(): MeasurementRepository {
   return useClientsDependencies().measurementRepository;
-}
-
-export function useTallaRepository(): TallaRepository {
-  return useClientsDependencies().tallaRepository;
 }

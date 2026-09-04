@@ -2,7 +2,6 @@ import type {
   CamisaMeasurement,
   ChalecoMeasurement,
   Client,
-  ClientTalla,
   PantalonMeasurement,
   SacoMeasurement,
 } from "../../features/clients/domain/types";
@@ -18,7 +17,6 @@ import type {
   SyncClientQueueItem,
   SyncCamisaQueueItem,
   SyncPantalonQueueItem,
-  SyncClientTallaQueueItem,
   SyncPricingServiceQueueItem,
   SyncSacoQueueItem,
   SyncChalecoQueueItem,
@@ -47,11 +45,6 @@ export class SupabaseSyncTransport implements SyncTransport {
             case "pantalon_measurement":
               await this.syncPantalonMeasurement(
                 (item as SyncPantalonQueueItem).payload,
-              );
-              break;
-            case "client_talla":
-              await this.syncClientTalla(
-                (item as SyncClientTallaQueueItem).payload,
               );
               break;
             case "pricing_service":
@@ -193,20 +186,6 @@ export class SupabaseSyncTransport implements SyncTransport {
       notes: measurement.notes,
       created_at: measurement.createdAt,
       updated_at: measurement.updatedAt,
-    });
-  }
-
-  async syncClientTalla(
-    talla: ClientTalla,
-  ): Promise<SyncTransportAttemptResult> {
-    return this.upsertSynced("client_tallas", {
-      id: talla.id,
-      client_id: talla.clientId,
-      type: talla.type,
-      value: talla.value,
-      notes: talla.notes,
-      created_at: talla.createdAt,
-      updated_at: talla.updatedAt,
     });
   }
 
@@ -460,16 +439,6 @@ export class SupabaseSyncTransport implements SyncTransport {
       case "chaleco_measurement": {
         const { error } = await supabase
           .from("chaleco_measurements")
-          .delete()
-          .eq("id", entry.entityId);
-        if (error) {
-          return this.toAttemptFailure(error.code, error.message);
-        }
-        return null;
-      }
-      case "client_talla": {
-        const { error } = await supabase
-          .from("client_tallas")
           .delete()
           .eq("id", entry.entityId);
         if (error) {
