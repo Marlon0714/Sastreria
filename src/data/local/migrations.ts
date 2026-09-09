@@ -630,6 +630,20 @@ export const MIGRATIONS: readonly Migration[] = [
     name: "v27_schedule_abono",
     statements: [`ALTER TABLE schedules ADD COLUMN abono REAL;`],
   },
+  {
+    // Pedido del dueño (2026-09-09): marca personal del dueño sobre ciertos
+    // turnos ("cierto tipo de organización propia"), oculta por completo
+    // para role="operario" (ver useOwnerOnlyVisibility) y sin dependencia de
+    // fecha, a diferencia de is_priority. No se agrega a DIFFABLE_FIELDS
+    // (changeDiff.ts) a propósito: es dato personal, no de negocio, y no
+    // debe quedar expuesto en el historial de auditoría que un operario
+    // también puede ver.
+    version: 29,
+    name: "v29_schedule_owner_flag",
+    statements: [
+      `ALTER TABLE schedules ADD COLUMN is_owner_flagged INTEGER NOT NULL DEFAULT 0;`,
+    ],
+  },
 ];
 
 interface UserVersionRow {

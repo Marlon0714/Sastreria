@@ -180,6 +180,7 @@ interface ScheduleRow {
   unregistered_client_name: string | null;
   notes: string | null;
   is_priority: boolean;
+  is_owner_flagged: boolean;
   category: "arreglo" | "confeccion";
   status:
     | "pendiente"
@@ -959,7 +960,7 @@ export class SupabasePullSync {
     let query = supabase
       .from("schedules")
       .select(
-        "id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
+        "id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -984,8 +985,8 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO schedules
-            (id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+            (id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
           ON CONFLICT(id) DO UPDATE SET
             date                      = excluded.date,
             time                      = excluded.time,
@@ -996,6 +997,7 @@ export class SupabasePullSync {
             unregistered_client_name  = excluded.unregistered_client_name,
             notes                     = excluded.notes,
             is_priority               = excluded.is_priority,
+            is_owner_flagged          = excluded.is_owner_flagged,
             category                  = excluded.category,
             status                    = excluded.status,
             status_locked             = excluded.status_locked,
@@ -1015,6 +1017,7 @@ export class SupabasePullSync {
           row.unregistered_client_name ?? null,
           row.notes ?? null,
           row.is_priority ? 1 : 0,
+          row.is_owner_flagged ? 1 : 0,
           row.category,
           row.status,
           row.status_locked ? 1 : 0,

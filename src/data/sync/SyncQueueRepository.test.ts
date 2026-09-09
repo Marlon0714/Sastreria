@@ -245,6 +245,7 @@ describe("SyncQueueRepository", () => {
           client_id: "c-1",
           notes: null,
           is_priority: 0,
+          is_owner_flagged: 1,
           category: "confeccion",
           status: "pendiente",
           status_locked: 0,
@@ -267,6 +268,7 @@ describe("SyncQueueRepository", () => {
     };
     expect(scheduleItem.payload.category).toBe("confeccion");
     expect(scheduleItem.payload.abono).toBe(30000);
+    expect(scheduleItem.payload.isOwnerFlagged).toBe(true);
   });
 
   it("marks client row as synced using updated_at as an optimistic-concurrency guard", async () => {

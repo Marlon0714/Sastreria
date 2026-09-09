@@ -10,6 +10,14 @@ export type ScheduleDiffableField =
   | "isPriority"
   | "category";
 
+// Nota: `isOwnerFlagged` (Schedule) NO se incluye acá a propósito. Es una
+// marca personal del dueño, oculta por completo a role="operario" en la UI
+// (ver useOwnerOnlyVisibility); si se agregara a DIFFABLE_FIELDS, un
+// operario que abre ScheduleHistoryList (que no filtra por rol) vería el
+// cambio igual, ya que ese componente renderiza `changes` como JSON plano
+// sin conocer quién lo mira. No "corregir" copiando el patrón de
+// isPriority sin leer esto — ver Decisiones de Diseño en el plan
+// schedule-owner-only-flag.md.
 const DIFFABLE_FIELDS: readonly ScheduleDiffableField[] = [
   "clientId",
   "unregisteredClientName",

@@ -9,6 +9,7 @@ import type { Schedule } from "./types";
 function makeSchedule(overrides: Partial<Schedule> & { id: string }): Schedule {
   return {
     isPriority: false,
+    isOwnerFlagged: false,
     category: "arreglo",
     status: "agendado",
     statusLocked: false,

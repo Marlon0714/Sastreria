@@ -21,6 +21,7 @@ import { ErrorView, LoadingView } from "../../../shared/components";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
+import { useOwnerOnlyVisibility } from "../../auth/hooks/useOwnerOnlyVisibility";
 import {
   ClientPickerField,
   type ClientPickerFieldHandle,
@@ -84,6 +85,7 @@ const CORRECTION_STATUS_OPTIONS: ScheduleStatus[] = [
 export default function ScheduleFormScreen({ navigation, route }: Props) {
   const { scheduleId, category: categoryParam } = route.params;
   const identityGate = useIdentityGate();
+  const canSeeOwnerFlag = useOwnerOnlyVisibility();
   // Solo se usa para chequear duplicados por fecha antes de guardar (ver
   // handleDuplicateCheckedSubmit más abajo) — el guardado real sigue
   // pasando por useScheduleForm.submit().
@@ -147,6 +149,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       operarioId: undefined,
       notes: "",
       isPriority: false,
+      isOwnerFlagged: false,
       category: categoryParam ?? "arreglo",
     },
   });
@@ -173,6 +176,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       operarioId: schedule.operarioId,
       notes: schedule.notes ?? "",
       isPriority: schedule.isPriority,
+      isOwnerFlagged: schedule.isOwnerFlagged,
       category: schedule.category,
     });
   }, [schedule, reset]);
@@ -656,6 +660,28 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             )}
           />
         </View>
+
+        {canSeeOwnerFlag ? (
+          <Controller
+            control={control}
+            name="isOwnerFlagged"
+            render={({ field: { onChange, value } }) => (
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>🔖 Marca del dueño</Text>
+                <Switch
+                  accessibilityLabel="Marca del dueño"
+                  value={!!value}
+                  onValueChange={onChange}
+                  trackColor={{
+                    false: colors.border,
+                    true: colors.warningSoft,
+                  }}
+                  thumbColor={value ? colors.warning : "#f4f3f4"}
+                />
+              </View>
+            )}
+          />
+        ) : null}
       </View>
 
       <View style={styles.card}>

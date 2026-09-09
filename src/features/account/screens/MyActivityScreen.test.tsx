@@ -46,6 +46,7 @@ const baseSchedule: Schedule = {
   operarioId: "op-1",
   price: 40000,
   isPriority: false,
+  isOwnerFlagged: false,
   category: "arreglo",
   status: "listo_para_entregar",
   statusLocked: false,

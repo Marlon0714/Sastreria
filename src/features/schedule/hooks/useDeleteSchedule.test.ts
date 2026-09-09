@@ -55,6 +55,7 @@ const existingSchedule: Schedule = {
   id: "schedule-1",
   clientId: "client-1",
   isPriority: false,
+  isOwnerFlagged: false,
   category: "arreglo",
   status: "agendado",
   statusLocked: false,

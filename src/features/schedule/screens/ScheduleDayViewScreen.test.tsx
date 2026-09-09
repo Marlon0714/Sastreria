@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import type React from "react";
 
 import type { Client } from "../../clients/domain/types";
+import { useIdentityStore } from "../../../shared/state/identityStore";
 import type { Schedule } from "../domain/types";
 import ScheduleDayViewScreen from "./ScheduleDayViewScreen";
 
@@ -17,10 +18,14 @@ interface UseScheduleDayViewResult {
 const mockUseScheduleDayView = jest.fn<(date: string) => UseScheduleDayViewResult>();
 const mockFindAll = jest.fn<() => Promise<Client[]>>();
 const mockScheduleGetAll = jest.fn<() => Promise<Schedule[]>>();
+const mockScheduleUpdate =
+  jest.fn<(id: string, data: Partial<Schedule>) => Promise<Schedule>>();
 
 jest.mock("../../../data/local/scheduleDependencies", () => ({
   getDefaultScheduleRepository: () => ({
     getAll: () => mockScheduleGetAll(),
+    update: (id: string, data: Partial<Schedule>) =>
+      mockScheduleUpdate(id, data),
   }),
 }));
 
@@ -91,6 +96,10 @@ const mockMarkDelivered = jest.fn<() => Promise<Schedule | null>>();
 const mockAssignOperario =
   jest.fn<(operarioId: string | undefined) => Promise<Schedule | null>>();
 const mockReleaseIdentity = jest.fn();
+const mockRequireIdentity = jest.fn(async () => ({
+  profile: { id: "user-1", displayName: "Ana", role: "operario" },
+  verified: true,
+}));
 
 const mockGetOperarios = jest.fn(async () => Promise.resolve<
   { id: string; displayName: string; role: string; isSharedDevice: boolean }[]
@@ -104,10 +113,7 @@ jest.mock("../../../data/local/profilesCacheDependencies", () => ({
 
 jest.mock("../../auth/hooks/useIdentityGate", () => ({
   useIdentityGate: () => ({
-    requireIdentity: jest.fn(async () => ({
-      profile: { id: "user-1", displayName: "Ana", role: "operario" },
-      verified: true,
-    })),
+    requireIdentity: mockRequireIdentity,
     releaseIdentity: mockReleaseIdentity,
     isPinPromptVisible: false,
     pinError: null,
@@ -176,6 +182,7 @@ const scheduledOne: Schedule = {
   date: "2026-08-15",
   time: "14:30",
   isPriority: false,
+  isOwnerFlagged: false,
   category: "arreglo",
   status: "agendado",
   statusLocked: false,
@@ -188,6 +195,7 @@ const pendingOne: Schedule = {
   id: "schedule-2",
   clientId: client.id,
   isPriority: false,
+  isOwnerFlagged: false,
   category: "arreglo",
   status: "pendiente",
   statusLocked: false,
@@ -202,6 +210,7 @@ const confeccionOne: Schedule = {
   date: "2026-08-15",
   time: "09:00",
   isPriority: false,
+  isOwnerFlagged: false,
   category: "confeccion",
   status: "agendado",
   statusLocked: false,
@@ -217,12 +226,15 @@ describe("ScheduleDayViewScreen", () => {
     mockFindAll.mockResolvedValue([client]);
     mockScheduleGetAll.mockReset();
     mockScheduleGetAll.mockResolvedValue([]);
+    mockScheduleUpdate.mockReset();
+    useIdentityStore.getState().reset();
     mockMarkReady.mockReset();
     mockMarkDelivered.mockReset();
     mockAssignOperario.mockReset();
     mockGetOperarios.mockReset();
     mockGetOperarios.mockResolvedValue([]);
     mockReleaseIdentity.mockClear();
+    mockRequireIdentity.mockClear();
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [],
       pendingSchedules: [],
@@ -940,5 +952,134 @@ describe("ScheduleDayViewScreen", () => {
         "Ver turno de Pedro Ramírez (14:30, schedule-1)",
       ),
     ).toBeTruthy();
+  });
+
+  describe("marca del dueño (isOwnerFlagged)", () => {
+    it("muestra la insignia solo si isOwnerFlagged=true y el rol es dueño", async () => {
+      useIdentityStore.getState().setOwnProfile({
+        id: "owner-1",
+        displayName: "Dueño",
+        role: "owner",
+        isSharedDevice: false,
+      });
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [{ ...scheduledOne, isOwnerFlagged: true }],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload: jest.fn(async () => Promise.resolve()),
+      });
+
+      const { findByText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      expect(await findByText("🔖 Marca del dueño")).toBeTruthy();
+    });
+
+    it("con rol operario, ni el badge ni ningún prop/label relacionado se renderizan", async () => {
+      useIdentityStore.getState().setOwnProfile({
+        id: "operario-1",
+        displayName: "Operario",
+        role: "operario",
+        isSharedDevice: false,
+      });
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [{ ...scheduledOne, isOwnerFlagged: true, operarioId: "op-1" }],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload: jest.fn(async () => Promise.resolve()),
+      });
+
+      const { findByLabelText, queryByText, queryByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      expect(queryByText("🔖 Marca del dueño")).toBeNull();
+
+      fireEvent.press(
+        await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+      );
+
+      expect(queryByLabelText("Marca del dueño")).toBeNull();
+    });
+
+    it("togglear desde el panel actualiza la tarjeta sin pasar por identityGate.requireIdentity", async () => {
+      useIdentityStore.getState().setOwnProfile({
+        id: "owner-1",
+        displayName: "Dueño",
+        role: "owner",
+        isSharedDevice: false,
+      });
+      const reload = jest.fn(async () => Promise.resolve());
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [scheduledOne],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload,
+      });
+      mockScheduleUpdate.mockResolvedValueOnce({
+        ...scheduledOne,
+        isOwnerFlagged: true,
+      });
+
+      const { findByLabelText, getByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(
+        await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+      );
+
+      fireEvent(getByLabelText("Marca del dueño"), "valueChange", true);
+
+      await waitFor(() => {
+        expect(mockScheduleUpdate).toHaveBeenCalledWith(scheduledOne.id, {
+          isOwnerFlagged: true,
+        });
+      });
+      await waitFor(() => {
+        expect(reload).toHaveBeenCalledTimes(2);
+      });
+      expect(mockRequireIdentity).not.toHaveBeenCalled();
+      expect(mockMarkReady).not.toHaveBeenCalled();
+      expect(mockMarkDelivered).not.toHaveBeenCalled();
+      expect(mockAssignOperario).not.toHaveBeenCalled();
+    });
+
+    it("si falla el toggle, registra el error de forma estructurada y no rompe la pantalla", async () => {
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+      useIdentityStore.getState().setOwnProfile({
+        id: "owner-1",
+        displayName: "Dueño",
+        role: "owner",
+        isSharedDevice: false,
+      });
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [scheduledOne],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload: jest.fn(async () => Promise.resolve()),
+      });
+      mockScheduleUpdate.mockRejectedValueOnce(new Error("boom"));
+
+      const { findByLabelText, getByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(
+        await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+      );
+      fireEvent(getByLabelText("Marca del dueño"), "valueChange", true);
+
+      await waitFor(() => {
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("No se pudo actualizar la marca del dueño"),
+        );
+      });
+    });
   });
 });

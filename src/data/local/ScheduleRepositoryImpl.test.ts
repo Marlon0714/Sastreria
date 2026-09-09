@@ -54,6 +54,7 @@ const baseRow = {
   operario_id: null,
   notes: "Ajuste de traje",
   is_priority: 0,
+  is_owner_flagged: 0,
   category: "arreglo" as const,
   status: "agendado" as const,
   status_locked: 0,
@@ -100,6 +101,7 @@ describe("ScheduleRepositoryImpl", () => {
         operarioId: undefined,
         notes: baseRow.notes,
         isPriority: false,
+        isOwnerFlagged: false,
         category: "arreglo",
         status: baseRow.status,
         statusLocked: false,
@@ -112,6 +114,15 @@ describe("ScheduleRepositoryImpl", () => {
     ]);
     const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
     expect(sql).toContain("ORDER BY date ASC, time ASC");
+  });
+
+  it("mapRow lee is_owner_flagged=1 como isOwnerFlagged: true", async () => {
+    mockGetFirstAsync.mockResolvedValueOnce({ ...baseRow, is_owner_flagged: 1 });
+    const repository = new ScheduleRepositoryImpl();
+
+    const result = await repository.getById(baseRow.id);
+
+    expect(result?.isOwnerFlagged).toBe(true);
   });
 
   it("getById retorna null si no existe", async () => {
@@ -280,6 +291,7 @@ describe("ScheduleRepositoryImpl", () => {
         operarioId: undefined,
         notes: "Ajuste de traje",
         isPriority: false,
+        isOwnerFlagged: false,
         category: "arreglo",
         status: "pendiente",
         statusLocked: false,
@@ -357,6 +369,37 @@ describe("ScheduleRepositoryImpl", () => {
 
       expect(result.statusLocked).toBe(false);
       expect(result.isPriority).toBe(true);
+    });
+
+    it("persiste is_owner_flagged con default 0 (false) si no viene en el DTO", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+      });
+
+      expect(result.isOwnerFlagged).toBe(false);
+      const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("is_owner_flagged");
+      // Posición 10 (0-indexed) del INSERT: ..., is_priority, is_owner_flagged, category, ...
+      expect(params[10]).toBe(0);
+    });
+
+    it("persiste isOwnerFlagged=true si viene en el DTO", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+        isOwnerFlagged: true,
+      });
+
+      expect(result.isOwnerFlagged).toBe(true);
+      const [, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(params[10]).toBe(1);
     });
 
     it("guarda el abono si se envía", async () => {
@@ -495,6 +538,38 @@ describe("ScheduleRepositoryImpl", () => {
       });
 
       expect(result.isPriority).toBe(false);
+    });
+
+    it("conserva isOwnerFlagged si no se envía, y lo actualiza si se envía", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        is_owner_flagged: 0,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, {
+        isOwnerFlagged: true,
+      });
+
+      expect(result.isOwnerFlagged).toBe(true);
+      const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("is_owner_flagged = ?");
+      // Posición 9 (0-indexed) del UPDATE: ..., is_priority = ?, is_owner_flagged = ?, category = ?, ...
+      expect(params[9]).toBe(1);
+    });
+
+    it("conserva isOwnerFlagged existente si no viene en el update", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        is_owner_flagged: 1,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, { notes: "otra nota" });
+
+      expect(result.isOwnerFlagged).toBe(true);
     });
   });
 

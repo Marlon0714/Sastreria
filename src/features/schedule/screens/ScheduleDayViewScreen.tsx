@@ -22,6 +22,7 @@ import { normalizeText } from "../../../shared/utils/textSearch";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
+import { useOwnerOnlyVisibility } from "../../auth/hooks/useOwnerOnlyVisibility";
 import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleQuickActionSheet } from "../components/ScheduleQuickActionSheet";
 import { WeekStrip } from "../components/WeekStrip";
@@ -96,6 +97,8 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   const [allSchedules, setAllSchedules] = useState<Schedule[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sheetSchedule, setSheetSchedule] = useState<Schedule | null>(null);
+  const [isTogglingOwnerFlag, setIsTogglingOwnerFlag] = useState(false);
+  const canToggleOwnerFlag = useOwnerOnlyVisibility();
   // Espeja `sheetSchedule` para leerse desde dentro de los handlers async de
   // abajo: si el usuario cierra el panel (o abre otro turno) mientras una
   // acción sigue esperando el PIN o la respuesta de la mutación, el cierre
@@ -264,6 +267,39 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
     }
   };
 
+  // Marca personal del dueño: se guarda directo desde el panel rápido, sin
+  // pasar por statusActions/identityGate — no se audita (ver
+  // changeDiff.ts) y solo puede verse/tocarse ya habiendo pasado el gate de
+  // rol (useOwnerOnlyVisibility), así que exigir además un PIN sería
+  // fricción sin beneficio de trazabilidad.
+  const handleToggleOwnerFlag = async (): Promise<void> => {
+    if (!sheetSchedule) return;
+    const actingOnId = sheetScheduleIdRef.current;
+    setIsTogglingOwnerFlag(true);
+    try {
+      const updated = await scheduleRepository.update(sheetSchedule.id, {
+        isOwnerFlagged: !sheetSchedule.isOwnerFlagged,
+      });
+      if (sheetScheduleIdRef.current === actingOnId) {
+        setSheetSchedule(updated);
+      }
+      void reload();
+      void reloadAllSchedules();
+    } catch (err) {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "ScheduleDayViewScreen",
+          message: "No se pudo actualizar la marca del dueño",
+          scheduleId: sheetSchedule.id,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    } finally {
+      setIsTogglingOwnerFlag(false);
+    }
+  };
+
   const handleViewDetail = (): void => {
     if (!sheetSchedule) return;
     const scheduleId = sheetSchedule.id;
@@ -310,6 +346,11 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
           {item.isPriority ? (
             <View style={styles.priorityBadge}>
               <Text style={styles.priorityBadgeText}>⭐ Prioritario</Text>
+            </View>
+          ) : null}
+          {canToggleOwnerFlag && item.isOwnerFlagged ? (
+            <View style={styles.ownerFlagBadge}>
+              <Text style={styles.ownerFlagBadgeText}>🔖 Marca del dueño</Text>
             </View>
           ) : null}
         </View>
@@ -544,6 +585,9 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         }
         onViewDetail={handleViewDetail}
         onClose={closeSheet}
+        canToggleOwnerFlag={canToggleOwnerFlag}
+        isTogglingOwnerFlag={isTogglingOwnerFlag}
+        onToggleOwnerFlag={() => void handleToggleOwnerFlag()}
       />
 
       <PinPromptModal
@@ -757,6 +801,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: colors.danger,
+  },
+  ownerFlagBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    backgroundColor: colors.warningSoft,
+  },
+  ownerFlagBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.warning,
   },
   fabButton: {
     position: "absolute",

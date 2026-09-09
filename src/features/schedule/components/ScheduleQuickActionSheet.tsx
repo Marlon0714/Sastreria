@@ -1,5 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
 
 import { colors } from "../../../shared/theme/colors";
 import { formatPrice } from "../../pricing/domain/strings";
@@ -26,6 +34,15 @@ interface ScheduleQuickActionSheetProps {
   onAssignOperario: (operarioId: string | undefined) => void;
   onViewDetail: () => void;
   onClose: () => void;
+  /**
+   * Puramente controlado por props (igual que el resto del componente):
+   * quien lo usa (`ScheduleDayViewScreen`) ya resolvió `useOwnerOnlyVisibility()`
+   * y decide si este panel puede mostrar/tocar la marca del dueño. Sin esto,
+   * ni el Switch ni ningún Text/accessibilityLabel relacionado se montan.
+   */
+  canToggleOwnerFlag: boolean;
+  isTogglingOwnerFlag: boolean;
+  onToggleOwnerFlag: () => void;
 }
 
 /**
@@ -46,6 +63,9 @@ export function ScheduleQuickActionSheet({
   onAssignOperario,
   onViewDetail,
   onClose,
+  canToggleOwnerFlag,
+  isTogglingOwnerFlag,
+  onToggleOwnerFlag,
 }: ScheduleQuickActionSheetProps) {
   if (!schedule) {
     return null;
@@ -106,6 +126,20 @@ export function ScheduleQuickActionSheet({
             onChange={onAssignOperario}
           />
         </View>
+
+        {canToggleOwnerFlag ? (
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>🔖 Marca del dueño</Text>
+            <Switch
+              accessibilityLabel="Marca del dueño"
+              value={!!schedule.isOwnerFlagged}
+              onValueChange={onToggleOwnerFlag}
+              disabled={isTogglingOwnerFlag}
+              trackColor={{ false: colors.border, true: colors.warningSoft }}
+              thumbColor={schedule.isOwnerFlagged ? colors.warning : "#f4f3f4"}
+            />
+          </View>
+        ) : null}
 
         {!hasOperario && !isDelivered ? (
           <Text style={styles.helperText}>
@@ -208,6 +242,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: colors.textMuted,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  switchLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: "600",
   },
   actionButton: {
     flexDirection: "row",

@@ -18,6 +18,7 @@ const baseSchedule: Schedule = {
   date: "2026-08-15",
   time: "14:30",
   isPriority: false,
+  isOwnerFlagged: false,
   category: "arreglo",
   status: "agendado",
   statusLocked: false,
@@ -44,6 +45,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -63,6 +67,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -83,6 +90,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -103,6 +113,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -123,6 +136,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -148,6 +164,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -173,6 +192,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={onViewDetail}
         onClose={onClose}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -202,12 +224,16 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
     const readyButton = getByLabelText("Marcar listo para entregar");
     expect(
-      readyButton.props.accessibilityState?.disabled ?? readyButton.props.disabled,
+      readyButton.props.accessibilityState?.disabled ??
+        readyButton.props.disabled,
     ).toBe(true);
     const deliveredButton = getByLabelText("Marcar entregado");
     expect(
@@ -232,6 +258,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -246,7 +275,9 @@ describe("ScheduleQuickActionSheet", () => {
   });
 
   it("al marcar entregado sin saldo pendiente, marca directo sin pedir confirmación", () => {
-    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    const alertSpy = jest
+      .spyOn(Alert, "alert")
+      .mockImplementation(() => undefined);
     const onMarkDelivered = jest.fn();
 
     const { getByLabelText } = render(
@@ -261,6 +292,9 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
@@ -283,11 +317,66 @@ describe("ScheduleQuickActionSheet", () => {
         onAssignOperario={jest.fn()}
         onViewDetail={jest.fn()}
         onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
       />,
     );
 
     expect(
       getByText("No se pudo actualizar el turno. Intenta nuevamente."),
     ).toBeTruthy();
+  });
+
+  describe("marca del dueño (isOwnerFlagged)", () => {
+    it("canToggleOwnerFlag=true muestra el switch con el valor de schedule.isOwnerFlagged y dispara onToggleOwnerFlag al tocarlo", () => {
+      const onToggleOwnerFlag = jest.fn();
+
+      const { getByLabelText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={{ ...baseSchedule, isOwnerFlagged: true }}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={jest.fn()}
+          onAssignOperario={jest.fn()}
+          onViewDetail={jest.fn()}
+          onClose={jest.fn()}
+          canToggleOwnerFlag
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={onToggleOwnerFlag}
+        />,
+      );
+
+      const toggle = getByLabelText("Marca del dueño");
+      expect(toggle.props.value).toBe(true);
+      fireEvent(toggle, "valueChange", false);
+      expect(onToggleOwnerFlag).toHaveBeenCalledTimes(1);
+    });
+
+    it("canToggleOwnerFlag=false no renderiza el switch ni deja ningún accessibilityLabel relacionado en el árbol", () => {
+      const { queryByLabelText, queryByText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={{ ...baseSchedule, isOwnerFlagged: true }}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={jest.fn()}
+          onAssignOperario={jest.fn()}
+          onViewDetail={jest.fn()}
+          onClose={jest.fn()}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+        />,
+      );
+
+      expect(queryByLabelText("Marca del dueño")).toBeNull();
+      expect(queryByText(/Marca del dueño/)).toBeNull();
+    });
   });
 });

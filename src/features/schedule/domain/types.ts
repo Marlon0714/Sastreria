@@ -39,6 +39,11 @@ export interface Schedule extends BaseEntity {
   operarioId?: string;
   notes?: string;
   isPriority: boolean; // marca un turno ya agendado (con fecha) como más urgente que el resto del día
+  // Organización personal del dueño (no de negocio) — sin depender de fecha,
+  // a diferencia de isPriority. Oculto por completo para role="operario"
+  // (ver useOwnerOnlyVisibility) y excluido a propósito del historial de
+  // auditoría (ver changeDiff.ts).
+  isOwnerFlagged: boolean;
   category: ScheduleCategory;
   status: ScheduleStatus;
   // true tras una corrección manual (applyManualCorrection) — evita que el
@@ -60,6 +65,7 @@ export interface CreateScheduleDTO {
   operarioId?: string;
   notes?: string;
   isPriority?: boolean;
+  isOwnerFlagged?: boolean;
   category?: ScheduleCategory;
 }
 
@@ -73,5 +79,6 @@ export interface UpdateScheduleDTO {
   operarioId?: string;
   notes?: string;
   isPriority?: boolean;
+  isOwnerFlagged?: boolean;
   category?: ScheduleCategory;
 }

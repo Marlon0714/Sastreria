@@ -480,6 +480,7 @@ describe("SupabasePullSync", () => {
           abono: 30000,
           client_id: "c-1",
           notes: null,
+          is_owner_flagged: true,
           category: "confeccion",
           status: "pending",
           created_at: "2026-08-01T10:00:00.000Z",
@@ -501,11 +502,17 @@ describe("SupabasePullSync", () => {
       String(call[0]).includes("INSERT INTO schedules"),
     );
     expect(scheduleCalls).toHaveLength(1);
-    const [, ...params] = scheduleCalls[0] ?? [];
+    const [insertSql, ...params] = scheduleCalls[0] ?? [];
+    expect(insertSql).toContain("is_owner_flagged");
+    expect(insertSql).toContain(
+      "is_owner_flagged          = excluded.is_owner_flagged",
+    );
     expect(params).toContain("2026-08-10");
     expect(params).toContain("14:30");
     expect(params).toContain("confeccion");
     expect(params).toContain(30000);
+    // Posición 10 (0-indexed) del INSERT: ..., is_priority, is_owner_flagged, category, ...
+    expect(params[10]).toBe(1);
     expect(checkpointRepository.advanceCursor).toHaveBeenCalledWith(
       "schedules",
       { id: "schedule-1", updatedAt: "2026-08-01T10:05:00.000Z" },

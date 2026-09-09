@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import type React from "react";
 
+import { useIdentityStore } from "../../../shared/state/identityStore";
 import type { Schedule } from "../domain/types";
 import ScheduleFormScreen from "./ScheduleFormScreen";
 
@@ -194,6 +195,7 @@ const schedule: Schedule = {
   clientId: "22222222-2222-4222-8222-222222222222",
   notes: "Ajuste de traje",
   isPriority: false,
+  isOwnerFlagged: false,
   category: "arreglo",
   status: "agendado",
   statusLocked: false,
@@ -214,6 +216,7 @@ describe("ScheduleFormScreen", () => {
     }
     mockGetByDate.mockReset();
     mockGetByDate.mockResolvedValue([]);
+    useIdentityStore.getState().reset();
     // Varios tests espían Alert.alert con jest.spyOn dentro del propio
     // `it`; sin restaurarlo acá, el historial de llamadas (y la
     // implementación) de un test se filtraría al siguiente.
@@ -1109,6 +1112,7 @@ describe("ScheduleFormScreen", () => {
       date: "2026-08-10",
       clientId: schedule.clientId,
       isPriority: false,
+      isOwnerFlagged: false,
       category: "arreglo",
       status: "agendado",
       statusLocked: false,
@@ -1317,6 +1321,100 @@ describe("ScheduleFormScreen", () => {
         );
       });
       expect(submit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("marca del dueño (isOwnerFlagged)", () => {
+    it("con role=owner el switch se ve, es togglable y se envía en el submit", async () => {
+      useIdentityStore.getState().setOwnProfile({
+        id: "owner-1",
+        displayName: "Dueño",
+        role: "owner",
+        isSharedDevice: false,
+      });
+      const submit = jest.fn(async () => Promise.resolve(schedule));
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit,
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+      fireEvent(getByLabelText("Marca del dueño"), "valueChange", true);
+      fireEvent.press(getByLabelText("Guardar turno"));
+
+      await waitFor(() => {
+        expect(submit).toHaveBeenCalledWith(
+          expect.objectContaining({ isOwnerFlagged: true }),
+        );
+      });
+    });
+
+    it("con role=operario (dispositivo propio) el switch no existe en el árbol", () => {
+      useIdentityStore.getState().setOwnProfile({
+        id: "operario-1",
+        displayName: "Operario",
+        role: "operario",
+        isSharedDevice: false,
+      });
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(null)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { queryByLabelText, queryByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      expect(queryByLabelText("Marca del dueño")).toBeNull();
+      expect(queryByText(/Marca del dueño/)).toBeNull();
+    });
+
+    it("editar un turno ya marcado por el dueño conserva el valor guardado tras un submit de un operario", async () => {
+      useIdentityStore.getState().setOwnProfile({
+        id: "operario-1",
+        displayName: "Operario",
+        role: "operario",
+        isSharedDevice: false,
+      });
+      const flaggedSchedule = { ...schedule, isOwnerFlagged: true };
+      const submit = jest.fn(async () => Promise.resolve(flaggedSchedule));
+      mockUseScheduleForm.mockReturnValue({
+        schedule: flaggedSchedule,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit,
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen
+          {...buildProps(jest.fn(), jest.fn(), flaggedSchedule.id)}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(getByLabelText("Guardar turno")).toBeTruthy();
+      });
+      fireEvent.press(getByLabelText("Guardar turno"));
+
+      await waitFor(() => {
+        expect(submit).toHaveBeenCalledWith(
+          expect.objectContaining({ isOwnerFlagged: true }),
+        );
+      });
     });
   });
 });

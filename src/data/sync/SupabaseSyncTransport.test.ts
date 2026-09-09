@@ -197,6 +197,7 @@ const baseSchedule = {
   clientId: "c-1",
   notes: "Ajuste de traje",
   isPriority: false,
+  isOwnerFlagged: false,
   category: "arreglo" as const,
   status: "pendiente" as const,
   statusLocked: false,
@@ -510,6 +511,7 @@ describe("SupabaseSyncTransport", () => {
           client_id: "c-1",
           category: "arreglo",
           status: "pendiente",
+          is_owner_flagged: false,
         }),
         { onConflict: "id" },
       );

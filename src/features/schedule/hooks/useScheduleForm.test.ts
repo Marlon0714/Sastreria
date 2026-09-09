@@ -61,6 +61,7 @@ const baseSchedule: Schedule = {
   clientId: "22222222-2222-4222-8222-222222222222",
   notes: "Ajuste de traje",
   isPriority: false,
+  isOwnerFlagged: false,
   category: "arreglo",
   status: "agendado",
   statusLocked: false,

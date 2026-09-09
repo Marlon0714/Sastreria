@@ -28,6 +28,7 @@ interface ScheduleRow {
   operario_id: string | null;
   notes: string | null;
   is_priority: number;
+  is_owner_flagged: number;
   category: string;
   status: string;
   status_locked: number;
@@ -50,6 +51,7 @@ function mapRow(row: ScheduleRow): Schedule {
     operarioId: row.operario_id ?? undefined,
     notes: row.notes ?? undefined,
     isPriority: row.is_priority === 1,
+    isOwnerFlagged: row.is_owner_flagged === 1,
     category: row.category as Schedule["category"],
     status: row.status as ScheduleStatus,
     statusLocked: row.status_locked === 1,
@@ -126,6 +128,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       operarioId: data.operarioId,
       notes: data.notes,
       isPriority: data.isPriority ?? false,
+      isOwnerFlagged: data.isOwnerFlagged ?? false,
       category: data.category ?? "arreglo",
       status: deriveScheduleStatus(data),
       statusLocked: false,
@@ -134,8 +137,8 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       syncStatus: "pending",
     };
     await db.runAsync(
-      `INSERT INTO schedules (id, client_id, unregistered_client_name, date, time, price, abono, operario_id, notes, is_priority, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO schedules (id, client_id, unregistered_client_name, date, time, price, abono, operario_id, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       schedule.id,
       schedule.clientId ?? null,
       schedule.unregisteredClientName ?? null,
@@ -146,6 +149,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       schedule.operarioId ?? null,
       schedule.notes ?? null,
       schedule.isPriority ? 1 : 0,
+      schedule.isOwnerFlagged ? 1 : 0,
       schedule.category,
       schedule.status,
       schedule.statusLocked ? 1 : 0,
@@ -263,7 +267,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       };
 
       await db.runAsync(
-        `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, abono = ?, operario_id = ?, notes = ?, is_priority = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
+        `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, abono = ?, operario_id = ?, notes = ?, is_priority = ?, is_owner_flagged = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
         updated.clientId ?? null,
         updated.unregisteredClientName ?? null,
         updated.date ?? null,
@@ -273,6 +277,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
         updated.operarioId ?? null,
         updated.notes ?? null,
         updated.isPriority ? 1 : 0,
+        updated.isOwnerFlagged ? 1 : 0,
         updated.category,
         updated.status,
         updated.statusLocked ? 1 : 0,

@@ -77,6 +77,7 @@ export const scheduleSchema = z.object({
   operarioId: z.string().uuid("El operario es inválido").optional(),
   notes: z.string().trim().max(500).optional(),
   isPriority: z.boolean().optional(),
+  isOwnerFlagged: z.boolean().optional(),
   category: scheduleCategorySchema.optional(),
   status: scheduleStatusSchema,
   statusLocked: z.boolean(),

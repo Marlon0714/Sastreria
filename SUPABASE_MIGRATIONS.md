@@ -1166,6 +1166,22 @@ CREATE INDEX IF NOT EXISTS idx_schedule_events_sync_status ON schedule_events (s
 
 ---
 
+### v37_schedule_owner_flag (2026-09-09)
+
+**Contexto:** marca personal del dueño sobre ciertos turnos ("cierto tipo de organización propia"), oculta por completo para `role: "operario"` en la UI (ver `useOwnerOnlyVisibility` en el código) y sin dependencia de fecha, a diferencia de `is_priority`. Aditiva, columna nueva con default — no hay `DROP` ni renombre, ningún dato existente se pierde ni se reinterpreta.
+
+```sql
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS is_owner_flagged BOOLEAN NOT NULL DEFAULT false;
+```
+
+**Importante:** correr esto en Supabase ANTES de instalar cualquier build con este código — sin esta columna, `syncSchedule()`/`pullSchedulesIncremental()` fallan al referenciar `is_owner_flagged` (columna inexistente), mismo tipo de fallo ya documentado para `v21`.
+
+**Nota de diseño:** deliberadamente NO se agrega a la lógica de auditoría (`schedule_events`/`diffScheduleFields` en el código) — es un dato personal del dueño, no de negocio, y `ScheduleHistoryList` (visible para cualquier rol) no filtra su contenido por rol. Ver comentario en `src/features/schedule/domain/changeDiff.ts`.
+
+**Riesgo aceptado, no mitigado en este cambio:** no hay RLS en Supabase — esta columna sincroniza igual que cualquier otra de `schedules`, así que su valor SÍ llega al SQLite local de un dispositivo de operario vía `SupabasePullSync` (la ocultación es solo de UI, no de almacenamiento). Documentado y aceptado, fuera de alcance mitigarlo acá.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.
