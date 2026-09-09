@@ -40,6 +40,10 @@ import {
   type CreateScheduleSchemaOutput,
 } from "../domain/schemas";
 import {
+  countPendingSchedulesOnDate,
+  formatPendingScheduleCountLabel,
+} from "../domain/scheduleWorkloadCount";
+import {
   SCHEDULE_CATEGORIES,
   SCHEDULE_CATEGORY_LABELS,
   type Schedule,
@@ -112,6 +116,15 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [hasTime, setHasTime] = useState(false);
   const [isResolvingClient, setIsResolvingClient] = useState(false);
+  // Conteo informativo (no bloqueante) de turnos ya agendados para la fecha
+  // elegida, mostrado apenas se cambia/selecciona la fecha — independiente
+  // de la llamada a getByDate que ya existe en onSubmit para el chequeo de
+  // duplicados (ver Decisiones de Diseño del plan: comparten método pero no
+  // estado, para que el chequeo de duplicados siga leyendo el dato más
+  // fresco posible al momento de guardar).
+  const [pendingCountOnDate, setPendingCountOnDate] = useState<number | null>(
+    null,
+  );
   const clientPickerRef = useRef<ClientPickerFieldHandle>(null);
   const isBusy =
     isSubmitting || statusActions.isProcessing || isDeleting || isResolvingClient;
@@ -179,6 +192,48 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       setValue("abono", undefined);
     }
   }, [priceValue, setValue]);
+
+  // Carga reactiva (no bloqueante) del conteo de turnos ya agendados para la
+  // fecha elegida, cada vez que cambia la fecha. Mismo patrón `cancelled` que
+  // useScheduleForm.ts para no setear estado tras un cambio de fecha
+  // posterior o un desmontaje de la pantalla.
+  useEffect(() => {
+    if (!dateValue) {
+      setPendingCountOnDate(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPendingCountOnDate(null);
+
+    scheduleRepo
+      .getByDate(dateValue)
+      .then((result) => {
+        if (!cancelled) {
+          setPendingCountOnDate(
+            countPendingSchedulesOnDate(result, scheduleId),
+          );
+        }
+      })
+      .catch((err: unknown) => {
+        console.error(
+          JSON.stringify({
+            level: "error",
+            service: "ScheduleFormScreen",
+            message: "No se pudo cargar el conteo de turnos agendados",
+            date: dateValue,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
+        if (!cancelled) {
+          setPendingCountOnDate(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dateValue, scheduleId, scheduleRepo]);
 
   const handleMarkReady = async (): Promise<void> => {
     const updated = await statusActions.markReady();
@@ -452,6 +507,12 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             )}
           />
         </View>
+
+        {dateValue && pendingCountOnDate !== null ? (
+          <Text style={styles.helperText}>
+            {formatPendingScheduleCountLabel(pendingCountOnDate)}
+          </Text>
+        ) : null}
 
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>Con hora específica</Text>

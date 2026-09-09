@@ -1011,6 +1011,98 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
+  describe("conteo de turnos agendados", () => {
+    it("al cambiar la fecha, muestra el conteo de turnos ya agendados para ese día (no entregados)", async () => {
+      mockGetByDate.mockResolvedValue([
+        { ...schedule, id: "s-1", status: "agendado" },
+        { ...schedule, id: "s-2", status: "en_proceso" },
+        { ...schedule, id: "s-3", status: "listo_para_entregar" },
+      ]);
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(null)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { getByLabelText, findByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
+
+      expect(
+        await findByText("3 turnos ya agendados para este día"),
+      ).toBeTruthy();
+    });
+
+    it("un turno con status 'entregado' no cuenta en el conteo", async () => {
+      mockGetByDate.mockResolvedValue([
+        { ...schedule, id: "s-1", status: "entregado" },
+      ]);
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(null)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { getByLabelText, findByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
+
+      expect(
+        await findByText("Ningún turno agendado todavía"),
+      ).toBeTruthy();
+    });
+
+    it("al editar un turno que es el único de esa fecha, el conteo lo excluye a sí mismo", async () => {
+      mockGetByDate.mockResolvedValue([schedule]);
+      mockUseScheduleForm.mockReturnValue({
+        schedule,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { findByText } = render(
+        <ScheduleFormScreen
+          {...buildProps(jest.fn(), jest.fn(), schedule.id)}
+        />,
+      );
+
+      expect(
+        await findByText("Ningún turno agendado todavía"),
+      ).toBeTruthy();
+    });
+
+    it("sin fecha seleccionada, no muestra ningún texto de conteo", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(null)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { queryByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      expect(queryByText("Ningún turno agendado todavía")).toBeNull();
+      expect(queryByText(/turnos? ya agendados? para este día/)).toBeNull();
+    });
+  });
+
   describe("advertencia de turno duplicado", () => {
     const existingDuplicate: Schedule = {
       id: "44444444-4444-4444-8444-444444444444",
