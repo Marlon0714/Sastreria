@@ -83,8 +83,13 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
 
   async getByDate(date: string): Promise<Schedule[]> {
     const db = getDatabase();
+    // `(time IS NULL) ASC` es el idiom portable para "NULLS LAST" en SQLite
+    // (0 = tiene hora, 1 = sin hora), ya que `NULLS LAST` no está disponible
+    // en todas las versiones de SQLite empaquetadas por Expo. `created_at
+    // ASC` desempata entre turnos sin hora (o con hora idéntica) por orden
+    // real de creación, en vez de depender del orden de llegada por sync.
     const rows = await db.getAllAsync<ScheduleRow>(
-      "SELECT * FROM schedules WHERE date = ? ORDER BY is_priority DESC, time ASC",
+      "SELECT * FROM schedules WHERE date = ? ORDER BY is_priority DESC, (time IS NULL) ASC, time ASC, created_at ASC",
       date,
     );
     return rows.map(mapRow);

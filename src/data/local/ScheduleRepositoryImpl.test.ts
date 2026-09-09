@@ -132,8 +132,107 @@ describe("ScheduleRepositoryImpl", () => {
     expect(result).toHaveLength(1);
     const [sql, date] = mockGetAllAsync.mock.calls[0] ?? [];
     expect(sql).toContain("WHERE date = ?");
-    expect(sql).toContain("ORDER BY is_priority DESC, time ASC");
+    expect(sql).toContain(
+      "ORDER BY is_priority DESC, (time IS NULL) ASC, time ASC, created_at ASC",
+    );
     expect(date).toBe("2026-08-10");
+  });
+
+  // El mock de getAllAsync no ejecuta SQLite real: simplemente devuelve el
+  // array que se le pasa. Por eso estos casos NO verifican que el método
+  // reordene nada en memoria (no lo hace) — verifican que el SQL generado
+  // contiene el ORDER BY completo, que es lo único que este método controla;
+  // el reordenamiento real lo hace SQLite al ejecutar esa query.
+  it("getByDate: el mapeo preserva el orden de fila devuelto (prioritario primero) tal como lo entregaría SQLite", async () => {
+    const priorityLate = {
+      ...baseRow,
+      id: "priority-late",
+      is_priority: 1,
+      time: "18:00",
+    };
+    const nonPriorityEarly = {
+      ...baseRow,
+      id: "non-priority-early",
+      is_priority: 0,
+      time: "08:00",
+    };
+    // Orden ya "resuelto" como lo devolvería SQLite con el ORDER BY nuevo:
+    // is_priority DESC primero, sin importar la hora.
+    mockGetAllAsync.mockResolvedValueOnce([priorityLate, nonPriorityEarly]);
+    const repository = new ScheduleRepositoryImpl();
+
+    const result = await repository.getByDate("2026-08-10");
+
+    expect(result.map((s) => s.id)).toEqual([
+      "priority-late",
+      "non-priority-early",
+    ]);
+    const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("(time IS NULL) ASC");
+    expect(sql).toContain("created_at ASC");
+  });
+
+  it("getByDate: dentro del mismo grupo de prioridad, filas con hora vienen antes que filas sin hora", async () => {
+    const withoutTime = { ...baseRow, id: "sin-hora", time: null };
+    const withTime = { ...baseRow, id: "con-hora", time: "09:00" };
+    // Simula el orden que produciría `(time IS NULL) ASC`: primero las que
+    // tienen hora, luego las que no.
+    mockGetAllAsync.mockResolvedValueOnce([withTime, withoutTime]);
+    const repository = new ScheduleRepositoryImpl();
+
+    const result = await repository.getByDate("2026-08-10");
+
+    expect(result.map((s) => s.id)).toEqual(["con-hora", "sin-hora"]);
+    const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("(time IS NULL) ASC");
+    expect(sql).toContain("created_at ASC");
+  });
+
+  it("getByDate: el SQL desempata dos turnos sin hora por created_at (no depende del orden de llegada por sync)", async () => {
+    const createdFirst = {
+      ...baseRow,
+      id: "creado-primero",
+      time: null,
+      created_at: "2026-08-01T08:00:00.000Z",
+    };
+    const createdSecond = {
+      ...baseRow,
+      id: "creado-segundo",
+      time: null,
+      created_at: "2026-08-01T09:00:00.000Z",
+    };
+    mockGetAllAsync.mockResolvedValueOnce([createdFirst, createdSecond]);
+    const repository = new ScheduleRepositoryImpl();
+
+    const result = await repository.getByDate("2026-08-10");
+
+    expect(result.map((s) => s.id)).toEqual([
+      "creado-primero",
+      "creado-segundo",
+    ]);
+    const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
+    expect(sql).toContain(
+      "ORDER BY is_priority DESC, (time IS NULL) ASC, time ASC, created_at ASC",
+    );
+  });
+
+  it("getByDate: caso combinado prioridad + hora + sin hora, verificado por el SQL completo", async () => {
+    const rows = [
+      { ...baseRow, id: "prioritario-sin-hora", is_priority: 1, time: null },
+      { ...baseRow, id: "normal-con-hora", is_priority: 0, time: "10:00" },
+      { ...baseRow, id: "normal-sin-hora", is_priority: 0, time: null },
+    ];
+    mockGetAllAsync.mockResolvedValueOnce(rows);
+    const repository = new ScheduleRepositoryImpl();
+
+    const result = await repository.getByDate("2026-08-10");
+
+    expect(result).toHaveLength(3);
+    const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
+    expect(sql).toContain("is_priority DESC");
+    expect(sql).toContain("(time IS NULL) ASC");
+    expect(sql).toContain("time ASC");
+    expect(sql).toContain("created_at ASC");
   });
 
   it("getByClient filtra por client_id", async () => {
