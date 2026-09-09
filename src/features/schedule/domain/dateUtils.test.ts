@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import {
   formatDateForDisplay,
   formatDateString,
+  formatWeekdayAndMonth,
   getWeekDates,
   localDateFromIso,
   shiftDateString,
@@ -111,6 +112,21 @@ describe("dateUtils", () => {
       const result = formatDateForDisplay("2026-08-15");
       expect(result).toContain("2026");
       expect(result.toLowerCase()).toContain("agosto");
+    });
+  });
+
+  describe("formatWeekdayAndMonth", () => {
+    it("formatea día de la semana, día y mes sin ceros a la izquierda", () => {
+      expect(formatWeekdayAndMonth("2026-08-20")).toBe("Jueves 20 de agosto");
+    });
+
+    it("no antepone cero al día cuando es de un solo dígito", () => {
+      expect(formatWeekdayAndMonth("2026-08-02")).toBe("Domingo 2 de agosto");
+    });
+
+    it("no incluye el año", () => {
+      const result = formatWeekdayAndMonth("2026-08-20");
+      expect(result).not.toContain("2026");
     });
   });
 });

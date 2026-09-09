@@ -591,7 +591,7 @@ describe("ScheduleDayViewScreen", () => {
 
       fireEvent.press(
         await findByLabelText(
-          "Ver turno de Ana Torres (20/08 · 10:00, schedule-buscado)",
+          "Ver turno de Ana Torres (Jueves 20 de agosto · 10:00, schedule-buscado)",
         ),
       );
 
@@ -604,7 +604,7 @@ describe("ScheduleDayViewScreen", () => {
       await waitFor(() => {
         expect(
           queryByLabelText(
-            "Ver turno de Ana Torres (20/08 · 10:00, schedule-buscado)",
+            "Ver turno de Ana Torres (Jueves 20 de agosto · 10:00, schedule-buscado)",
           ),
         ).toBeNull();
       });
@@ -746,7 +746,7 @@ describe("ScheduleDayViewScreen", () => {
 
     expect(
       await findByLabelText(
-        "Ver turno de Luis Gómez (20/08 · 10:00, schedule-luis-otro-dia)",
+        "Ver turno de Luis Gómez (Jueves 20 de agosto · 10:00, schedule-luis-otro-dia)",
       ),
     ).toBeTruthy();
     // El turno de Ana ya no aparece: dejó de mostrar "el día seleccionado"
@@ -756,6 +756,44 @@ describe("ScheduleDayViewScreen", () => {
     ).toBeNull();
     // No saltó de fecha — la Agenda se quedó en el día que estaba (2026-08-15).
     expect(mockUseScheduleDayView).not.toHaveBeenCalledWith("2026-08-20");
+  });
+
+  it("al buscar, un resultado con fecha pero sin hora no muestra el separador de hora", async () => {
+    mockFindAll.mockResolvedValue([client, secondClient]);
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+    mockScheduleGetAll.mockResolvedValue([
+      scheduledOne,
+      {
+        ...scheduledOne,
+        id: "schedule-luis-sin-hora",
+        clientId: secondClient.id,
+        date: "2026-08-20",
+        time: undefined,
+      },
+    ]);
+
+    const { getByLabelText, findByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)");
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente en la agenda"),
+      "luis",
+    );
+
+    expect(
+      await findByLabelText(
+        "Ver turno de Luis Gómez (Jueves 20 de agosto, schedule-luis-sin-hora)",
+      ),
+    ).toBeTruthy();
   });
 
   it("no muestra turnos ya entregados entre las coincidencias de búsqueda", async () => {
@@ -817,7 +855,7 @@ describe("ScheduleDayViewScreen", () => {
     );
     expect(
       await findByLabelText(
-        "Ver turno de Luis Gómez (15/08 · 14:30, schedule-5)",
+        "Ver turno de Luis Gómez (Sábado 15 de agosto · 14:30, schedule-5)",
       ),
     ).toBeTruthy();
 

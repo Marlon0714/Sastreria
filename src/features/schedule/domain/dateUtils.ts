@@ -47,3 +47,18 @@ export function formatDateForDisplay(dateString: string): string {
     year: "numeric",
   });
 }
+
+/**
+ * Fecha corta sin año, ej. "Lunes 2 de agosto", para resultados de búsqueda.
+ * Se arma manualmente (en vez de una sola llamada a toLocaleDateString con
+ * weekday+day+month) porque es-CO antepone una coma al weekday largo y no
+ * permite capitalizarlo vía opciones de Intl.
+ */
+export function formatWeekdayAndMonth(dateString: string): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+  const weekday = date.toLocaleDateString("es-CO", { weekday: "long" });
+  const weekdayCapitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const monthName = date.toLocaleDateString("es-CO", { month: "long" });
+  return `${weekdayCapitalized} ${date.getDate()} de ${monthName}`;
+}

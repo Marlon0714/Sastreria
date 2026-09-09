@@ -27,6 +27,7 @@ import { ScheduleQuickActionSheet } from "../components/ScheduleQuickActionSheet
 import { WeekStrip } from "../components/WeekStrip";
 import {
   formatDateForDisplay,
+  formatWeekdayAndMonth,
   getWeekDates,
   shiftDateString,
   todayDateString,
@@ -272,8 +273,8 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
 
   const formatSearchResultLabel = (item: Schedule): string => {
     if (!item.date) return "Sin fecha";
-    const [, month, day] = item.date.split("-");
-    return item.time ? `${day}/${month} · ${item.time}` : `${day}/${month}`;
+    const dateLabel = formatWeekdayAndMonth(item.date);
+    return item.time ? `${dateLabel} · ${item.time}` : dateLabel;
   };
 
   const renderCard = (item: Schedule, dateLabel: string) => {
