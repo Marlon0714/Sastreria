@@ -59,6 +59,17 @@ jest.mock("./ClientsStackNavigator", () => {
   };
 });
 
+jest.mock("./DashboardStackNavigator", () => {
+  const React = jest.requireActual("react") as typeof import("react");
+  const { Text } = jest.requireActual(
+    "react-native",
+  ) as typeof import("react-native");
+
+  return function MockDashboardStackNavigator() {
+    return React.createElement(Text, null, "Pantalla inicio");
+  };
+});
+
 jest.mock("./ScheduleStackNavigator", () => {
   const React = jest.requireActual("react") as typeof import("react");
   const { Text } = jest.requireActual(
@@ -115,7 +126,7 @@ describe("RootNavigator tabs composition", () => {
     ).toBeTruthy();
   });
 
-  it("muestra todas las tabs en la tablet compartida sin importar su role", async () => {
+  it("muestra todas las tabs en la tablet compartida sin importar su role, EXCEPTO el Dashboard", async () => {
     useIdentityStore.getState().setOwnProfile({
       id: "tablet-1",
       displayName: "Tablet mostrador",
@@ -123,13 +134,20 @@ describe("RootNavigator tabs composition", () => {
       isSharedDevice: true,
     });
 
-    const { getByTestId, getAllByText, findByText, queryByText } =
+    const { getByTestId, queryByTestId, getAllByText, findByText, queryByText } =
       renderRootNavigator();
 
+    // No-regresión: Clientes/Tallas/Agenda/Precios siguen exactamente
+    // igual que antes en la tablet compartida.
     expect(getByTestId("tab-ClientsTab")).toBeTruthy();
     expect(getByTestId("tab-TallasTab")).toBeTruthy();
     expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
     expect(getByTestId("tab-PricingTab")).toBeTruthy();
+
+    // Nuevo (Decisión 9): el Dashboard es la EXCEPCIÓN al bypass de
+    // isSharedDevice — no debe verse en la tablet compartida, ni siquiera
+    // en el edge case hipotético de un perfil con role="owner" ahí.
+    expect(queryByTestId("tab-DashboardTab")).toBeNull();
 
     // Regresión: aunque el perfil de la tablet tenga role="operario", al
     // ser dispositivo compartido esa pestaña debe seguir siendo el
@@ -143,7 +161,24 @@ describe("RootNavigator tabs composition", () => {
     expect(await findByText("Sin arreglos aún")).toBeTruthy();
   });
 
-  it("muestra todas las tabs para el dueño", () => {
+  it("oculta el Dashboard en la tablet compartida incluso si su perfil tuviera role='owner' (edge case hipotético)", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "tablet-2",
+      displayName: "Tablet mostrador",
+      role: "owner",
+      isSharedDevice: true,
+    });
+
+    const { queryByTestId, getByTestId } = renderRootNavigator();
+
+    expect(queryByTestId("tab-DashboardTab")).toBeNull();
+    // El resto de tabs owner-only sigue visible: el bypass de
+    // isSharedDevice no cambia para ellas.
+    expect(getByTestId("tab-ClientsTab")).toBeTruthy();
+    expect(getByTestId("tab-TallasTab")).toBeTruthy();
+  });
+
+  it("muestra todas las tabs para el dueño, incluido el Dashboard", () => {
     useIdentityStore.getState().setOwnProfile({
       id: "owner-1",
       displayName: "Dueño",
@@ -153,21 +188,41 @@ describe("RootNavigator tabs composition", () => {
 
     const { getByTestId } = renderRootNavigator();
 
+    expect(getByTestId("tab-DashboardTab")).toBeTruthy();
     expect(getByTestId("tab-ClientsTab")).toBeTruthy();
     expect(getByTestId("tab-TallasTab")).toBeTruthy();
     expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
     expect(getByTestId("tab-PricingTab")).toBeTruthy();
   });
 
+  it("no muestra el Dashboard a un operario en su propio dispositivo", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "user-1",
+      displayName: "María Gómez",
+      role: "operario",
+      isSharedDevice: false,
+    });
+
+    const { queryByTestId } = renderRootNavigator();
+
+    expect(queryByTestId("tab-DashboardTab")).toBeNull();
+  });
+
   it("mantiene accesible clients y muestra placeholders al cambiar de tab", async () => {
     // Arrange
-    const { findByText, getByText, getByTestId } = renderRootNavigator();
+    const { findByText, getByTestId } = renderRootNavigator();
 
-    // Assert
+    // Sin perfil resuelto (ej. modo local-only) no se oculta ninguna tab,
+    // así que el Dashboard ("Inicio", primera en ALL_TABS desde esta fase
+    // — ver Decisión 8 del plan) es ahora la ruta inicial en vez de
+    // Clientes. Se navega explícitamente a Clientes antes de continuar.
+    expect(getByTestId("tab-DashboardTab")).toBeTruthy();
     expect(getByTestId("tab-ClientsTab")).toBeTruthy();
     expect(getByTestId("tab-ScheduleTab")).toBeTruthy();
     expect(getByTestId("tab-PricingTab")).toBeTruthy();
-    expect(getByText("Pantalla clientes")).toBeTruthy();
+
+    fireEvent.press(getByTestId("tab-ClientsTab"));
+    expect(await findByText("Pantalla clientes")).toBeTruthy();
 
     // Act
     fireEvent.press(getByTestId("tab-ScheduleTab"));

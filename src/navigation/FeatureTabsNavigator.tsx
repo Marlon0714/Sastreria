@@ -8,6 +8,7 @@ import type { Role } from "../features/auth/domain/profile";
 import { colors } from "../shared/theme/colors";
 import { useIdentityStore } from "../shared/state/identityStore";
 import ClientsStackNavigator from "./ClientsStackNavigator";
+import DashboardStackNavigator from "./DashboardStackNavigator";
 import PricingStackNavigator from "./PricingStackNavigator";
 import ScheduleStackNavigator from "./ScheduleStackNavigator";
 import TallasStackNavigator from "./TallasStackNavigator";
@@ -26,6 +27,13 @@ interface TabConfig {
 }
 
 const ALL_TABS: TabConfig[] = [
+  {
+    name: "DashboardTab",
+    component: DashboardStackNavigator,
+    label: "Inicio",
+    title: "Inicio",
+    icon: "home",
+  },
   {
     name: "ClientsTab",
     component: ClientsStackNavigator,
@@ -65,10 +73,24 @@ const ALL_TABS: TabConfig[] = [
  * que corresponde en cada caso.
  */
 const TAB_ROLES: Record<TabName, Role[]> = {
+  DashboardTab: ["owner"],
   ClientsTab: ["owner"],
   TallasTab: ["owner"],
   ScheduleTab: ["owner", "operario"],
   PricingTab: ["owner", "operario"],
+};
+
+/**
+ * Tabs que NO se benefician del bypass de `isSharedDevice`: en dispositivo
+ * compartido quedan ocultas sin importar el role del perfil de esa
+ * tablet. Hoy solo el Dashboard es la excepción (expone cifras
+ * financieras agregadas del negocio, a diferencia de Clientes/Tallas que
+ * son datos operativos) — las demás tabs owner-only (Clientes/Tallas)
+ * siguen cubiertas por el bypass de abajo, sin ningún cambio de
+ * comportamiento (ver Decisión 9 del plan de Dashboard Admin).
+ */
+const SHARED_DEVICE_EXEMPT_TABS: Partial<Record<TabName, true>> = {
+  DashboardTab: true,
 };
 
 /**
@@ -109,8 +131,11 @@ function isTabVisibleForRole(
   // La tablet del mostrador la usan varias personas para tareas distintas
   // (agendar, tomar medidas, cobrar) — restringir por el role de SU cuenta
   // (siempre "operario") la dejaría sin Clientes/Tallas sin sentido alguno.
+  // Excepción explícita: el Dashboard (`SHARED_DEVICE_EXEMPT_TABS`) queda
+  // fuera de este bypass de forma incondicional, aunque el perfil de la
+  // tablet tuviera role="owner" — ver Decisión 9 del plan.
   if (isSharedDevice) {
-    return true;
+    return !SHARED_DEVICE_EXEMPT_TABS[tab];
   }
 
   return TAB_ROLES[tab].includes(role);

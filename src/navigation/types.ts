@@ -79,7 +79,12 @@ export type TallasStackParamList = {
   };
 };
 
+export type DashboardStackParamList = {
+  DashboardHome: undefined;
+};
+
 export type RootTabParamList = {
+  DashboardTab: NavigatorScreenParams<DashboardStackParamList>;
   ClientsTab: NavigatorScreenParams<ClientsStackParamList>;
   TallasTab: NavigatorScreenParams<TallasStackParamList>;
   ScheduleTab: NavigatorScreenParams<ScheduleStackParamList>;
