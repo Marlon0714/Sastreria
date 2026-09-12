@@ -97,12 +97,14 @@ export default function DashboardScreen({ navigation }: Props) {
       </Text>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Carga de trabajo de la semana</Text>
+        <Text style={styles.sectionTitle}>Turnos agendados por día</Text>
         <WeeklyWorkloadBreakdown weekDates={weekDates} counts={dailyWorkload} />
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Turnos de la semana por estado</Text>
+        <Text style={styles.sectionTitle}>
+          ¿Cómo van los turnos de esta semana?
+        </Text>
         <View style={styles.statGrid}>
           <DashboardStatCard label="Total" value={weeklyStatusCounts.total} />
           <DashboardStatCard
@@ -129,19 +131,19 @@ export default function DashboardScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Dinero de la semana</Text>
+        <Text style={styles.sectionTitle}>Facturación de la semana</Text>
         <View style={styles.statGrid}>
           <DashboardStatCard
-            label="Total cotizado"
+            label="Valor total de los trabajos"
             value={formatPrice(weeklyMoneyTotals.totalPrice)}
           />
           <DashboardStatCard
-            label="Total abonado"
+            label="Total pagado por los clientes"
             value={formatPrice(weeklyMoneyTotals.totalAbono)}
             tone="success"
           />
           <DashboardStatCard
-            label="Saldo pendiente"
+            label="Falta por cobrar"
             value={formatPrice(weeklyMoneyTotals.totalSaldoPendiente)}
             tone="warning"
           />
@@ -202,9 +204,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 19,
     fontWeight: "700",
     color: colors.textPrimary,
+    marginBottom: 4,
   },
   statGrid: {
     flexDirection: "row",

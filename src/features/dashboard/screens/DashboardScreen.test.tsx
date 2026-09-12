@@ -179,7 +179,7 @@ describe("DashboardScreen", () => {
 
     const { getByText } = render(<DashboardScreen {...buildProps()} />);
 
-    expect(getByText("Turnos de la semana por estado")).toBeTruthy();
+    expect(getByText("¿Cómo van los turnos de esta semana?")).toBeTruthy();
     expect(getByText("5")).toBeTruthy();
   });
 
