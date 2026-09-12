@@ -1041,6 +1041,38 @@ describe("ScheduleFormScreen", () => {
       ).toBeTruthy();
     });
 
+    it("no cuenta turnos de otra categoría, y recalcula al cambiar de categoría con la misma fecha", async () => {
+      mockGetByDate.mockResolvedValue([
+        { ...schedule, id: "s-1", category: "arreglo", status: "agendado" },
+        { ...schedule, id: "s-2", category: "arreglo", status: "agendado" },
+        { ...schedule, id: "s-3", category: "confeccion", status: "agendado" },
+      ]);
+      mockUseScheduleForm.mockReturnValue({
+        schedule: null,
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(null)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { getByLabelText, getByText, findByText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      );
+
+      fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
+
+      expect(
+        await findByText("2 turnos ya agendados para este día"),
+      ).toBeTruthy();
+
+      fireEvent.press(getByText("🧵 Confección"));
+
+      expect(
+        await findByText("1 turno ya agendado para este día"),
+      ).toBeTruthy();
+    });
+
     it("un turno con status 'entregado' no cuenta en el conteo", async () => {
       mockGetByDate.mockResolvedValue([
         { ...schedule, id: "s-1", status: "entregado" },

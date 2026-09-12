@@ -155,6 +155,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   });
 
   const dateValue = useWatch({ control, name: "date" });
+  const categoryValue = useWatch({ control, name: "category" });
   const priceValue = useWatch({ control, name: "price" });
   const abonoValue = useWatch({ control, name: "abono" });
   const saldo = computeSaldo({ price: priceValue, abono: abonoValue });
@@ -198,9 +199,10 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   }, [priceValue, setValue]);
 
   // Carga reactiva (no bloqueante) del conteo de turnos ya agendados para la
-  // fecha elegida, cada vez que cambia la fecha. Mismo patrón `cancelled` que
-  // useScheduleForm.ts para no setear estado tras un cambio de fecha
-  // posterior o un desmontaje de la pantalla.
+  // fecha elegida, cada vez que cambia la fecha o la categoría (el conteo es
+  // por categoría — un "arreglo" no debe contar "confecciones" del mismo día
+  // ni viceversa). Mismo patrón `cancelled` que useScheduleForm.ts para no
+  // setear estado tras un cambio posterior o un desmontaje de la pantalla.
   useEffect(() => {
     if (!dateValue) {
       setPendingCountOnDate(null);
@@ -215,7 +217,11 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       .then((result) => {
         if (!cancelled) {
           setPendingCountOnDate(
-            countPendingSchedulesOnDate(result, scheduleId),
+            countPendingSchedulesOnDate(
+              result,
+              scheduleId,
+              categoryValue ?? "arreglo",
+            ),
           );
         }
       })
@@ -237,7 +243,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [dateValue, scheduleId, scheduleRepo]);
+  }, [dateValue, categoryValue, scheduleId, scheduleRepo]);
 
   const handleMarkReady = async (): Promise<void> => {
     const updated = await statusActions.markReady();

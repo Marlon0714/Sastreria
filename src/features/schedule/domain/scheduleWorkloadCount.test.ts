@@ -27,7 +27,7 @@ describe("countPendingSchedulesOnDate", () => {
       makeSchedule({ id: "s-2", status: "entregado" }),
     ];
 
-    const result = countPendingSchedulesOnDate(schedules, undefined);
+    const result = countPendingSchedulesOnDate(schedules, undefined, "arreglo");
 
     expect(result).toBe(1);
   });
@@ -38,7 +38,7 @@ describe("countPendingSchedulesOnDate", () => {
       makeSchedule({ id: "s-2", status: "agendado" }),
     ];
 
-    const result = countPendingSchedulesOnDate(schedules, "s-1");
+    const result = countPendingSchedulesOnDate(schedules, "s-1", "arreglo");
 
     expect(result).toBe(1);
   });
@@ -50,15 +50,38 @@ describe("countPendingSchedulesOnDate", () => {
       makeSchedule({ id: "s-3", status: "listo_para_entregar" }),
     ];
 
-    const result = countPendingSchedulesOnDate(schedules, undefined);
+    const result = countPendingSchedulesOnDate(schedules, undefined, "arreglo");
 
     expect(result).toBe(3);
   });
 
   it("devuelve 0 para una lista vacía", () => {
-    const result = countPendingSchedulesOnDate([], undefined);
+    const result = countPendingSchedulesOnDate([], undefined, "arreglo");
 
     expect(result).toBe(0);
+  });
+
+  it("no cuenta turnos de una categoría distinta a la solicitada", () => {
+    const schedules = [
+      makeSchedule({ id: "s-1", category: "confeccion" }),
+      makeSchedule({ id: "s-2", category: "confeccion" }),
+    ];
+
+    const result = countPendingSchedulesOnDate(schedules, undefined, "arreglo");
+
+    expect(result).toBe(0);
+  });
+
+  it("cuenta solo los turnos de la misma categoría cuando hay una mezcla", () => {
+    const schedules = [
+      makeSchedule({ id: "s-1", category: "arreglo" }),
+      makeSchedule({ id: "s-2", category: "confeccion" }),
+      makeSchedule({ id: "s-3", category: "arreglo" }),
+    ];
+
+    const result = countPendingSchedulesOnDate(schedules, undefined, "arreglo");
+
+    expect(result).toBe(2);
   });
 });
 

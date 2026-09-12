@@ -1,4 +1,4 @@
-import type { Schedule } from "./types";
+import type { Schedule, ScheduleCategory } from "./types";
 
 /**
  * Cuenta cuántos turnos de `schedulesOnDate` representan carga de trabajo
@@ -8,13 +8,23 @@ import type { Schedule } from "./types";
  * apareciendo en la consulta por fecha). No hace falta excluir explícitamente
  * `"pendiente"` porque esos turnos no tienen `date` — nunca llegan dentro de
  * `schedulesOnDate`, que ya viene filtrada por `getByDate()`.
+ *
+ * `category`, si se pasa, acota el conteo a turnos de esa misma categoría —
+ * lo usa el formulario de turnos (ScheduleFormScreen), donde un "arreglo" no
+ * debe verse afectado por cuántas "confecciones" hay ese día, y viceversa.
+ * Sin `category` (ej. el resumen semanal del dashboard), cuenta la carga de
+ * trabajo total del día sin distinguir categoría.
  */
 export function countPendingSchedulesOnDate(
   schedulesOnDate: readonly Schedule[],
   excludeId: string | undefined,
+  category?: ScheduleCategory,
 ): number {
   return schedulesOnDate.filter(
-    (schedule) => schedule.id !== excludeId && schedule.status !== "entregado",
+    (schedule) =>
+      schedule.id !== excludeId &&
+      schedule.status !== "entregado" &&
+      (category === undefined || schedule.category === category),
   ).length;
 }
 
