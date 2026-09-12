@@ -258,6 +258,26 @@ function normalizeTimestamp(value: string): string {
   return new Date(value).toISOString();
 }
 
+/**
+ * Construye el detalle de diagnóstico para un error de `{ data, error }` de
+ * Supabase. Se asume que `error` es un `PostgrestError` (siempre trae
+ * `.code`), pero un fallo de red/gateway con conexión inestable (ej. un
+ * timeout de proxy/CDN devolviendo un cuerpo JSON sin campo "code", o el
+ * branch de error de red crudo de postgrest-js) puede llegar sin `.code`
+ * poblado — sin fallback el mensaje terminaba literalmente en "undefined",
+ * inútil para diagnosticar. `error` no rechaza la promesa (postgrest-js lo
+ * atrapa y lo entrega como `{ error }`), así que este helper alcanza sin
+ * necesidad de envolver la consulta en try/catch.
+ */
+function describePullError(
+  error: { code?: string | null; message?: string | null } | null | undefined,
+): string {
+  if (!error) {
+    return "unknown error";
+  }
+  return error.code || error.message || String(error);
+}
+
 export class SupabasePullSync {
   // Mismo patrón de coalescing que SyncOrchestrator (push): si varios
   // triggers (bootstrap, foreground, realtime, network_recovered) disparan
@@ -335,7 +355,9 @@ export class SupabasePullSync {
     const db = getDatabase();
 
     if (error) {
-      throw new Error(`[pull] clients incremental fetch failed: ${error.code}`);
+      throw new Error(
+        `[pull] clients incremental fetch failed: ${describePullError(error)}`,
+      );
     }
 
     const rows = (data ?? []) as ClientRow[];
@@ -403,7 +425,9 @@ export class SupabasePullSync {
     const db = getDatabase();
 
     if (error) {
-      throw new Error(`[pull] camisa incremental fetch failed: ${error.code}`);
+      throw new Error(
+        `[pull] camisa incremental fetch failed: ${describePullError(error)}`,
+      );
     }
 
     const rows = (data ?? []) as unknown as CamisaRow[];
@@ -511,7 +535,7 @@ export class SupabasePullSync {
 
     if (error) {
       throw new Error(
-        `[pull] pantalon incremental fetch failed: ${error.code}`,
+        `[pull] pantalon incremental fetch failed: ${describePullError(error)}`,
       );
     }
 
@@ -591,7 +615,7 @@ export class SupabasePullSync {
 
     if (error) {
       throw new Error(
-        `[pull] pricing_services incremental fetch failed: ${error.code}`,
+        `[pull] pricing_services incremental fetch failed: ${describePullError(error)}`,
       );
     }
 
@@ -659,7 +683,9 @@ export class SupabasePullSync {
     const db = getDatabase();
 
     if (error) {
-      throw new Error(`[pull] saco incremental fetch failed: ${error.code}`);
+      throw new Error(
+        `[pull] saco incremental fetch failed: ${describePullError(error)}`,
+      );
     }
 
     const rows = (data ?? []) as unknown as SacoRow[];
@@ -764,7 +790,7 @@ export class SupabasePullSync {
 
     if (error) {
       throw new Error(
-        `[pull] chaleco incremental fetch failed: ${error.code}`,
+        `[pull] chaleco incremental fetch failed: ${describePullError(error)}`,
       );
     }
 
@@ -852,7 +878,7 @@ export class SupabasePullSync {
 
     if (error) {
       throw new Error(
-        `[pull] talla_templates incremental fetch failed: ${error.code}`,
+        `[pull] talla_templates incremental fetch failed: ${describePullError(error)}`,
       );
     }
 
@@ -972,7 +998,9 @@ export class SupabasePullSync {
     const db = getDatabase();
 
     if (error) {
-      throw new Error(`[pull] schedules incremental fetch failed: ${error.code}`);
+      throw new Error(
+        `[pull] schedules incremental fetch failed: ${describePullError(error)}`,
+      );
     }
 
     const rows = (data ?? []) as unknown as ScheduleRow[];
@@ -1058,7 +1086,7 @@ export class SupabasePullSync {
 
     if (error) {
       throw new Error(
-        `[pull] schedule_events incremental fetch failed: ${error.code}`,
+        `[pull] schedule_events incremental fetch failed: ${describePullError(error)}`,
       );
     }
 
@@ -1119,7 +1147,9 @@ export class SupabasePullSync {
     const db = getDatabase();
 
     if (error) {
-      throw new Error(`[pull] profiles incremental fetch failed: ${error.code}`);
+      throw new Error(
+        `[pull] profiles incremental fetch failed: ${describePullError(error)}`,
+      );
     }
 
     const rows = (data ?? []) as unknown as ProfileRow[];
@@ -1171,7 +1201,7 @@ export class SupabasePullSync {
     const { data, error } = await query;
     if (error) {
       throw new Error(
-        `[pull] delete log incremental fetch failed: ${error.code}`,
+        `[pull] delete log incremental fetch failed: ${describePullError(error)}`,
       );
     }
 

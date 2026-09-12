@@ -4,7 +4,7 @@ import { SupabasePullSync } from "./SupabasePullSync";
 
 interface MockQueryResult {
   data: unknown[];
-  error: null | { code: string };
+  error: null | { code?: string; message?: string };
 }
 
 interface MockQueryBuilder {
@@ -1132,6 +1132,45 @@ describe("SupabasePullSync", () => {
       "[pull] pantalon incremental fetch failed: 42503",
     );
     expect(checkpointRepository.advanceCursor).not.toHaveBeenCalled();
+  });
+
+  it("throws with error.code when the pull fails with a PostgrestError (comportamiento actual, sin cambios)", async () => {
+    // Arrange
+    mockQueryResults.pantalon_measurements.push({
+      data: [],
+      error: { code: "42501" },
+    });
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+    const pullSync = new SupabasePullSync(checkpointRepository);
+
+    // Act / Assert
+    await expect(pullSync.pullIncremental()).rejects.toThrow(
+      "[pull] pantalon incremental fetch failed: 42501",
+    );
+  });
+
+  it("falls back to error.message (not the literal string 'undefined') when a raw network/gateway error without .code reaches the pull", async () => {
+    // Arrange — simula el fallo real reportado: una conexión inestable
+    // produce un error crudo (sin `.code` de PostgrestError), y el mensaje
+    // no debe degradar a "... fetch failed: undefined".
+    mockQueryResults.pantalon_measurements.push({
+      data: [],
+      error: { message: "Network request failed" },
+    });
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+    const pullSync = new SupabasePullSync(checkpointRepository);
+
+    // Act / Assert — el mensaje debe usar `.message` como fallback y nunca
+    // degradar a la palabra literal "undefined".
+    await expect(pullSync.pullIncremental()).rejects.toThrow(
+      "[pull] pantalon incremental fetch failed: Network request failed",
+    );
   });
 
   it("throws when delete log incremental fetch fails", async () => {
