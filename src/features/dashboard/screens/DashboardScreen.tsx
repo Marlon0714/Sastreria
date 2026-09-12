@@ -26,11 +26,12 @@ import { useDashboardStats } from "../hooks/useDashboardStats";
 // de `ScheduleListBucket`) es a propósito: son exactamente las claves que
 // expone `periodStatusCounts` (aunque ya no se listen las 6 acá — ver
 // N-112), así el value de cada tarjeta se indexa sin castear.
-// N-112: se quitó la tarjeta "Pendientes" de esta grilla — es
-// estructuralmente idéntica a "Sin fecha (global)" (que sigue abajo, sin
-// cambios), y ambas ya abren la misma lista de detalle desde N-105. El
-// bucket "pendiente" en sí sigue existiendo en el dominio (periodStatusCounts,
-// ScheduleListBucket, etc.), solo se quitó el acceso desde esta tarjeta.
+// N-112: se quitó la tarjeta de estado "Pendiente" de esta grilla — es
+// estructuralmente idéntica a la tarjeta global (que sigue abajo, hoy
+// etiquetada "Pendientes"), y ambas ya abren la misma lista de detalle desde
+// N-105. El bucket "pendiente" en sí sigue existiendo en el dominio
+// (periodStatusCounts, ScheduleListBucket, etc.), solo se quitó el acceso
+// desde esta tarjeta.
 const STATUS_CARD_BUCKETS: { bucket: keyof PeriodStatusCounts; label: string }[] = [
   { bucket: "total", label: "Total" },
   { bucket: "agendado", label: "Agendados" },
@@ -40,8 +41,12 @@ const STATUS_CARD_BUCKETS: { bucket: keyof PeriodStatusCounts; label: string }[]
 ];
 
 // Mismo criterio que STATUS_CARD_BUCKETS: un solo lugar con el texto para no
-// duplicarlo entre el label visible y el cardLabel de navegación.
-const GLOBAL_PENDING_LABEL = "Sin fecha (global)";
+// duplicarlo entre el label visible y el cardLabel de navegación. El texto
+// pasó de "Sin fecha (global)" a "Pendientes": un turno sin fecha ES, por
+// definición, un turno "pendiente" — mismo término ya usado en la Agenda.
+// El bucket interno ("sin_fecha_global") y la lógica de conteo no cambian,
+// solo este texto visible.
+const GLOBAL_PENDING_LABEL = "Pendientes";
 
 type Props = NativeStackScreenProps<DashboardStackParamList, "DashboardHome">;
 
@@ -132,17 +137,17 @@ export default function DashboardScreen({ navigation }: Props) {
     });
   };
 
-  // N-111: tocar un día del desglose semanal navega a la Agenda de ESE día
-  // específico (no a "hoy") — mismo mecanismo de navegación cruzada de tab
-  // que `handlePressReminder`. `ScheduleDayView` acepta `date` como param
-  // opcional (ver `ScheduleStackParamList`) sin cambiar su comportamiento
-  // por defecto cuando no se pasa.
+  // Revertido N-111: tocar un día del desglose semanal ya NO navega a la
+  // Agenda — se queda en el propio Dashboard y cambia su selector de periodo
+  // al modo "Día" anclado a esa fecha, como si el dueño lo hubiera elegido a
+  // mano en `PeriodSelectorField`. `setMode("dia")` primero (deja el modo
+  // consistente) y luego `jumpToDate(date)` (fija el `anchorDate` exacto);
+  // en modo "dia" `setMode` no reubica `anchorDate` (ver
+  // `normalizeAnchorForMode` en usePeriodSelector.ts, solo actúa en "mes"),
+  // así que el orden no deja al hook desincronizado.
   const handlePressWeekDay = (date: string): void => {
-    const parent = navigation.getParent<NavigationProp<RootTabParamList>>();
-    parent?.navigate("ScheduleTab", {
-      screen: "ScheduleDayView",
-      params: { date },
-    });
+    setMode("dia");
+    jumpToDate(date);
   };
 
   // A diferencia de `handlePressReminder`, esta pantalla vive en el mismo
@@ -151,9 +156,10 @@ export default function DashboardScreen({ navigation }: Props) {
   // caso `startDate`/`endDate` quedan `undefined` y el bucket resuelve a
   // lista vacía (salvo los buckets globales), igual que ya sucede con las
   // tarjetas en 0 mientras el rango está incompleto. `dateRange` es
-  // explícito (no siempre `range`) para la tarjeta "Sin fecha (global)":
-  // es un bucket global, no acotado al periodo seleccionado, así que no
-  // debe arrastrar `startDate`/`endDate` del periodo actual por navegación.
+  // explícito (no siempre `range`) para la tarjeta "Pendientes" (bucket
+  // "sin_fecha_global"): es un bucket global, no acotado al periodo
+  // seleccionado, así que no debe arrastrar `startDate`/`endDate` del
+  // periodo actual por navegación.
   const handlePressStatCard = (
     bucket: ScheduleListBucket,
     cardLabel: string,

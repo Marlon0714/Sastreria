@@ -49,8 +49,10 @@ export type ClientsStackParamList = {
 
 export type ScheduleStackParamList = {
   /**
-   * `date` (YYYY-MM-DD) abre la Agenda directo en ese día en vez de "hoy" —
-   * usado desde el Dashboard al tocar un día del desglose semanal (N-111).
+   * `date` (YYYY-MM-DD) abre la Agenda directo en ese día en vez de "hoy".
+   * Se agregó en N-111 para el Dashboard (tocar un día del desglose
+   * semanal), pero ese flujo se revirtió y ya no navega acá — se deja el
+   * param porque no molesta y puede servir para otro caller a futuro.
    * Opcional y sin afectar el comportamiento por defecto: sin params (o sin
    * `date`), `ScheduleDayViewScreen` sigue arrancando en `todayDateString()`.
    */

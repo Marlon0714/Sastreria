@@ -10,17 +10,20 @@ interface WeeklyWorkloadBreakdownProps {
   weekDates: string[];
   /** Carga de trabajo (turnos no entregados) por día, mismo orden que `weekDates`. */
   counts: number[];
-  /** N-111: navega a la Agenda de ese día al tocar su columna. */
+  /**
+   * Callback al tocar la columna de ese día. Revertido N-111: ya no navega a
+   * la Agenda, el llamador (DashboardScreen) cambia el propio selector de
+   * periodo del Dashboard al modo "Día" anclado a esa fecha.
+   */
   onPressDay: (date: string) => void;
 }
 
 /**
  * Fila con el conteo de carga de trabajo de cada día de la semana — cada
- * columna es tocable y navega a la Agenda de ese día (N-111). Deliberadamente
- * NO reutiliza `WeekStrip`: ese componente es de navegación (selección +
- * prev/next) dentro de la propia Agenda, y mezclar ahí este dato agregado
- * arriesgaría romper sus otros dos usos (Agenda, Mis Arreglos) — ver
- * Decisión 5 del plan original.
+ * columna es tocable. Deliberadamente NO reutiliza `WeekStrip`: ese
+ * componente es de navegación (selección + prev/next) dentro de la propia
+ * Agenda, y mezclar ahí este dato agregado arriesgaría romper sus otros dos
+ * usos (Agenda, Mis Arreglos) — ver Decisión 5 del plan original.
  */
 export function WeeklyWorkloadBreakdown({
   weekDates,
@@ -32,7 +35,7 @@ export function WeeklyWorkloadBreakdown({
       {weekDates.map((date, index) => (
         <Pressable
           key={date}
-          accessibilityLabel={`Ver agenda del ${formatDateForDisplay(date)}`}
+          accessibilityLabel={`Ver estadísticas del ${formatDateForDisplay(date)}`}
           style={styles.dayCell}
           onPress={() => onPressDay(date)}
         >

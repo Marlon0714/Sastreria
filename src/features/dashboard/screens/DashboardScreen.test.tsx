@@ -242,36 +242,48 @@ describe("DashboardScreen", () => {
     expect(() => getByText("Turnos agendados por día")).toThrow();
   });
 
-  it("al tocar un día del desglose semanal navega cruzando de tab a la Agenda de ese día (N-111)", () => {
+  it("al tocar un día del desglose semanal cambia el modo del Dashboard a 'día' anclado a esa fecha (revertido N-111)", () => {
+    const setMode = jest.fn();
+    const jumpToDate = jest.fn();
     mockUseDashboardStats.mockReturnValue(
-      buildBaseResult({ mode: "semana", anchorDate: "2026-08-15" }),
+      buildBaseResult({
+        mode: "semana",
+        anchorDate: "2026-08-15",
+        setMode,
+        jumpToDate,
+      }),
     );
-    const navigate = jest.fn();
 
-    const { getByLabelText } = render(
-      <DashboardScreen {...buildProps({ navigate })} />,
-    );
+    const { getByLabelText } = render(<DashboardScreen {...buildProps()} />);
 
-    fireEvent.press(getByLabelText(/Ver agenda del.*13 de agosto/i));
+    fireEvent.press(getByLabelText(/Ver estadísticas del.*13 de agosto/i));
 
-    expect(navigate).toHaveBeenCalledWith("ScheduleTab", {
-      screen: "ScheduleDayView",
-      params: { date: "2026-08-13" },
-    });
+    expect(setMode).toHaveBeenCalledWith("dia");
+    expect(jumpToDate).toHaveBeenCalledWith("2026-08-13");
   });
 
-  it("no falla si no hay parent navigator al tocar un día del desglose semanal", () => {
+  it("al tocar un día del desglose semanal llama primero a setMode y luego a jumpToDate", () => {
+    const callOrder: string[] = [];
+    const setMode = jest.fn(() => {
+      callOrder.push("setMode");
+    });
+    const jumpToDate = jest.fn(() => {
+      callOrder.push("jumpToDate");
+    });
     mockUseDashboardStats.mockReturnValue(
-      buildBaseResult({ mode: "semana", anchorDate: "2026-08-15" }),
+      buildBaseResult({
+        mode: "semana",
+        anchorDate: "2026-08-15",
+        setMode,
+        jumpToDate,
+      }),
     );
 
-    const { getByLabelText } = render(
-      <DashboardScreen {...buildProps(null)} />,
-    );
+    const { getByLabelText } = render(<DashboardScreen {...buildProps()} />);
 
-    expect(() =>
-      fireEvent.press(getByLabelText(/Ver agenda del.*13 de agosto/i)),
-    ).not.toThrow();
+    fireEvent.press(getByLabelText(/Ver estadísticas del.*13 de agosto/i));
+
+    expect(callOrder).toEqual(["setMode", "jumpToDate"]);
   });
 
   it("WeeklyWorkloadBreakdown ausente en modo 'mes'", () => {
@@ -419,14 +431,16 @@ describe("DashboardScreen", () => {
     });
   });
 
-  it("la tarjeta 'Pendientes' ya no existe en la grilla de estados (N-112: redundante con 'Sin fecha (global)')", () => {
+  it("la tarjeta de estado 'Pendiente' ya no existe en la grilla de estados (N-112: redundante con la tarjeta global 'Pendientes')", () => {
     mockUseDashboardStats.mockReturnValue(buildBaseResult());
 
-    const { queryByText } = render(
+    const { queryAllByText } = render(
       <DashboardScreen {...buildProps(null, jest.fn())} />,
     );
 
-    expect(queryByText("Pendientes")).toBeNull();
+    // Solo debe aparecer una vez: la tarjeta global renombrada (antes "Sin
+    // fecha (global)"), no una segunda en la grilla de estados del periodo.
+    expect(queryAllByText("Pendientes")).toHaveLength(1);
   });
 
   it("al tocar 'No realizados esta semana' navega con bucket 'no_realizado' y el cardLabel dinámico", () => {
@@ -447,7 +461,7 @@ describe("DashboardScreen", () => {
     });
   });
 
-  it("al tocar 'Sin fecha (global)' navega con bucket 'sin_fecha_global' SIN startDate/endDate", () => {
+  it("al tocar 'Pendientes' navega con bucket 'sin_fecha_global' SIN startDate/endDate", () => {
     mockUseDashboardStats.mockReturnValue(buildBaseResult());
     const navigate = jest.fn();
 
@@ -455,11 +469,11 @@ describe("DashboardScreen", () => {
       <DashboardScreen {...buildProps(null, navigate)} />,
     );
 
-    fireEvent.press(getByText("Sin fecha (global)"));
+    fireEvent.press(getByText("Pendientes"));
 
     expect(navigate).toHaveBeenCalledWith("ScheduleListByStatus", {
       bucket: "sin_fecha_global",
-      cardLabel: "Sin fecha (global)",
+      cardLabel: "Pendientes",
       startDate: undefined,
       endDate: undefined,
     });

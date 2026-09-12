@@ -32,7 +32,7 @@ describe("WeeklyWorkloadBreakdown", () => {
     }
   });
 
-  it("al tocar un día dispara onPressDay con su fecha (N-111)", () => {
+  it("al tocar un día dispara onPressDay con su fecha", () => {
     const onPressDay = jest.fn();
     const counts = [3, 7, 1, 2, 6, 5, 0];
 
@@ -44,7 +44,7 @@ describe("WeeklyWorkloadBreakdown", () => {
       />,
     );
 
-    fireEvent.press(getByLabelText(/Ver agenda del.*13.*agosto/i));
+    fireEvent.press(getByLabelText(/Ver estadísticas del.*13.*agosto/i));
 
     expect(onPressDay).toHaveBeenCalledWith("2026-08-13");
   });

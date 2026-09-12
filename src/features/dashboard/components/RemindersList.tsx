@@ -22,23 +22,21 @@ const SEVERITY_COLORS: Record<
   por_vencer: { bg: colors.warningSoft, text: colors.warning },
 };
 
-// Texto distinto según severidad (N-113): "vencido" ya superó el umbral de
-// espera, así que "guardado" comunica mejor que es el arreglo el que lleva
-// tiempo ahí sin que lo recojan. "por_vencer" todavía no cruzó ese umbral —
-// "esperando" (a ser recogido) sigue teniendo más sentido ahí que
-// "guardado", que sugeriría más urgencia de la que aplica todavía.
-function formatDaysWaiting(
-  daysWaiting: number,
-  severity: ReminderItem["severity"],
-): string {
-  if (severity === "vencido") {
+// Copy unificado por número de días, NO por severidad (revertido N-113): el
+// usuario pidió el mismo patrón para ambas severidades, decidido por
+// `daysWaiting` directamente — menos de 30 días → "sin reclamarlo", 30 o
+// más → "guardado". En la práctica hoy coincide con el umbral de severidad
+// (15-29 "por_vencer" vs 30+ "vencido"), pero la condición es explícita
+// sobre el número de días, no sobre el string de `severity`.
+function formatDaysWaiting(daysWaiting: number): string {
+  if (daysWaiting < 30) {
     return daysWaiting === 1
-      ? "Lleva 1 día guardado"
-      : `Lleva ${daysWaiting} días guardado`;
+      ? "Lleva 1 día sin reclamarlo"
+      : `Lleva ${daysWaiting} días sin reclamarlo`;
   }
   return daysWaiting === 1
-    ? "1 día esperando"
-    : `${daysWaiting} días esperando`;
+    ? "Lleva 1 día guardado"
+    : `Lleva ${daysWaiting} días guardado`;
 }
 
 /** Lista de turnos "listo para entregar" que llevan tiempo sin recogerse. */
@@ -58,7 +56,7 @@ export function RemindersList({ items, onPressItem }: RemindersListProps) {
         return (
           <Pressable
             key={item.schedule.id}
-            accessibilityLabel={`Ver turno de ${item.clientLabel}, ${formatDaysWaiting(item.daysWaiting, item.severity)}`}
+            accessibilityLabel={`Ver turno de ${item.clientLabel}, ${formatDaysWaiting(item.daysWaiting)}`}
             style={styles.card}
             onPress={() => onPressItem(item.schedule.id)}
           >
@@ -75,7 +73,7 @@ export function RemindersList({ items, onPressItem }: RemindersListProps) {
               </View>
             </View>
             <Text style={styles.daysWaiting}>
-              {formatDaysWaiting(item.daysWaiting, item.severity)}
+              {formatDaysWaiting(item.daysWaiting)}
             </Text>
           </Pressable>
         );
