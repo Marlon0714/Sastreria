@@ -7,7 +7,9 @@ import type { ScheduleRepository } from "../../features/schedule/domain/reposito
 import { computeSaldo } from "../../features/schedule/domain/saldo";
 import {
   deriveScheduleStatus,
+  getManualCorrectionBlockReason,
   isStickyStatus,
+  resolveManualCorrectionFields,
 } from "../../features/schedule/domain/statusDerivation";
 import {
   ScheduleValidationError,
@@ -239,11 +241,19 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
     // Queda "bloqueado": una corrección manual es una excepción deliberada,
     // no debe perderse en el siguiente update() de un campo cualquiera solo
     // porque la derivación automática (ej. operario asignado) diga otra cosa.
-    return this.persistUpdate(id, (existing) => ({
-      ...existing,
-      status: newStatus,
-      statusLocked: true,
-    }));
+    return this.persistUpdate(id, (existing) => {
+      const blockReason = getManualCorrectionBlockReason(existing, newStatus);
+      if (blockReason) {
+        throw new ScheduleValidationError(blockReason);
+      }
+
+      return {
+        ...existing,
+        ...resolveManualCorrectionFields(existing, newStatus),
+        status: newStatus,
+        statusLocked: true,
+      };
+    });
   }
 
   /**

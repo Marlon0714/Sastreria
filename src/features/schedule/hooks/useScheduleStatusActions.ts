@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { getDefaultScheduleEventRepository } from "../../../data/local/scheduleEventDependencies";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
+import { diffScheduleFields } from "../domain/changeDiff";
 import { ScheduleValidationError, type Schedule, type ScheduleStatus } from "../domain/types";
 import type { ScheduleIdentityGate } from "./useScheduleForm";
 import type { ScheduleEventAction } from "../domain/events";
@@ -66,12 +67,21 @@ export function useScheduleStatusActions(
         // operario sin que eso mueva el estado (ej. ya estaba en_proceso).
         if (existing?.status !== updated.status) {
           try {
+            // Una corrección manual puede tocar de paso date/operarioId/etc.
+            // (ver resolveManualCorrectionFields) — enriquecer el diff acá
+            // para que ScheduleHistoryList muestre también esos cambios, no
+            // solo el de status.
+            const fieldChanges =
+              action === "status_manual_correction"
+                ? diffScheduleFields(existing ?? {}, updated)
+                : {};
             await eventRepo.create({
               scheduleId,
               actorId: identity.profile.id,
               actorDisplayName: identity.profile.displayName,
               action,
               changes: JSON.stringify({
+                ...fieldChanges,
                 status: {
                   before: existing?.status ?? null,
                   after: updated.status,

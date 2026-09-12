@@ -716,6 +716,142 @@ describe("ScheduleRepositoryImpl", () => {
       expect(sql).toContain("status_locked = ?");
       expect(params).toContain(1);
     });
+
+    it("corregir a 'pendiente' limpia date y operario_id a null en el UPDATE (cierra N-108)", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "agendado",
+        date: "2026-08-10",
+        operario_id: "op-1",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.applyManualCorrection(
+        baseRow.id,
+        "pendiente",
+      );
+
+      expect(result.date).toBeUndefined();
+      expect(result.operarioId).toBeUndefined();
+      const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("date = ?");
+      expect(sql).toContain("operario_id = ?");
+      // date es el 3er placeholder (0-indexed 2), operario_id el 6to (0-indexed 5)
+      // del UPDATE: client_id, unregistered_client_name, date, time, price, abono, operario_id, ...
+      expect(params[2]).toBeNull();
+      expect(params[6]).toBeNull();
+    });
+
+    it("corregir a 'pendiente' también limpia is_priority", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "agendado",
+        date: "2026-08-10",
+        is_priority: 1,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.applyManualCorrection(
+        baseRow.id,
+        "pendiente",
+      );
+
+      expect(result.isPriority).toBe(false);
+      const [, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(params[8]).toBe(0);
+    });
+
+    it("corregir a 'agendado' sin fecha lanza y no llama runAsync", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "pendiente",
+        date: null,
+      });
+      const repository = new ScheduleRepositoryImpl();
+
+      await expect(
+        repository.applyManualCorrection(baseRow.id, "agendado"),
+      ).rejects.toThrow('Asigna una fecha antes de corregir el turno a "Agendado".');
+      expect(mockRunAsync).not.toHaveBeenCalled();
+    });
+
+    it("corregir a 'agendado' con operario presente lo limpia", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "en_proceso",
+        date: "2026-08-10",
+        operario_id: "op-1",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.applyManualCorrection(
+        baseRow.id,
+        "agendado",
+      );
+
+      expect(result.operarioId).toBeUndefined();
+      expect(result.date).toBe("2026-08-10");
+    });
+
+    it.each(["en_proceso", "listo_para_entregar", "entregado"] as const)(
+      "corregir a '%s' sin operario lanza y no escribe",
+      async (targetStatus) => {
+        mockGetFirstAsync.mockResolvedValueOnce({
+          ...baseRow,
+          status: "pendiente",
+          operario_id: null,
+        });
+        const repository = new ScheduleRepositoryImpl();
+
+        await expect(
+          repository.applyManualCorrection(baseRow.id, targetStatus),
+        ).rejects.toThrow(/Asigna un operario antes de corregir el turno a/);
+        expect(mockRunAsync).not.toHaveBeenCalled();
+      },
+    );
+
+    it("corregir a 'listo_para_entregar' estampa ready_at si venía null y limpia delivered_at", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "en_proceso",
+        operario_id: "op-1",
+        ready_at: null,
+        delivered_at: "2026-07-15T00:00:00.000Z",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.applyManualCorrection(
+        baseRow.id,
+        "listo_para_entregar",
+      );
+
+      expect(result.readyAt).toBe("2026-08-01T10:00:00.000Z");
+      expect(result.deliveredAt).toBeUndefined();
+    });
+
+    it("corregir a 'entregado' estampa delivered_at si venía null, sin tocar ready_at existente", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        status: "listo_para_entregar",
+        operario_id: "op-1",
+        ready_at: "2026-07-10T00:00:00.000Z",
+        delivered_at: null,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.applyManualCorrection(
+        baseRow.id,
+        "entregado",
+      );
+
+      expect(result.deliveredAt).toBe("2026-08-01T10:00:00.000Z");
+      expect(result.readyAt).toBe("2026-07-10T00:00:00.000Z");
+    });
   });
 
   describe("concurrencia", () => {

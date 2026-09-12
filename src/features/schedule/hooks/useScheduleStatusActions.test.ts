@@ -171,6 +171,78 @@ describe("useScheduleStatusActions", () => {
         }),
       );
     });
+
+    it("enriquece el diff con date/operarioId cuando la corrección los toca", async () => {
+      // baseSchedule ya tiene date/operarioId (via mockGetById) — corregir a
+      // "pendiente" los limpia (ver resolveManualCorrectionFields), así que
+      // el evento de auditoría debe incluir esas dos claves además de status.
+      mockGetById.mockResolvedValueOnce({
+        ...baseSchedule,
+        date: "2026-08-10",
+        operarioId: "op-1",
+        status: "en_proceso",
+      });
+      const updated: Schedule = {
+        ...baseSchedule,
+        date: undefined,
+        operarioId: undefined,
+        status: "pendiente",
+      };
+      mockApplyManualCorrection.mockResolvedValueOnce(updated);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      await act(async () => {
+        await result.current.applyCorrection("pendiente");
+      });
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "status_manual_correction",
+          changes: JSON.stringify({
+            date: { before: "2026-08-10", after: null },
+            operarioId: { before: "op-1", after: null },
+            status: { before: "en_proceso", after: "pendiente" },
+          }),
+        }),
+      );
+    });
+
+    it("no agrega claves de más si la corrección no toca ningún otro campo", async () => {
+      // baseSchedule ya no tiene date/operarioId de más para limpiar en este
+      // caso puntual (mismo clientId/category/etc. antes y después).
+      mockGetById.mockResolvedValueOnce({
+        ...baseSchedule,
+        date: undefined,
+        operarioId: undefined,
+        status: "en_proceso",
+      });
+      const updated: Schedule = {
+        ...baseSchedule,
+        date: undefined,
+        operarioId: undefined,
+        status: "pendiente",
+      };
+      mockApplyManualCorrection.mockResolvedValueOnce(updated);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      await act(async () => {
+        await result.current.applyCorrection("pendiente");
+      });
+
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          changes: JSON.stringify({
+            status: { before: "en_proceso", after: "pendiente" },
+          }),
+        }),
+      );
+    });
   });
 
   describe("assignOperario", () => {

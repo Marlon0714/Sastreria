@@ -56,6 +56,10 @@ import {
 } from "../domain/types";
 import { colors } from "../../../shared/theme/colors";
 import { computeSaldo } from "../domain/saldo";
+import {
+  describeManualCorrectionSideEffects,
+  getManualCorrectionBlockReason,
+} from "../domain/statusDerivation";
 import { evaluateDeliveryGuard } from "../domain/deliveryGuard";
 import { formatPrice } from "../../pricing/domain/strings";
 import { useDeleteSchedule } from "../hooks/useDeleteSchedule";
@@ -357,9 +361,17 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   };
 
   const handleApplyCorrection = (newStatus: ScheduleStatus): void => {
+    const sideEffects = displaySchedule
+      ? describeManualCorrectionSideEffects(displaySchedule, newStatus)
+      : [];
+    const sideEffectsMessage =
+      sideEffects.length > 0
+        ? ` También se quitará ${sideEffects.join(" y ")}.`
+        : "";
+
     Alert.alert(
       "Confirmar corrección manual",
-      `¿Cambiar el estado a "${STATUS_LABELS[newStatus]}"? Esta acción queda registrada como corrección manual, no como transición automática.`,
+      `¿Cambiar el estado a "${STATUS_LABELS[newStatus]}"? Esta acción queda registrada como corrección manual, no como transición automática.${sideEffectsMessage}`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -888,19 +900,24 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             <View style={styles.correctionRow}>
               {CORRECTION_STATUS_OPTIONS.filter(
                 (status) => status !== displaySchedule.status,
-              ).map((status) => (
-                <Pressable
-                  key={status}
-                  accessibilityLabel={`Corregir a ${STATUS_LABELS[status]}`}
-                  style={styles.correctionChip}
-                  onPress={() => handleApplyCorrection(status)}
-                  disabled={isBusy}
-                >
-                  <Text style={styles.correctionChipText}>
-                    {STATUS_LABELS[status]}
-                  </Text>
-                </Pressable>
-              ))}
+              )
+                .filter(
+                  (status) =>
+                    !getManualCorrectionBlockReason(displaySchedule, status),
+                )
+                .map((status) => (
+                  <Pressable
+                    key={status}
+                    accessibilityLabel={`Corregir a ${STATUS_LABELS[status]}`}
+                    style={styles.correctionChip}
+                    onPress={() => handleApplyCorrection(status)}
+                    disabled={isBusy}
+                  >
+                    <Text style={styles.correctionChipText}>
+                      {STATUS_LABELS[status]}
+                    </Text>
+                  </Pressable>
+                ))}
             </View>
           ) : null}
         </View>

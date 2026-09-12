@@ -1223,6 +1223,83 @@ describe("ScheduleFormScreen", () => {
       expect(queryByLabelText("Corregir a Agendado")).toBeNull();
       expect(getByLabelText("Corregir a Pendiente")).toBeTruthy();
     });
+
+    it("no ofrece 'Agendado' como corrección si el turno no tiene fecha", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: { ...schedule, status: "pendiente", date: undefined },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { getByLabelText, queryByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Corrección manual de estado"));
+
+      expect(queryByLabelText("Corregir a Agendado")).toBeNull();
+    });
+
+    it("no ofrece 'En proceso'/'Listo para entregar'/'Entregado' si el turno no tiene operario", () => {
+      mockUseScheduleForm.mockReturnValue({
+        schedule: {
+          ...schedule,
+          status: "pendiente",
+          date: undefined,
+          operarioId: undefined,
+        },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { getByLabelText, queryByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Corrección manual de estado"));
+
+      expect(queryByLabelText("Corregir a En proceso")).toBeNull();
+      expect(queryByLabelText("Corregir a Listo para entregar")).toBeNull();
+      expect(queryByLabelText("Corregir a Entregado")).toBeNull();
+    });
+
+    it("el diálogo de confirmación menciona la fecha y el operario cuando corregir a 'Pendiente' los limpia", () => {
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation(() => undefined);
+      mockUseScheduleForm.mockReturnValue({
+        schedule: {
+          ...schedule,
+          status: "agendado",
+          date: "2026-08-10",
+          operarioId: "op-1",
+        },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Corrección manual de estado"));
+      fireEvent.press(getByLabelText("Corregir a Pendiente"));
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Confirmar corrección manual",
+        expect.stringContaining("También se quitará la fecha y el operario asignado"),
+        expect.anything(),
+      );
+    });
   });
 
   describe("conteo de turnos agendados", () => {
