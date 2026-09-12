@@ -289,17 +289,43 @@ describe("ScheduleDayViewScreen", () => {
     expect(queryByLabelText("Ir a hoy")).toBeNull();
   });
 
-  it("no muestra el badge de pendientes cuando no hay turnos sin fecha", () => {
-    const { queryByText } = render(
+  it("muestra el buscador antes que el filtro de categoría/vista", () => {
+    const { toJSON } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
-    expect(queryByText("📋 Pendientes")).toBeTruthy();
-    // El badge numérico solo aparece si pendingSchedules.length > 0.
-    expect(queryByText("0")).toBeNull();
+    const serialized = JSON.stringify(toJSON());
+    const searchIndex = serialized.indexOf("Buscar por cliente");
+    const filterIndex = serialized.indexOf("✂️ Arreglos");
+
+    expect(searchIndex).toBeGreaterThan(-1);
+    expect(filterIndex).toBeGreaterThan(-1);
+    expect(searchIndex).toBeLessThan(filterIndex);
   });
 
-  it("muestra el badge de pendientes y permite cambiar a esa vista desde el segmentado", async () => {
+  it("el chip colapsado no muestra conteo en Arreglos/Confecciones, y sí en Pendientes", () => {
+    const { getByText, getByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    // Por defecto (Arreglo activo) el chip no incluye conteo: ya vive fijo
+    // junto al header de fecha.
+    expect(getByText("✂️ Arreglos")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver confecciones"));
+
+    expect(getByText("🧵 Confecciones")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver turnos pendientes"));
+
+    // "Pendientes" es la única opción que conserva el conteo en el chip: no
+    // tiene otro lugar fijo donde mostrarse.
+    expect(getByText(/📋 Pendientes \(\d+\)/)).toBeTruthy();
+  });
+
+  it("permite cambiar a la vista de pendientes desde el desplegable de filtro", async () => {
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [],
       pendingSchedules: [pendingOne],
@@ -308,14 +334,13 @@ describe("ScheduleDayViewScreen", () => {
       reload: jest.fn(async () => Promise.resolve()),
     });
 
-    const { getByText, findByLabelText, queryByText } = render(
-      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
-    );
+    const { getByText, getByLabelText, findByLabelText, queryByText } =
+      render(<ScheduleDayViewScreen {...buildProps(jest.fn())} />);
 
-    expect(getByText("1")).toBeTruthy();
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver turnos pendientes"));
 
-    fireEvent.press(getByText("📋 Pendientes"));
-
+    expect(getByText("📋 Pendientes (1)")).toBeTruthy();
     expect(
       await findByLabelText("Ver turno de Ana Torres (Sin fecha, schedule-2)"),
     ).toBeTruthy();
@@ -323,14 +348,17 @@ describe("ScheduleDayViewScreen", () => {
     expect(queryByText("No hay turnos para este día.")).toBeNull();
   });
 
-  it("muestra un estado vacío propio en la vista de pendientes", () => {
-    const { getByText, findByText } = render(
+  it("muestra un estado vacío propio en la vista de pendientes", async () => {
+    const { getByLabelText, findByText } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
-    fireEvent.press(getByText("📋 Pendientes"));
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver turnos pendientes"));
 
-    expect(findByText("No hay turnos pendientes sin fecha.")).toBeTruthy();
+    expect(
+      await findByText("No hay turnos pendientes sin fecha."),
+    ).toBeTruthy();
   });
 
   it("marca los turnos prioritarios con una insignia", async () => {
@@ -408,8 +436,9 @@ describe("ScheduleDayViewScreen", () => {
     });
     const navigate = jest.fn();
 
-    const { getByText, queryByText, findByLabelText, getByLabelText } =
-      render(<ScheduleDayViewScreen {...buildProps(navigate)} />);
+    const { queryByText, findByLabelText, getByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(navigate)} />,
+    );
 
     // Por defecto (Arreglo) solo se ve el turno de arreglo.
     expect(
@@ -419,7 +448,8 @@ describe("ScheduleDayViewScreen", () => {
       queryByText("Ver turno de Ana Torres (09:00, schedule-3)"),
     ).toBeNull();
 
-    fireEvent.press(getByText("🧵 Confección"));
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver confecciones"));
 
     expect(
       await findByLabelText("Ver turno de Ana Torres (09:00, schedule-3)"),
@@ -429,6 +459,103 @@ describe("ScheduleDayViewScreen", () => {
     expect(navigate).toHaveBeenCalledWith("ScheduleForm", {
       category: "confeccion",
     });
+  });
+
+  it("regresión: en la opción Día solo se ve la categoría activa por defecto, y cambia al elegir la otra en el desplegable", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne, confeccionOne],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { queryByLabelText, findByLabelText, getByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    ).toBeTruthy();
+    expect(
+      queryByLabelText("Ver turno de Ana Torres (09:00, schedule-3)"),
+    ).toBeNull();
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver confecciones"));
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (09:00, schedule-3)"),
+    ).toBeTruthy();
+    expect(
+      queryByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+    ).toBeNull();
+  });
+
+  it("al elegir 'Ver turnos pendientes' se ven los pendientes de ambas categorías, sin importar cuál estaba activa", async () => {
+    const pendingConfeccion: Schedule = {
+      ...pendingOne,
+      id: "schedule-pendiente-confeccion",
+      category: "confeccion",
+    };
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [],
+      pendingSchedules: [pendingOne, pendingConfeccion],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    // Categoría activa por defecto es "arreglo": antes de este cambio,
+    // "Pendientes" solo mostraba los pendientes de esa categoría.
+    const { getByLabelText, findByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver turnos pendientes"));
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (Sin fecha, schedule-2)"),
+    ).toBeTruthy();
+    expect(
+      await findByLabelText(
+        "Ver turno de Ana Torres (Sin fecha, schedule-pendiente-confeccion)",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("con 'Pendientes' activo, el desplegable muestra las 3 opciones con sus conteos y marca 'Pendientes' como seleccionada", async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne, confeccionOne],
+      pendingSchedules: [pendingOne],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { getByLabelText, getAllByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver turnos pendientes"));
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+
+    // Con "Pendientes" activo no existe el bloque fijo (tarea 5/16): estos
+    // 2 conteos solo viven acá, dentro del desplegable.
+    expect(getAllByText("✂️ Arreglos (1)")).toHaveLength(1);
+    expect(getAllByText("🧵 Confecciones (1)")).toHaveLength(1);
+    // "📋 Pendientes (1)" aparece 2 veces: una en el chip colapsado (siempre
+    // visible cuando "Pendientes" es la opción activa) y otra en su fila
+    // dentro del desplegable — redundancia visual esperada mientras está
+    // abierto, no un error.
+    expect(getAllByText("📋 Pendientes (1)")).toHaveLength(2);
+    expect(
+      getByLabelText("Ver turnos pendientes").props.accessibilityState
+        ?.checked,
+    ).toBe(true);
   });
 
   it("abre el panel rápido al presionar un turno, y navega al formulario completo desde ahí", async () => {
@@ -701,9 +828,40 @@ describe("ScheduleDayViewScreen", () => {
     expect(queryByText(/^\$/)).toBeNull();
   });
 
-  it("muestra el contador de turnos del día en el segmentado", () => {
+  it("el desplegable de filtro muestra a la vez el conteo de Arreglos y de Confecciones del día", () => {
     mockUseScheduleDayView.mockReturnValue({
-      dateSchedules: [scheduledOne, { ...scheduledOne, id: "schedule-4" }],
+      dateSchedules: [
+        scheduledOne,
+        { ...scheduledOne, id: "schedule-4" },
+        confeccionOne,
+      ],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { getAllByText, getByLabelText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+
+    // En la vista "Día" ambos números ya son visibles en el bloque fijo
+    // (tarea 5); al abrir el desplegable se repiten en su propia fila —
+    // redundancia visual aceptada (ver Decisiones/Riesgos del plan), por
+    // eso se esperan 2 apariciones de cada uno, no 1.
+    expect(getAllByText("✂️ Arreglos (2)")).toHaveLength(2);
+    expect(getAllByText("🧵 Confecciones (1)")).toHaveLength(2);
+  });
+
+  it("muestra siempre, sin abrir nada, el conteo de Arreglos y Confecciones junto al header de fecha", () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [
+        scheduledOne,
+        { ...scheduledOne, id: "schedule-4" },
+        confeccionOne,
+      ],
       pendingSchedules: [],
       isLoading: false,
       error: null,
@@ -714,15 +872,32 @@ describe("ScheduleDayViewScreen", () => {
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
-    expect(getByText("2")).toBeTruthy();
+    // Sin presionar nada (el desplegable arranca cerrado), ambos conteos ya
+    // son visibles junto a la fecha seleccionada.
+    expect(getByText("✂️ Arreglos (2)")).toBeTruthy();
+    expect(getByText("🧵 Confecciones (1)")).toBeTruthy();
   });
 
-  it("no muestra el contador del día cuando no hay turnos", () => {
-    const { queryByText } = render(
+  it("el bloque fijo de conteo desaparece al elegir 'Ver turnos pendientes'", () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [scheduledOne, confeccionOne],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { getByLabelText, queryByText } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
-    expect(queryByText("0")).toBeNull();
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver turnos pendientes"));
+
+    // En "Pendientes" no hay concepto de "día": ni el WeekStrip ni el
+    // header de fecha se renderizan, así que tampoco este bloque fijo.
+    expect(queryByText(/✂️ Arreglos \(\d+\)/)).toBeNull();
+    expect(queryByText(/🧵 Confecciones \(\d+\)/)).toBeNull();
   });
 
   it("al buscar, muestra todas las coincidencias no entregadas sin importar la fecha", async () => {
@@ -768,6 +943,58 @@ describe("ScheduleDayViewScreen", () => {
     ).toBeNull();
     // No saltó de fecha — la Agenda se quedó en el día que estaba (2026-08-15).
     expect(mockUseScheduleDayView).not.toHaveBeenCalledWith("2026-08-20");
+  });
+
+  it("el conteo de 'Arreglos' del desplegable cuenta cruzando fechas cuando hay búsqueda activa, aun estando en 'Pendientes'", async () => {
+    const arregloMatch1: Schedule = {
+      ...scheduledOne,
+      id: "schedule-a1",
+      date: "2026-08-20",
+      status: "agendado",
+    };
+    const arregloMatch2: Schedule = {
+      ...scheduledOne,
+      id: "schedule-a2",
+      date: "2026-08-21",
+      status: "en_proceso",
+    };
+    const arregloEntregado: Schedule = {
+      ...scheduledOne,
+      id: "schedule-a3",
+      date: "2026-08-22",
+      status: "entregado",
+    };
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+    mockScheduleGetAll.mockResolvedValue([
+      arregloMatch1,
+      arregloMatch2,
+      arregloEntregado,
+    ]);
+
+    const { getByLabelText, findByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+    fireEvent.press(getByLabelText("Ver turnos pendientes"));
+
+    fireEvent.changeText(
+      getByLabelText("Buscar cliente en la agenda"),
+      "ana",
+    );
+
+    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+
+    // 2, no 0: si el conteo dependiera de `isSearchingDia` (que exige
+    // `activeView === "dia"`) daría 0 acá, porque `activeView` sigue siendo
+    // "pendientes" en este punto.
+    expect(await findByText("✂️ Arreglos (2)")).toBeTruthy();
   });
 
   it("al buscar, un resultado con fecha pero sin hora no muestra el separador de hora", async () => {

@@ -34,8 +34,6 @@ import {
   todayDateString,
 } from "../domain/dateUtils";
 import {
-  SCHEDULE_CATEGORIES,
-  SCHEDULE_CATEGORY_LABELS,
   type Schedule,
   type ScheduleCategory,
   type ScheduleStatus,
@@ -48,16 +46,24 @@ type Props = NativeStackScreenProps<ScheduleStackParamList, "ScheduleDayView">;
 
 type ActiveView = "dia" | "pendientes";
 
-const VIEWS: { key: ActiveView; icon: string; label: string }[] = [
-  { key: "dia", icon: "📅", label: "Día" },
-  { key: "pendientes", icon: "📋", label: "Pendientes" },
-];
+type FilterOption = ScheduleCategory | "pendientes";
+
+const FILTER_OPTIONS: FilterOption[] = ["arreglo", "confeccion", "pendientes"];
 
 // Mismos emojis que usa Precios para arreglo/confección, para que el
-// concepto se sienta igual en toda la app.
-const CATEGORY_ICONS: Record<ScheduleCategory, string> = {
-  arreglo: "✂️",
-  confeccion: "🧵",
+// concepto se sienta igual en toda la app. Etiquetas en plural (pedido
+// explícito del usuario para este selector) — distinto del
+// `SCHEDULE_CATEGORY_LABELS` compartido (singular), que no se toca acá.
+const FILTER_OPTION_LABELS: Record<FilterOption, string> = {
+  arreglo: "✂️ Arreglos",
+  confeccion: "🧵 Confecciones",
+  pendientes: "📋 Pendientes",
+};
+
+const FILTER_OPTION_ACCESSIBILITY_LABELS: Record<FilterOption, string> = {
+  arreglo: "Ver arreglos",
+  confeccion: "Ver confecciones",
+  pendientes: "Ver turnos pendientes",
 };
 
 const STATUS_LABELS: Record<ScheduleStatus, string> = {
@@ -84,6 +90,11 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   const [activeView, setActiveView] = useState<ActiveView>("dia");
   const [activeCategory, setActiveCategory] =
     useState<ScheduleCategory>("arreglo");
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  // Derivado, no un tercer estado: evita duplicar la fuente de verdad de
+  // `activeView`/`activeCategory` (ver Decisiones de Diseño del plan).
+  const activeOption: FilterOption =
+    activeView === "pendientes" ? "pendientes" : activeCategory;
   const {
     dateSchedules: allDateSchedules,
     pendingSchedules: allPendingSchedules,
@@ -141,12 +152,12 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         .filter(matchesSearch),
     [allDateSchedules, activeCategory, matchesSearch],
   );
+  // Ya no se filtra por `activeCategory`: "Pendientes" pasó a ser una opción
+  // más del selector de 3 opciones, no una vista que coexiste con una
+  // categoría activa — debe mostrar los pendientes de ambas categorías.
   const pendingSchedules = useMemo(
-    () =>
-      allPendingSchedules
-        .filter((item) => item.category === activeCategory)
-        .filter(matchesSearch),
-    [allPendingSchedules, activeCategory, matchesSearch],
+    () => allPendingSchedules.filter(matchesSearch),
+    [allPendingSchedules, matchesSearch],
   );
 
   // Mientras se busca en la vista "Día", en vez de solo filtrar el día
@@ -171,6 +182,33 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         );
       });
   }, [isSearchingDia, allSchedules, activeCategory, matchesSearch]);
+
+  // Fuente única de verdad para los 3 conteos del selector de filtro: la
+  // consumen tanto el desplegable (siempre) como el bloque fijo junto al
+  // header de fecha (solo arreglo/confeccion). Usa `searchTerm.trim()`
+  // directo (no `isSearchingDia`) porque el desplegable puede abrirse
+  // estando en "Pendientes" con una búsqueda activa, y el número debe
+  // predecir lo que se vería si se elige "Arreglos"/"Confecciones" (lo que
+  // sí activaría `isSearchingDia`, al cambiar `activeView` a "dia").
+  const filterOptionCounts = useMemo<Record<FilterOption, number>>(() => {
+    const hasSearchTerm = searchTerm.trim().length > 0;
+    const countForCategory = (category: ScheduleCategory): number => {
+      if (hasSearchTerm) {
+        return allSchedules
+          .filter((item) => item.category === category)
+          .filter((item) => item.status !== "entregado")
+          .filter(matchesSearch).length;
+      }
+      return allDateSchedules
+        .filter((item) => item.category === category)
+        .filter(matchesSearch).length;
+    };
+    return {
+      arreglo: countForCategory("arreglo"),
+      confeccion: countForCategory("confeccion"),
+      pendientes: pendingSchedules.length,
+    };
+  }, [searchTerm, allSchedules, allDateSchedules, matchesSearch, pendingSchedules]);
 
   // Necesario para poder buscar coincidencias en fechas distintas a la
   // seleccionada (ver `searchResults`) — la agenda normalmente solo carga
@@ -380,33 +418,6 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.segmentedWrapper}>
-        <View style={styles.segmented}>
-          {SCHEDULE_CATEGORIES.map((category) => {
-            const isActive = category === activeCategory;
-            return (
-              <Pressable
-                key={category}
-                style={[styles.segment, isActive && styles.segmentActive]}
-                onPress={() => setActiveCategory(category)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-              >
-                <Text
-                  style={[
-                    styles.segmentText,
-                    isActive && styles.segmentTextActive,
-                  ]}
-                >
-                  {CATEGORY_ICONS[category]}{" "}
-                  {SCHEDULE_CATEGORY_LABELS[category]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
       <View style={styles.searchWrapper}>
         <Ionicons
           name="search"
@@ -432,56 +443,62 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         ) : null}
       </View>
 
-      <View style={styles.segmentedWrapper}>
-        <View style={styles.segmented}>
-          {VIEWS.map((view) => {
-            const isActive = view.key === activeView;
-            return (
-              <Pressable
-                key={view.key}
-                style={[styles.segment, isActive && styles.segmentActive]}
-                onPress={() => setActiveView(view.key)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-              >
-                <Text
+      <View style={styles.filterWrapper}>
+        <Pressable
+          accessibilityLabel="Cambiar filtro de agenda"
+          accessibilityState={{ expanded: isFilterMenuOpen }}
+          style={styles.filterChip}
+          onPress={() => setIsFilterMenuOpen((open) => !open)}
+        >
+          <Text style={styles.filterChipText}>
+            {activeOption === "pendientes"
+              ? `${FILTER_OPTION_LABELS.pendientes} (${filterOptionCounts.pendientes})`
+              : FILTER_OPTION_LABELS[activeOption]}
+          </Text>
+          <Ionicons
+            name={isFilterMenuOpen ? "chevron-up" : "chevron-down"}
+            size={16}
+            color={colors.textMuted}
+          />
+        </Pressable>
+
+        {isFilterMenuOpen ? (
+          <View style={styles.filterMenu}>
+            {FILTER_OPTIONS.map((option) => {
+              const isActive = option === activeOption;
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: isActive }}
+                  accessibilityLabel={FILTER_OPTION_ACCESSIBILITY_LABELS[option]}
                   style={[
-                    styles.segmentText,
-                    isActive && styles.segmentTextActive,
+                    styles.filterOption,
+                    isActive && styles.filterOptionActive,
                   ]}
+                  onPress={() => {
+                    if (option === "pendientes") {
+                      setActiveView("pendientes");
+                    } else {
+                      setActiveView("dia");
+                      setActiveCategory(option);
+                    }
+                    setIsFilterMenuOpen(false);
+                  }}
                 >
-                  {view.icon} {view.label}
-                </Text>
-                {(() => {
-                  const count =
-                    view.key === "pendientes"
-                      ? pendingSchedules.length
-                      : isSearchingDia
-                        ? searchResults.length
-                        : dateSchedules.length;
-                  if (count === 0) return null;
-                  return (
-                    <View
-                      style={[
-                        styles.badge,
-                        isActive ? styles.badgeActive : styles.badgeInactive,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.badgeText,
-                          isActive && styles.badgeTextActive,
-                        ]}
-                      >
-                        {count}
-                      </Text>
-                    </View>
-                  );
-                })()}
-              </Pressable>
-            );
-          })}
-        </View>
+                  <Text
+                    style={[
+                      styles.filterOptionText,
+                      isActive && styles.filterOptionTextActive,
+                    ]}
+                  >
+                    {FILTER_OPTION_LABELS[option]} ({filterOptionCounts[option]})
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
       </View>
 
       {activeView === "dia" ? (
@@ -522,6 +539,27 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
               placeholder="Elegir fecha"
               accessibilityLabel="Elegir fecha"
             />
+          </View>
+
+          <View style={styles.dayCategoryCounters}>
+            <Text
+              style={[
+                styles.dayCategoryCounterText,
+                activeCategory === "arreglo" &&
+                  styles.dayCategoryCounterTextActive,
+              ]}
+            >
+              {FILTER_OPTION_LABELS.arreglo} ({filterOptionCounts.arreglo})
+            </Text>
+            <Text
+              style={[
+                styles.dayCategoryCounterText,
+                activeCategory === "confeccion" &&
+                  styles.dayCategoryCounterTextActive,
+              ]}
+            >
+              {FILTER_OPTION_LABELS.confeccion} ({filterOptionCounts.confeccion})
+            </Text>
           </View>
         </>
       ) : null}
@@ -612,66 +650,66 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  segmentedWrapper: {
+  filterWrapper: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 4,
   },
-  segmented: {
-    flexDirection: "row",
-    backgroundColor: colors.border,
-    borderRadius: 12,
-    padding: 3,
-    gap: 2,
-  },
-  segment: {
-    flex: 1,
+  filterChip: {
+    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 9,
-    paddingHorizontal: 8,
-    borderRadius: 10,
     gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: colors.border,
   },
-  segmentActive: {
-    backgroundColor: "#ffffff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  segmentText: {
+  filterChipText: {
     fontSize: 14,
-    fontWeight: "500",
-    color: colors.textMuted,
-  },
-  segmentTextActive: {
-    color: colors.primary,
     fontWeight: "700",
+    color: colors.primary,
   },
-  badge: {
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 5,
+  filterMenu: {
+    marginTop: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
   },
-  badgeActive: {
+  filterOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  filterOptionActive: {
     backgroundColor: colors.primarySoft,
   },
-  badgeInactive: {
-    backgroundColor: colors.borderStrong,
+  filterOptionText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.textPrimary,
   },
-  badgeText: {
-    fontSize: 12,
+  filterOptionTextActive: {
+    color: colors.primary,
     fontWeight: "700",
+  },
+  dayCategoryCounters: {
+    flexDirection: "row",
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+  },
+  dayCategoryCounterText: {
+    fontSize: 13,
+    fontWeight: "600",
     color: colors.textMuted,
   },
-  badgeTextActive: {
+  dayCategoryCounterTextActive: {
     color: colors.primary,
+    fontWeight: "700",
   },
   searchWrapper: {
     flexDirection: "row",
