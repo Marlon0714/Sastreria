@@ -89,8 +89,14 @@ const STATUS_COLORS: Record<ScheduleStatus, { bg: string; text: string }> = {
   entregado: { bg: colors.success, text: "#ffffff" },
 };
 
-export default function ScheduleDayViewScreen({ navigation }: Props) {
-  const [selectedDate, setSelectedDate] = useState(todayDateString());
+export default function ScheduleDayViewScreen({ navigation, route }: Props) {
+  // `route.params?.date` (N-111): permite abrir la Agenda directo en un día
+  // específico (ej. desde el desglose semanal del Dashboard) en vez de
+  // siempre "hoy". Solo se lee como valor inicial del estado — sin `date`
+  // en los params, el comportamiento por defecto no cambia.
+  const [selectedDate, setSelectedDate] = useState(
+    route.params?.date ?? todayDateString(),
+  );
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const [activeView, setActiveView] = useState<ActiveView>("dia");
   const [activeCategory, setActiveCategory] =

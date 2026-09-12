@@ -242,6 +242,38 @@ describe("DashboardScreen", () => {
     expect(() => getByText("Turnos agendados por día")).toThrow();
   });
 
+  it("al tocar un día del desglose semanal navega cruzando de tab a la Agenda de ese día (N-111)", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({ mode: "semana", anchorDate: "2026-08-15" }),
+    );
+    const navigate = jest.fn();
+
+    const { getByLabelText } = render(
+      <DashboardScreen {...buildProps({ navigate })} />,
+    );
+
+    fireEvent.press(getByLabelText(/Ver agenda del.*13 de agosto/i));
+
+    expect(navigate).toHaveBeenCalledWith("ScheduleTab", {
+      screen: "ScheduleDayView",
+      params: { date: "2026-08-13" },
+    });
+  });
+
+  it("no falla si no hay parent navigator al tocar un día del desglose semanal", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({ mode: "semana", anchorDate: "2026-08-15" }),
+    );
+
+    const { getByLabelText } = render(
+      <DashboardScreen {...buildProps(null)} />,
+    );
+
+    expect(() =>
+      fireEvent.press(getByLabelText(/Ver agenda del.*13 de agosto/i)),
+    ).not.toThrow();
+  });
+
   it("WeeklyWorkloadBreakdown ausente en modo 'mes'", () => {
     mockUseDashboardStats.mockReturnValue(
       buildBaseResult({
@@ -387,22 +419,14 @@ describe("DashboardScreen", () => {
     });
   });
 
-  it("al tocar la tarjeta 'Pendientes' navega con bucket 'pendiente'", () => {
+  it("la tarjeta 'Pendientes' ya no existe en la grilla de estados (N-112: redundante con 'Sin fecha (global)')", () => {
     mockUseDashboardStats.mockReturnValue(buildBaseResult());
-    const navigate = jest.fn();
 
-    const { getByText } = render(
-      <DashboardScreen {...buildProps(null, navigate)} />,
+    const { queryByText } = render(
+      <DashboardScreen {...buildProps(null, jest.fn())} />,
     );
 
-    fireEvent.press(getByText("Pendientes"));
-
-    expect(navigate).toHaveBeenCalledWith("ScheduleListByStatus", {
-      bucket: "pendiente",
-      cardLabel: "Pendientes",
-      startDate: "2026-08-10",
-      endDate: "2026-08-16",
-    });
+    expect(queryByText("Pendientes")).toBeNull();
   });
 
   it("al tocar 'No realizados esta semana' navega con bucket 'no_realizado' y el cardLabel dinámico", () => {

@@ -48,7 +48,13 @@ export type ClientsStackParamList = {
 };
 
 export type ScheduleStackParamList = {
-  ScheduleDayView: undefined;
+  /**
+   * `date` (YYYY-MM-DD) abre la Agenda directo en ese día en vez de "hoy" —
+   * usado desde el Dashboard al tocar un día del desglose semanal (N-111).
+   * Opcional y sin afectar el comportamiento por defecto: sin params (o sin
+   * `date`), `ScheduleDayViewScreen` sigue arrancando en `todayDateString()`.
+   */
+  ScheduleDayView: { date?: string } | undefined;
   ScheduleForm: {
     scheduleId?: string;
     /** Preselecciona la categoría al crear un turno nuevo (según el segmento activo en la Agenda). */

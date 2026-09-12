@@ -23,12 +23,16 @@ import { useDashboardStats } from "../hooks/useDashboardStats";
 // Un solo lugar con la etiqueta visible Y el `cardLabel` de navegación de
 // cada tarjeta de estado — evita duplicar el texto (ver Riesgo "Consistencia
 // del título dinámico" del plan). El tipo `keyof PeriodStatusCounts` (en vez
-// de `ScheduleListBucket`) es a propósito: son exactamente las 6 claves que
-// expone `periodStatusCounts`, así el value de cada tarjeta se indexa sin
-// castear ni listar los 6 casos a mano.
+// de `ScheduleListBucket`) es a propósito: son exactamente las claves que
+// expone `periodStatusCounts` (aunque ya no se listen las 6 acá — ver
+// N-112), así el value de cada tarjeta se indexa sin castear.
+// N-112: se quitó la tarjeta "Pendientes" de esta grilla — es
+// estructuralmente idéntica a "Sin fecha (global)" (que sigue abajo, sin
+// cambios), y ambas ya abren la misma lista de detalle desde N-105. El
+// bucket "pendiente" en sí sigue existiendo en el dominio (periodStatusCounts,
+// ScheduleListBucket, etc.), solo se quitó el acceso desde esta tarjeta.
 const STATUS_CARD_BUCKETS: { bucket: keyof PeriodStatusCounts; label: string }[] = [
   { bucket: "total", label: "Total" },
-  { bucket: "pendiente", label: "Pendientes" },
   { bucket: "agendado", label: "Agendados" },
   { bucket: "en_proceso", label: "En proceso" },
   { bucket: "listo_para_entregar", label: "Listos" },
@@ -128,6 +132,19 @@ export default function DashboardScreen({ navigation }: Props) {
     });
   };
 
+  // N-111: tocar un día del desglose semanal navega a la Agenda de ESE día
+  // específico (no a "hoy") — mismo mecanismo de navegación cruzada de tab
+  // que `handlePressReminder`. `ScheduleDayView` acepta `date` como param
+  // opcional (ver `ScheduleStackParamList`) sin cambiar su comportamiento
+  // por defecto cuando no se pasa.
+  const handlePressWeekDay = (date: string): void => {
+    const parent = navigation.getParent<NavigationProp<RootTabParamList>>();
+    parent?.navigate("ScheduleTab", {
+      screen: "ScheduleDayView",
+      params: { date },
+    });
+  };
+
   // A diferencia de `handlePressReminder`, esta pantalla vive en el mismo
   // `DashboardStackNavigator` (no cruza de tab): `navigation.navigate`
   // directo. `range` puede ser `null` (rango incompleto/inválido) — en ese
@@ -186,6 +203,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <WeeklyWorkloadBreakdown
             weekDates={weekDatesForBreakdown}
             counts={dailyWorkload}
+            onPressDay={handlePressWeekDay}
           />
         </View>
       ) : null}

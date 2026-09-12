@@ -56,4 +56,28 @@ describe("RemindersList", () => {
 
     expect(onPressItem).toHaveBeenCalledWith("s-2");
   });
+
+  it("usa 'Lleva X días guardado' para vencidos y 'X días esperando' para por vencer (N-113)", () => {
+    const items: ReminderItem[] = [
+      {
+        schedule: makeSchedule({ id: "s-1" }),
+        clientLabel: "Ana Torres",
+        daysWaiting: 32,
+        severity: "vencido",
+      },
+      {
+        schedule: makeSchedule({ id: "s-2" }),
+        clientLabel: "Pedro",
+        daysWaiting: 16,
+        severity: "por_vencer",
+      },
+    ];
+
+    const { getByText } = render(
+      <RemindersList items={items} onPressItem={jest.fn()} />,
+    );
+
+    expect(getByText("Lleva 32 días guardado")).toBeTruthy();
+    expect(getByText("16 días esperando")).toBeTruthy();
+  });
 });

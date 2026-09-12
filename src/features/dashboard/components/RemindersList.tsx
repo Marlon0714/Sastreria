@@ -22,7 +22,20 @@ const SEVERITY_COLORS: Record<
   por_vencer: { bg: colors.warningSoft, text: colors.warning },
 };
 
-function formatDaysWaiting(daysWaiting: number): string {
+// Texto distinto según severidad (N-113): "vencido" ya superó el umbral de
+// espera, así que "guardado" comunica mejor que es el arreglo el que lleva
+// tiempo ahí sin que lo recojan. "por_vencer" todavía no cruzó ese umbral —
+// "esperando" (a ser recogido) sigue teniendo más sentido ahí que
+// "guardado", que sugeriría más urgencia de la que aplica todavía.
+function formatDaysWaiting(
+  daysWaiting: number,
+  severity: ReminderItem["severity"],
+): string {
+  if (severity === "vencido") {
+    return daysWaiting === 1
+      ? "Lleva 1 día guardado"
+      : `Lleva ${daysWaiting} días guardado`;
+  }
   return daysWaiting === 1
     ? "1 día esperando"
     : `${daysWaiting} días esperando`;
@@ -45,7 +58,7 @@ export function RemindersList({ items, onPressItem }: RemindersListProps) {
         return (
           <Pressable
             key={item.schedule.id}
-            accessibilityLabel={`Ver turno de ${item.clientLabel}, ${formatDaysWaiting(item.daysWaiting)}`}
+            accessibilityLabel={`Ver turno de ${item.clientLabel}, ${formatDaysWaiting(item.daysWaiting, item.severity)}`}
             style={styles.card}
             onPress={() => onPressItem(item.schedule.id)}
           >
@@ -62,7 +75,7 @@ export function RemindersList({ items, onPressItem }: RemindersListProps) {
               </View>
             </View>
             <Text style={styles.daysWaiting}>
-              {formatDaysWaiting(item.daysWaiting)}
+              {formatDaysWaiting(item.daysWaiting, item.severity)}
             </Text>
           </Pressable>
         );
