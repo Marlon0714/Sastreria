@@ -350,7 +350,7 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
           ) : null}
           {canToggleOwnerFlag && item.isOwnerFlagged ? (
             <View style={styles.ownerFlagBadge}>
-              <Text style={styles.ownerFlagBadgeText}>🔖 Marca del dueño</Text>
+              <Text style={styles.ownerFlagBadgeText}>🔖 Marcado</Text>
             </View>
           ) : null}
         </View>

@@ -667,9 +667,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             name="isOwnerFlagged"
             render={({ field: { onChange, value } }) => (
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>🔖 Marca del dueño</Text>
+                <Text style={styles.switchLabel}>🔖 Marcado</Text>
                 <Switch
-                  accessibilityLabel="Marca del dueño"
+                  accessibilityLabel="Marcado"
                   value={!!value}
                   onValueChange={onChange}
                   trackColor={{

@@ -974,7 +974,7 @@ describe("ScheduleDayViewScreen", () => {
         <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
       );
 
-      expect(await findByText("🔖 Marca del dueño")).toBeTruthy();
+      expect(await findByText("🔖 Marcado")).toBeTruthy();
     });
 
     it("con rol operario, ni el badge ni ningún prop/label relacionado se renderizan", async () => {
@@ -996,13 +996,13 @@ describe("ScheduleDayViewScreen", () => {
         <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
       );
 
-      expect(queryByText("🔖 Marca del dueño")).toBeNull();
+      expect(queryByText("🔖 Marcado")).toBeNull();
 
       fireEvent.press(
         await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
       );
 
-      expect(queryByLabelText("Marca del dueño")).toBeNull();
+      expect(queryByLabelText("Marcado")).toBeNull();
     });
 
     it("togglear desde el panel actualiza la tarjeta sin pasar por identityGate.requireIdentity", async () => {
@@ -1033,7 +1033,7 @@ describe("ScheduleDayViewScreen", () => {
         await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
       );
 
-      fireEvent(getByLabelText("Marca del dueño"), "valueChange", true);
+      fireEvent(getByLabelText("Marcado"), "valueChange", true);
 
       await waitFor(() => {
         expect(mockScheduleUpdate).toHaveBeenCalledWith(scheduledOne.id, {
@@ -1073,7 +1073,7 @@ describe("ScheduleDayViewScreen", () => {
       fireEvent.press(
         await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
       );
-      fireEvent(getByLabelText("Marca del dueño"), "valueChange", true);
+      fireEvent(getByLabelText("Marcado"), "valueChange", true);
 
       await waitFor(() => {
         expect(errorSpy).toHaveBeenCalledWith(

@@ -1347,7 +1347,7 @@ describe("ScheduleFormScreen", () => {
       );
 
       fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
-      fireEvent(getByLabelText("Marca del dueño"), "valueChange", true);
+      fireEvent(getByLabelText("Marcado"), "valueChange", true);
       fireEvent.press(getByLabelText("Guardar turno"));
 
       await waitFor(() => {
@@ -1377,8 +1377,8 @@ describe("ScheduleFormScreen", () => {
         <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
       );
 
-      expect(queryByLabelText("Marca del dueño")).toBeNull();
-      expect(queryByText(/Marca del dueño/)).toBeNull();
+      expect(queryByLabelText("Marcado")).toBeNull();
+      expect(queryByText(/Marcado/)).toBeNull();
     });
 
     it("editar un turno ya marcado por el dueño conserva el valor guardado tras un submit de un operario", async () => {
