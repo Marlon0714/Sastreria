@@ -303,25 +303,22 @@ describe("ScheduleDayViewScreen", () => {
     expect(searchIndex).toBeLessThan(filterIndex);
   });
 
-  it("el chip colapsado no muestra conteo en Arreglos/Confecciones, y sí en Pendientes", () => {
+  it("el chip colapsado muestra siempre el conteo de la opción activa (N-109: un solo número, no un bloque fijo aparte)", () => {
     const { getByText, getByLabelText } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
-    // Por defecto (Arreglo activo) el chip no incluye conteo: ya vive fijo
-    // junto al header de fecha.
-    expect(getByText("✂️ Arreglos")).toBeTruthy();
+    // Por defecto (Arreglo activo), sin nada agendado.
+    expect(getByText("✂️ Arreglos (0)")).toBeTruthy();
 
     fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
     fireEvent.press(getByLabelText("Ver confecciones"));
 
-    expect(getByText("🧵 Confecciones")).toBeTruthy();
+    expect(getByText("🧵 Confecciones (0)")).toBeTruthy();
 
     fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
     fireEvent.press(getByLabelText("Ver turnos pendientes"));
 
-    // "Pendientes" es la única opción que conserva el conteo en el chip: no
-    // tiene otro lugar fijo donde mostrarse.
     expect(getByText(/📋 Pendientes \(\d+\)/)).toBeTruthy();
   });
 
@@ -543,8 +540,9 @@ describe("ScheduleDayViewScreen", () => {
 
     fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
 
-    // Con "Pendientes" activo no existe el bloque fijo (tarea 5/16): estos
-    // 2 conteos solo viven acá, dentro del desplegable.
+    // Con "Pendientes" activo, ninguna de las otras 2 opciones está también
+    // en el chip colapsado: estos 2 conteos solo viven acá, dentro del
+    // desplegable.
     expect(getAllByText("✂️ Arreglos (1)")).toHaveLength(1);
     expect(getAllByText("🧵 Confecciones (1)")).toHaveLength(1);
     // "📋 Pendientes (1)" aparece 2 veces: una en el chip colapsado (siempre
@@ -699,6 +697,14 @@ describe("ScheduleDayViewScreen", () => {
         operarioId: "op-1",
         date: "2026-08-20",
         time: "10:00",
+        // Precio ya saldado (price === abono): este test cubre el refresco
+        // de resultados de búsqueda al entregar, no el aviso de precio
+        // faltante/saldo pendiente (ver deliveryGuard.test.ts y los casos
+        // dedicados en ScheduleQuickActionSheet.test.tsx) — sin esto,
+        // "Marcar entregado" dispararía el Alert de "Precio no registrado"
+        // en vez de llamar directo a markDelivered.
+        price: 100000,
+        abono: 100000,
       };
       mockUseScheduleDayView.mockReturnValue({
         dateSchedules: [],
@@ -847,57 +853,12 @@ describe("ScheduleDayViewScreen", () => {
 
     fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
 
-    // En la vista "Día" ambos números ya son visibles en el bloque fijo
-    // (tarea 5); al abrir el desplegable se repiten en su propia fila —
-    // redundancia visual aceptada (ver Decisiones/Riesgos del plan), por
-    // eso se esperan 2 apariciones de cada uno, no 1.
+    // "Arreglos" es la opción activa por defecto: su conteo aparece 2 veces
+    // (chip colapsado + su fila en el desplegable). "Confecciones" no es la
+    // activa, así que solo aparece 1 vez, dentro del desplegable — ya no
+    // existe el bloque fijo junto al header de fecha que antes la repetía.
     expect(getAllByText("✂️ Arreglos (2)")).toHaveLength(2);
-    expect(getAllByText("🧵 Confecciones (1)")).toHaveLength(2);
-  });
-
-  it("muestra siempre, sin abrir nada, el conteo de Arreglos y Confecciones junto al header de fecha", () => {
-    mockUseScheduleDayView.mockReturnValue({
-      dateSchedules: [
-        scheduledOne,
-        { ...scheduledOne, id: "schedule-4" },
-        confeccionOne,
-      ],
-      pendingSchedules: [],
-      isLoading: false,
-      error: null,
-      reload: jest.fn(async () => Promise.resolve()),
-    });
-
-    const { getByText } = render(
-      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
-    );
-
-    // Sin presionar nada (el desplegable arranca cerrado), ambos conteos ya
-    // son visibles junto a la fecha seleccionada.
-    expect(getByText("✂️ Arreglos (2)")).toBeTruthy();
-    expect(getByText("🧵 Confecciones (1)")).toBeTruthy();
-  });
-
-  it("el bloque fijo de conteo desaparece al elegir 'Ver turnos pendientes'", () => {
-    mockUseScheduleDayView.mockReturnValue({
-      dateSchedules: [scheduledOne, confeccionOne],
-      pendingSchedules: [],
-      isLoading: false,
-      error: null,
-      reload: jest.fn(async () => Promise.resolve()),
-    });
-
-    const { getByLabelText, queryByText } = render(
-      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
-    );
-
-    fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
-    fireEvent.press(getByLabelText("Ver turnos pendientes"));
-
-    // En "Pendientes" no hay concepto de "día": ni el WeekStrip ni el
-    // header de fecha se renderizan, así que tampoco este bloque fijo.
-    expect(queryByText(/✂️ Arreglos \(\d+\)/)).toBeNull();
-    expect(queryByText(/🧵 Confecciones \(\d+\)/)).toBeNull();
+    expect(getAllByText("🧵 Confecciones (1)")).toHaveLength(1);
   });
 
   it("al buscar, muestra todas las coincidencias no entregadas sin importar la fecha", async () => {

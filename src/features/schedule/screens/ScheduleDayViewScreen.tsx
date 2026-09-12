@@ -19,9 +19,11 @@ import { getDefaultScheduleRepository } from "../../../data/local/scheduleDepend
 import type { ScheduleStackParamList } from "../../../navigation/types";
 import {
   ErrorView,
+  FilterChipDropdown,
   LoadingView,
   ScheduleDateTimePickerField,
 } from "../../../shared/components";
+import type { FilterChipDropdownOption } from "../../../shared/components";
 import { normalizeText } from "../../../shared/utils/textSearch";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
@@ -93,7 +95,6 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
   const [activeView, setActiveView] = useState<ActiveView>("dia");
   const [activeCategory, setActiveCategory] =
     useState<ScheduleCategory>("arreglo");
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   // Derivado, no un tercer estado: evita duplicar la fuente de verdad de
   // `activeView`/`activeCategory` (ver Decisiones de Diseño del plan).
   const activeOption: FilterOption =
@@ -186,13 +187,14 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
       });
   }, [isSearchingDia, allSchedules, activeCategory, matchesSearch]);
 
-  // Fuente única de verdad para los 3 conteos del selector de filtro: la
-  // consumen tanto el desplegable (siempre) como el bloque fijo junto al
-  // header de fecha (solo arreglo/confeccion). Usa `searchTerm.trim()`
-  // directo (no `isSearchingDia`) porque el desplegable puede abrirse
-  // estando en "Pendientes" con una búsqueda activa, y el número debe
-  // predecir lo que se vería si se elige "Arreglos"/"Confecciones" (lo que
-  // sí activaría `isSearchingDia`, al cambiar `activeView` a "dia").
+  // Fuente única de verdad para los 3 conteos del selector de filtro:
+  // alimenta tanto el chip colapsado (un solo número, el de la opción
+  // activa) como el desplegable abierto (los 3 a la vez). Usa
+  // `searchTerm.trim()` directo (no `isSearchingDia`) porque el desplegable
+  // puede abrirse estando en "Pendientes" con una búsqueda activa, y el
+  // número debe predecir lo que se vería si se elige "Arreglos"/
+  // "Confecciones" (lo que sí activaría `isSearchingDia`, al cambiar
+  // `activeView` a "dia").
   const filterOptionCounts = useMemo<Record<FilterOption, number>>(() => {
     const hasSearchTerm = searchTerm.trim().length > 0;
     const countForCategory = (category: ScheduleCategory): number => {
@@ -212,6 +214,27 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
       pendientes: pendingSchedules.length,
     };
   }, [searchTerm, allSchedules, allDateSchedules, matchesSearch, pendingSchedules]);
+
+  // Opciones del desplegable compartido: las 3 muestran su propio conteo en
+  // el chip colapsado (N-109 — antes solo "Pendientes" lo mostraba).
+  const filterOptions = useMemo<FilterChipDropdownOption<FilterOption>[]>(
+    () =>
+      FILTER_OPTIONS.map((option) => ({
+        value: option,
+        label: `${FILTER_OPTION_LABELS[option]} (${filterOptionCounts[option]})`,
+        accessibilityLabel: FILTER_OPTION_ACCESSIBILITY_LABELS[option],
+      })),
+    [filterOptionCounts],
+  );
+
+  const handleSelectFilterOption = useCallback((option: FilterOption) => {
+    if (option === "pendientes") {
+      setActiveView("pendientes");
+    } else {
+      setActiveView("dia");
+      setActiveCategory(option);
+    }
+  }, []);
 
   // Necesario para poder buscar coincidencias en fechas distintas a la
   // seleccionada (ver `searchResults`) — la agenda normalmente solo carga
@@ -446,62 +469,14 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
         ) : null}
       </View>
 
-      <View style={styles.filterWrapper}>
-        <Pressable
-          accessibilityLabel="Cambiar filtro de agenda"
-          accessibilityState={{ expanded: isFilterMenuOpen }}
-          style={styles.filterChip}
-          onPress={() => setIsFilterMenuOpen((open) => !open)}
-        >
-          <Text style={styles.filterChipText}>
-            {activeOption === "pendientes"
-              ? `${FILTER_OPTION_LABELS.pendientes} (${filterOptionCounts.pendientes})`
-              : FILTER_OPTION_LABELS[activeOption]}
-          </Text>
-          <Ionicons
-            name={isFilterMenuOpen ? "chevron-up" : "chevron-down"}
-            size={16}
-            color={colors.textMuted}
-          />
-        </Pressable>
-
-        {isFilterMenuOpen ? (
-          <View style={styles.filterMenu}>
-            {FILTER_OPTIONS.map((option) => {
-              const isActive = option === activeOption;
-              return (
-                <Pressable
-                  key={option}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: isActive }}
-                  accessibilityLabel={FILTER_OPTION_ACCESSIBILITY_LABELS[option]}
-                  style={[
-                    styles.filterOption,
-                    isActive && styles.filterOptionActive,
-                  ]}
-                  onPress={() => {
-                    if (option === "pendientes") {
-                      setActiveView("pendientes");
-                    } else {
-                      setActiveView("dia");
-                      setActiveCategory(option);
-                    }
-                    setIsFilterMenuOpen(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.filterOptionText,
-                      isActive && styles.filterOptionTextActive,
-                    ]}
-                  >
-                    {FILTER_OPTION_LABELS[option]} ({filterOptionCounts[option]})
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
+      <View style={styles.filterChipContainer}>
+        <FilterChipDropdown
+          chipLabel={`${FILTER_OPTION_LABELS[activeOption]} (${filterOptionCounts[activeOption]})`}
+          chipAccessibilityLabel="Cambiar filtro de agenda"
+          options={filterOptions}
+          activeValue={activeOption}
+          onSelect={handleSelectFilterOption}
+        />
       </View>
 
       {activeView === "dia" ? (
@@ -542,27 +517,6 @@ export default function ScheduleDayViewScreen({ navigation }: Props) {
               placeholder="Elegir fecha"
               accessibilityLabel="Elegir fecha"
             />
-          </View>
-
-          <View style={styles.dayCategoryCounters}>
-            <Text
-              style={[
-                styles.dayCategoryCounterText,
-                activeCategory === "arreglo" &&
-                  styles.dayCategoryCounterTextActive,
-              ]}
-            >
-              {FILTER_OPTION_LABELS.arreglo} ({filterOptionCounts.arreglo})
-            </Text>
-            <Text
-              style={[
-                styles.dayCategoryCounterText,
-                activeCategory === "confeccion" &&
-                  styles.dayCategoryCounterTextActive,
-              ]}
-            >
-              {FILTER_OPTION_LABELS.confeccion} ({filterOptionCounts.confeccion})
-            </Text>
           </View>
         </>
       ) : null}
@@ -653,66 +607,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  filterWrapper: {
+  filterChipContainer: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 4,
-  },
-  filterChip: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: colors.border,
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  filterMenu: {
-    marginTop: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    overflow: "hidden",
-  },
-  filterOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  filterOptionActive: {
-    backgroundColor: colors.primarySoft,
-  },
-  filterOptionText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.textPrimary,
-  },
-  filterOptionTextActive: {
-    color: colors.primary,
-    fontWeight: "700",
-  },
-  dayCategoryCounters: {
-    flexDirection: "row",
-    gap: 16,
-    paddingHorizontal: 16,
-    paddingTop: 4,
-  },
-  dayCategoryCounterText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textMuted,
-  },
-  dayCategoryCounterTextActive: {
-    color: colors.primary,
-    fontWeight: "700",
   },
   searchWrapper: {
     flexDirection: "row",

@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { FilterChipDropdown } from "./FilterChipDropdown";
+import type { FilterChipDropdownOption } from "./FilterChipDropdown";
 import { ScheduleDateTimePickerField } from "./ScheduleDateTimePickerField";
 import type { PeriodMode } from "../domain/periodRange";
 import { colors } from "../theme/colors";
@@ -23,6 +24,13 @@ const CURRENT_PERIOD_SHORTCUT_LABELS: Record<Exclude<PeriodMode, "rango">, strin
   mes: "Mes actual",
 };
 
+const PERIOD_MODE_FILTER_OPTIONS: FilterChipDropdownOption<PeriodMode>[] =
+  PERIOD_MODE_OPTIONS.map((option) => ({
+    value: option,
+    label: PERIOD_MODE_LABELS[option],
+    accessibilityLabel: `Ver resumen por ${PERIOD_MODE_LABELS[option].toLowerCase()}`,
+  }));
+
 interface PeriodSelectorFieldProps {
   mode: PeriodMode;
   onModeChange: (mode: PeriodMode) => void;
@@ -42,11 +50,10 @@ interface PeriodSelectorFieldProps {
 
 /**
  * Chip colapsado (Día/Semana/Mes/Rango personalizado) + navegación del
- * periodo activo. Mismo mecanismo de `isFilterMenuOpen`/`filterWrapper`/
- * `filterMenu` que `ScheduleDayViewScreen.tsx` (N-101) — sin `Modal`, con
- * `accessibilityRole="radio"` por opción (ver Tarea 14 del plan de N-104).
- * Compartido entre el Dashboard del dueño y "Mis arreglos" del operario
- * (ver plan de N-102).
+ * periodo activo. Usa el mismo componente compartido `FilterChipDropdown`
+ * que `ScheduleDayViewScreen.tsx` (N-101/N-110) — ya no es "el mismo
+ * mecanismo copiado", es literalmente el mismo componente. Compartido entre
+ * el Dashboard del dueño y "Mis arreglos" del operario (ver plan de N-102).
  */
 export function PeriodSelectorField({
   mode,
@@ -64,57 +71,16 @@ export function PeriodSelectorField({
   onCustomRangeEndChange,
   rangeError,
 }: PeriodSelectorFieldProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   return (
     <View style={styles.container}>
-      <View style={styles.filterWrapper}>
-        <Pressable
-          accessibilityLabel="Cambiar periodo del resumen"
-          accessibilityState={{ expanded: isMenuOpen }}
-          style={styles.filterChip}
-          onPress={() => setIsMenuOpen((open) => !open)}
-        >
-          <Text style={styles.filterChipText}>{PERIOD_MODE_LABELS[mode]}</Text>
-          <Ionicons
-            name={isMenuOpen ? "chevron-up" : "chevron-down"}
-            size={16}
-            color={colors.textMuted}
-          />
-        </Pressable>
-
-        {isMenuOpen ? (
-          <View style={styles.filterMenu}>
-            {PERIOD_MODE_OPTIONS.map((option) => {
-              const isActive = option === mode;
-              return (
-                <Pressable
-                  key={option}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: isActive }}
-                  accessibilityLabel={`Ver resumen por ${PERIOD_MODE_LABELS[option].toLowerCase()}`}
-                  style={[
-                    styles.filterOption,
-                    isActive && styles.filterOptionActive,
-                  ]}
-                  onPress={() => {
-                    onModeChange(option);
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.filterOptionText,
-                      isActive && styles.filterOptionTextActive,
-                    ]}
-                  >
-                    {PERIOD_MODE_LABELS[option]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
+      <View style={styles.filterChipContainer}>
+        <FilterChipDropdown
+          chipLabel={PERIOD_MODE_LABELS[mode]}
+          chipAccessibilityLabel="Cambiar periodo del resumen"
+          options={PERIOD_MODE_FILTER_OPTIONS}
+          activeValue={mode}
+          onSelect={onModeChange}
+        />
       </View>
 
       {mode === "rango" ? (
@@ -197,49 +163,8 @@ const styles = StyleSheet.create({
   container: {
     gap: 4,
   },
-  filterWrapper: {
+  filterChipContainer: {
     paddingHorizontal: 16,
-  },
-  filterChip: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: colors.border,
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  filterMenu: {
-    marginTop: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    overflow: "hidden",
-  },
-  filterOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  filterOptionActive: {
-    backgroundColor: colors.primarySoft,
-  },
-  filterOptionText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.textPrimary,
-  },
-  filterOptionTextActive: {
-    color: colors.primary,
-    fontWeight: "700",
   },
   navRow: {
     flexDirection: "row",
