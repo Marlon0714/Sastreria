@@ -93,7 +93,7 @@ describe("filterSchedulesInRange", () => {
 });
 
 describe("countSchedulesByDayOfWeek", () => {
-  it("cuenta turnos no entregados por día, incluyendo un día en 0", () => {
+  it("cuenta todos los turnos por día (incluyendo 'entregado'), con un día en 0", () => {
     const schedulesInWeek = [
       makeSchedule({ id: "s-1", date: "2026-08-10", status: "agendado" }),
       makeSchedule({ id: "s-2", date: "2026-08-10", status: "entregado" }),
@@ -102,8 +102,18 @@ describe("countSchedulesByDayOfWeek", () => {
 
     const result = countSchedulesByDayOfWeek(schedulesInWeek, WEEK_DATES);
 
-    // Lun 10: 1 (s-2 entregado excluido); Mar 11: 0; Mié 12: 1; resto 0.
-    expect(result).toEqual([1, 0, 1, 0, 0, 0, 0]);
+    // Lun 10: 2 (s-1 + s-2, entregado incluido); Mar 11: 0; Mié 12: 1; resto 0.
+    expect(result).toEqual([2, 0, 1, 0, 0, 0, 0]);
+  });
+
+  it("un turno 'entregado' sí se cuenta en el desglose semanal", () => {
+    const schedulesInWeek = [
+      makeSchedule({ id: "s-1", date: "2026-08-11", status: "entregado" }),
+    ];
+
+    const result = countSchedulesByDayOfWeek(schedulesInWeek, WEEK_DATES);
+
+    expect(result).toEqual([0, 1, 0, 0, 0, 0, 0]);
   });
 });
 

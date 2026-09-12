@@ -1,4 +1,3 @@
-import { countPendingSchedulesOnDate } from "../../schedule/domain/scheduleWorkloadCount";
 import type { Schedule, ScheduleStatus } from "../../schedule/domain/types";
 
 /**
@@ -27,9 +26,13 @@ export function filterSchedulesInRange(
 }
 
 /**
- * Carga de trabajo (turnos no entregados) para cada uno de los 7 días de
- * `weekDates`, en el mismo orden — reutiliza `countPendingSchedulesOnDate`
- * (misma noción de "carga de trabajo" que ya usa el formulario de turnos).
+ * Total de turnos agendados (cualquier status, incluido "entregado") para
+ * cada uno de los 7 días de `weekDates`, en el mismo orden — mismo universo
+ * que `computeStatusCounts(...).total` al entrar al detalle de ese día, para
+ * que el desglose semanal coincida con lo que se ve al abrir un día
+ * puntual. No reutiliza `countPendingSchedulesOnDate` (esa función excluye
+ * "entregado" a propósito para el aviso de sobre-agendamiento del
+ * formulario de turnos — una necesidad distinta a esta estadística).
  * Exclusivo del modo "Semana" del selector de periodo (ver Decisión 8 del
  * plan de N-104): un desglose día-por-día no tiene el mismo valor ni cabe
  * visualmente para un mes (hasta 31 columnas) o un rango (hasta 366).
@@ -38,12 +41,9 @@ export function countSchedulesByDayOfWeek(
   schedulesInWeek: readonly Schedule[],
   weekDates: readonly string[],
 ): number[] {
-  return weekDates.map((date) => {
-    const schedulesOnDate = schedulesInWeek.filter(
-      (schedule) => schedule.date === date,
-    );
-    return countPendingSchedulesOnDate(schedulesOnDate, undefined);
-  });
+  return weekDates.map(
+    (date) => schedulesInWeek.filter((schedule) => schedule.date === date).length,
+  );
 }
 
 export interface PeriodStatusCounts {

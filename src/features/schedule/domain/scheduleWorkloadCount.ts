@@ -12,8 +12,11 @@ import type { Schedule, ScheduleCategory } from "./types";
  * `category`, si se pasa, acota el conteo a turnos de esa misma categoría —
  * lo usa el formulario de turnos (ScheduleFormScreen), donde un "arreglo" no
  * debe verse afectado por cuántas "confecciones" hay ese día, y viceversa.
- * Sin `category` (ej. el resumen semanal del dashboard), cuenta la carga de
- * trabajo total del día sin distinguir categoría.
+ * Sin `category`, cuenta la carga de trabajo pendiente total del día sin
+ * distinguir categoría. Único consumidor real hoy: ScheduleFormScreen — el
+ * desglose semanal del dashboard (`countSchedulesByDayOfWeek`, N-116) NO usa
+ * esta función a propósito: necesita el total real del día (incluidos los ya
+ * entregados), no la carga pendiente.
  */
 export function countPendingSchedulesOnDate(
   schedulesOnDate: readonly Schedule[],
