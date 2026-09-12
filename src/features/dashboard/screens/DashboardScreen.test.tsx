@@ -132,10 +132,14 @@ interface FakeParentNavigator {
   navigate: jest.Mock;
 }
 
-function buildProps(parent: FakeParentNavigator | null = null): ScreenProps {
+function buildProps(
+  parent: FakeParentNavigator | null = null,
+  navigate: jest.Mock = jest.fn(),
+): ScreenProps {
   return {
     navigation: {
       getParent: () => parent,
+      navigate,
     } as unknown as ScreenProps["navigation"],
     route: {
       key: "DashboardHome-test",
@@ -363,5 +367,92 @@ describe("DashboardScreen", () => {
     const { getByText } = render(<DashboardScreen {...buildProps(null)} />);
 
     expect(() => fireEvent.press(getByText("Ana Torres"))).not.toThrow();
+  });
+
+  it("al tocar la tarjeta 'Total' navega a ScheduleListByStatus con el bucket y rango del periodo", () => {
+    mockUseDashboardStats.mockReturnValue(buildBaseResult());
+    const navigate = jest.fn();
+
+    const { getByText } = render(
+      <DashboardScreen {...buildProps(null, navigate)} />,
+    );
+
+    fireEvent.press(getByText("Total"));
+
+    expect(navigate).toHaveBeenCalledWith("ScheduleListByStatus", {
+      bucket: "total",
+      cardLabel: "Total",
+      startDate: "2026-08-10",
+      endDate: "2026-08-16",
+    });
+  });
+
+  it("al tocar la tarjeta 'Pendientes' navega con bucket 'pendiente'", () => {
+    mockUseDashboardStats.mockReturnValue(buildBaseResult());
+    const navigate = jest.fn();
+
+    const { getByText } = render(
+      <DashboardScreen {...buildProps(null, navigate)} />,
+    );
+
+    fireEvent.press(getByText("Pendientes"));
+
+    expect(navigate).toHaveBeenCalledWith("ScheduleListByStatus", {
+      bucket: "pendiente",
+      cardLabel: "Pendientes",
+      startDate: "2026-08-10",
+      endDate: "2026-08-16",
+    });
+  });
+
+  it("al tocar 'No realizados esta semana' navega con bucket 'no_realizado' y el cardLabel dinámico", () => {
+    mockUseDashboardStats.mockReturnValue(buildBaseResult({ mode: "semana" }));
+    const navigate = jest.fn();
+
+    const { getByText } = render(
+      <DashboardScreen {...buildProps(null, navigate)} />,
+    );
+
+    fireEvent.press(getByText("No realizados esta semana"));
+
+    expect(navigate).toHaveBeenCalledWith("ScheduleListByStatus", {
+      bucket: "no_realizado",
+      cardLabel: "No realizados esta semana",
+      startDate: "2026-08-10",
+      endDate: "2026-08-16",
+    });
+  });
+
+  it("al tocar 'Sin fecha (global)' navega con bucket 'sin_fecha_global' SIN startDate/endDate", () => {
+    mockUseDashboardStats.mockReturnValue(buildBaseResult());
+    const navigate = jest.fn();
+
+    const { getByText } = render(
+      <DashboardScreen {...buildProps(null, navigate)} />,
+    );
+
+    fireEvent.press(getByText("Sin fecha (global)"));
+
+    expect(navigate).toHaveBeenCalledWith("ScheduleListByStatus", {
+      bucket: "sin_fecha_global",
+      cardLabel: "Sin fecha (global)",
+      startDate: undefined,
+      endDate: undefined,
+    });
+  });
+
+  it("las tarjetas de dinero (Facturación) no navegan al tocarlas", () => {
+    mockUseDashboardStats.mockReturnValue(buildBaseResult());
+    const navigate = jest.fn();
+
+    const { getByText } = render(
+      <DashboardScreen {...buildProps(null, navigate)} />,
+    );
+
+    fireEvent.press(getByText("Valor total de los trabajos"));
+    fireEvent.press(getByText("Total pagado por los clientes"));
+    fireEvent.press(getByText("Falta por cobrar"));
+
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

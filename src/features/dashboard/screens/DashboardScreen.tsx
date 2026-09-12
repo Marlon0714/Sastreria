@@ -16,8 +16,29 @@ import { DashboardStatCard } from "../components/DashboardStatCard";
 import { PeriodSelectorField } from "../components/PeriodSelectorField";
 import { RemindersList } from "../components/RemindersList";
 import { WeeklyWorkloadBreakdown } from "../components/WeeklyWorkloadBreakdown";
+import type { PeriodStatusCounts } from "../domain/periodBreakdown";
+import type { ScheduleListBucket } from "../domain/scheduleListBucket";
 import type { PeriodMode } from "../domain/periodRange";
 import { useDashboardStats } from "../hooks/useDashboardStats";
+
+// Un solo lugar con la etiqueta visible Y el `cardLabel` de navegación de
+// cada tarjeta de estado — evita duplicar el texto (ver Riesgo "Consistencia
+// del título dinámico" del plan). El tipo `keyof PeriodStatusCounts` (en vez
+// de `ScheduleListBucket`) es a propósito: son exactamente las 6 claves que
+// expone `periodStatusCounts`, así el value de cada tarjeta se indexa sin
+// castear ni listar los 6 casos a mano.
+const STATUS_CARD_BUCKETS: { bucket: keyof PeriodStatusCounts; label: string }[] = [
+  { bucket: "total", label: "Total" },
+  { bucket: "pendiente", label: "Pendientes" },
+  { bucket: "agendado", label: "Agendados" },
+  { bucket: "en_proceso", label: "En proceso" },
+  { bucket: "listo_para_entregar", label: "Listos" },
+  { bucket: "entregado", label: "Entregados" },
+];
+
+// Mismo criterio que STATUS_CARD_BUCKETS: un solo lugar con el texto para no
+// duplicarlo entre el label visible y el cardLabel de navegación.
+const GLOBAL_PENDING_LABEL = "Sin fecha (global)";
 
 type Props = NativeStackScreenProps<DashboardStackParamList, "DashboardHome">;
 
@@ -56,6 +77,7 @@ export default function DashboardScreen({ navigation }: Props) {
     setMode,
     anchorDate,
     periodLabel,
+    range,
     rangeError,
     isRangeIncomplete,
     goToPrevious,
@@ -104,6 +126,28 @@ export default function DashboardScreen({ navigation }: Props) {
     parent?.navigate("ScheduleTab", {
       screen: "ScheduleForm",
       params: { scheduleId },
+    });
+  };
+
+  // A diferencia de `handlePressReminder`, esta pantalla vive en el mismo
+  // `DashboardStackNavigator` (no cruza de tab): `navigation.navigate`
+  // directo. `range` puede ser `null` (rango incompleto/inválido) — en ese
+  // caso `startDate`/`endDate` quedan `undefined` y el bucket resuelve a
+  // lista vacía (salvo los buckets globales), igual que ya sucede con las
+  // tarjetas en 0 mientras el rango está incompleto. `dateRange` es
+  // explícito (no siempre `range`) para la tarjeta "Sin fecha (global)":
+  // es un bucket global, no acotado al periodo seleccionado, así que no
+  // debe arrastrar `startDate`/`endDate` del periodo actual por navegación.
+  const handlePressStatCard = (
+    bucket: ScheduleListBucket,
+    cardLabel: string,
+    dateRange: typeof range = range,
+  ): void => {
+    navigation.navigate("ScheduleListByStatus", {
+      bucket,
+      cardLabel,
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
     });
   };
 
@@ -162,30 +206,14 @@ export default function DashboardScreen({ navigation }: Props) {
               {sectionTitles.statusQuestion}
             </Text>
             <View style={styles.statGrid}>
-              <DashboardStatCard
-                label="Total"
-                value={periodStatusCounts.total}
-              />
-              <DashboardStatCard
-                label="Pendientes"
-                value={periodStatusCounts.pendiente}
-              />
-              <DashboardStatCard
-                label="Agendados"
-                value={periodStatusCounts.agendado}
-              />
-              <DashboardStatCard
-                label="En proceso"
-                value={periodStatusCounts.en_proceso}
-              />
-              <DashboardStatCard
-                label="Listos"
-                value={periodStatusCounts.listo_para_entregar}
-              />
-              <DashboardStatCard
-                label="Entregados"
-                value={periodStatusCounts.entregado}
-              />
+              {STATUS_CARD_BUCKETS.map(({ bucket, label }) => (
+                <DashboardStatCard
+                  key={bucket}
+                  label={label}
+                  value={periodStatusCounts[bucket]}
+                  onPress={() => handlePressStatCard(bucket, label)}
+                />
+              ))}
             </View>
           </View>
 
@@ -216,10 +244,16 @@ export default function DashboardScreen({ navigation }: Props) {
                 label={sectionTitles.notRealized}
                 value={notRealizedInPeriod}
                 tone="danger"
+                onPress={() =>
+                  handlePressStatCard("no_realizado", sectionTitles.notRealized)
+                }
               />
               <DashboardStatCard
-                label="Sin fecha (global)"
+                label={GLOBAL_PENDING_LABEL}
                 value={globalPendingCount}
+                onPress={() =>
+                  handlePressStatCard("sin_fecha_global", GLOBAL_PENDING_LABEL, null)
+                }
               />
             </View>
           </View>

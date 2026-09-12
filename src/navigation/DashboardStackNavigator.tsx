@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import MyAccountScreen from "../features/account/screens/MyAccountScreen";
 import DashboardScreen from "../features/dashboard/screens/DashboardScreen";
+import ScheduleListByStatusScreen from "../features/dashboard/screens/ScheduleListByStatusScreen";
 import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { DashboardStackParamList } from "./types";
 
@@ -23,6 +24,11 @@ export default function DashboardStackNavigator() {
         name="MyAccount"
         component={MyAccountScreen}
         options={{ title: "Mi cuenta" }}
+      />
+      <Stack.Screen
+        name="ScheduleListByStatus"
+        component={ScheduleListByStatusScreen}
+        options={({ route }) => ({ title: route.params.cardLabel })}
       />
     </Stack.Navigator>
   );

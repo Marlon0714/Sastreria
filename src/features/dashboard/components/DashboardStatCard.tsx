@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../../../shared/theme/colors";
 
@@ -7,6 +7,12 @@ interface DashboardStatCardProps {
   value: string | number;
   /** Tono opcional del valor (ej. saldo pendiente en rojo). Por defecto neutral. */
   tone?: "default" | "success" | "danger" | "warning";
+  /**
+   * Si viene, la tarjeta se vuelve tocable (navega al detalle del bucket
+   * de turnos detrás del número) — las 3 tarjetas de "Facturación" no lo
+   * reciben y quedan como `View`, igual que antes de esta prop.
+   */
+  onPress?: () => void;
 }
 
 const TONE_COLORS: Record<
@@ -24,17 +30,33 @@ export function DashboardStatCard({
   label,
   value,
   tone = "default",
+  onPress,
 }: DashboardStatCardProps) {
-  return (
-    <View style={styles.card}>
+  const content = (
+    <>
       <Text style={styles.label} numberOfLines={1}>
         {label}
       </Text>
       <Text style={[styles.value, { color: TONE_COLORS[tone] }]}>
         {value}
       </Text>
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        style={styles.card}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Ver detalle de ${label}`}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.card}>{content}</View>;
 }
 
 const styles = StyleSheet.create({

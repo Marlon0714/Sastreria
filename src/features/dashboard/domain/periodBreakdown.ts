@@ -121,29 +121,46 @@ const NOT_REALIZED_STATUSES: readonly ScheduleStatus[] = [
  * terminado. Válido para cualquier periodo (día/semana/mes/rango), no solo
  * semana.
  */
-export function computeNotRealizedInPeriod(
+export function filterNotRealizedInPeriod(
   schedulesInPeriod: readonly Schedule[],
   today: string,
-): number {
+): Schedule[] {
   return schedulesInPeriod.filter(
     (schedule) =>
       schedule.date != null &&
       schedule.date < today &&
       NOT_REALIZED_STATUSES.includes(schedule.status),
-  ).length;
+  );
+}
+
+export function computeNotRealizedInPeriod(
+  schedulesInPeriod: readonly Schedule[],
+  today: string,
+): number {
+  return filterNotRealizedInPeriod(schedulesInPeriod, today).length;
+}
+
+/**
+ * Turnos sin fecha asignada, cualquiera sea su status — mismo universo que
+ * `ScheduleRepository.getWithoutDate()` usa para la pestaña "Pendientes"
+ * de la Agenda, derivado acá en JS sobre `allSchedules` (ya traído
+ * completo por `useDashboardStats`) en vez de una consulta aparte. No
+ * acotado a ningún periodo seleccionado (ver `computeGlobalPendingCount`).
+ */
+export function filterGlobalPending(
+  allSchedules: readonly Schedule[],
+): Schedule[] {
+  return allSchedules.filter((schedule) => schedule.date == null);
 }
 
 /**
  * Contador global (no acotado a ningún periodo seleccionado) de turnos sin
- * fecha asignada, cualquiera sea su status — mismo universo que
- * `ScheduleRepository.getWithoutDate()` usa para la pestaña "Pendientes"
- * de la Agenda, derivado acá en JS sobre `allSchedules` (ya traído
- * completo por `useDashboardStats`) en vez de una consulta aparte. Ver
- * Decisión 3 del plan original (N-099): reemplazo/complemento al contador
- * "pendiente" de `computeStatusCounts`, que estructuralmente siempre da 0.
+ * fecha asignada, cualquiera sea su status. Ver Decisión 3 del plan
+ * original (N-099): reemplazo/complemento al contador "pendiente" de
+ * `computeStatusCounts`, que estructuralmente siempre da 0.
  */
 export function computeGlobalPendingCount(
   allSchedules: readonly Schedule[],
 ): number {
-  return allSchedules.filter((schedule) => schedule.date == null).length;
+  return filterGlobalPending(allSchedules).length;
 }

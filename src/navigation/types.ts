@@ -83,6 +83,30 @@ export type DashboardStackParamList = {
   DashboardHome: undefined;
   /** Perfil del dueño en modo solo lectura (N-106 fase a) — ver `MyAccountScreen`. */
   MyAccount: undefined;
+  /**
+   * Detalle de turnos detrás de una tarjeta tocada en el Dashboard (bucket
+   * de estado/"no realizados"/"sin fecha global") — ver
+   * `dashboard/domain/scheduleListBucket.ts`. `bucket` se declara como
+   * unión literal inline (no se importa `ScheduleListBucket` desde
+   * `dashboard/domain`), mismo criterio ya usado acá para `category` en
+   * `ScheduleStackParamList`/`PricingStackParamList`: mantiene este
+   * archivo desacoplado de las features. `startDate`/`endDate` quedan sin
+   * definir para buckets globales (`"pendiente"`/`"sin_fecha_global"`).
+   */
+  ScheduleListByStatus: {
+    bucket:
+      | "total"
+      | "pendiente"
+      | "agendado"
+      | "en_proceso"
+      | "listo_para_entregar"
+      | "entregado"
+      | "no_realizado"
+      | "sin_fecha_global";
+    cardLabel: string;
+    startDate?: string;
+    endDate?: string;
+  };
 };
 
 export type RootTabParamList = {
