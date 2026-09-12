@@ -3,12 +3,12 @@ import { describe, expect, it } from "@jest/globals";
 import type { Schedule } from "../../schedule/domain/types";
 import {
   computeGlobalPendingCount,
-  computeNotRealizedInWeek,
-  computeWeeklyMoneyTotals,
-  computeWeeklyStatusCounts,
+  computeNotRealizedInPeriod,
+  computePeriodMoneyTotals,
+  computeStatusCounts,
   countSchedulesByDayOfWeek,
-  filterSchedulesInWeek,
-} from "./weeklyBreakdown";
+  filterSchedulesInRange,
+} from "./periodBreakdown";
 
 const WEEK_DATES = [
   "2026-08-10",
@@ -34,27 +34,61 @@ function makeSchedule(overrides: Partial<Schedule> & { id: string }): Schedule {
   };
 }
 
-describe("filterSchedulesInWeek", () => {
-  it("excluye turnos sin date del desglose semanal", () => {
+describe("filterSchedulesInRange", () => {
+  it("excluye turnos sin date del recorte", () => {
     const schedules = [
       makeSchedule({ id: "s-1", date: "2026-08-10" }),
       makeSchedule({ id: "s-2", date: undefined }),
     ];
 
-    const result = filterSchedulesInWeek(schedules, WEEK_DATES);
+    const result = filterSchedulesInRange(schedules, "2026-08-10", "2026-08-16");
 
     expect(result.map((s) => s.id)).toEqual(["s-1"]);
   });
 
-  it("excluye turnos con date fuera de la semana", () => {
+  it("excluye turnos con date fuera del rango", () => {
     const schedules = [
       makeSchedule({ id: "s-1", date: "2026-08-10" }),
       makeSchedule({ id: "s-2", date: "2026-08-20" }),
     ];
 
-    const result = filterSchedulesInWeek(schedules, WEEK_DATES);
+    const result = filterSchedulesInRange(schedules, "2026-08-10", "2026-08-16");
 
     expect(result.map((s) => s.id)).toEqual(["s-1"]);
+  });
+
+  it("incluye turnos con date igual a los extremos del rango (inclusivo)", () => {
+    const schedules = [
+      makeSchedule({ id: "s-1", date: "2026-08-10" }),
+      makeSchedule({ id: "s-2", date: "2026-08-16" }),
+    ];
+
+    const result = filterSchedulesInRange(schedules, "2026-08-10", "2026-08-16");
+
+    expect(result.map((s) => s.id)).toEqual(["s-1", "s-2"]);
+  });
+
+  it("funciona con un rango de un solo día", () => {
+    const schedules = [
+      makeSchedule({ id: "s-1", date: "2026-08-10" }),
+      makeSchedule({ id: "s-2", date: "2026-08-11" }),
+    ];
+
+    const result = filterSchedulesInRange(schedules, "2026-08-10", "2026-08-10");
+
+    expect(result.map((s) => s.id)).toEqual(["s-1"]);
+  });
+
+  it("funciona con un rango que cruza meses", () => {
+    const schedules = [
+      makeSchedule({ id: "s-1", date: "2026-08-30" }),
+      makeSchedule({ id: "s-2", date: "2026-09-02" }),
+      makeSchedule({ id: "s-3", date: "2026-09-10" }),
+    ];
+
+    const result = filterSchedulesInRange(schedules, "2026-08-25", "2026-09-05");
+
+    expect(result.map((s) => s.id)).toEqual(["s-1", "s-2"]);
   });
 });
 
@@ -73,9 +107,9 @@ describe("countSchedulesByDayOfWeek", () => {
   });
 });
 
-describe("computeWeeklyStatusCounts", () => {
+describe("computeStatusCounts", () => {
   it("cuenta total y los 5 status; 'pendiente' siempre 0 (turnos con date nunca son 'pendiente')", () => {
-    const schedulesInWeek = [
+    const schedulesInPeriod = [
       makeSchedule({ id: "s-1", date: "2026-08-10", status: "agendado" }),
       makeSchedule({ id: "s-2", date: "2026-08-11", status: "en_proceso" }),
       makeSchedule({
@@ -86,7 +120,7 @@ describe("computeWeeklyStatusCounts", () => {
       makeSchedule({ id: "s-4", date: "2026-08-13", status: "entregado" }),
     ];
 
-    const result = computeWeeklyStatusCounts(schedulesInWeek);
+    const result = computeStatusCounts(schedulesInPeriod);
 
     expect(result).toEqual({
       total: 4,
@@ -99,15 +133,15 @@ describe("computeWeeklyStatusCounts", () => {
   });
 });
 
-describe("computeWeeklyMoneyTotals", () => {
+describe("computePeriodMoneyTotals", () => {
   it("suma price/abono con datos mixtos o ausentes", () => {
-    const schedulesInWeek = [
+    const schedulesInPeriod = [
       makeSchedule({ id: "s-1", price: 10000, abono: 5000 }),
       makeSchedule({ id: "s-2", price: 20000 }), // sin abono
       makeSchedule({ id: "s-3" }), // sin price ni abono
     ];
 
-    const result = computeWeeklyMoneyTotals(schedulesInWeek);
+    const result = computePeriodMoneyTotals(schedulesInPeriod);
 
     expect(result).toEqual({
       totalPrice: 30000,
@@ -117,34 +151,34 @@ describe("computeWeeklyMoneyTotals", () => {
   });
 });
 
-describe("computeNotRealizedInWeek", () => {
+describe("computeNotRealizedInPeriod", () => {
   it("cuenta solo turnos con date < today y status pendiente/agendado", () => {
-    const schedulesInWeek = [
+    const schedulesInPeriod = [
       makeSchedule({ id: "s-1", date: "2026-08-10", status: "agendado" }),
       makeSchedule({ id: "s-2", date: "2026-08-10", status: "en_proceso" }),
     ];
 
-    const result = computeNotRealizedInWeek(schedulesInWeek, "2026-08-15");
+    const result = computeNotRealizedInPeriod(schedulesInPeriod, "2026-08-15");
 
     expect(result).toBe(1);
   });
 
   it("date === today con status agendado NO cuenta como no realizado", () => {
-    const schedulesInWeek = [
+    const schedulesInPeriod = [
       makeSchedule({ id: "s-1", date: "2026-08-15", status: "agendado" }),
     ];
 
-    const result = computeNotRealizedInWeek(schedulesInWeek, "2026-08-15");
+    const result = computeNotRealizedInPeriod(schedulesInPeriod, "2026-08-15");
 
     expect(result).toBe(0);
   });
 
   it("date en el futuro nunca cuenta como no realizado", () => {
-    const schedulesInWeek = [
+    const schedulesInPeriod = [
       makeSchedule({ id: "s-1", date: "2026-08-20", status: "agendado" }),
     ];
 
-    const result = computeNotRealizedInWeek(schedulesInWeek, "2026-08-15");
+    const result = computeNotRealizedInPeriod(schedulesInPeriod, "2026-08-15");
 
     expect(result).toBe(0);
   });

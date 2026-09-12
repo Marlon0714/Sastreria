@@ -3,20 +3,32 @@ import { fireEvent, render } from "@testing-library/react-native";
 import type React from "react";
 
 import type { ReminderItem } from "../domain/overdueSchedules";
+import type { PeriodMode } from "../domain/periodRange";
 import type { Schedule } from "../../schedule/domain/types";
 import DashboardScreen from "./DashboardScreen";
 
 interface UseDashboardStatsResult {
-  selectedDate: string;
-  weekDates: string[];
-  selectDate: (date: string) => void;
-  goToPreviousWeek: () => void;
-  goToNextWeek: () => void;
+  mode: PeriodMode;
+  setMode: (mode: PeriodMode) => void;
+  anchorDate: string;
+  periodLabel: string;
+  range: { startDate: string; endDate: string } | null;
+  rangeError: string | null;
+  isRangeIncomplete: boolean;
+  goToPrevious: () => void;
+  goToNext: () => void;
+  goToCurrentPeriod: () => void;
+  canGoToCurrentPeriod: boolean;
+  jumpToDate: (date: string) => void;
+  customRangeStart: string | undefined;
+  customRangeEnd: string | undefined;
+  setCustomRangeStart: (date: string | undefined) => void;
+  setCustomRangeEnd: (date: string | undefined) => void;
   isLoading: boolean;
   error: string | null;
   reload: () => Promise<void>;
   dailyWorkload: number[];
-  weeklyStatusCounts: {
+  periodStatusCounts: {
     total: number;
     pendiente: number;
     agendado: number;
@@ -24,12 +36,12 @@ interface UseDashboardStatsResult {
     listo_para_entregar: number;
     entregado: number;
   };
-  weeklyMoneyTotals: {
+  periodMoneyTotals: {
     totalPrice: number;
     totalAbono: number;
     totalSaldoPendiente: number;
   };
-  notRealizedInWeek: number;
+  notRealizedInPeriod: number;
   globalPendingCount: number;
   overdueCount: number;
   upcomingCount: number;
@@ -68,30 +80,31 @@ function makeSchedule(overrides: Partial<Schedule> & { id: string }): Schedule {
   };
 }
 
-const WEEK_DATES = [
-  "2026-08-10",
-  "2026-08-11",
-  "2026-08-12",
-  "2026-08-13",
-  "2026-08-14",
-  "2026-08-15",
-  "2026-08-16",
-];
-
 function buildBaseResult(
   overrides: Partial<UseDashboardStatsResult> = {},
 ): UseDashboardStatsResult {
   return {
-    selectedDate: "2026-08-15",
-    weekDates: WEEK_DATES,
-    selectDate: jest.fn(),
-    goToPreviousWeek: jest.fn(),
-    goToNextWeek: jest.fn(),
+    mode: "semana",
+    setMode: jest.fn(),
+    anchorDate: "2026-08-15",
+    periodLabel: "Semana del 10 ago al 16 ago",
+    range: { startDate: "2026-08-10", endDate: "2026-08-16" },
+    rangeError: null,
+    isRangeIncomplete: false,
+    goToPrevious: jest.fn(),
+    goToNext: jest.fn(),
+    goToCurrentPeriod: jest.fn(),
+    canGoToCurrentPeriod: false,
+    jumpToDate: jest.fn(),
+    customRangeStart: undefined,
+    customRangeEnd: undefined,
+    setCustomRangeStart: jest.fn(),
+    setCustomRangeEnd: jest.fn(),
     isLoading: false,
     error: null,
     reload: jest.fn<() => Promise<void>>().mockResolvedValue(),
     dailyWorkload: [0, 0, 0, 0, 0, 0, 0],
-    weeklyStatusCounts: {
+    periodStatusCounts: {
       total: 0,
       pendiente: 0,
       agendado: 0,
@@ -99,12 +112,12 @@ function buildBaseResult(
       listo_para_entregar: 0,
       entregado: 0,
     },
-    weeklyMoneyTotals: {
+    periodMoneyTotals: {
       totalPrice: 0,
       totalAbono: 0,
       totalSaldoPendiente: 0,
     },
-    notRealizedInWeek: 0,
+    notRealizedInPeriod: 0,
     globalPendingCount: 0,
     overdueCount: 0,
     upcomingCount: 0,
@@ -166,7 +179,7 @@ describe("DashboardScreen", () => {
   it("muestra los datos cargados", () => {
     mockUseDashboardStats.mockReturnValue(
       buildBaseResult({
-        weeklyStatusCounts: {
+        periodStatusCounts: {
           total: 5,
           pendiente: 0,
           agendado: 2,
@@ -181,6 +194,135 @@ describe("DashboardScreen", () => {
 
     expect(getByText("¿Cómo van los turnos de esta semana?")).toBeTruthy();
     expect(getByText("5")).toBeTruthy();
+  });
+
+  it("modo 'dia': usa los títulos de sección dependientes del modo", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({ mode: "dia", range: { startDate: "2026-08-15", endDate: "2026-08-15" } }),
+    );
+
+    const { getByText } = render(<DashboardScreen {...buildProps()} />);
+
+    expect(getByText("¿Cómo van los turnos de este día?")).toBeTruthy();
+    expect(getByText("Facturación del día")).toBeTruthy();
+    expect(getByText("No realizados este día")).toBeTruthy();
+  });
+
+  it("modo 'mes': usa los títulos de sección dependientes del modo", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({
+        mode: "mes",
+        range: { startDate: "2026-08-01", endDate: "2026-08-31" },
+      }),
+    );
+
+    const { getByText } = render(<DashboardScreen {...buildProps()} />);
+
+    expect(getByText("¿Cómo van los turnos de este mes?")).toBeTruthy();
+    expect(getByText("Facturación del mes")).toBeTruthy();
+    expect(getByText("No realizados este mes")).toBeTruthy();
+  });
+
+  it("WeeklyWorkloadBreakdown solo se muestra en modo 'semana'", () => {
+    mockUseDashboardStats.mockReturnValue(buildBaseResult({ mode: "semana" }));
+    const { getByText, rerender } = render(<DashboardScreen {...buildProps()} />);
+    expect(getByText("Turnos agendados por día")).toBeTruthy();
+
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({
+        mode: "dia",
+        range: { startDate: "2026-08-15", endDate: "2026-08-15" },
+      }),
+    );
+    rerender(<DashboardScreen {...buildProps()} />);
+    expect(() => getByText("Turnos agendados por día")).toThrow();
+  });
+
+  it("WeeklyWorkloadBreakdown ausente en modo 'mes'", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({
+        mode: "mes",
+        range: { startDate: "2026-08-01", endDate: "2026-08-31" },
+      }),
+    );
+
+    const { queryByText } = render(<DashboardScreen {...buildProps()} />);
+
+    expect(queryByText("Turnos agendados por día")).toBeNull();
+  });
+
+  it("WeeklyWorkloadBreakdown ausente en modo 'rango'", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({
+        mode: "rango",
+        range: { startDate: "2026-08-01", endDate: "2026-08-15" },
+      }),
+    );
+
+    const { queryByText } = render(<DashboardScreen {...buildProps()} />);
+
+    expect(queryByText("Turnos agendados por día")).toBeNull();
+  });
+
+  it("modo 'rango' incompleto: muestra el estado vacío en vez de las tarjetas", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({
+        mode: "rango",
+        range: null,
+        isRangeIncomplete: true,
+      }),
+    );
+
+    const { getByText, queryByText } = render(
+      <DashboardScreen {...buildProps()} />,
+    );
+
+    expect(
+      getByText("Elige fecha de inicio y fin para ver el resumen."),
+    ).toBeTruthy();
+    expect(queryByText("¿Cómo van los turnos de este rango?")).toBeNull();
+  });
+
+  it("modo 'rango' inválido (fechas elegidas pero fin antes que inicio): muestra el mensaje de corregir, no el de elegir fecha ni tarjetas en cero", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({
+        mode: "rango",
+        range: null,
+        isRangeIncomplete: true,
+        rangeError: "La fecha final no puede ser anterior a la inicial.",
+      }),
+    );
+
+    const { getByText, queryByText } = render(
+      <DashboardScreen {...buildProps()} />,
+    );
+
+    expect(
+      getByText("Corrige el rango de fechas para ver el resumen."),
+    ).toBeTruthy();
+    expect(
+      queryByText("Elige fecha de inicio y fin para ver el resumen."),
+    ).toBeNull();
+    expect(queryByText("¿Cómo van los turnos de este rango?")).toBeNull();
+  });
+
+  it("modo 'rango' completo: muestra las tarjetas con los títulos de rango", () => {
+    mockUseDashboardStats.mockReturnValue(
+      buildBaseResult({
+        mode: "rango",
+        range: { startDate: "2026-08-01", endDate: "2026-08-15" },
+        isRangeIncomplete: false,
+      }),
+    );
+
+    const { getByText, queryByText } = render(
+      <DashboardScreen {...buildProps()} />,
+    );
+
+    expect(getByText("¿Cómo van los turnos de este rango?")).toBeTruthy();
+    expect(
+      queryByText("Elige fecha de inicio y fin para ver el resumen."),
+    ).toBeNull();
   });
 
   it("al tocar un recordatorio navega cruzando de tab a ScheduleForm con el scheduleId", () => {

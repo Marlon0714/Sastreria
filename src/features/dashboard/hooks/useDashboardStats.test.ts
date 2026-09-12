@@ -58,7 +58,16 @@ describe("useDashboardStats", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("navegar de semana NO dispara un nuevo getAll()", async () => {
+  it("arranca en modo 'semana' (Decisión ya confirmada: sin cambios en el arranque)", async () => {
+    mockGetAll.mockResolvedValue([]);
+
+    const { result } = renderHook(() => useDashboardStats());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.mode).toBe("semana");
+  });
+
+  it("navegar de periodo NO dispara un nuevo getAll()", async () => {
     mockGetAll.mockResolvedValue([]);
 
     const { result } = renderHook(() => useDashboardStats());
@@ -66,14 +75,14 @@ describe("useDashboardStats", () => {
 
     mockGetAll.mockClear();
     act(() => {
-      result.current.goToNextWeek();
+      result.current.goToNext();
     });
 
     expect(mockGetAll).not.toHaveBeenCalled();
   });
 
-  it("recordatorios y vencidos/por vencer NO cambian al navegar de semana (son globales)", async () => {
-    // Turno vencido agendado en una semana muy anterior a la seleccionada:
+  it("recordatorios y vencidos/por vencer NO cambian al navegar de periodo (son globales)", async () => {
+    // Turno vencido agendado en un periodo muy anterior al seleccionado:
     // su `readyAt` (backlog global) es independiente de su `date`.
     mockGetAll.mockResolvedValue([
       makeSchedule({
@@ -92,7 +101,10 @@ describe("useDashboardStats", () => {
     expect(result.current.reminders).toHaveLength(1);
 
     act(() => {
-      result.current.goToNextWeek();
+      result.current.setMode("mes");
+    });
+    act(() => {
+      result.current.goToNext();
     });
 
     expect(result.current.overdueCount).toBe(1);
@@ -110,13 +122,111 @@ describe("useDashboardStats", () => {
     const { result } = renderHook(() => useDashboardStats());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.notRealizedInWeek).toBe(1);
+    expect(result.current.notRealizedInPeriod).toBe(1);
 
     act(() => {
-      result.current.goToNextWeek();
+      result.current.goToNext();
     });
 
-    expect(result.current.notRealizedInWeek).toBe(0);
+    expect(result.current.notRealizedInPeriod).toBe(0);
+  });
+
+  it("modo 'dia': agrega solo los turnos de ese día exacto", async () => {
+    mockGetAll.mockResolvedValue([
+      makeSchedule({ id: "s-1", date: "2026-08-15", status: "agendado" }),
+      makeSchedule({ id: "s-2", date: "2026-08-16", status: "agendado" }),
+    ]);
+
+    const { result } = renderHook(() => useDashboardStats());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.setMode("dia");
+    });
+
+    expect(result.current.periodStatusCounts.total).toBe(1);
+  });
+
+  it("modo 'mes': agrega todos los turnos del mes que contiene el ancla", async () => {
+    mockGetAll.mockResolvedValue([
+      makeSchedule({ id: "s-1", date: "2026-08-01", status: "agendado" }),
+      makeSchedule({ id: "s-2", date: "2026-08-31", status: "agendado" }),
+      makeSchedule({ id: "s-3", date: "2026-09-01", status: "agendado" }),
+    ]);
+
+    const { result } = renderHook(() => useDashboardStats());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.setMode("mes");
+    });
+
+    expect(result.current.periodStatusCounts.total).toBe(2);
+  });
+
+  it("modo 'rango' completo: agrega los turnos dentro del rango elegido", async () => {
+    mockGetAll.mockResolvedValue([
+      makeSchedule({ id: "s-1", date: "2026-08-10", status: "agendado" }),
+      makeSchedule({ id: "s-2", date: "2026-08-25", status: "agendado" }),
+    ]);
+
+    const { result } = renderHook(() => useDashboardStats());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.setMode("rango");
+    });
+    act(() => {
+      result.current.setCustomRangeStart("2026-08-01");
+      result.current.setCustomRangeEnd("2026-08-15");
+    });
+
+    expect(result.current.periodStatusCounts.total).toBe(1);
+    expect(result.current.isRangeIncomplete).toBe(false);
+  });
+
+  it("modo 'rango' incompleto: no recalcula agregados, expone isRangeIncomplete", async () => {
+    mockGetAll.mockResolvedValue([
+      makeSchedule({ id: "s-1", date: "2026-08-10", status: "agendado" }),
+    ]);
+
+    const { result } = renderHook(() => useDashboardStats());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.setMode("rango");
+    });
+
+    expect(result.current.range).toBeNull();
+    expect(result.current.isRangeIncomplete).toBe(true);
+    expect(result.current.periodStatusCounts.total).toBe(0);
+    expect(result.current.periodMoneyTotals.totalPrice).toBe(0);
+  });
+
+  it("dailyWorkload es [] fuera del modo 'semana'", async () => {
+    mockGetAll.mockResolvedValue([
+      makeSchedule({ id: "s-1", date: "2026-08-15", status: "agendado" }),
+    ]);
+
+    const { result } = renderHook(() => useDashboardStats());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.dailyWorkload).toHaveLength(7);
+
+    act(() => {
+      result.current.setMode("dia");
+    });
+    expect(result.current.dailyWorkload).toEqual([]);
+
+    act(() => {
+      result.current.setMode("mes");
+    });
+    expect(result.current.dailyWorkload).toEqual([]);
+
+    act(() => {
+      result.current.setMode("rango");
+    });
+    expect(result.current.dailyWorkload).toEqual([]);
   });
 
   it("marca error si falla la carga", async () => {

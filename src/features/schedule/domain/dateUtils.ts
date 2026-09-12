@@ -62,3 +62,80 @@ export function formatWeekdayAndMonth(dateString: string): string {
   const monthName = date.toLocaleDateString("es-CO", { month: "long" });
   return `${weekdayCapitalized} ${date.getDate()} de ${monthName}`;
 }
+
+export interface DateRange {
+  startDate: string;
+  endDate: string;
+}
+
+const SHORT_MONTH_LABELS = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sep",
+  "oct",
+  "nov",
+  "dic",
+];
+
+/**
+ * Primer y último día del mes que contiene `dateString`. El último día se
+ * calcula con "día 0 del mes siguiente" (truco estándar de `Date`, ya
+ * usado implícitamente en JS para restar un día) para no tener que
+ * hardcodear la duración de cada mes ni lidiar con años bisiestos a mano.
+ */
+export function getMonthRange(dateString: string): DateRange {
+  const [year, month] = dateString.split("-").map(Number);
+  const safeYear = year ?? 1970;
+  const safeMonthIndex = (month ?? 1) - 1;
+  return {
+    startDate: formatDateString(new Date(safeYear, safeMonthIndex, 1)),
+    endDate: formatDateString(new Date(safeYear, safeMonthIndex + 1, 0)),
+  };
+}
+
+/**
+ * Desplaza `dateString` `deltaMonths` meses, normalizando SIEMPRE al día 1
+ * del mes resultante — evita el bug clásico de sumar meses sobre un día que
+ * no existe en el mes destino (ej. "31 de enero" + 1 mes no debe caer en
+ * marzo por el desborde de `Date` al no tener 31 de febrero).
+ */
+export function shiftMonthDateString(
+  dateString: string,
+  deltaMonths: number,
+): string {
+  const [year, month] = dateString.split("-").map(Number);
+  const safeYear = year ?? 1970;
+  const safeMonthIndex = (month ?? 1) - 1;
+  return formatDateString(new Date(safeYear, safeMonthIndex + deltaMonths, 1));
+}
+
+/**
+ * Ej. "Septiembre 2026" — mes completo capitalizado + año, para el modo
+ * "Mes" del selector de periodo del dashboard.
+ */
+export function formatMonthForDisplay(dateString: string): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+  const monthName = date.toLocaleDateString("es-CO", { month: "long" });
+  const monthCapitalized = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+  return `${monthCapitalized} ${date.getFullYear()}`;
+}
+
+/**
+ * Ej. "8 sep" — día + mes abreviado SIN año, para textos compactos que
+ * concatenan dos fechas (ej. "Semana del 8 sep al 14 sep"). Se usa una
+ * tabla propia de abreviaturas (en vez de `toLocaleDateString` con
+ * `month: "short"`) porque `Intl` en es-CO devuelve abreviaturas con punto
+ * (ej. "sept.", "may.") que no calzan con el formato compacto buscado.
+ */
+export function formatShortDate(dateString: string): string {
+  const [, month, day] = dateString.split("-").map(Number);
+  const monthLabel = SHORT_MONTH_LABELS[(month ?? 1) - 1] ?? "";
+  return `${day ?? 1} ${monthLabel}`;
+}

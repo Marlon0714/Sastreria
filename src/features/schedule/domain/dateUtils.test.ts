@@ -3,10 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import {
   formatDateForDisplay,
   formatDateString,
+  formatMonthForDisplay,
+  formatShortDate,
   formatWeekdayAndMonth,
+  getMonthRange,
   getWeekDates,
   localDateFromIso,
   shiftDateString,
+  shiftMonthDateString,
   todayDateString,
 } from "./dateUtils";
 
@@ -127,6 +131,78 @@ describe("dateUtils", () => {
     it("no incluye el año", () => {
       const result = formatWeekdayAndMonth("2026-08-20");
       expect(result).not.toContain("2026");
+    });
+  });
+
+  describe("getMonthRange", () => {
+    it("retorna el primer y último día de un mes de 31 días", () => {
+      expect(getMonthRange("2026-08-15")).toEqual({
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      });
+    });
+
+    it("retorna el primer y último día de un mes de 30 días", () => {
+      expect(getMonthRange("2026-09-15")).toEqual({
+        startDate: "2026-09-01",
+        endDate: "2026-09-30",
+      });
+    });
+
+    it("retorna el primer y último día de febrero en año bisiesto", () => {
+      expect(getMonthRange("2028-02-10")).toEqual({
+        startDate: "2028-02-01",
+        endDate: "2028-02-29",
+      });
+    });
+
+    it("retorna el primer y último día de febrero en año no bisiesto", () => {
+      expect(getMonthRange("2026-02-10")).toEqual({
+        startDate: "2026-02-01",
+        endDate: "2026-02-28",
+      });
+    });
+  });
+
+  describe("shiftMonthDateString", () => {
+    it("suma un mes dentro del mismo año, normalizando al día 1", () => {
+      expect(shiftMonthDateString("2026-08-15", 1)).toBe("2026-09-01");
+    });
+
+    it("resta un mes cruzando a un año anterior", () => {
+      expect(shiftMonthDateString("2026-01-10", -1)).toBe("2025-12-01");
+    });
+
+    it("suma un mes cruzando a un año siguiente", () => {
+      expect(shiftMonthDateString("2026-12-05", 1)).toBe("2027-01-01");
+    });
+
+    it("no se desborda al sumar un mes desde el día 31 de enero", () => {
+      expect(shiftMonthDateString("2026-01-31", 1)).toBe("2026-02-01");
+    });
+  });
+
+  describe("formatMonthForDisplay", () => {
+    it("formatea mes capitalizado y año", () => {
+      expect(formatMonthForDisplay("2026-09-01")).toBe("Septiembre 2026");
+    });
+
+    it("formatea correctamente otro mes/año", () => {
+      expect(formatMonthForDisplay("2027-01-15")).toBe("Enero 2027");
+    });
+  });
+
+  describe("formatShortDate", () => {
+    it("formatea día y mes abreviado sin año", () => {
+      expect(formatShortDate("2026-09-08")).toBe("8 sep");
+    });
+
+    it("no antepone cero al día cuando es de un solo dígito", () => {
+      expect(formatShortDate("2026-01-05")).toBe("5 ene");
+    });
+
+    it("no incluye el año", () => {
+      expect(formatShortDate("2026-09-08")).not.toContain("2026");
     });
   });
 });
