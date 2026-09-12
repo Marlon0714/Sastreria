@@ -385,6 +385,116 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
+  it("activar 'Pagado en su totalidad' sincroniza el abono con el precio y deshabilita el input de abono", () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
+    fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", true);
+
+    const abonoInput = getByPlaceholderText("Ej: 5000");
+    expect(abonoInput.props.value).toBe("100000");
+    expect(abonoInput.props.editable).toBe(false);
+  });
+
+  it("cambiar el precio con el switch activo mantiene el abono igual al precio (no lo desmarca)", () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
+    fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", true);
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "150000");
+
+    expect(getByLabelText("Pagado en su totalidad").props.value).toBe(true);
+    expect(getByPlaceholderText("Ej: 5000").props.value).toBe("150000");
+  });
+
+  it("desactivar el switch vuelve a habilitar el input de abono conservando el último valor", () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
+    fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", true);
+    fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", false);
+
+    const abonoInput = getByPlaceholderText("Ej: 5000");
+    expect(abonoInput.props.editable).toBe(true);
+    expect(abonoInput.props.value).toBe("100000");
+  });
+
+  it("abrir un turno con price === abono ya guardado muestra el switch activado de entrada", () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: { ...schedule, price: 100000, abono: 100000 },
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+    );
+
+    expect(getByLabelText("Pagado en su totalidad").props.value).toBe(true);
+    expect(getByPlaceholderText("Ej: 5000").props.editable).toBe(false);
+  });
+
+  it("borrar el precio con el switch activo lo desmarca y limpia el abono", () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const {
+      getByPlaceholderText,
+      getByLabelText,
+      queryByPlaceholderText,
+      queryByLabelText,
+    } = render(<ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />);
+
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
+    fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", true);
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "");
+
+    expect(queryByPlaceholderText("Ej: 5000")).toBeNull();
+    expect(queryByLabelText("Pagado en su totalidad")).toBeNull();
+  });
+
   it("preselecciona la categoría del segmento activo y permite cambiarla antes de guardar", async () => {
     const submit = jest.fn(async () => Promise.resolve(schedule));
     mockUseScheduleForm.mockReturnValue({
@@ -954,6 +1064,107 @@ describe("ScheduleFormScreen", () => {
 
       expect(await findByText("Estado: Entregado")).toBeTruthy();
       expect(markDelivered).toHaveBeenCalledTimes(1);
+    });
+
+    it("al marcar entregado sin precio, avisa sin ofrecer un botón de 'Completar precio' (el campo ya está en esta pantalla) y continúa al elegir 'Entregar sin precio'", async () => {
+      let capturedButtons:
+        | { text?: string; onPress?: () => void }[]
+        | undefined;
+      jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
+        capturedButtons = buttons;
+      });
+      mockUseScheduleForm.mockReturnValue({
+        schedule: {
+          ...schedule,
+          status: "listo_para_entregar",
+          operarioId: "op-1",
+          price: undefined,
+          abono: undefined,
+        },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const markDelivered = jest.fn(async () =>
+        Promise.resolve({ ...schedule, status: "entregado" as const }),
+      );
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: false,
+        error: null,
+        markReady: jest.fn(async () => Promise.resolve(null)),
+        markDelivered,
+        applyCorrection: jest.fn(async () => Promise.resolve(null)),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Precio no registrado",
+        expect.any(String),
+        expect.anything(),
+      );
+      expect(
+        capturedButtons?.find((b) => b.text === "Completar precio"),
+      ).toBeUndefined();
+      expect(markDelivered).not.toHaveBeenCalled();
+
+      capturedButtons?.find((b) => b.text === "Entregar sin precio")?.onPress?.();
+
+      expect(markDelivered).toHaveBeenCalledTimes(1);
+    });
+
+    it("con precio en 0, avisa 'Precio no registrado' y, tras elegir 'Entregar sin precio', no hay saldo que confirmar (0 no deja saldo)", async () => {
+      let capturedButtons:
+        | { text?: string; onPress?: () => void }[]
+        | undefined;
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation((_title, _msg, buttons) => {
+          capturedButtons = buttons;
+        });
+      mockUseScheduleForm.mockReturnValue({
+        schedule: {
+          ...schedule,
+          status: "listo_para_entregar",
+          operarioId: "op-1",
+          price: 0,
+          abono: 0,
+        },
+        isLoading: false,
+        isSubmitting: false,
+        error: null,
+        submit: jest.fn(async () => Promise.resolve(schedule)),
+        syncScheduleSnapshot: jest.fn(),
+      });
+      const markDelivered = jest.fn(async () =>
+        Promise.resolve({ ...schedule, status: "entregado" as const }),
+      );
+      mockUseScheduleStatusActions.mockReturnValue({
+        isProcessing: false,
+        error: null,
+        markReady: jest.fn(async () => Promise.resolve(null)),
+        markDelivered,
+        applyCorrection: jest.fn(async () => Promise.resolve(null)),
+      });
+
+      const { getByLabelText } = render(
+        <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+
+      capturedButtons?.find((b) => b.text === "Entregar sin precio")?.onPress?.();
+
+      expect(markDelivered).toHaveBeenCalledTimes(1);
+      // Un solo Alert (el de precio) — el saldo con price=0 es 0, no se
+      // encadena un segundo aviso de "Saldo pendiente".
+      expect(alertSpy).toHaveBeenCalledTimes(1);
     });
 
     it("corrección manual pide confirmación antes de aplicar el nuevo estado", async () => {

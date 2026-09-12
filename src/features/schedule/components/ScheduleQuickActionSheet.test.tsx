@@ -183,7 +183,11 @@ describe("ScheduleQuickActionSheet", () => {
     const { getByLabelText } = render(
       <ScheduleQuickActionSheet
         visible
-        schedule={baseSchedule}
+        // Precio ya cargado y saldado (price === abono): sin esto, "Marcar
+        // entregado" dispara el aviso de "Precio no registrado" en vez de
+        // llamar directo al callback, que es justo lo que este test verifica
+        // para cada botón (ver casos dedicados de missingPrice/saldo más abajo).
+        schedule={{ ...baseSchedule, price: 100000, abono: 100000 }}
         clientLabel="Ana Torres"
         isProcessing={false}
         error={null}
@@ -302,6 +306,89 @@ describe("ScheduleQuickActionSheet", () => {
 
     expect(alertSpy).not.toHaveBeenCalled();
     expect(onMarkDelivered).toHaveBeenCalledTimes(1);
+  });
+
+  it("al marcar entregado sin precio, avisa 'Precio no registrado' y 'Completar precio' navega al turno completo", () => {
+    let capturedButtons:
+      | { text?: string; onPress?: () => void }[]
+      | undefined;
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _msg, buttons) => {
+        capturedButtons = buttons;
+      });
+    const onMarkDelivered = jest.fn();
+    const onViewDetail = jest.fn();
+
+    const { getByLabelText } = render(
+      <ScheduleQuickActionSheet
+        visible
+        schedule={baseSchedule} // price undefined
+        clientLabel="Ana Torres"
+        isProcessing={false}
+        error={null}
+        onMarkReady={jest.fn()}
+        onMarkDelivered={onMarkDelivered}
+        onAssignOperario={jest.fn()}
+        onViewDetail={onViewDetail}
+        onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(getByLabelText("Marcar entregado"));
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      "Precio no registrado",
+      expect.any(String),
+      expect.anything(),
+    );
+
+    capturedButtons?.find((b) => b.text === "Completar precio")?.onPress?.();
+
+    expect(onViewDetail).toHaveBeenCalledTimes(1);
+    expect(onMarkDelivered).not.toHaveBeenCalled();
+  });
+
+  it("con precio en 0, avisa 'Precio no registrado' y 'Entregar sin precio' marca directo (0 no deja saldo pendiente)", () => {
+    let capturedButtons:
+      | { text?: string; onPress?: () => void }[]
+      | undefined;
+    const alertSpy = jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _msg, buttons) => {
+        capturedButtons = buttons;
+      });
+    const onMarkDelivered = jest.fn();
+
+    const { getByLabelText } = render(
+      <ScheduleQuickActionSheet
+        visible
+        schedule={{ ...baseSchedule, price: 0, abono: 0 }}
+        clientLabel="Ana Torres"
+        isProcessing={false}
+        error={null}
+        onMarkReady={jest.fn()}
+        onMarkDelivered={onMarkDelivered}
+        onAssignOperario={jest.fn()}
+        onViewDetail={jest.fn()}
+        onClose={jest.fn()}
+        canToggleOwnerFlag={false}
+        isTogglingOwnerFlag={false}
+        onToggleOwnerFlag={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(getByLabelText("Marcar entregado"));
+
+    capturedButtons?.find((b) => b.text === "Entregar sin precio")?.onPress?.();
+
+    expect(onMarkDelivered).toHaveBeenCalledTimes(1);
+    // Un solo Alert (el de precio) — el saldo con price=0 es 0, no se
+    // encadena un segundo aviso de "Saldo pendiente".
+    expect(alertSpy).toHaveBeenCalledTimes(1);
   });
 
   it("muestra el mensaje de error cuando se provee", () => {

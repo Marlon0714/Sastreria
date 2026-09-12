@@ -56,6 +56,7 @@ import {
 } from "../domain/types";
 import { colors } from "../../../shared/theme/colors";
 import { computeSaldo } from "../domain/saldo";
+import { evaluateDeliveryGuard } from "../domain/deliveryGuard";
 import { formatPrice } from "../../pricing/domain/strings";
 import { useDeleteSchedule } from "../hooks/useDeleteSchedule";
 import { useScheduleForm } from "../hooks/useScheduleForm";
@@ -120,6 +121,11 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [hasTime, setHasTime] = useState(false);
+  // Estado puramente local — NO es un campo del schema/DTO/tabla: solo fija
+  // `abono = price` vía setValue. Evita una segunda fuente de verdad que
+  // podría desincronizarse de `abono` tras una edición futura del precio
+  // (ver Decisiones de Diseño, N-107).
+  const [isFullyPaid, setIsFullyPaid] = useState(false);
   const [isResolvingClient, setIsResolvingClient] = useState(false);
   // Conteo informativo (no bloqueante) de turnos ya agendados para la fecha
   // elegida, mostrado apenas se cambia/selecciona la fecha — independiente
@@ -170,6 +176,10 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (!schedule) return;
     setHasTime(!!schedule.time);
+    // Un turno ya guardado con abono === price abre el formulario con el
+    // switch activado, para que refleje lo que ya hay en los datos en vez
+    // de arrancar siempre en false (mismo patrón que hasTime, ver plan).
+    setIsFullyPaid(schedule.price != null && schedule.abono === schedule.price);
     reset({
       date: schedule.date,
       time: schedule.time,
@@ -194,12 +204,43 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   }, [dateValue, setValue]);
 
   // El abono solo tiene sentido si hay un precio del que descontarlo — si se
-  // borra el precio, el campo (y su valor) deja de mostrarse.
+  // borra el precio, el campo (y su valor) deja de mostrarse. Un turno sin
+  // precio tampoco puede seguir "pagado en su totalidad".
+  //
+  // El `skip` en el primer disparo evita una condición de carrera al montar
+  // con un turno ya guardado: `useWatch("price")` todavía refleja el
+  // defaultValue (undefined) en el primer efecto del montaje, ANTES de que
+  // el `reset()` del efecto de arriba termine de propagarse — sin este
+  // guard, esta limpieza se ejecutaba una vez de más con `priceValue`
+  // todavía "viejo" y pisaba el `isFullyPaid` recién calculado desde
+  // `schedule` con `false`, aunque el turno ya viniera saldado. En modo
+  // creación (sin turno) es un no-op: ambos campos ya arrancan vacíos.
+  //
+  // Este guard depende de que el efecto de `reset()` (arriba) se declare
+  // ANTES que este en el código fuente, para correr primero en el mismo
+  // commit de montaje — si se reordenan o se separan en efectos distintos,
+  // revisar que esta suposición siga siendo cierta.
+  const skipInitialPriceClearRef = useRef(true);
   useEffect(() => {
+    if (skipInitialPriceClearRef.current) {
+      skipInitialPriceClearRef.current = false;
+      return;
+    }
     if (priceValue == null) {
       setValue("abono", undefined);
+      setIsFullyPaid(false);
     }
   }, [priceValue, setValue]);
+
+  // Mientras el switch "Pagado en su totalidad" está activo, cada cambio de
+  // precio vuelve a igualar el abono al precio en vez de desmarcarse solo:
+  // el caso de uso típico es "cambié el precio final pero el cliente ya
+  // había pagado todo" (ver Decisiones de Diseño, N-107).
+  useEffect(() => {
+    if (isFullyPaid && priceValue != null) {
+      setValue("abono", priceValue);
+    }
+  }, [priceValue, isFullyPaid, setValue]);
 
   // Carga reactiva (no bloqueante) del conteo de turnos ya agendados para la
   // fecha elegida, cada vez que cambia la fecha o la categoría (el conteo es
@@ -272,23 +313,47 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   };
 
   const handleMarkDelivered = (): void => {
-    const saldoPendiente = displaySchedule
-      ? computeSaldo(displaySchedule)
-      : undefined;
-    if (saldoPendiente != null && saldoPendiente > 0) {
+    const { missingPrice, saldoPendiente } = displaySchedule
+      ? evaluateDeliveryGuard(displaySchedule)
+      : { missingPrice: false, saldoPendiente: undefined };
+
+    // Paso (b): saldo pendiente. Se evalúa tanto de entrada como después de
+    // elegir "Entregar sin precio" en el paso (a) (ver Decisiones de Diseño,
+    // N-107).
+    const confirmDelivery = (): void => {
+      if (saldoPendiente != null && saldoPendiente > 0) {
+        Alert.alert(
+          "Saldo pendiente",
+          `Este turno tiene un saldo pendiente de ${formatPrice(
+            saldoPendiente,
+          )}. Si continúas, se registrará como pagado en su totalidad. ¿Marcar como entregado de todas formas?`,
+          [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Confirmar", onPress: () => void performMarkDelivered() },
+          ],
+        );
+        return;
+      }
+      void performMarkDelivered();
+    };
+
+    // Paso (a): precio no registrado (incluye price === 0). A diferencia del
+    // panel rápido, el campo "Precio" ya está en esta misma pantalla (card
+    // "Detalles") — cancelar y escribirlo ahí ya cumple "ponerlo ahí mismo",
+    // sin necesitar un tercer botón de navegación (ver Decisiones de Diseño).
+    if (missingPrice) {
       Alert.alert(
-        "Saldo pendiente",
-        `Este turno tiene un saldo pendiente de ${formatPrice(
-          saldoPendiente,
-        )}. ¿Marcar como entregado de todas formas?`,
+        "Precio no registrado",
+        "Puedes ingresarlo arriba antes de continuar, o entregar sin precio.",
         [
           { text: "Cancelar", style: "cancel" },
-          { text: "Confirmar", onPress: () => void performMarkDelivered() },
+          { text: "Entregar sin precio", onPress: confirmDelivery },
         ],
       );
       return;
     }
-    void performMarkDelivered();
+
+    confirmDelivery();
   };
 
   const handleApplyCorrection = (newStatus: ScheduleStatus): void => {
@@ -629,10 +694,15 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
               name="abono"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  style={[styles.input, errors.abono && styles.inputError]}
+                  style={[
+                    styles.input,
+                    errors.abono && styles.inputError,
+                    isFullyPaid && styles.inputDisabled,
+                  ]}
                   placeholder="Ej: 5000"
                   placeholderTextColor={colors.textPlaceholder}
                   keyboardType="numeric"
+                  editable={!isFullyPaid}
                   onBlur={onBlur}
                   onChangeText={(text) => {
                     const digitsOnly = text.replace(/[^0-9]/g, "");
@@ -652,6 +722,22 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                 Saldo pendiente: {formatPrice(saldo)}
               </Text>
             ) : null}
+
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>💰 Pagado en su totalidad</Text>
+              <Switch
+                accessibilityLabel="Pagado en su totalidad"
+                value={isFullyPaid}
+                onValueChange={(next) => {
+                  setIsFullyPaid(next);
+                  if (next) {
+                    setValue("abono", priceValue);
+                  }
+                }}
+                trackColor={{ false: colors.border, true: colors.successSoft }}
+                thumbColor={isFullyPaid ? colors.success : "#f4f3f4"}
+              />
+            </View>
           </View>
         ) : null}
 
@@ -997,6 +1083,10 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: colors.danger,
+  },
+  inputDisabled: {
+    backgroundColor: colors.border,
+    color: colors.textMuted,
   },
   notesInput: {
     minHeight: 90,

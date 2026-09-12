@@ -4,6 +4,7 @@ import {
   type WriteCommittedOptions,
 } from "./writeCommitted";
 import type { ScheduleRepository } from "../../features/schedule/domain/repository";
+import { computeSaldo } from "../../features/schedule/domain/saldo";
 import {
   deriveScheduleStatus,
   isStickyStatus,
@@ -210,8 +211,21 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
         );
       }
 
+      // Entregar un turno con saldo pendiente lo salda automáticamente
+      // (abono = price): la UI solo avisaba del saldo pero nunca lo
+      // completaba, dejando turnos "entregados" con saldo pendiente
+      // fantasma. Ver Decisiones de Diseño del plan N-107: esta regla vive
+      // acá (y no en la UI) porque es la única función que ya conoce el
+      // estado "antes" de la fila dentro de la misma transacción.
+      const saldoPendiente = computeSaldo(existing);
+      const abono =
+        saldoPendiente != null && saldoPendiente > 0
+          ? existing.price
+          : existing.abono;
+
       return {
         ...existing,
+        abono,
         status: "entregado",
         deliveredAt: new Date().toISOString(),
       };

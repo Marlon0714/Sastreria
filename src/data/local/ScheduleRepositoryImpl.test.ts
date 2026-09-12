@@ -8,6 +8,7 @@ import {
 } from "@jest/globals";
 
 import { ScheduleRepositoryImpl } from "./ScheduleRepositoryImpl";
+import { computeSaldo } from "../../features/schedule/domain/saldo";
 
 interface MockDatabase {
   runAsync: (sql: string, ...params: unknown[]) => Promise<unknown>;
@@ -627,6 +628,55 @@ describe("ScheduleRepositoryImpl", () => {
         "Asigna un operario antes de marcar el turno como entregado.",
       );
       expect(mockRunAsync).not.toHaveBeenCalled();
+    });
+
+    it("con saldo pendiente, salda el turno automáticamente (abono = price) en el mismo UPDATE", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        operario_id: "op-1",
+        price: 20000,
+        abono: 5000,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.markDelivered(baseRow.id);
+
+      expect(result.abono).toBe(20000);
+      expect(computeSaldo(result)).toBe(0);
+      // No se agregó ninguna escritura extra: sigue siendo un solo runAsync
+      // dentro de la transacción de persistUpdate.
+      expect(mockRunAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("sin precio, no toca el abono (no hay saldo que saldar)", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        operario_id: "op-1",
+        price: null,
+        abono: null,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.markDelivered(baseRow.id);
+
+      expect(result.abono).toBeUndefined();
+    });
+
+    it("con abono ya igual al precio, deja el abono intacto (no hay saldo pendiente)", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        operario_id: "op-1",
+        price: 20000,
+        abono: 20000,
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.markDelivered(baseRow.id);
+
+      expect(result.abono).toBe(20000);
     });
   });
 

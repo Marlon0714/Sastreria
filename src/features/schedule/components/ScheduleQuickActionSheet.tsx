@@ -11,7 +11,7 @@ import {
 
 import { colors } from "../../../shared/theme/colors";
 import { formatPrice } from "../../pricing/domain/strings";
-import { computeSaldo } from "../domain/saldo";
+import { evaluateDeliveryGuard } from "../domain/deliveryGuard";
 import type { Schedule, ScheduleStatus } from "../domain/types";
 import { OperarioPickerField } from "./OperarioPickerField";
 
@@ -79,21 +79,47 @@ export function ScheduleQuickActionSheet({
   const canMarkDelivered = !isDelivered && hasOperario;
 
   const handleMarkDeliveredPress = (): void => {
-    const saldoPendiente = computeSaldo(schedule);
-    if (saldoPendiente != null && saldoPendiente > 0) {
+    const { missingPrice, saldoPendiente } = evaluateDeliveryGuard(schedule);
+
+    // Paso (b): saldo pendiente. Se evalúa tanto de entrada como después de
+    // elegir "Entregar sin precio" en el paso (a) — un precio recién
+    // completado desde "Ver turno completo" podría, sumado a un abono
+    // previo, seguir dejando saldo (ver Decisiones de Diseño, N-107).
+    const confirmDelivery = (): void => {
+      if (saldoPendiente != null && saldoPendiente > 0) {
+        Alert.alert(
+          "Saldo pendiente",
+          `Este turno tiene un saldo pendiente de ${formatPrice(
+            saldoPendiente,
+          )}. Si continúas, se registrará como pagado en su totalidad. ¿Marcar como entregado de todas formas?`,
+          [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Confirmar", onPress: onMarkDelivered },
+          ],
+        );
+        return;
+      }
+      onMarkDelivered();
+    };
+
+    // Paso (a): precio no registrado (incluye price === 0). El panel no
+    // tiene un campo de precio propio, así que "Completar precio" reutiliza
+    // la navegación que ya ofrece este panel (onViewDetail) en vez de
+    // duplicar un TextInput de precio acá (ver Decisiones de Diseño).
+    if (missingPrice) {
       Alert.alert(
-        "Saldo pendiente",
-        `Este turno tiene un saldo pendiente de ${formatPrice(
-          saldoPendiente,
-        )}. ¿Marcar como entregado de todas formas?`,
+        "Precio no registrado",
+        "Este turno no tiene un precio cargado. ¿Qué deseas hacer?",
         [
           { text: "Cancelar", style: "cancel" },
-          { text: "Confirmar", onPress: onMarkDelivered },
+          { text: "Completar precio", onPress: onViewDetail },
+          { text: "Entregar sin precio", onPress: confirmDelivery },
         ],
       );
       return;
     }
-    onMarkDelivered();
+
+    confirmDelivery();
   };
 
   return (
