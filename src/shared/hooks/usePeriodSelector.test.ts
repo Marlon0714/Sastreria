@@ -24,6 +24,17 @@ describe("usePeriodSelector", () => {
     });
   });
 
+  it("arranca en modo 'dia' cuando se pasa initialMode='dia', sin saltar a 'semana'", () => {
+    const { result } = renderHook(() => usePeriodSelector("dia"));
+
+    expect(result.current.mode).toBe("dia");
+    expect(result.current.anchorDate).toBe("2026-08-15");
+    expect(result.current.range).toEqual({
+      startDate: "2026-08-15",
+      endDate: "2026-08-15",
+    });
+  });
+
   it("cambiar a 'dia' se queda en el día que contiene el anchorDate actual, no salta a hoy", () => {
     const { result } = renderHook(() => usePeriodSelector());
 

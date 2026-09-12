@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import { clientFactory } from "../../../__tests__/factories";
 import type { Client } from "../../clients/domain/types";
@@ -47,6 +47,8 @@ const client = clientFactory({
 
 describe("useMyActivity", () => {
   beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 7, 15)); // 2026-08-15, sábado
     mockGetAll.mockReset();
     mockUpdate.mockReset();
     mockFindAll.mockReset();
@@ -60,13 +62,22 @@ describe("useMyActivity", () => {
     });
   });
 
-  it("incluye un turno listo/entregado ese día por el propio operario, con el nombre del cliente", async () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("arranca en modo 'dia' anclado a hoy (mismo comportamiento visible que antes)", async () => {
     mockGetAll.mockResolvedValue([baseSchedule]);
 
-    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    const { result } = renderHook(() => useMyActivity());
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
+    expect(result.current.mode).toBe("dia");
+    expect(result.current.range).toEqual({
+      startDate: "2026-08-15",
+      endDate: "2026-08-15",
+    });
     expect(result.current.items).toHaveLength(1);
     expect(result.current.items[0]!.clientLabel).toBe("Ana Torres");
     expect(result.current.total).toBe(40000);
@@ -77,7 +88,7 @@ describe("useMyActivity", () => {
       { ...baseSchedule, operarioId: "op-2" },
     ]);
 
-    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    const { result } = renderHook(() => useMyActivity());
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -90,7 +101,7 @@ describe("useMyActivity", () => {
       { ...baseSchedule, status: "en_proceso", readyAt: undefined },
     ]);
 
-    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    const { result } = renderHook(() => useMyActivity());
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -102,13 +113,12 @@ describe("useMyActivity", () => {
       { ...baseSchedule, date: "2026-08-20", readyAt: "2026-08-15T14:00:00.000Z" },
     ]);
 
-    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    const { result } = renderHook(() => useMyActivity());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.items).toHaveLength(1);
 
-    const { result: otherDay } = renderHook(() => useMyActivity("2026-08-20"));
-    await waitFor(() => expect(otherDay.current.isLoading).toBe(false));
-    expect(otherDay.current.items).toHaveLength(0);
+    act(() => result.current.jumpToDate("2026-08-20"));
+    expect(result.current.items).toHaveLength(0);
   });
 
   it("usa deliveredAt si el turno nunca pasó por listo_para_entregar", async () => {
@@ -121,8 +131,9 @@ describe("useMyActivity", () => {
       },
     ]);
 
-    const { result } = renderHook(() => useMyActivity("2026-08-16"));
+    const { result } = renderHook(() => useMyActivity());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => result.current.jumpToDate("2026-08-16"));
 
     expect(result.current.items).toHaveLength(1);
   });
@@ -131,7 +142,7 @@ describe("useMyActivity", () => {
     mockFindAll.mockResolvedValue([]);
     mockGetAll.mockResolvedValue([baseSchedule]);
 
-    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    const { result } = renderHook(() => useMyActivity());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.items[0]!.clientLabel).toBe("Cliente eliminado");
@@ -142,22 +153,49 @@ describe("useMyActivity", () => {
       { ...baseSchedule, clientId: undefined, unregisteredClientName: "Pedro" },
     ]);
 
-    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    const { result } = renderHook(() => useMyActivity());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.items[0]!.clientLabel).toBe("Pedro");
   });
 
-  it("suma el total de los precios de todos los arreglos del día", async () => {
+  it("suma el total de los precios de todos los arreglos del periodo", async () => {
     mockGetAll.mockResolvedValue([
       baseSchedule,
       { ...baseSchedule, id: "schedule-2", price: 15000 },
     ]);
 
-    const { result } = renderHook(() => useMyActivity("2026-08-15"));
+    const { result } = renderHook(() => useMyActivity());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.total).toBe(55000);
+  });
+
+  it("cambiar a modo 'semana' amplía los items a todo el rango de la semana", async () => {
+    mockGetAll.mockResolvedValue([
+      { ...baseSchedule, readyAt: "2026-08-11T14:00:00.000Z" },
+    ]);
+
+    const { result } = renderHook(() => useMyActivity());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.items).toHaveLength(0);
+
+    act(() => result.current.setMode("semana"));
+
+    expect(result.current.items).toHaveLength(1);
+  });
+
+  it("items/total son [] / 0 en modo 'rango' mientras falte elegir alguna fecha", async () => {
+    mockGetAll.mockResolvedValue([baseSchedule]);
+
+    const { result } = renderHook(() => useMyActivity());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.setMode("rango"));
+
+    expect(result.current.range).toBeNull();
+    expect(result.current.items).toHaveLength(0);
+    expect(result.current.total).toBe(0);
   });
 
   describe("addPrice", () => {
@@ -165,7 +203,7 @@ describe("useMyActivity", () => {
       mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
       mockUpdate.mockResolvedValue({ ...baseSchedule, price: 25000 });
 
-      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      const { result } = renderHook(() => useMyActivity());
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       let ok = false;
@@ -182,7 +220,7 @@ describe("useMyActivity", () => {
       mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
       mockUpdate.mockRejectedValue(new Error("network error"));
 
-      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      const { result } = renderHook(() => useMyActivity());
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       let ok = true;
@@ -201,7 +239,7 @@ describe("useMyActivity", () => {
       mockUpdate.mockRejectedValueOnce(new Error("network error"));
       mockUpdate.mockResolvedValueOnce({ ...baseSchedule, price: 25000 });
 
-      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      const { result } = renderHook(() => useMyActivity());
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       await act(async () => {
@@ -221,7 +259,7 @@ describe("useMyActivity", () => {
     it("rechaza un precio negativo sin llamar al repositorio (priceError, no error fatal)", async () => {
       mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
 
-      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      const { result } = renderHook(() => useMyActivity());
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       let ok = true;
@@ -240,7 +278,7 @@ describe("useMyActivity", () => {
     it("rechaza un precio no entero sin llamar al repositorio", async () => {
       mockGetAll.mockResolvedValue([{ ...baseSchedule, price: undefined }]);
 
-      const { result } = renderHook(() => useMyActivity("2026-08-15"));
+      const { result } = renderHook(() => useMyActivity());
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       let ok = true;

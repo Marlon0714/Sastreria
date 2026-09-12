@@ -2,9 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { ScheduleDateTimePickerField } from "../../schedule/components/ScheduleDateTimePickerField";
+import { ScheduleDateTimePickerField } from "./ScheduleDateTimePickerField";
 import type { PeriodMode } from "../domain/periodRange";
-import { colors } from "../../../shared/theme/colors";
+import { colors } from "../theme/colors";
 
 const PERIOD_MODE_OPTIONS: PeriodMode[] = ["dia", "semana", "mes", "rango"];
 
@@ -45,6 +45,8 @@ interface PeriodSelectorFieldProps {
  * periodo activo. Mismo mecanismo de `isFilterMenuOpen`/`filterWrapper`/
  * `filterMenu` que `ScheduleDayViewScreen.tsx` (N-101) — sin `Modal`, con
  * `accessibilityRole="radio"` por opción (ver Tarea 14 del plan de N-104).
+ * Compartido entre el Dashboard del dueño y "Mis arreglos" del operario
+ * (ver plan de N-102).
  */
 export function PeriodSelectorField({
   mode,

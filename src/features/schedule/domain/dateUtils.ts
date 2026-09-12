@@ -18,6 +18,22 @@ export function localDateFromIso(isoTimestamp: string): string {
   return formatDateString(new Date(isoTimestamp));
 }
 
+/**
+ * Diferencia en días de CALENDARIO (no milisegundos crudos) entre
+ * `fromDateString` y `toDateString` (ambas YYYY-MM-DD) — comparar
+ * timestamps ISO crudos sería sensible a la hora del día. Terreno neutral
+ * entre `dashboard` (vencidos/por vencer, validación de rango personalizado)
+ * y `account` (Mis arreglos), precedente ya aceptado desde N-012.
+ */
+export function daysBetweenDates(fromDateString: string, toDateString: string): number {
+  const [fromYear, fromMonth, fromDay] = fromDateString.split("-").map(Number);
+  const [toYear, toMonth, toDay] = toDateString.split("-").map(Number);
+  const from = new Date(fromYear ?? 1970, (fromMonth ?? 1) - 1, fromDay ?? 1);
+  const to = new Date(toYear ?? 1970, (toMonth ?? 1) - 1, toDay ?? 1);
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((to.getTime() - from.getTime()) / millisecondsPerDay);
+}
+
 export function shiftDateString(dateString: string, deltaDays: number): string {
   const [year, month, day] = dateString.split("-").map(Number);
   const date = new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);

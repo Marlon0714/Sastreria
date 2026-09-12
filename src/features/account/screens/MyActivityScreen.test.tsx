@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
+import type { DateRange } from "../../schedule/domain/dateUtils";
 import type { Schedule } from "../../schedule/domain/types";
+import type { UseMyActivityResult } from "../hooks/useMyActivity";
 import MyActivityScreen from "./MyActivityScreen";
 
 jest.mock("@react-navigation/native", () => {
@@ -17,28 +19,11 @@ jest.mock("@react-navigation/native", () => {
   };
 });
 
-interface UseMyActivityResult {
-  items: { schedule: Schedule; clientLabel: string }[];
-  total: number;
-  isLoading: boolean;
-  error: string | null;
-  priceError: string | null;
-  reload: () => Promise<void>;
-  addPrice: (scheduleId: string, price: number) => Promise<boolean>;
-}
-
-const mockUseMyActivity = jest.fn<(date: string) => UseMyActivityResult>();
+const mockUseMyActivity = jest.fn<() => UseMyActivityResult>();
 
 jest.mock("../hooks/useMyActivity", () => ({
-  useMyActivity: (date: string) => mockUseMyActivity(date),
+  useMyActivity: () => mockUseMyActivity(),
 }));
-
-jest.mock("../../schedule/domain/dateUtils", () => {
-  const actual = jest.requireActual(
-    "../../schedule/domain/dateUtils",
-  ) as typeof import("../../schedule/domain/dateUtils");
-  return { ...actual, todayDateString: () => "2026-08-15" };
-});
 
 const baseSchedule: Schedule = {
   id: "schedule-1",
@@ -56,10 +41,27 @@ const baseSchedule: Schedule = {
   syncStatus: "pending",
 };
 
+const DAY_RANGE: DateRange = { startDate: "2026-08-15", endDate: "2026-08-15" };
+
 function buildActivityResult(
   overrides: Partial<UseMyActivityResult> = {},
 ): UseMyActivityResult {
   return {
+    mode: "dia",
+    setMode: jest.fn(),
+    anchorDate: "2026-08-15",
+    periodLabel: "Sábado 15 de agosto de 2026",
+    range: DAY_RANGE,
+    rangeError: null,
+    goToPrevious: jest.fn(),
+    goToNext: jest.fn(),
+    goToCurrentPeriod: jest.fn(),
+    canGoToCurrentPeriod: false,
+    jumpToDate: jest.fn(),
+    customRangeStart: undefined,
+    customRangeEnd: undefined,
+    setCustomRangeStart: jest.fn(),
+    setCustomRangeEnd: jest.fn(),
     items: [],
     total: 0,
     isLoading: false,
@@ -117,38 +119,95 @@ describe("MyActivityScreen", () => {
     expect(getByText("$55.000")).toBeTruthy();
   });
 
-  it("muestra la tira de la semana y permite saltar a un día tocándolo", () => {
-    const { getByLabelText } = render(<MyActivityScreen />);
+  it("muestra el chip del selector de periodo con las 4 opciones Día/Semana/Mes/Rango", () => {
+    const { getByLabelText, getByText } = render(<MyActivityScreen />);
 
-    expect(getByLabelText("Ir al Lun 10")).toBeTruthy();
+    expect(getByText("Día")).toBeTruthy();
 
-    fireEvent.press(getByLabelText("Ir al Jue 13"));
-    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-13");
+    fireEvent.press(getByLabelText("Cambiar periodo del resumen"));
+
+    expect(getByText("Semana")).toBeTruthy();
+    expect(getByText("Mes")).toBeTruthy();
+    expect(getByText("Rango personalizado")).toBeTruthy();
   });
 
-  it("navega a la semana anterior/siguiente con las flechas de la tira", () => {
+  it("dispara setMode al elegir una opción del selector de periodo", () => {
+    const setMode = jest.fn();
+    mockUseMyActivity.mockReturnValue(buildActivityResult({ setMode }));
+
     const { getByLabelText } = render(<MyActivityScreen />);
 
-    fireEvent.press(getByLabelText("Semana anterior"));
-    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-08");
+    fireEvent.press(getByLabelText("Cambiar periodo del resumen"));
+    fireEvent.press(getByLabelText("Ver resumen por mes"));
 
-    fireEvent.press(getByLabelText("Semana siguiente"));
-    fireEvent.press(getByLabelText("Semana siguiente"));
-    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-22");
+    expect(setMode).toHaveBeenCalledWith("mes");
   });
 
-  it("muestra 'Ir a hoy' solo tras navegar a otro día", () => {
-    const { getByLabelText, queryByLabelText } = render(
-      <MyActivityScreen />,
+  it("modo 'semana': muestra el label del total bruto de la semana y el empty state correspondiente", () => {
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        mode: "semana",
+        periodLabel: "Semana del 10 ago al 16 ago",
+        range: { startDate: "2026-08-10", endDate: "2026-08-16" },
+      }),
     );
 
-    expect(queryByLabelText("Ir a hoy")).toBeNull();
+    const { getByText } = render(<MyActivityScreen />);
 
-    fireEvent.press(getByLabelText("Ir al Jue 13"));
-    expect(getByLabelText("Ir a hoy")).toBeTruthy();
+    expect(
+      getByText("No hiciste ningún arreglo esta semana."),
+    ).toBeTruthy();
+  });
 
-    fireEvent.press(getByLabelText("Ir a hoy"));
-    expect(mockUseMyActivity).toHaveBeenLastCalledWith("2026-08-15");
+  it("modo 'mes': muestra el label del total bruto del mes con items", () => {
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        mode: "mes",
+        periodLabel: "Agosto 2026",
+        range: { startDate: "2026-08-01", endDate: "2026-08-31" },
+        items: [{ schedule: baseSchedule, clientLabel: "Ana Torres" }],
+        total: 40000,
+      }),
+    );
+
+    const { getByText } = render(<MyActivityScreen />);
+
+    expect(getByText("Total bruto del mes")).toBeTruthy();
+  });
+
+  it("modo 'rango' con fechas incompletas: muestra el mensaje de elegir fechas, sin lista ni total", () => {
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        mode: "rango",
+        periodLabel: "",
+        range: null,
+        rangeError: null,
+      }),
+    );
+
+    const { getByText, queryByText } = render(<MyActivityScreen />);
+
+    expect(
+      getByText("Elige fecha de inicio y fin para ver tus arreglos."),
+    ).toBeTruthy();
+    expect(queryByText(/Total bruto/)).toBeNull();
+  });
+
+  it("modo 'rango' con rango inválido: muestra el mensaje de corregir el rango", () => {
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        mode: "rango",
+        periodLabel: "",
+        range: null,
+        rangeError: "La fecha final no puede ser anterior a la fecha inicial.",
+      }),
+    );
+
+    const { getByText } = render(<MyActivityScreen />);
+
+    expect(
+      getByText("Corrige el rango de fechas para ver tus arreglos."),
+    ).toBeTruthy();
   });
 
   it("muestra un error con reintentar si falla la carga", () => {

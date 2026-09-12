@@ -20,8 +20,8 @@ import {
   type PeriodMoneyTotals,
   type PeriodStatusCounts,
 } from "../domain/periodBreakdown";
-import type { PeriodMode } from "../domain/periodRange";
-import { usePeriodSelector } from "./usePeriodSelector";
+import type { PeriodMode } from "../../../shared/domain/periodRange";
+import { usePeriodSelector } from "../../../shared/hooks/usePeriodSelector";
 
 export interface UseDashboardStatsResult {
   mode: PeriodMode;

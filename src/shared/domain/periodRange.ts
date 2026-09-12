@@ -1,11 +1,11 @@
 import {
   type DateRange,
+  daysBetweenDates,
   getMonthRange,
   getWeekDates,
   shiftDateString,
   shiftMonthDateString,
-} from "../../schedule/domain/dateUtils";
-import { daysBetweenDates } from "./overdueSchedules";
+} from "../../features/schedule/domain/dateUtils";
 
 export type PeriodMode = "dia" | "semana" | "mes" | "rango";
 

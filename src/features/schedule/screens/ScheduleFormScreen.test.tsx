@@ -142,7 +142,7 @@ jest.mock("../components/OperarioPickerField", () => {
   };
 });
 
-jest.mock("../components/ScheduleDateTimePickerField", () => {
+jest.mock("../../../shared/components/ScheduleDateTimePickerField", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
   const { TextInput } = jest.requireActual(
     "react-native",

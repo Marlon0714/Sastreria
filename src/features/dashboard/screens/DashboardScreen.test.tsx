@@ -3,7 +3,7 @@ import { fireEvent, render } from "@testing-library/react-native";
 import type React from "react";
 
 import type { ReminderItem } from "../domain/overdueSchedules";
-import type { PeriodMode } from "../domain/periodRange";
+import type { PeriodMode } from "../../../shared/domain/periodRange";
 import type { Schedule } from "../../schedule/domain/types";
 import DashboardScreen from "./DashboardScreen";
 

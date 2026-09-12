@@ -35,9 +35,26 @@ jest.mock("../features/pricing/hooks/usePricingServices", () => ({
 
 // Para un operario, PricingTab ya no muestra la lista de precios sino "Mis
 // arreglos" (ver PricingStackNavigator) — se mockea igual que
-// usePricingServices arriba, sin datos, solo para que el tab cargue.
+// usePricingServices arriba, sin datos, solo para que el tab cargue. Objeto
+// fijo con el contrato completo de useMyActivity (selector de periodo +
+// datos, ver N-102): mode "dia" reproduce el mismo empty state de siempre.
 jest.mock("../features/account/hooks/useMyActivity", () => ({
   useMyActivity: () => ({
+    mode: "dia",
+    setMode: jest.fn(),
+    anchorDate: "2026-08-15",
+    periodLabel: "Sábado 15 de agosto de 2026",
+    range: { startDate: "2026-08-15", endDate: "2026-08-15" },
+    rangeError: null,
+    goToPrevious: jest.fn(),
+    goToNext: jest.fn(),
+    goToCurrentPeriod: jest.fn(),
+    canGoToCurrentPeriod: false,
+    jumpToDate: jest.fn(),
+    customRangeStart: undefined,
+    customRangeEnd: undefined,
+    setCustomRangeStart: jest.fn(),
+    setCustomRangeEnd: jest.fn(),
     items: [],
     total: 0,
     isLoading: false,

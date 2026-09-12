@@ -1,22 +1,41 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
-import { localDateFromIso } from "../../schedule/domain/dateUtils";
+import type { DateRange } from "../../schedule/domain/dateUtils";
 import type { Schedule } from "../../schedule/domain/types";
 import { useIdentityStore } from "../../../shared/state/identityStore";
+import { usePeriodSelector } from "../../../shared/hooks/usePeriodSelector";
+import type { PeriodMode } from "../../../shared/domain/periodRange";
+import {
+  buildMyActivityItems,
+  sumActivityPrices,
+  type MyActivityItem,
+} from "../domain/myActivity";
 
-export interface MyActivityItem {
-  schedule: Schedule;
-  clientLabel: string;
-}
+export type { MyActivityItem } from "../domain/myActivity";
 
-interface UseMyActivityResult {
+export interface UseMyActivityResult {
+  mode: PeriodMode;
+  setMode: (mode: PeriodMode) => void;
+  anchorDate: string;
+  periodLabel: string;
+  range: DateRange | null;
+  rangeError: string | null;
+  goToPrevious: () => void;
+  goToNext: () => void;
+  goToCurrentPeriod: () => void;
+  canGoToCurrentPeriod: boolean;
+  jumpToDate: (date: string) => void;
+  customRangeStart: string | undefined;
+  customRangeEnd: string | undefined;
+  setCustomRangeStart: (date: string | undefined) => void;
+  setCustomRangeEnd: (date: string | undefined) => void;
   items: MyActivityItem[];
   total: number;
   isLoading: boolean;
-  /** Falla FATAL de carga (turnos del día) — dispara el ErrorView de pantalla completa. */
+  /** Falla FATAL de carga (turnos) — dispara el ErrorView de pantalla completa. */
   error: string | null;
   /** Falla puntual de `addPrice` — se muestra en línea, junto a la fila que se está editando. */
   priceError: string | null;
@@ -26,18 +45,34 @@ interface UseMyActivityResult {
 }
 
 /**
- * Arreglos que ESTE operario marcó listo/entregado en `date` — sirve para
- * calcular su comisión (un % del precio de cada arreglo hecho ese día). Se
- * agrupa por el día en que se marcó listo (o entregado, si nunca pasó por
- * "listo"), no por la fecha en que se había agendado originalmente: ver
- * SUPABASE_MIGRATIONS.md / la conversación con el dueño (2026-08-16).
+ * Arreglos que ESTE operario marcó listo/entregado dentro del periodo
+ * seleccionado (día/semana/mes/rango, ver `usePeriodSelector`) — sirve para
+ * calcular su comisión (un % del precio de cada arreglo hecho en ese
+ * periodo). Se agrupa por el día en que se marcó listo (o entregado, si
+ * nunca pasó por "listo"), no por la fecha en que se había agendado
+ * originalmente — ver comentario de `buildMyActivityItems` en
+ * `domain/myActivity.ts`.
+ *
+ * Mismo patrón que `useDashboardStats`: trae `schedules`/`clients`
+ * completos UNA vez y deriva todo lo demás en JS con `useMemo` al navegar
+ * de periodo, sin volver a pegarle a la base de datos (ver Decisión 6 del
+ * plan de N-102).
  */
-export function useMyActivity(date: string): UseMyActivityResult {
+export function useMyActivity(): UseMyActivityResult {
   const ownProfileId = useIdentityStore(
     (state) => state.ownProfile?.id ?? null,
   );
   const clientRepository = useClientRepository();
-  const [items, setItems] = useState<MyActivityItem[]>([]);
+  // `weekDatesForBreakdown` es un detalle interno de `usePeriodSelector`
+  // exclusivo del desglose semanal del Dashboard (ver Tarea 14 del plan de
+  // N-102) — no forma parte del contrato público de este hook.
+  const { weekDatesForBreakdown: _weekDatesForBreakdown, ...periodSelector } =
+    usePeriodSelector("dia");
+  const { range } = periodSelector;
+  const [allSchedules, setAllSchedules] = useState<Schedule[]>([]);
+  const [clientsById, setClientsById] = useState<Map<string, Client>>(
+    new Map(),
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
@@ -51,36 +86,8 @@ export function useMyActivity(date: string): UseMyActivityResult {
         scheduleRepository.getAll(),
         clientRepository.findAll(),
       ]);
-      const clientsById = new Map<string, Client>(
-        clients.map((client) => [client.id, client]),
-      );
-
-      const done = schedules.filter((schedule) => {
-        if (schedule.operarioId !== ownProfileId) return false;
-        if (
-          schedule.status !== "listo_para_entregar" &&
-          schedule.status !== "entregado"
-        ) {
-          return false;
-        }
-        const completionTimestamp = schedule.readyAt ?? schedule.deliveredAt;
-        if (!completionTimestamp) return false;
-        return localDateFromIso(completionTimestamp) === date;
-      });
-
-      setItems(
-        done.map((schedule) => {
-          const client = schedule.clientId
-            ? clientsById.get(schedule.clientId)
-            : undefined;
-          const clientLabel = schedule.clientId
-            ? (client
-                ? `${client.firstName} ${client.lastName}`
-                : "Cliente eliminado")
-            : (schedule.unregisteredClientName ?? "Cliente");
-          return { schedule, clientLabel };
-        }),
-      );
+      setAllSchedules(schedules);
+      setClientsById(new Map(clients.map((client) => [client.id, client])));
     } catch {
       setError("No se pudieron cargar tus arreglos.");
     } finally {
@@ -91,16 +98,30 @@ export function useMyActivity(date: string): UseMyActivityResult {
     // incluirlo reintroduciría el fetch en cada render si algún test lo
     // mockea devolviendo un objeto nuevo por llamada.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownProfileId, date]);
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const total = items.reduce(
-    (sum, item) => sum + (item.schedule.price ?? 0),
-    0,
+  // `range` es `null` en modo "rango" mientras falte elegir alguna fecha o
+  // si el rango es inválido — en ambos casos no hay nada que mostrar
+  // todavía (mismo criterio que `useDashboardStats`).
+  const items = useMemo(
+    () =>
+      range
+        ? buildMyActivityItems(
+            allSchedules,
+            clientsById,
+            ownProfileId,
+            range.startDate,
+            range.endDate,
+          )
+        : [],
+    [allSchedules, clientsById, ownProfileId, range],
   );
+
+  const total = useMemo(() => sumActivityPrices(items), [items]);
 
   const addPrice = useCallback(
     async (scheduleId: string, price: number): Promise<boolean> => {
@@ -124,5 +145,14 @@ export function useMyActivity(date: string): UseMyActivityResult {
     [load],
   );
 
-  return { items, total, isLoading, error, priceError, reload: load, addPrice };
+  return {
+    ...periodSelector,
+    items,
+    total,
+    isLoading,
+    error,
+    priceError,
+    reload: load,
+    addPrice,
+  };
 }

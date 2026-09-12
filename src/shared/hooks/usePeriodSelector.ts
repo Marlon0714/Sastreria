@@ -5,7 +5,7 @@ import {
   getMonthRange,
   getWeekDates,
   todayDateString,
-} from "../../schedule/domain/dateUtils";
+} from "../../features/schedule/domain/dateUtils";
 import { formatPeriodLabel } from "../domain/periodLabel";
 import {
   type PeriodMode,
@@ -49,13 +49,16 @@ function normalizeAnchorForMode(mode: PeriodMode, anchorDate: string): string {
 }
 
 /**
- * Estado puro de UI del selector de periodo del dashboard (día/semana/mes/
- * rango personalizado) — no toca repositorios ni datos, solo deriva fechas.
- * Ver Decisión 11 del plan: queda en `dashboard/hooks/` (no en `shared/`)
- * hasta que exista un segundo consumidor real (N-102).
+ * Estado puro de UI del selector de periodo (día/semana/mes/rango
+ * personalizado) — no toca repositorios ni datos, solo deriva fechas.
+ * Compartido entre el Dashboard del dueño (`useDashboardStats`, arranca en
+ * "semana") y "Mis arreglos" del operario (`useMyActivity`, arranca en
+ * "dia") — ver Decisión 5 del plan de N-102.
  */
-export function usePeriodSelector(): UsePeriodSelectorResult {
-  const [mode, setModeState] = useState<PeriodMode>("semana");
+export function usePeriodSelector(
+  initialMode: PeriodMode = "semana",
+): UsePeriodSelectorResult {
+  const [mode, setModeState] = useState<PeriodMode>(initialMode);
   const [anchorDate, setAnchorDate] = useState<string>(todayDateString());
   const [customRangeStart, setCustomRangeStart] = useState<string | undefined>(
     undefined,

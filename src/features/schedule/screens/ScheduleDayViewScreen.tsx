@@ -17,13 +17,16 @@ import { formatPrice } from "../../pricing/domain/strings";
 import { computeSaldo } from "../domain/saldo";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
 import type { ScheduleStackParamList } from "../../../navigation/types";
-import { ErrorView, LoadingView } from "../../../shared/components";
+import {
+  ErrorView,
+  LoadingView,
+  ScheduleDateTimePickerField,
+} from "../../../shared/components";
 import { normalizeText } from "../../../shared/utils/textSearch";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
 import { useOwnerOnlyVisibility } from "../../auth/hooks/useOwnerOnlyVisibility";
-import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleQuickActionSheet } from "../components/ScheduleQuickActionSheet";
 import { WeekStrip } from "../components/WeekStrip";
 import {

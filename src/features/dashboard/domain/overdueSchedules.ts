@@ -1,27 +1,10 @@
 import type { Client } from "../../clients/domain/types";
-import { localDateFromIso } from "../../schedule/domain/dateUtils";
+import { daysBetweenDates, localDateFromIso } from "../../schedule/domain/dateUtils";
 import { resolveClientLabel } from "../../schedule/domain/clientLabel";
 import type { Schedule } from "../../schedule/domain/types";
 
 const OVERDUE_THRESHOLD_DAYS = 30;
 const UPCOMING_THRESHOLD_DAYS = 15;
-
-/**
- * Diferencia en días de CALENDARIO (no milisegundos crudos) entre
- * `fromDateString` y `toDateString` (ambas YYYY-MM-DD) — ver Decisión 4 del
- * plan: comparar timestamps ISO crudos sería sensible a la hora del día.
- * Exportada (Decisión 3 del plan de N-104) para reutilizarse en la
- * validación del rango personalizado del selector de periodo del
- * dashboard, sin duplicar este cálculo en un tercer módulo.
- */
-export function daysBetweenDates(fromDateString: string, toDateString: string): number {
-  const [fromYear, fromMonth, fromDay] = fromDateString.split("-").map(Number);
-  const [toYear, toMonth, toDay] = toDateString.split("-").map(Number);
-  const from = new Date(fromYear ?? 1970, (fromMonth ?? 1) - 1, fromDay ?? 1);
-  const to = new Date(toYear ?? 1970, (toMonth ?? 1) - 1, toDay ?? 1);
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  return Math.round((to.getTime() - from.getTime()) / millisecondsPerDay);
-}
 
 /**
  * Días de calendario transcurridos desde que un turno quedó "listo para

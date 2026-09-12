@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import {
+  daysBetweenDates,
   formatDateForDisplay,
   formatDateString,
   formatMonthForDisplay,
@@ -47,6 +48,28 @@ describe("dateUtils", () => {
 
     it("retorna la fecha de hoy formateada", () => {
       expect(todayDateString()).toBe("2026-08-15");
+    });
+  });
+
+  describe("daysBetweenDates", () => {
+    it("retorna 0 para la misma fecha", () => {
+      expect(daysBetweenDates("2026-08-15", "2026-08-15")).toBe(0);
+    });
+
+    it("retorna un valor positivo cuando 'to' es posterior a 'from'", () => {
+      expect(daysBetweenDates("2026-08-10", "2026-08-20")).toBe(10);
+    });
+
+    it("retorna un valor negativo cuando 'to' es anterior a 'from'", () => {
+      expect(daysBetweenDates("2026-08-20", "2026-08-10")).toBe(-10);
+    });
+
+    it("cruza correctamente el límite de mes", () => {
+      expect(daysBetweenDates("2026-08-25", "2026-09-05")).toBe(11);
+    });
+
+    it("cruza correctamente el límite de año, incluyendo un año bisiesto", () => {
+      expect(daysBetweenDates("2024-01-01", "2025-01-01")).toBe(366);
     });
   });
 

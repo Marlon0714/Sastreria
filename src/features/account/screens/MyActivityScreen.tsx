@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -9,16 +9,10 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 
-import { ErrorView, LoadingView } from "../../../shared/components";
+import { ErrorView, LoadingView, PeriodSelectorField } from "../../../shared/components";
+import type { PeriodMode } from "../../../shared/domain/periodRange";
 import { colors } from "../../../shared/theme/colors";
 import { formatPrice } from "../../pricing/domain/strings";
-import { WeekStrip } from "../../schedule/components/WeekStrip";
-import {
-  formatDateForDisplay,
-  getWeekDates,
-  shiftDateString,
-  todayDateString,
-} from "../../schedule/domain/dateUtils";
 import { useMyActivity } from "../hooks/useMyActivity";
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -26,11 +20,48 @@ const CATEGORY_ICONS: Record<string, string> = {
   confeccion: "🧵",
 };
 
+// Copy dependiente del modo activo (mismo criterio que SECTION_TITLES en
+// DashboardScreen.tsx — ver Tarea 16 del plan de N-102): texto de UI, no
+// lógica de negocio.
+const EMPTY_ACTIVITY_LABELS: Record<PeriodMode, string> = {
+  dia: "No hiciste ningún arreglo este día.",
+  semana: "No hiciste ningún arreglo esta semana.",
+  mes: "No hiciste ningún arreglo este mes.",
+  rango: "No hiciste ningún arreglo en este rango.",
+};
+
+const TOTAL_BAR_LABELS: Record<PeriodMode, string> = {
+  dia: "Total bruto del día",
+  semana: "Total bruto de la semana",
+  mes: "Total bruto del mes",
+  rango: "Total bruto del rango",
+};
+
 export default function MyActivityScreen() {
-  const [selectedDate, setSelectedDate] = useState(todayDateString());
-  const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
-  const { items, total, isLoading, error, priceError, reload, addPrice } =
-    useMyActivity(selectedDate);
+  const {
+    mode,
+    setMode,
+    anchorDate,
+    periodLabel,
+    range,
+    rangeError,
+    goToPrevious,
+    goToNext,
+    goToCurrentPeriod,
+    canGoToCurrentPeriod,
+    jumpToDate,
+    customRangeStart,
+    customRangeEnd,
+    setCustomRangeStart,
+    setCustomRangeEnd,
+    items,
+    total,
+    isLoading,
+    error,
+    priceError,
+    reload,
+    addPrice,
+  } = useMyActivity();
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [priceInput, setPriceInput] = useState("");
   const [isSavingPrice, setIsSavingPrice] = useState(false);
@@ -38,8 +69,7 @@ export default function MyActivityScreen() {
   // Los tabs no desmontan esta pantalla al cambiar de pestaña, así que sin
   // esto el operario podría volver a "Precios" (ahora raíz de la pestaña) y
   // ver arreglos marcados "listo" en Agenda que ya no reflejan lo más
-  // reciente. `reload` es estable salvo que cambien `date`/`ownProfileId`
-  // (ver useMyActivity), así que esto no duplica el fetch inicial en bucle.
+  // reciente.
   useFocusEffect(
     useCallback(() => {
       void reload();
@@ -71,113 +101,118 @@ export default function MyActivityScreen() {
     }
   };
 
+  const isRangeIncomplete = mode === "rango" && range === null;
+
   return (
     <View style={styles.container}>
-      <WeekStrip
-        weekDates={weekDates}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-        onPrevWeek={() =>
-          setSelectedDate((current) => shiftDateString(current, -7))
-        }
-        onNextWeek={() =>
-          setSelectedDate((current) => shiftDateString(current, 7))
-        }
+      <PeriodSelectorField
+        mode={mode}
+        onModeChange={setMode}
+        periodLabel={periodLabel}
+        anchorDate={anchorDate}
+        onJumpToDate={jumpToDate}
+        onPrevious={goToPrevious}
+        onNext={goToNext}
+        canGoToCurrentPeriod={canGoToCurrentPeriod}
+        onGoToCurrentPeriod={goToCurrentPeriod}
+        customRangeStart={customRangeStart}
+        customRangeEnd={customRangeEnd}
+        onCustomRangeStartChange={setCustomRangeStart}
+        onCustomRangeEndChange={setCustomRangeEnd}
+        rangeError={rangeError}
       />
 
-      {selectedDate !== todayDateString() ? (
-        <Pressable
-          accessibilityLabel="Ir a hoy"
-          style={styles.todayButton}
-          onPress={() => setSelectedDate(todayDateString())}
-        >
-          <Text style={styles.todayButtonText}>Ir a hoy</Text>
-        </Pressable>
-      ) : null}
-
-      <Text style={styles.dateLabel} numberOfLines={1}>
-        {formatDateForDisplay(selectedDate)}
-      </Text>
-
-      <ScrollView
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        {items.length === 0 ? (
+      {isRangeIncomplete ? (
+        <View style={styles.rangeIncompleteContainer}>
           <Text style={styles.emptyText}>
-            No hiciste ningún arreglo este día.
+            {rangeError
+              ? "Corrige el rango de fechas para ver tus arreglos."
+              : "Elige fecha de inicio y fin para ver tus arreglos."}
           </Text>
-        ) : (
-          items.map(({ schedule, clientLabel }) => (
-            <View key={schedule.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardClient} numberOfLines={1}>
-                  {CATEGORY_ICONS[schedule.category] ?? ""} {clientLabel}
-                </Text>
-                {schedule.price != null ? (
-                  <Text style={styles.cardPrice}>
-                    {formatPrice(schedule.price)}
-                  </Text>
-                ) : editingPriceId !== schedule.id ? (
-                  <Pressable
-                    accessibilityLabel={`Agregar precio de ${clientLabel}`}
-                    onPress={() => startAddingPrice(schedule.id)}
-                  >
-                    <Text style={styles.addPriceText}>Agregar precio</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              {editingPriceId === schedule.id ? (
-                <View style={styles.addPriceRow}>
-                  <TextInput
-                    accessibilityLabel="Precio del arreglo"
-                    style={styles.addPriceInput}
-                    placeholder="Ej: 15000"
-                    placeholderTextColor={colors.textPlaceholder}
-                    keyboardType="numeric"
-                    value={priceInput}
-                    onChangeText={(text) =>
-                      setPriceInput(text.replace(/[^0-9]/g, ""))
-                    }
-                    autoFocus
-                  />
-                  <Pressable
-                    accessibilityLabel="Cancelar precio"
-                    onPress={() => setEditingPriceId(null)}
-                  >
-                    <Text style={styles.cancelText}>Cancelar</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel="Guardar precio"
-                    style={[
-                      styles.savePriceButton,
-                      (isSavingPrice || !priceInput) && styles.disabled,
-                    ]}
-                    disabled={isSavingPrice || !priceInput}
-                    onPress={() => void saveAddedPrice(schedule.id)}
-                  >
-                    <Text style={styles.savePriceButtonText}>
-                      {isSavingPrice ? "Guardando..." : "Guardar"}
-                    </Text>
-                  </Pressable>
-                </View>
-              ) : null}
-
-              {editingPriceId === schedule.id && priceError ? (
-                <Text style={styles.priceErrorText}>{priceError}</Text>
-              ) : null}
-            </View>
-          ))
-        )}
-      </ScrollView>
-
-      {items.length > 0 ? (
-        <View style={styles.totalBar}>
-          <Text style={styles.totalLabel}>Total bruto del día</Text>
-          <Text style={styles.totalValue}>{formatPrice(total)}</Text>
         </View>
-      ) : null}
+      ) : (
+        <>
+          <ScrollView
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {items.length === 0 ? (
+              <Text style={styles.emptyText}>
+                {EMPTY_ACTIVITY_LABELS[mode]}
+              </Text>
+            ) : (
+              items.map(({ schedule, clientLabel }) => (
+                <View key={schedule.id} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardClient} numberOfLines={1}>
+                      {CATEGORY_ICONS[schedule.category] ?? ""} {clientLabel}
+                    </Text>
+                    {schedule.price != null ? (
+                      <Text style={styles.cardPrice}>
+                        {formatPrice(schedule.price)}
+                      </Text>
+                    ) : editingPriceId !== schedule.id ? (
+                      <Pressable
+                        accessibilityLabel={`Agregar precio de ${clientLabel}`}
+                        onPress={() => startAddingPrice(schedule.id)}
+                      >
+                        <Text style={styles.addPriceText}>Agregar precio</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  {editingPriceId === schedule.id ? (
+                    <View style={styles.addPriceRow}>
+                      <TextInput
+                        accessibilityLabel="Precio del arreglo"
+                        style={styles.addPriceInput}
+                        placeholder="Ej: 15000"
+                        placeholderTextColor={colors.textPlaceholder}
+                        keyboardType="numeric"
+                        value={priceInput}
+                        onChangeText={(text) =>
+                          setPriceInput(text.replace(/[^0-9]/g, ""))
+                        }
+                        autoFocus
+                      />
+                      <Pressable
+                        accessibilityLabel="Cancelar precio"
+                        onPress={() => setEditingPriceId(null)}
+                      >
+                        <Text style={styles.cancelText}>Cancelar</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel="Guardar precio"
+                        style={[
+                          styles.savePriceButton,
+                          (isSavingPrice || !priceInput) && styles.disabled,
+                        ]}
+                        disabled={isSavingPrice || !priceInput}
+                        onPress={() => void saveAddedPrice(schedule.id)}
+                      >
+                        <Text style={styles.savePriceButtonText}>
+                          {isSavingPrice ? "Guardando..." : "Guardar"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+
+                  {editingPriceId === schedule.id && priceError ? (
+                    <Text style={styles.priceErrorText}>{priceError}</Text>
+                  ) : null}
+                </View>
+              ))
+            )}
+          </ScrollView>
+
+          {items.length > 0 ? (
+            <View style={styles.totalBar}>
+              <Text style={styles.totalLabel}>{TOTAL_BAR_LABELS[mode]}</Text>
+              <Text style={styles.totalValue}>{formatPrice(total)}</Text>
+            </View>
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
@@ -187,22 +222,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  dateLabel: {
-    textAlign: "center",
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    textTransform: "capitalize",
-    marginTop: 8,
-  },
-  todayButton: {
-    alignSelf: "center",
-    marginTop: 4,
-  },
-  todayButtonText: {
-    color: colors.primary,
-    fontWeight: "600",
-    fontSize: 13,
+  rangeIncompleteContainer: {
+    padding: 16,
   },
   listContent: {
     padding: 16,

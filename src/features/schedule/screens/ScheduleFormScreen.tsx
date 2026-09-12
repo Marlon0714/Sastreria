@@ -17,7 +17,11 @@ import {
 } from "react-native";
 
 import type { ScheduleStackParamList } from "../../../navigation/types";
-import { ErrorView, LoadingView } from "../../../shared/components";
+import {
+  ErrorView,
+  LoadingView,
+  ScheduleDateTimePickerField,
+} from "../../../shared/components";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { useIdentityGate } from "../../auth/hooks/useIdentityGate";
@@ -27,7 +31,6 @@ import {
   type ClientPickerFieldHandle,
 } from "../components/ClientPickerField";
 import { OperarioPickerField } from "../components/OperarioPickerField";
-import { ScheduleDateTimePickerField } from "../components/ScheduleDateTimePickerField";
 import { ScheduleHistoryList } from "../components/ScheduleHistoryList";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
 import { formatDateForDisplay } from "../domain/dateUtils";

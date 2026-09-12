@@ -1,9 +1,9 @@
-import type { DateRange } from "../../schedule/domain/dateUtils";
+import type { DateRange } from "../../features/schedule/domain/dateUtils";
 import {
   formatDateForDisplay,
   formatMonthForDisplay,
   formatShortDate,
-} from "../../schedule/domain/dateUtils";
+} from "../../features/schedule/domain/dateUtils";
 import type { PeriodMode } from "./periodRange";
 
 /**

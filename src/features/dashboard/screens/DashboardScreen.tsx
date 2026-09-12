@@ -10,15 +10,14 @@ import type {
 } from "../../../navigation/types";
 import { formatPrice } from "../../pricing/domain/strings";
 import { getWeekDates } from "../../schedule/domain/dateUtils";
-import { ErrorView, LoadingView } from "../../../shared/components";
+import { ErrorView, LoadingView, PeriodSelectorField } from "../../../shared/components";
+import type { PeriodMode } from "../../../shared/domain/periodRange";
 import { colors } from "../../../shared/theme/colors";
 import { DashboardStatCard } from "../components/DashboardStatCard";
-import { PeriodSelectorField } from "../components/PeriodSelectorField";
 import { RemindersList } from "../components/RemindersList";
 import { WeeklyWorkloadBreakdown } from "../components/WeeklyWorkloadBreakdown";
 import type { PeriodStatusCounts } from "../domain/periodBreakdown";
 import type { ScheduleListBucket } from "../domain/scheduleListBucket";
-import type { PeriodMode } from "../domain/periodRange";
 import { useDashboardStats } from "../hooks/useDashboardStats";
 
 // Un solo lugar con la etiqueta visible Y el `cardLabel` de navegación de

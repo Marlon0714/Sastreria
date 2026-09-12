@@ -10,8 +10,27 @@ jest.mock("../features/pricing/hooks/usePricingServices");
 jest.mock("../features/auth/components/LogoutButton", () => ({
   LogoutButton: () => null,
 }));
+// Objeto fijo con el contrato completo de useMyActivity (selector de
+// periodo + datos, ver N-102) — mode "dia" reproduce el mismo empty state
+// de siempre ("No hiciste ningún arreglo este día."), este mock no ejercita
+// navegación de periodo (ya cubierta en MyActivityScreen.test.tsx).
 jest.mock("../features/account/hooks/useMyActivity", () => ({
   useMyActivity: () => ({
+    mode: "dia",
+    setMode: jest.fn(),
+    anchorDate: "2026-08-15",
+    periodLabel: "Sábado 15 de agosto de 2026",
+    range: { startDate: "2026-08-15", endDate: "2026-08-15" },
+    rangeError: null,
+    goToPrevious: jest.fn(),
+    goToNext: jest.fn(),
+    goToCurrentPeriod: jest.fn(),
+    canGoToCurrentPeriod: false,
+    jumpToDate: jest.fn(),
+    customRangeStart: undefined,
+    customRangeEnd: undefined,
+    setCustomRangeStart: jest.fn(),
+    setCustomRangeEnd: jest.fn(),
     items: [],
     total: 0,
     isLoading: false,
