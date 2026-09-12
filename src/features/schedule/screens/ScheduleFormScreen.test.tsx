@@ -385,51 +385,67 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
-  it("activar 'Pagado en su totalidad' sincroniza el abono con el precio y deshabilita el input de abono", () => {
+  it("activar 'Pagado en su totalidad' sincroniza el abono con el precio y oculta el input de abono", async () => {
+    const submit = jest.fn(async () => Promise.resolve(null));
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
       isLoading: false,
       isSubmitting: false,
       error: null,
-      submit: jest.fn(async () => Promise.resolve(null)),
+      submit,
       syncScheduleSnapshot: jest.fn(),
     });
 
-    const { getByPlaceholderText, getByLabelText } = render(
-      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
-    );
+    const { getByPlaceholderText, getByLabelText, queryByPlaceholderText } =
+      render(<ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />);
 
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
     fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
     fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", true);
 
-    const abonoInput = getByPlaceholderText("Ej: 5000");
-    expect(abonoInput.props.value).toBe("100000");
-    expect(abonoInput.props.editable).toBe(false);
+    expect(queryByPlaceholderText("Ej: 5000")).toBeNull();
+
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ price: 100000, abono: 100000 }),
+      );
+    });
   });
 
-  it("cambiar el precio con el switch activo mantiene el abono igual al precio (no lo desmarca)", () => {
+  it("cambiar el precio con el switch activo mantiene el abono igual al precio (no lo desmarca)", async () => {
+    const submit = jest.fn(async () => Promise.resolve(null));
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
       isLoading: false,
       isSubmitting: false,
       error: null,
-      submit: jest.fn(async () => Promise.resolve(null)),
+      submit,
       syncScheduleSnapshot: jest.fn(),
     });
 
-    const { getByPlaceholderText, getByLabelText } = render(
-      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
-    );
+    const { getByPlaceholderText, getByLabelText, queryByPlaceholderText } =
+      render(<ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />);
 
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
     fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
     fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", true);
     fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "150000");
 
     expect(getByLabelText("Pagado en su totalidad").props.value).toBe(true);
-    expect(getByPlaceholderText("Ej: 5000").props.value).toBe("150000");
+    expect(queryByPlaceholderText("Ej: 5000")).toBeNull();
+
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ price: 150000, abono: 150000 }),
+      );
+    });
   });
 
-  it("desactivar el switch vuelve a habilitar el input de abono conservando el último valor", () => {
+  it("desactivar el switch vuelve a mostrar el input de abono conservando el último valor", () => {
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
       isLoading: false,
@@ -439,20 +455,20 @@ describe("ScheduleFormScreen", () => {
       syncScheduleSnapshot: jest.fn(),
     });
 
-    const { getByPlaceholderText, getByLabelText } = render(
-      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
-    );
+    const { getByPlaceholderText, getByLabelText, queryByPlaceholderText } =
+      render(<ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />);
 
     fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
     fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", true);
+    expect(queryByPlaceholderText("Ej: 5000")).toBeNull();
+
     fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", false);
 
     const abonoInput = getByPlaceholderText("Ej: 5000");
-    expect(abonoInput.props.editable).toBe(true);
     expect(abonoInput.props.value).toBe("100000");
   });
 
-  it("abrir un turno con price === abono ya guardado muestra el switch activado de entrada", () => {
+  it("abrir un turno con price === abono ya guardado muestra el switch activado de entrada y oculta el input de abono", () => {
     mockUseScheduleForm.mockReturnValue({
       schedule: { ...schedule, price: 100000, abono: 100000 },
       isLoading: false,
@@ -462,12 +478,12 @@ describe("ScheduleFormScreen", () => {
       syncScheduleSnapshot: jest.fn(),
     });
 
-    const { getByLabelText, getByPlaceholderText } = render(
+    const { getByLabelText, queryByPlaceholderText } = render(
       <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn(), schedule.id)} />,
     );
 
     expect(getByLabelText("Pagado en su totalidad").props.value).toBe(true);
-    expect(getByPlaceholderText("Ej: 5000").props.editable).toBe(false);
+    expect(queryByPlaceholderText("Ej: 5000")).toBeNull();
   });
 
   it("borrar el precio con el switch activo lo desmarca y limpia el abono", () => {

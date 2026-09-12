@@ -700,34 +700,35 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
 
         {priceValue != null ? (
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Abono (opcional)</Text>
-            <Controller
-              control={control}
-              name="abono"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  style={[
-                    styles.input,
-                    errors.abono && styles.inputError,
-                    isFullyPaid && styles.inputDisabled,
-                  ]}
-                  placeholder="Ej: 5000"
-                  placeholderTextColor={colors.textPlaceholder}
-                  keyboardType="numeric"
-                  editable={!isFullyPaid}
-                  onBlur={onBlur}
-                  onChangeText={(text) => {
-                    const digitsOnly = text.replace(/[^0-9]/g, "");
-                    onChange(
-                      digitsOnly === "" ? undefined : parseInt(digitsOnly, 10),
-                    );
-                  }}
-                  value={value === undefined ? "" : String(value)}
+            {!isFullyPaid ? (
+              <>
+                <Text style={styles.label}>Abono (opcional)</Text>
+                <Controller
+                  control={control}
+                  name="abono"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <TextInput
+                      style={[styles.input, errors.abono && styles.inputError]}
+                      placeholder="Ej: 5000"
+                      placeholderTextColor={colors.textPlaceholder}
+                      keyboardType="numeric"
+                      onBlur={onBlur}
+                      onChangeText={(text) => {
+                        const digitsOnly = text.replace(/[^0-9]/g, "");
+                        onChange(
+                          digitsOnly === ""
+                            ? undefined
+                            : parseInt(digitsOnly, 10),
+                        );
+                      }}
+                      value={value === undefined ? "" : String(value)}
+                    />
+                  )}
                 />
-              )}
-            />
-            {errors.abono ? (
-              <Text style={styles.errorText}>{errors.abono.message}</Text>
+                {errors.abono ? (
+                  <Text style={styles.errorText}>{errors.abono.message}</Text>
+                ) : null}
+              </>
             ) : null}
             {saldo != null ? (
               <Text style={styles.helperText}>
@@ -736,7 +737,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             ) : null}
 
             <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>💰 Pagado en su totalidad</Text>
+              <Text style={styles.switchLabel}>Pagado</Text>
               <Switch
                 accessibilityLabel="Pagado en su totalidad"
                 value={isFullyPaid}
@@ -1100,10 +1101,6 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: colors.danger,
-  },
-  inputDisabled: {
-    backgroundColor: colors.border,
-    color: colors.textMuted,
   },
   notesInput: {
     minHeight: 90,
