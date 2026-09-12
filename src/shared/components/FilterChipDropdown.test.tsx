@@ -112,6 +112,28 @@ describe("FilterChipDropdown", () => {
     expect(queryByText("Opción tres")).toBeNull();
   });
 
+  it("en pantallas anchas ancla el menú al borde izquierdo (mismo borde donde empieza el chip), no al borde derecho de la pantalla", () => {
+    const { getByLabelText, getByTestId } = render(
+      <FilterChipDropdown<TestOption>
+        chipLabel="Opción uno"
+        chipAccessibilityLabel="Cambiar filtro"
+        options={buildOptions()}
+        activeValue="uno"
+        onSelect={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(getByLabelText("Cambiar filtro"));
+
+    const menuContainer = getByTestId("filter-chip-dropdown-menu");
+    const flatStyle = Array.isArray(menuContainer.props.style)
+      ? Object.assign({}, ...menuContainer.props.style)
+      : menuContainer.props.style;
+
+    expect(flatStyle.left).toBe(0);
+    expect(flatStyle.right).toBeUndefined();
+  });
+
   it("en pantallas angostas (menos de 340dp) el menú cae a ancho completo en vez de angostarse a la derecha", () => {
     mockUseWindowDimensions.mockReturnValue({
       width: 320,

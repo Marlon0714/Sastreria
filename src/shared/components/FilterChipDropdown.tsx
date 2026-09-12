@@ -26,9 +26,14 @@ interface FilterChipDropdownProps<T extends string> {
 }
 
 /**
- * Chip colapsado + overlay de opciones anclado al borde derecho del
- * contenedor (no al borde derecho del propio chip, ver Decisión de Diseño 3
- * del plan de N-110). Genérico sobre `T extends string`: no conoce ningún
+ * Chip colapsado + overlay de opciones anclado al mismo borde izquierdo
+ * donde ya empieza el chip (gracias a `alignSelf:"flex-start"` del chip
+ * dentro del wrapper `position:"relative"`), extendiéndose hacia la derecha
+ * desde ahí — no al borde derecho del contenedor (bug corregido: anclar a
+ * `right:0` del wrapper de ancho completo dejaba el menú pegado al borde
+ * derecho de la PANTALLA, lejos del chip alineado a la izquierda; ver
+ * Decisión de Diseño 3 del plan de N-110, corregida tras verificación visual
+ * post-implementación). Genérico sobre `T extends string`: no conoce ningún
  * tipo de dominio (`FilterOption`, `PeriodMode`, etc.), solo recibe labels y
  * un callback. Reemplaza el bloque `filterWrapper`/`filterChip`/`filterMenu`
  * que antes vivía duplicado en `ScheduleDayViewScreen.tsx` y
@@ -72,7 +77,7 @@ export function FilterChipDropdown<T extends string>({
           testID="filter-chip-dropdown-menu"
           style={[
             styles.menu,
-            isNarrowScreen ? styles.menuFullWidth : styles.menuAnchoredRight,
+            isNarrowScreen ? styles.menuFullWidth : styles.menuAnchoredLeft,
           ]}
         >
           {options.map((option) => {
@@ -139,8 +144,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 6,
   },
-  menuAnchoredRight: {
-    right: 0,
+  // Ancla el menú al mismo borde izquierdo donde ya empieza el chip
+  // (`alignSelf:"flex-start"` dentro del wrapper `position:"relative"`),
+  // extendiéndolo hacia la derecha desde ahí en vez de pegarlo al borde
+  // derecho de la pantalla. Sin `right`, el ancho se ajusta al contenido —
+  // `minWidth`/`maxWidth` evitan que quede demasiado angosto con labels
+  // cortos ("Día") o que un label largo ("🧵 Confecciones (99)") empuje el
+  // menú fuera del borde derecho de la pantalla.
+  menuAnchoredLeft: {
+    left: 0,
+    minWidth: 180,
+    maxWidth: 260,
   },
   menuFullWidth: {
     left: 0,
