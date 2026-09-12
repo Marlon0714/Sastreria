@@ -9,10 +9,12 @@ interface ProfileButtonProps {
 }
 
 /**
- * Solo aparece para un operario en su cuenta personal (no en la tablet
+ * Aparece para operario y dueño en su cuenta personal (no en la tablet
  * compartida, que no tiene una sola identidad a la que atribuirle "mi
- * cuenta"/"mis arreglos"). El dueño no lo necesita: administra todo
- * directo en Supabase.
+ * cuenta"/"mis arreglos"). Desde N-106 (fase a) el dueño también entra a
+ * "Mi cuenta", pero en modo solo lectura (ver `MyAccountScreen`); habilitar
+ * la edición de correo/contraseña/PIN para el dueño es la fase (b), todavía
+ * no implementada.
  *
  * Recibe `onPress` en vez de navegar internamente con `useNavigation()`
  * porque vive en AppHeader, fuera de cualquier Stack.Navigator concreto —
@@ -24,7 +26,7 @@ export function ProfileButton({ onPress }: ProfileButtonProps) {
     (state) => state.ownProfile?.isSharedDevice ?? false,
   );
 
-  if (role !== "operario" || isSharedDevice) {
+  if (isSharedDevice || (role !== "operario" && role !== "owner")) {
     return null;
   }
 

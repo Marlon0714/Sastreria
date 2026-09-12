@@ -21,7 +21,10 @@ const PIN_LENGTH = 4;
 type EditableField = "email" | "password" | "pin";
 
 interface MyAccountScreenProps {
-  navigation: { navigate: (screen: "MyActivity") => void };
+  // Opcional: el dueño (modo solo lectura, N-106 fase a) nunca ve el botón
+  // "Mis arreglos" que lo invoca, así que `DashboardStackNavigator` (que no
+  // registra la ruta "MyActivity") puede montar esta screen sin pasarlo.
+  navigation?: { navigate: (screen: "MyActivity") => void };
 }
 
 const NEW_VALUE_LABELS: Record<EditableField, string> = {
@@ -36,6 +39,10 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
   );
   const role = useIdentityStore((state) => state.ownProfile?.role ?? null);
   const roleLabel = role === "owner" ? "Dueño" : "Operario";
+  // N-106 (fase a): el dueño ve su perfil en modo solo lectura — sin botón
+  // "Mis arreglos" ni "Cambiar" en ninguna fila de la card "Cuenta". La
+  // fase (b) (habilitar edición para el dueño) es trabajo futuro.
+  const isOwner = role === "owner";
   const {
     currentEmail,
     isLoadingEmail,
@@ -141,15 +148,17 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
           <Text style={styles.role}>{roleLabel}</Text>
         </View>
 
-        <Pressable
-          accessibilityLabel="Ver mis arreglos"
-          style={styles.activityButton}
-          onPress={() => navigation.navigate("MyActivity")}
-        >
-          <Ionicons name="cut-outline" size={20} color={colors.primary} />
-          <Text style={styles.activityButtonText}>Mis arreglos</Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-        </Pressable>
+        {!isOwner ? (
+          <Pressable
+            accessibilityLabel="Ver mis arreglos"
+            style={styles.activityButton}
+            onPress={() => navigation?.navigate("MyActivity")}
+          >
+            <Ionicons name="cut-outline" size={20} color={colors.primary} />
+            <Text style={styles.activityButtonText}>Mis arreglos</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+          </Pressable>
+        ) : null}
 
         {successMessage ? (
           <Text style={styles.success}>{successMessage}</Text>
@@ -165,7 +174,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
                 {isLoadingEmail ? "Cargando..." : currentEmail}
               </Text>
             </View>
-            {editingField !== "email" ? (
+            {editingField !== "email" && !isOwner ? (
               <Pressable
                 accessibilityLabel="Cambiar correo"
                 onPress={() => startEditing("email")}
@@ -180,7 +189,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
               <Text style={styles.rowLabel}>Contraseña</Text>
               <Text style={styles.rowValue}>••••••••</Text>
             </View>
-            {editingField !== "password" ? (
+            {editingField !== "password" && !isOwner ? (
               <Pressable
                 accessibilityLabel="Cambiar contraseña"
                 onPress={() => startEditing("password")}
@@ -195,7 +204,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
               <Text style={styles.rowLabel}>PIN</Text>
               <Text style={styles.rowValue}>••••</Text>
             </View>
-            {editingField !== "pin" ? (
+            {editingField !== "pin" && !isOwner ? (
               <Pressable
                 accessibilityLabel="Cambiar PIN"
                 onPress={() => startEditing("pin")}

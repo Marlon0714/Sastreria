@@ -17,15 +17,18 @@ function navigateToMyAccount(
   navigationRef: NavigationContainerRefWithCurrent<RootTabParamList>,
   activeTab: string | undefined,
 ): void {
-  // Agenda y Precios registran "MyAccount" en su stack — un operario en su
-  // propio dispositivo ve ambas (Precios le muestra "Mis arreglos" en vez
-  // del catálogo, ver PricingStackNavigator). Si por alguna razón el ícono
-  // se llegara a mostrar en otra pestaña, no hay a dónde navegar y no se
-  // hace nada.
+  // Agenda, Precios e Inicio registran "MyAccount" en su stack. Un operario
+  // en su propio dispositivo ve las tres (Precios le muestra "Mis arreglos"
+  // en vez del catálogo, ver PricingStackNavigator); un dueño aterriza en
+  // Inicio (DashboardTab) y entra en modo solo lectura (N-106 fase a). Si
+  // por alguna razón el ícono se llegara a mostrar en otra pestaña, no hay
+  // a dónde navegar y no se hace nada.
   if (activeTab === "ScheduleTab") {
     navigationRef.navigate("ScheduleTab", { screen: "MyAccount" });
   } else if (activeTab === "PricingTab") {
     navigationRef.navigate("PricingTab", { screen: "MyAccount" });
+  } else if (activeTab === "DashboardTab") {
+    navigationRef.navigate("DashboardTab", { screen: "MyAccount" });
   }
 }
 

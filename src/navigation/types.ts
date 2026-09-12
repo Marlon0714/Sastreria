@@ -81,6 +81,8 @@ export type TallasStackParamList = {
 
 export type DashboardStackParamList = {
   DashboardHome: undefined;
+  /** Perfil del dueño en modo solo lectura (N-106 fase a) — ver `MyAccountScreen`. */
+  MyAccount: undefined;
 };
 
 export type RootTabParamList = {

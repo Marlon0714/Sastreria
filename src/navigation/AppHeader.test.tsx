@@ -166,12 +166,34 @@ describe("AppHeader", () => {
     });
   });
 
-  it("no muestra Mi cuenta para el dueño", () => {
+  it("Mi cuenta navega a MyAccount dentro de la pestaña activa (dueño en Inicio)", () => {
     useIdentityStore.getState().setOwnProfile({
       id: "owner-1",
       displayName: "Dueño",
       role: "owner",
       isSharedDevice: false,
+    });
+    const navigationRef = makeFakeNavigationRef({
+      title: "Inicio",
+      canGoBack: false,
+      activeTab: "DashboardTab",
+    });
+
+    const { getByLabelText } = renderAppHeader(navigationRef);
+
+    fireEvent.press(getByLabelText("Mi cuenta"));
+
+    expect(navigationRef.navigate).toHaveBeenCalledWith("DashboardTab", {
+      screen: "MyAccount",
+    });
+  });
+
+  it("no muestra Mi cuenta para el dueño en dispositivo compartido", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "owner-1",
+      displayName: "Dueño",
+      role: "owner",
+      isSharedDevice: true,
     });
     const navigationRef = makeFakeNavigationRef({ canGoBack: false });
 

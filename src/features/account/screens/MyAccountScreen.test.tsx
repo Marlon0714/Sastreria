@@ -205,4 +205,33 @@ describe("MyAccountScreen", () => {
 
     expect(queryByText("No se pudo cambiar la contraseña.")).toBeNull();
   });
+
+  describe("dueño (modo solo lectura, N-106 fase a)", () => {
+    beforeEach(() => {
+      useIdentityStore.getState().reset();
+      useIdentityStore.getState().setOwnProfile({
+        id: "owner-1",
+        displayName: "Ana Dueña",
+        role: "owner",
+        isSharedDevice: false,
+      });
+    });
+
+    it("muestra el nombre, el rol Dueño y el correo", () => {
+      const { getByText } = render(<MyAccountScreen />);
+
+      expect(getByText("Ana Dueña")).toBeTruthy();
+      expect(getByText("Dueño")).toBeTruthy();
+      expect(getByText("juan@example.com")).toBeTruthy();
+    });
+
+    it("no muestra los botones de edición ni el acceso a Mis arreglos", () => {
+      const { queryByLabelText } = render(<MyAccountScreen />);
+
+      expect(queryByLabelText("Cambiar correo")).toBeNull();
+      expect(queryByLabelText("Cambiar contraseña")).toBeNull();
+      expect(queryByLabelText("Cambiar PIN")).toBeNull();
+      expect(queryByLabelText("Ver mis arreglos")).toBeNull();
+    });
+  });
 });

@@ -14,12 +14,27 @@ describe("ProfileButton", () => {
     expect(queryByLabelText("Mi cuenta")).toBeNull();
   });
 
-  it("no muestra nada para el dueño", () => {
+  it("muestra el botón para el dueño en su dispositivo personal y llama a onPress", () => {
     useIdentityStore.getState().setOwnProfile({
       id: "owner-1",
       displayName: "Dueño",
       role: "owner",
       isSharedDevice: false,
+    });
+    const onPress = jest.fn();
+
+    const { getByLabelText } = render(<ProfileButton onPress={onPress} />);
+    fireEvent.press(getByLabelText("Mi cuenta"));
+
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("no muestra nada para el dueño en dispositivo compartido", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "owner-1",
+      displayName: "Dueño",
+      role: "owner",
+      isSharedDevice: true,
     });
 
     const { queryByLabelText } = render(<ProfileButton onPress={jest.fn()} />);
