@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { AppState } from "react-native";
 
 import { _resetSupabaseClient, getSupabaseClient } from "./client";
 
@@ -27,15 +28,23 @@ jest.mock("@supabase/supabase-js", () => ({
     mockCreateClient(url, key, options),
 }));
 
-jest.mock("react-native", () => ({
-  AppState: {
-    get currentState() {
-      return mockAppState.currentState;
-    },
-    addEventListener: (event: string, listener: (state: string) => void) =>
-      mockAddEventListener(event, listener),
-  },
-}));
+// `jest.spyOn` en vez de `jest.mock("react-native", ...)`: mockear el
+// módulo completo (aunque sea con spread sobre `requireActual`) dispara la
+// re-evaluación de submódulos nativos de RN (`DevMenu`, etc.) y rompe la
+// suite con un `TurboModuleRegistry` inexistente en el entorno de test —
+// mismo hallazgo ya documentado en FilterChipDropdown.test.tsx.
+// `currentState` es una propiedad de datos (no un getter) en el módulo
+// real, así que `jest.spyOn(obj, prop, "get")` no aplica — se redefine
+// directamente con `Object.defineProperty`.
+Object.defineProperty(AppState, "currentState", {
+  configurable: true,
+  get: () => mockAppState.currentState,
+});
+jest
+  .spyOn(AppState, "addEventListener")
+  .mockImplementation((event, listener) =>
+    mockAddEventListener(event, listener as (state: string) => void),
+  );
 
 jest.mock("./config", () => ({
   getSupabaseConfig: () => ({

@@ -3,19 +3,23 @@ import { AppState } from "react-native";
 
 import { SyncLifecycleController } from "./SyncLifecycleController";
 
-// jest.mock is hoisted before const declarations, so the factory must use
-// jest.fn() inline; the implementation is configured in beforeEach instead.
-jest.mock("react-native", () => ({
-  AppState: {
-    currentState: "background",
-    addEventListener: jest.fn(),
-  },
-}));
+// `jest.spyOn` en vez de `jest.mock("react-native", ...)`: mockear el
+// módulo completo (aunque sea con spread sobre `requireActual`) dispara la
+// re-evaluación de submódulos nativos de RN (`DevMenu`, etc.) y rompe la
+// suite con un `TurboModuleRegistry` inexistente en el entorno de test —
+// mismo hallazgo ya documentado en FilterChipDropdown.test.tsx.
+const mockAddEventListener = jest.spyOn(AppState, "addEventListener");
+// `currentState` es una propiedad de datos (no un getter) en el módulo
+// real, así que `jest.spyOn(obj, prop, "get")` no aplica — se redefine
+// directamente con `Object.defineProperty`.
+Object.defineProperty(AppState, "currentState", {
+  configurable: true,
+  get: () => "background",
+});
 
 describe("SyncLifecycleController", () => {
   let mockAppStateListener: ((nextState: string) => void) | null = null;
   const mockRemove = jest.fn();
-  const mockAddEventListener = AppState.addEventListener as jest.Mock;
 
   beforeEach(() => {
     mockAppStateListener = null;
