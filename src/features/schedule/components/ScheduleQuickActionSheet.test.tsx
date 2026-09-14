@@ -11,6 +11,10 @@ jest.mock("../../../data/local/profilesCacheDependencies", () => ({
   }),
 }));
 
+const noopSaveInlinePrice = jest.fn<
+  (price: number) => Promise<Schedule | null>
+>(async () => Promise.resolve(null));
+
 const baseSchedule: Schedule = {
   id: "schedule-1",
   clientId: "client-1",
@@ -48,6 +52,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -70,6 +75,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -93,6 +99,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -116,6 +123,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -139,6 +147,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -167,6 +176,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -184,9 +194,9 @@ describe("ScheduleQuickActionSheet", () => {
       <ScheduleQuickActionSheet
         visible
         // Precio ya cargado y saldado (price === abono): sin esto, "Marcar
-        // entregado" dispara el aviso de "Precio no registrado" en vez de
-        // llamar directo al callback, que es justo lo que este test verifica
-        // para cada botón (ver casos dedicados de missingPrice/saldo más abajo).
+        // entregado" abre la tarjeta inline de precio en vez de llamar
+        // directo al callback, que es justo lo que este test verifica para
+        // cada botón (ver casos dedicados de missingPrice/saldo más abajo).
         schedule={{ ...baseSchedule, price: 100000, abono: 100000 }}
         clientLabel="Ana Torres"
         isProcessing={false}
@@ -199,6 +209,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -231,6 +242,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -265,6 +277,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -299,6 +312,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -306,89 +320,6 @@ describe("ScheduleQuickActionSheet", () => {
 
     expect(alertSpy).not.toHaveBeenCalled();
     expect(onMarkDelivered).toHaveBeenCalledTimes(1);
-  });
-
-  it("al marcar entregado sin precio, avisa 'Precio no registrado' y 'Completar precio' navega al turno completo", () => {
-    let capturedButtons:
-      | { text?: string; onPress?: () => void }[]
-      | undefined;
-    jest
-      .spyOn(Alert, "alert")
-      .mockImplementation((_title, _msg, buttons) => {
-        capturedButtons = buttons;
-      });
-    const onMarkDelivered = jest.fn();
-    const onViewDetail = jest.fn();
-
-    const { getByLabelText } = render(
-      <ScheduleQuickActionSheet
-        visible
-        schedule={baseSchedule} // price undefined
-        clientLabel="Ana Torres"
-        isProcessing={false}
-        error={null}
-        onMarkReady={jest.fn()}
-        onMarkDelivered={onMarkDelivered}
-        onAssignOperario={jest.fn()}
-        onViewDetail={onViewDetail}
-        onClose={jest.fn()}
-        canToggleOwnerFlag={false}
-        isTogglingOwnerFlag={false}
-        onToggleOwnerFlag={jest.fn()}
-      />,
-    );
-
-    fireEvent.press(getByLabelText("Marcar entregado"));
-
-    expect(Alert.alert).toHaveBeenCalledWith(
-      "Precio no registrado",
-      expect.any(String),
-      expect.anything(),
-    );
-
-    capturedButtons?.find((b) => b.text === "Completar precio")?.onPress?.();
-
-    expect(onViewDetail).toHaveBeenCalledTimes(1);
-    expect(onMarkDelivered).not.toHaveBeenCalled();
-  });
-
-  it("con precio en 0, avisa 'Precio no registrado' y 'Entregar sin precio' marca directo (0 no deja saldo pendiente)", () => {
-    let capturedButtons:
-      | { text?: string; onPress?: () => void }[]
-      | undefined;
-    const alertSpy = jest
-      .spyOn(Alert, "alert")
-      .mockImplementation((_title, _msg, buttons) => {
-        capturedButtons = buttons;
-      });
-    const onMarkDelivered = jest.fn();
-
-    const { getByLabelText } = render(
-      <ScheduleQuickActionSheet
-        visible
-        schedule={{ ...baseSchedule, price: 0, abono: 0 }}
-        clientLabel="Ana Torres"
-        isProcessing={false}
-        error={null}
-        onMarkReady={jest.fn()}
-        onMarkDelivered={onMarkDelivered}
-        onAssignOperario={jest.fn()}
-        onViewDetail={jest.fn()}
-        onClose={jest.fn()}
-        canToggleOwnerFlag={false}
-        isTogglingOwnerFlag={false}
-        onToggleOwnerFlag={jest.fn()}
-      />,
-    );
-
-    fireEvent.press(getByLabelText("Marcar entregado"));
-
-    capturedButtons?.find((b) => b.text === "Entregar sin precio")?.onPress?.();
-
-    expect(onMarkDelivered).toHaveBeenCalledTimes(1);
-    // Un solo Alert (el de precio) — el saldo con price=0 es 0, no se
-    // encadena un segundo aviso de "Saldo pendiente".
-    expect(alertSpy).toHaveBeenCalledTimes(1);
   });
 
   it("muestra el mensaje de error cuando se provee", () => {
@@ -407,6 +338,7 @@ describe("ScheduleQuickActionSheet", () => {
         canToggleOwnerFlag={false}
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
+        onSaveInlinePrice={noopSaveInlinePrice}
       />,
     );
 
@@ -434,6 +366,7 @@ describe("ScheduleQuickActionSheet", () => {
           canToggleOwnerFlag
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={onToggleOwnerFlag}
+          onSaveInlinePrice={noopSaveInlinePrice}
         />,
       );
 
@@ -459,11 +392,310 @@ describe("ScheduleQuickActionSheet", () => {
           canToggleOwnerFlag={false}
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={noopSaveInlinePrice}
         />,
       );
 
       expect(queryByLabelText("Personal")).toBeNull();
       expect(queryByText(/Personal/)).toBeNull();
+    });
+  });
+
+  describe("precio inline al entregar (N-125)", () => {
+    it("al marcar entregado sin precio, ya no abre un Alert: muestra la tarjeta inline con las 3 opciones", async () => {
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation(() => undefined);
+      const onMarkDelivered = jest.fn();
+      const onViewDetail = jest.fn();
+
+      const { getByLabelText, findByLabelText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={baseSchedule} // price undefined
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={onMarkDelivered}
+          onAssignOperario={jest.fn()}
+          onViewDetail={onViewDetail}
+          onClose={jest.fn()}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={noopSaveInlinePrice}
+        />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+
+      expect(alertSpy).not.toHaveBeenCalled();
+      expect(
+        await findByLabelText("Precio para entregar"),
+      ).toBeTruthy();
+      expect(getByLabelText("Guardar y entregar")).toBeTruthy();
+      expect(getByLabelText("Entregar sin precio")).toBeTruthy();
+      expect(getByLabelText("Completar en el turno completo")).toBeTruthy();
+    });
+
+    it("con precio en 0, la tarjeta inline también se abre (0 se trata igual que sin precio)", async () => {
+      const { getByLabelText, findByLabelText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={{ ...baseSchedule, price: 0, abono: 0 }}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={jest.fn()}
+          onAssignOperario={jest.fn()}
+          onViewDetail={jest.fn()}
+          onClose={jest.fn()}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={noopSaveInlinePrice}
+        />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+
+      expect(await findByLabelText("Precio para entregar")).toBeTruthy();
+    });
+
+    it("(a) precio inválido (vacío o '0') muestra priceInputError y no llama a onSaveInlinePrice", async () => {
+      const onSaveInlinePrice = jest.fn<
+        (price: number) => Promise<Schedule | null>
+      >(async () => Promise.resolve(null));
+
+      const { getByLabelText, findByLabelText, findByText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={baseSchedule}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={jest.fn()}
+          onAssignOperario={jest.fn()}
+          onViewDetail={jest.fn()}
+          onClose={jest.fn()}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={onSaveInlinePrice}
+        />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+      await findByLabelText("Precio para entregar");
+
+      // Vacío (nunca se escribió nada).
+      fireEvent.press(getByLabelText("Guardar y entregar"));
+      expect(
+        await findByText("Ingresa un precio válido para continuar."),
+      ).toBeTruthy();
+      expect(onSaveInlinePrice).not.toHaveBeenCalled();
+
+      // "0" tampoco es válido.
+      fireEvent.changeText(getByLabelText("Precio para entregar"), "0");
+      fireEvent.press(getByLabelText("Guardar y entregar"));
+      expect(
+        await findByText("Ingresa un precio válido para continuar."),
+      ).toBeTruthy();
+      expect(onSaveInlinePrice).not.toHaveBeenCalled();
+    });
+
+    it("(b) precio válido llama a onSaveInlinePrice y, si deja saldo pendiente, encadena el Alert sin llamar onMarkDelivered directo", async () => {
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation(() => undefined);
+      const onMarkDelivered = jest.fn();
+      const onSaveInlinePrice = jest.fn<
+        (price: number) => Promise<Schedule | null>
+      >(async () => Promise.resolve({ ...baseSchedule, price: 100000 }));
+
+      const { getByLabelText, findByLabelText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={baseSchedule}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={onMarkDelivered}
+          onAssignOperario={jest.fn()}
+          onViewDetail={jest.fn()}
+          onClose={jest.fn()}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={onSaveInlinePrice}
+        />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+      await findByLabelText("Precio para entregar");
+      fireEvent.changeText(getByLabelText("Precio para entregar"), "100000");
+      fireEvent.press(getByLabelText("Guardar y entregar"));
+
+      await findByLabelText("Marcar entregado"); // la tarjeta se colapsó
+
+      expect(onSaveInlinePrice).toHaveBeenCalledWith(100000);
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Saldo pendiente",
+        expect.any(String),
+        expect.anything(),
+      );
+      expect(onMarkDelivered).not.toHaveBeenCalled();
+    });
+
+    it("(c) si el precio guardado deja saldo $0, llama onMarkDelivered directo sin Alert", async () => {
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation(() => undefined);
+      const onMarkDelivered = jest.fn();
+      const onSaveInlinePrice = jest.fn<
+        (price: number) => Promise<Schedule | null>
+      >(async () =>
+        Promise.resolve({ ...baseSchedule, price: 50000, abono: 50000 }),
+      );
+
+      const { getByLabelText, findByLabelText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={baseSchedule}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={onMarkDelivered}
+          onAssignOperario={jest.fn()}
+          onViewDetail={jest.fn()}
+          onClose={jest.fn()}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={onSaveInlinePrice}
+        />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+      await findByLabelText("Precio para entregar");
+      fireEvent.changeText(getByLabelText("Precio para entregar"), "50000");
+      fireEvent.press(getByLabelText("Guardar y entregar"));
+
+      await findByLabelText("Marcar entregado");
+
+      expect(alertSpy).not.toHaveBeenCalled();
+      expect(onMarkDelivered).toHaveBeenCalledTimes(1);
+    });
+
+    it("(d) si onSaveInlinePrice resuelve null, la tarjeta sigue abierta y no se llama onMarkDelivered", async () => {
+      const onMarkDelivered = jest.fn();
+      const onSaveInlinePrice = jest.fn<
+        (price: number) => Promise<Schedule | null>
+      >(async () => Promise.resolve(null));
+
+      const { getByLabelText, findByLabelText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={baseSchedule}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={onMarkDelivered}
+          onAssignOperario={jest.fn()}
+          onViewDetail={jest.fn()}
+          onClose={jest.fn()}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={onSaveInlinePrice}
+        />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+      await findByLabelText("Precio para entregar");
+      fireEvent.changeText(getByLabelText("Precio para entregar"), "50000");
+      fireEvent.press(getByLabelText("Guardar y entregar"));
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(onSaveInlinePrice).toHaveBeenCalledWith(50000);
+      expect(onMarkDelivered).not.toHaveBeenCalled();
+      expect(getByLabelText("Precio para entregar")).toBeTruthy();
+    });
+
+    it("(e) 'Entregar sin precio' marca directo (0 no deja saldo pendiente) y 'Completar en el turno completo' navega, sin usar Alert", async () => {
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation(() => undefined);
+      const onMarkDelivered = jest.fn();
+      const onViewDetail = jest.fn();
+
+      const { getByLabelText, findByLabelText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={{ ...baseSchedule, price: 0, abono: 0 }}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={onMarkDelivered}
+          onAssignOperario={jest.fn()}
+          onViewDetail={onViewDetail}
+          onClose={jest.fn()}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={noopSaveInlinePrice}
+        />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+      await findByLabelText("Precio para entregar");
+
+      fireEvent.press(getByLabelText("Entregar sin precio"));
+      expect(onMarkDelivered).toHaveBeenCalledTimes(1);
+      expect(alertSpy).not.toHaveBeenCalled();
+
+      fireEvent.press(getByLabelText("Completar en el turno completo"));
+      expect(onViewDetail).toHaveBeenCalledTimes(1);
+    });
+
+    it("el botón 'Cancelar' propio de la tarjeta la colapsa sin cerrar el panel completo", async () => {
+      const onClose = jest.fn();
+
+      const { getByLabelText, findByLabelText, queryByLabelText } = render(
+        <ScheduleQuickActionSheet
+          visible
+          schedule={baseSchedule}
+          clientLabel="Ana Torres"
+          isProcessing={false}
+          error={null}
+          onMarkReady={jest.fn()}
+          onMarkDelivered={jest.fn()}
+          onAssignOperario={jest.fn()}
+          onViewDetail={jest.fn()}
+          onClose={onClose}
+          canToggleOwnerFlag={false}
+          isTogglingOwnerFlag={false}
+          onToggleOwnerFlag={jest.fn()}
+          onSaveInlinePrice={noopSaveInlinePrice}
+        />,
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+      await findByLabelText("Precio para entregar");
+
+      fireEvent.press(getByLabelText("Cancelar"));
+
+      expect(queryByLabelText("Precio para entregar")).toBeNull();
+      expect(getByLabelText("Marcar entregado")).toBeTruthy();
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });

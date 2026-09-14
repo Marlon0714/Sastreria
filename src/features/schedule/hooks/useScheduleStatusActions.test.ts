@@ -3,7 +3,7 @@ import { act, renderHook } from "@testing-library/react-native";
 
 import type { ResolvedIdentity } from "../../auth/hooks/useIdentityGate";
 import type { CreateScheduleEventDTO, ScheduleEvent } from "../domain/events";
-import type { Schedule } from "../domain/types";
+import { ScheduleValidationError, type Schedule } from "../domain/types";
 import { useScheduleStatusActions } from "./useScheduleStatusActions";
 
 const mockGetById = jest.fn<(id: string) => Promise<Schedule | null>>();
@@ -12,7 +12,9 @@ const mockMarkDelivered = jest.fn<(id: string) => Promise<Schedule>>();
 const mockApplyManualCorrection =
   jest.fn<(id: string, status: Schedule["status"]) => Promise<Schedule>>();
 const mockUpdate =
-  jest.fn<(id: string, data: { operarioId?: string }) => Promise<Schedule>>();
+  jest.fn<
+    (id: string, data: { operarioId?: string; price?: number }) => Promise<Schedule>
+  >();
 
 jest.mock("../../../data/local/scheduleDependencies", () => ({
   getDefaultScheduleRepository: () => ({
@@ -21,7 +23,7 @@ jest.mock("../../../data/local/scheduleDependencies", () => ({
     markDelivered: (id: string) => mockMarkDelivered(id),
     applyManualCorrection: (id: string, status: Schedule["status"]) =>
       mockApplyManualCorrection(id, status),
-    update: (id: string, data: { operarioId?: string }) =>
+    update: (id: string, data: { operarioId?: string; price?: number }) =>
       mockUpdate(id, data),
   }),
 }));
@@ -339,6 +341,80 @@ describe("useScheduleStatusActions", () => {
 
       expect(mockUpdate).toHaveBeenCalledWith(baseSchedule.id, {
         operarioId: undefined,
+      });
+    });
+  });
+
+  describe("updatePrice", () => {
+    it("guarda el precio vía update() y lo audita como 'updated' (no deriva estado)", async () => {
+      const updated: Schedule = { ...baseSchedule, price: 50000 };
+      mockUpdate.mockResolvedValueOnce(updated);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      let resolved: Schedule | null = null;
+      await act(async () => {
+        resolved = await result.current.updatePrice(50000);
+      });
+
+      expect(mockUpdate).toHaveBeenCalledWith(baseSchedule.id, {
+        price: 50000,
+      });
+      expect(resolved).toEqual(updated);
+      // baseSchedule ya está "en_proceso" (mockGetById por defecto) — un
+      // cambio de precio no mueve el estado, así que no debe quedar ningún
+      // evento de auditoría (ver comentario de runAction sobre
+      // existing.status !== updated.status).
+      expect(mockCreateEvent).not.toHaveBeenCalled();
+      expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
+    });
+
+    it("marca error si ScheduleValidationError falla la actualización", async () => {
+      mockUpdate.mockRejectedValueOnce(
+        new ScheduleValidationError("Precio inválido"),
+      );
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      let resolved: Schedule | null = baseSchedule;
+      await act(async () => {
+        resolved = await result.current.updatePrice(50000);
+      });
+
+      expect(resolved).toBeNull();
+      expect(result.current.error).toBe("Precio inválido");
+    });
+
+    it("no dispara si isRunningRef ya está ocupado por otra acción en curso", async () => {
+      let resolveMarkReady: ((schedule: Schedule) => void) | undefined;
+      mockMarkReady.mockImplementationOnce(
+        () =>
+          new Promise<Schedule>((resolve) => {
+            resolveMarkReady = resolve;
+          }),
+      );
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleStatusActions(baseSchedule.id, identityGate),
+      );
+
+      let firstResult: Promise<Schedule | null> = Promise.resolve(null);
+      let priceResult: Schedule | null = baseSchedule;
+      await act(async () => {
+        firstResult = result.current.markReady();
+        priceResult = await result.current.updatePrice(50000);
+      });
+
+      expect(priceResult).toBeNull();
+      expect(mockUpdate).not.toHaveBeenCalled();
+
+      resolveMarkReady?.({ ...baseSchedule, status: "listo_para_entregar" });
+      await act(async () => {
+        await firstResult;
       });
     });
   });

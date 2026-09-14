@@ -23,6 +23,19 @@ interface UseScheduleStatusActionsResult {
    * sea uno de los finales (`listo_para_entregar`/`entregado`).
    */
   assignOperario: (operarioId: string | undefined) => Promise<Schedule | null>;
+  /**
+   * Guarda el precio sin pasar por el formulario completo (ej. tarjeta
+   * inline del panel rápido antes de entregar). A diferencia de
+   * `assignOperario`, un cambio de precio nunca deriva estado
+   * (`deriveScheduleStatus` solo mira `operarioId`/`date`), así que se
+   * audita con `action: "updated"` en vez de `"status_auto"` — y, por lo
+   * mismo, `runAction` no crea ningún evento cuando el estado no cambia (ver
+   * comentario de `runAction` sobre `existing.status !== updated.status`):
+   * este precio inline queda sin auditar en el historial salvo que el mismo
+   * cambio también mueva el estado. Hueco conocido, no corregido acá (ver
+   * plan N-125, Decisiones de Diseño).
+   */
+  updatePrice: (price: number) => Promise<Schedule | null>;
 }
 
 export function useScheduleStatusActions(
@@ -149,6 +162,11 @@ export function useScheduleStatusActions(
     [runAction, repo, scheduleId],
   );
 
+  const updatePrice = useCallback(
+    (price: number) => runAction("updated", () => repo.update(scheduleId, { price })),
+    [runAction, repo, scheduleId],
+  );
+
   return {
     isProcessing,
     error,
@@ -156,5 +174,6 @@ export function useScheduleStatusActions(
     markDelivered,
     applyCorrection,
     assignOperario,
+    updatePrice,
   };
 }
