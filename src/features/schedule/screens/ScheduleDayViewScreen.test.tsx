@@ -95,6 +95,7 @@ const mockMarkReady = jest.fn<() => Promise<Schedule | null>>();
 const mockMarkDelivered = jest.fn<() => Promise<Schedule | null>>();
 const mockAssignOperario =
   jest.fn<(operarioId: string | undefined) => Promise<Schedule | null>>();
+const mockUpdatePrice = jest.fn<(price: number) => Promise<Schedule | null>>();
 const mockReleaseIdentity = jest.fn();
 const mockRequireIdentity = jest.fn(async () => ({
   profile: { id: "user-1", displayName: "Ana", role: "operario" },
@@ -136,6 +137,7 @@ jest.mock("../hooks/useScheduleStatusActions", () => ({
     applyCorrection: jest.fn(async () => Promise.resolve(null)),
     assignOperario: (operarioId: string | undefined) =>
       mockAssignOperario(operarioId),
+    updatePrice: (price: number) => mockUpdatePrice(price),
   }),
 }));
 
@@ -231,6 +233,7 @@ describe("ScheduleDayViewScreen", () => {
     mockMarkReady.mockReset();
     mockMarkDelivered.mockReset();
     mockAssignOperario.mockReset();
+    mockUpdatePrice.mockReset();
     mockGetOperarios.mockReset();
     mockGetOperarios.mockResolvedValue([]);
     mockReleaseIdentity.mockClear();
@@ -303,8 +306,8 @@ describe("ScheduleDayViewScreen", () => {
     expect(searchIndex).toBeLessThan(filterIndex);
   });
 
-  it("el chip colapsado muestra siempre el conteo de la opción activa (N-109: un solo número, no un bloque fijo aparte)", () => {
-    const { getByText, getByLabelText } = render(
+  it("el chip colapsado muestra siempre el conteo de la opción activa (N-109: un solo número, no un bloque fijo aparte)", async () => {
+    const { getByText, findByText, getByLabelText } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
@@ -314,7 +317,11 @@ describe("ScheduleDayViewScreen", () => {
     fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
     fireEvent.press(getByLabelText("Ver confecciones"));
 
-    expect(getByText("🧵 Confecciones (0)")).toBeTruthy();
+    // "Confecciones" ahora depende de `allSchedules` (mes completo, N-127):
+    // mientras esa carga async resuelve, la pantalla puede mostrar
+    // brevemente el `LoadingView` (ver `isLoadingAllSchedules`) — se espera
+    // con `findByText` en vez de `getByText`.
+    expect(await findByText("🧵 Confecciones (0)")).toBeTruthy();
 
     fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
     fireEvent.press(getByLabelText("Ver turnos pendientes"));
@@ -431,6 +438,9 @@ describe("ScheduleDayViewScreen", () => {
       error: null,
       reload: jest.fn(async () => Promise.resolve()),
     });
+    // "Confecciones" ahora se lee de `allSchedules` (mes completo, N-127),
+    // no de `dateSchedules` del hook — ver `confeccionMonthSchedules`.
+    mockScheduleGetAll.mockResolvedValue([confeccionOne]);
     const navigate = jest.fn();
 
     const { queryByText, findByLabelText, getByLabelText } = render(
@@ -448,8 +458,12 @@ describe("ScheduleDayViewScreen", () => {
     fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
     fireEvent.press(getByLabelText("Ver confecciones"));
 
+    // En modo confección la tarjeta muestra fecha+hora (N-127 tarea 8), no
+    // solo la hora — dentro del mes hay varios días distintos.
     expect(
-      await findByLabelText("Ver turno de Ana Torres (09:00, schedule-3)"),
+      await findByLabelText(
+        "Ver turno de Ana Torres (Sábado 15 de agosto · 09:00, schedule-3)",
+      ),
     ).toBeTruthy();
 
     fireEvent.press(getByLabelText("Nuevo turno"));
@@ -466,6 +480,7 @@ describe("ScheduleDayViewScreen", () => {
       error: null,
       reload: jest.fn(async () => Promise.resolve()),
     });
+    mockScheduleGetAll.mockResolvedValue([confeccionOne]);
 
     const { queryByLabelText, findByLabelText, getByLabelText } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
@@ -482,11 +497,181 @@ describe("ScheduleDayViewScreen", () => {
     fireEvent.press(getByLabelText("Ver confecciones"));
 
     expect(
-      await findByLabelText("Ver turno de Ana Torres (09:00, schedule-3)"),
+      await findByLabelText(
+        "Ver turno de Ana Torres (Sábado 15 de agosto · 09:00, schedule-3)",
+      ),
     ).toBeTruthy();
     expect(
       queryByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
     ).toBeNull();
+  });
+
+  describe("modo confección: agrupado por mes (N-127)", () => {
+    it("muestra turnos de distintos días del mismo mes y excluye los de otro mes", async () => {
+      const confeccionOtroDiaMismoMes: Schedule = {
+        ...confeccionOne,
+        id: "schedule-confeccion-otro-dia",
+        date: "2026-08-20",
+        time: "11:00",
+      };
+      const confeccionOtroMes: Schedule = {
+        ...confeccionOne,
+        id: "schedule-confeccion-otro-mes",
+        date: "2026-09-01",
+      };
+      mockScheduleGetAll.mockResolvedValue([
+        confeccionOne,
+        confeccionOtroDiaMismoMes,
+        confeccionOtroMes,
+      ]);
+
+      const { getByLabelText, findByLabelText, queryByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+      fireEvent.press(getByLabelText("Ver confecciones"));
+
+      expect(
+        await findByLabelText(
+          "Ver turno de Ana Torres (Sábado 15 de agosto · 09:00, schedule-3)",
+        ),
+      ).toBeTruthy();
+      expect(
+        await findByLabelText(
+          "Ver turno de Ana Torres (Jueves 20 de agosto · 11:00, schedule-confeccion-otro-dia)",
+        ),
+      ).toBeTruthy();
+      expect(
+        queryByLabelText(/schedule-confeccion-otro-mes/),
+      ).toBeNull();
+    });
+
+    it("cambiar de mes con los botones prev/next actualiza la lista visible", async () => {
+      const confeccionSeptiembre: Schedule = {
+        ...confeccionOne,
+        id: "schedule-confeccion-septiembre",
+        date: "2026-09-05",
+      };
+      mockScheduleGetAll.mockResolvedValue([
+        confeccionOne,
+        confeccionSeptiembre,
+      ]);
+
+      const { getByLabelText, findByLabelText, queryByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+      fireEvent.press(getByLabelText("Ver confecciones"));
+
+      expect(await findByLabelText(/schedule-3/)).toBeTruthy();
+      expect(queryByLabelText(/schedule-confeccion-septiembre/)).toBeNull();
+
+      fireEvent.press(getByLabelText("Mes siguiente"));
+
+      expect(
+        await findByLabelText(/schedule-confeccion-septiembre/),
+      ).toBeTruthy();
+      expect(queryByLabelText(/schedule-3/)).toBeNull();
+
+      fireEvent.press(getByLabelText("Mes anterior"));
+
+      expect(await findByLabelText(/schedule-3/)).toBeTruthy();
+    });
+
+    it("oculta WeekStrip/'Ir a hoy' en modo confección, reemplazándolos por navegación de mes; en modo arreglo se ven normalmente", async () => {
+      const { getByLabelText, queryByLabelText, findByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      // Modo arreglo (por defecto): WeekStrip visible, sin navegación de mes.
+      expect(getByLabelText("Semana anterior")).toBeTruthy();
+      expect(getByLabelText("Semana siguiente")).toBeTruthy();
+      expect(queryByLabelText("Mes anterior")).toBeNull();
+
+      fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+      fireEvent.press(getByLabelText("Ver confecciones"));
+
+      expect(await findByLabelText("Mes anterior")).toBeTruthy();
+      expect(getByLabelText("Mes siguiente")).toBeTruthy();
+      expect(queryByLabelText("Semana anterior")).toBeNull();
+      expect(queryByLabelText("Semana siguiente")).toBeNull();
+      expect(queryByLabelText("Ir a hoy")).toBeNull();
+    });
+
+    it("muestra el atajo 'Mes actual' solo cuando el mes seleccionado no es el actual", async () => {
+      const { getByLabelText, queryByLabelText, findByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+      fireEvent.press(getByLabelText("Ver confecciones"));
+      await findByLabelText("Mes anterior");
+
+      expect(queryByLabelText("Mes actual")).toBeNull();
+
+      fireEvent.press(getByLabelText("Mes siguiente"));
+
+      expect(getByLabelText("Mes actual")).toBeTruthy();
+
+      fireEvent.press(getByLabelText("Mes actual"));
+
+      expect(queryByLabelText("Mes actual")).toBeNull();
+    });
+
+    it("el conteo de 'Confecciones' en el chip/desplegable refleja el total del mes, no el del día, aun con 'Arreglos' activo", async () => {
+      const confeccionOtroDiaMismoMes: Schedule = {
+        ...confeccionOne,
+        id: "schedule-confeccion-otro-dia",
+        date: "2026-08-20",
+      };
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [confeccionOne],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload: jest.fn(async () => Promise.resolve()),
+      });
+      mockScheduleGetAll.mockResolvedValue([
+        confeccionOne,
+        confeccionOtroDiaMismoMes,
+      ]);
+
+      const { getByLabelText, findByText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+
+      expect(await findByText("🧵 Confecciones (2)")).toBeTruthy();
+    });
+
+    it("con búsqueda activa en modo confección, sigue mostrando resultados cross-fecha (decisión de diseño: no se acota al mes)", async () => {
+      const confeccionOtroMes: Schedule = {
+        ...confeccionOne,
+        id: "schedule-confeccion-otro-mes",
+        date: "2026-10-01",
+      };
+      mockScheduleGetAll.mockResolvedValue([confeccionOne, confeccionOtroMes]);
+
+      const { getByLabelText, findByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(getByLabelText("Cambiar filtro de agenda"));
+      fireEvent.press(getByLabelText("Ver confecciones"));
+      await findByLabelText(/schedule-3/);
+
+      fireEvent.changeText(
+        getByLabelText("Buscar cliente en la agenda"),
+        "ana",
+      );
+
+      expect(
+        await findByLabelText(/schedule-confeccion-otro-mes/),
+      ).toBeTruthy();
+    });
   });
 
   it("al elegir 'Ver turnos pendientes' se ven los pendientes de ambas categorías, sin importar cuál estaba activa", async () => {
@@ -530,8 +715,9 @@ describe("ScheduleDayViewScreen", () => {
       error: null,
       reload: jest.fn(async () => Promise.resolve()),
     });
+    mockScheduleGetAll.mockResolvedValue([confeccionOne]);
 
-    const { getByLabelText, getAllByText } = render(
+    const { getByLabelText, getAllByText, findAllByText } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
@@ -544,7 +730,9 @@ describe("ScheduleDayViewScreen", () => {
     // en el chip colapsado: estos 2 conteos solo viven acá, dentro del
     // desplegable.
     expect(getAllByText("✂️ Arreglos (1)")).toHaveLength(1);
-    expect(getAllByText("🧵 Confecciones (1)")).toHaveLength(1);
+    // Conteo de "Confecciones" viene de `allSchedules` (mes completo, N-127)
+    // — se espera a que la carga async resuelva.
+    expect(await findAllByText("🧵 Confecciones (1)")).toHaveLength(1);
     // "📋 Pendientes (1)" aparece 2 veces: una en el chip colapsado (siempre
     // visible cuando "Pendientes" es la opción activa) y otra en su fila
     // dentro del desplegable — redundancia visual esperada mientras está
@@ -687,6 +875,62 @@ describe("ScheduleDayViewScreen", () => {
       });
       await waitFor(() => {
         expect(reload).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("guarda el precio desde la tarjeta inline y entrega, refrescando sheetSchedule y las listas (N-125)", async () => {
+      const reload = jest.fn(async () => Promise.resolve());
+      const scheduleWithoutPrice = { ...scheduledOne, operarioId: "op-1" };
+      mockUseScheduleDayView.mockReturnValue({
+        dateSchedules: [scheduleWithoutPrice],
+        pendingSchedules: [],
+        isLoading: false,
+        error: null,
+        reload,
+      });
+      // Precio guardado deja saldo $0 (abono === price): confirmDelivery
+      // resuelve directo, sin encadenar el Alert de "Saldo pendiente" (ver
+      // ScheduleQuickActionSheet.test.tsx para esa rama).
+      mockUpdatePrice.mockResolvedValueOnce({
+        ...scheduleWithoutPrice,
+        price: 50000,
+        abono: 50000,
+      });
+      mockMarkDelivered.mockResolvedValueOnce({
+        ...scheduleWithoutPrice,
+        price: 50000,
+        abono: 50000,
+        status: "entregado",
+      });
+
+      const { findByLabelText, findByText, getByLabelText } = render(
+        <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+      );
+
+      fireEvent.press(
+        await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
+      );
+
+      fireEvent.press(getByLabelText("Marcar entregado"));
+      fireEvent.changeText(
+        await findByLabelText("Precio para entregar"),
+        "50000",
+      );
+      fireEvent.press(getByLabelText("Guardar y entregar"));
+
+      await waitFor(() => {
+        expect(mockUpdatePrice).toHaveBeenCalledWith(50000);
+      });
+      await waitFor(() => {
+        expect(mockMarkDelivered).toHaveBeenCalledTimes(1);
+      });
+      // `sheetSchedule` se refresca con el turno ya entregado devuelto por
+      // markDelivered — el panel refleja el nuevo estado sin cerrarse.
+      expect(await findByText("Estado actual: Entregado")).toBeTruthy();
+      // `reload` corre al enfocar la pantalla, y una vez más por cada acción
+      // exitosa (guardar precio + marcar entregado).
+      await waitFor(() => {
+        expect(reload).toHaveBeenCalledTimes(3);
       });
     });
 
@@ -870,7 +1114,7 @@ describe("ScheduleDayViewScreen", () => {
     expect(queryByText("Saldo $0")).toBeNull();
   });
 
-  it("el desplegable de filtro muestra a la vez el conteo de Arreglos y de Confecciones del día", () => {
+  it("el desplegable de filtro muestra a la vez el conteo de Arreglos (del día) y Confecciones (del mes, N-127)", async () => {
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [
         scheduledOne,
@@ -882,8 +1126,9 @@ describe("ScheduleDayViewScreen", () => {
       error: null,
       reload: jest.fn(async () => Promise.resolve()),
     });
+    mockScheduleGetAll.mockResolvedValue([confeccionOne]);
 
-    const { getAllByText, getByLabelText } = render(
+    const { getAllByText, getByLabelText, findAllByText } = render(
       <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
     );
 
@@ -894,7 +1139,7 @@ describe("ScheduleDayViewScreen", () => {
     // activa, así que solo aparece 1 vez, dentro del desplegable — ya no
     // existe el bloque fijo junto al header de fecha que antes la repetía.
     expect(getAllByText("✂️ Arreglos (2)")).toHaveLength(2);
-    expect(getAllByText("🧵 Confecciones (1)")).toHaveLength(1);
+    expect(await findAllByText("🧵 Confecciones (1)")).toHaveLength(1);
   });
 
   it("al buscar, muestra todas las coincidencias no entregadas sin importar la fecha", async () => {

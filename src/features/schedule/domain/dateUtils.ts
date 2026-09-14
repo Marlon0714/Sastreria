@@ -144,6 +144,20 @@ export function formatMonthForDisplay(dateString: string): string {
 }
 
 /**
+ * Compara si `a` y `b` (ambas `YYYY-MM-DD`) caen en el mismo año y mes —
+ * usado para decidir si mostrar el atajo "Mes actual" en el modo
+ * confección, análogo a comparar `dateString === todayDateString()` a
+ * nivel de día pero a nivel de mes. Se comparan los componentes año+mes
+ * directo (mismo estilo que `getMonthRange`) en vez de inferirlo con
+ * `daysBetweenDates`, que es frágil cerca de fin de mes.
+ */
+export function isSameMonth(a: string, b: string): boolean {
+  const [yearA, monthA] = a.split("-");
+  const [yearB, monthB] = b.split("-");
+  return yearA === yearB && monthA === monthB;
+}
+
+/**
  * Ej. "8 sep" — día + mes abreviado SIN año, para textos compactos que
  * concatenan dos fechas (ej. "Semana del 8 sep al 14 sep"). Se usa una
  * tabla propia de abreviaturas (en vez de `toLocaleDateString` con

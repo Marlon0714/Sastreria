@@ -9,6 +9,7 @@ import {
   formatWeekdayAndMonth,
   getMonthRange,
   getWeekDates,
+  isSameMonth,
   localDateFromIso,
   shiftDateString,
   shiftMonthDateString,
@@ -212,6 +213,24 @@ describe("dateUtils", () => {
 
     it("formatea correctamente otro mes/año", () => {
       expect(formatMonthForDisplay("2027-01-15")).toBe("Enero 2027");
+    });
+  });
+
+  describe("isSameMonth", () => {
+    it("retorna true para fechas del mismo mes con distinto día", () => {
+      expect(isSameMonth("2026-08-01", "2026-08-31")).toBe(true);
+    });
+
+    it("retorna false para el mismo mes de un año distinto", () => {
+      expect(isSameMonth("2026-08-15", "2025-08-15")).toBe(false);
+    });
+
+    it("retorna false para meses distintos del mismo año", () => {
+      expect(isSameMonth("2026-08-31", "2026-09-01")).toBe(false);
+    });
+
+    it("retorna true comparando el primer y el último día del mismo mes", () => {
+      expect(isSameMonth("2026-09-01", "2026-09-30")).toBe(true);
     });
   });
 

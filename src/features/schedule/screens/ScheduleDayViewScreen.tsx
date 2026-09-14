@@ -33,9 +33,13 @@ import { ScheduleQuickActionSheet } from "../components/ScheduleQuickActionSheet
 import { WeekStrip } from "../components/WeekStrip";
 import {
   formatDateForDisplay,
+  formatMonthForDisplay,
   formatWeekdayAndMonth,
+  getMonthRange,
   getWeekDates,
+  isSameMonth,
   shiftDateString,
+  shiftMonthDateString,
   todayDateString,
 } from "../domain/dateUtils";
 import {
@@ -116,6 +120,12 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
   const scheduleRepository = useMemo(() => getDefaultScheduleRepository(), []);
   const [clientsById, setClientsById] = useState<Record<string, Client>>({});
   const [allSchedules, setAllSchedules] = useState<Schedule[]>([]);
+  // Distinto de `isLoading` (el de `useScheduleDayView`, acotado al día): en
+  // "Confecciones" `allSchedules` pasa a ser la fuente PRINCIPAL de la vista
+  // (no un caso secundario de búsqueda), así que sin este flag el mensaje de
+  // "no hay confecciones" podría parpadear antes de la primera carga (ver
+  // Riesgos del plan N-127).
+  const [isLoadingAllSchedules, setIsLoadingAllSchedules] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sheetSchedule, setSheetSchedule] = useState<Schedule | null>(null);
   const [isTogglingOwnerFlag, setIsTogglingOwnerFlag] = useState(false);
@@ -155,13 +165,46 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
     [searchTerm, clientsById],
   );
 
-  const dateSchedules = useMemo(
-    () =>
-      allDateSchedules
-        .filter((item) => item.category === activeCategory)
-        .filter(matchesSearch),
-    [allDateSchedules, activeCategory, matchesSearch],
-  );
+  // "Confecciones" se agrupa por MES, no por día (N-127): se filtra en
+  // memoria sobre `allSchedules` (ya cargado por `reloadAllSchedules`, mismo
+  // dato que usa la búsqueda cross-fecha) en vez de agregar una consulta
+  // nueva al repositorio — ver Decisiones de Diseño del plan. Se calcula
+  // siempre (no solo cuando `activeCategory === "confeccion"`) porque el
+  // chip/desplegable necesita el conteo del mes incluso con otra opción
+  // activa. Orden y criterio de "sin fecha al final" igual que
+  // `searchResults`, defensivo aunque el filtro de rango ya excluye
+  // `date == null`.
+  const confeccionMonthSchedules = useMemo(() => {
+    const { startDate, endDate } = getMonthRange(selectedDate);
+    return allSchedules
+      .filter((item) => item.category === "confeccion")
+      .filter(
+        (item) =>
+          item.date != null && item.date >= startDate && item.date <= endDate,
+      )
+      .filter(matchesSearch)
+      .sort((a, b) => {
+        if (!a.date && !b.date) return 0;
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return (
+          a.date.localeCompare(b.date) ||
+          (a.time ?? "").localeCompare(b.time ?? "")
+        );
+      });
+  }, [allSchedules, selectedDate, matchesSearch]);
+
+  // Para "confección" la lista visible es la del MES (`confeccionMonthSchedules`),
+  // no la del día puntual. "Arreglo" mantiene el comportamiento previo (solo
+  // el día seleccionado, vía `allDateSchedules`). No se renombra la variable
+  // pese a dejar de ser "del día" para confección — se prioriza minimizar el
+  // diff (ver Decisiones de Diseño del plan).
+  const dateSchedules = useMemo(() => {
+    if (activeCategory === "confeccion") return confeccionMonthSchedules;
+    return allDateSchedules
+      .filter((item) => item.category === "arreglo")
+      .filter(matchesSearch);
+  }, [activeCategory, confeccionMonthSchedules, allDateSchedules, matchesSearch]);
   // Ya no se filtra por `activeCategory`: "Pendientes" pasó a ser una opción
   // más del selector de 3 opciones, no una vista que coexiste con una
   // categoría activa — debe mostrar los pendientes de ambas categorías.
@@ -210,6 +253,10 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
           .filter((item) => item.status !== "entregado")
           .filter(matchesSearch).length;
       }
+      // "Confecciones" cuenta el mes completo (mismo dato que la lista
+      // visible), no solo el día — sin búsqueda activa. Con búsqueda activa
+      // ya cuenta cross-fecha (rama de arriba), mismo criterio que la lista.
+      if (category === "confeccion") return confeccionMonthSchedules.length;
       return allDateSchedules
         .filter((item) => item.category === category)
         .filter(matchesSearch).length;
@@ -219,7 +266,14 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
       confeccion: countForCategory("confeccion"),
       pendientes: pendingSchedules.length,
     };
-  }, [searchTerm, allSchedules, allDateSchedules, matchesSearch, pendingSchedules]);
+  }, [
+    searchTerm,
+    allSchedules,
+    allDateSchedules,
+    confeccionMonthSchedules,
+    matchesSearch,
+    pendingSchedules,
+  ]);
 
   // Opciones del desplegable compartido: las 3 muestran su propio conteo en
   // el chip colapsado (N-109 — antes solo "Pendientes" lo mostraba).
@@ -253,6 +307,7 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
   const reloadAllSchedules = useCallback(async (): Promise<void> => {
     const all = await scheduleRepository.getAll();
     setAllSchedules(all);
+    setIsLoadingAllSchedules(false);
   }, [scheduleRepository]);
 
   useFocusEffect(
@@ -335,6 +390,25 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
       void reload();
       void reloadAllSchedules();
     }
+  };
+
+  // Guarda el precio desde la tarjeta inline del panel (N-125), sin cerrar
+  // el sheet — mismo patrón que el resto de acciones rápidas: usa
+  // sheetScheduleIdRef para no pisar el panel si el usuario ya cambió de
+  // turno mientras la promesa seguía en vuelo.
+  const handleSheetSaveInlinePrice = async (
+    price: number,
+  ): Promise<Schedule | null> => {
+    const actingOnId = sheetScheduleIdRef.current;
+    const updated = await statusActions.updatePrice(price);
+    if (updated) {
+      if (sheetScheduleIdRef.current === actingOnId) {
+        setSheetSchedule(updated);
+      }
+      void reload();
+      void reloadAllSchedules();
+    }
+    return updated;
   };
 
   // Marca personal del dueño: se guarda directo desde el panel rápido, sin
@@ -444,7 +518,7 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
   };
 
   if (
-    isLoading &&
+    (isLoading || (activeCategory === "confeccion" && isLoadingAllSchedules)) &&
     dateSchedules.length === 0 &&
     pendingSchedules.length === 0
   ) {
@@ -494,19 +568,65 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
 
       {activeView === "dia" ? (
         <>
-          <WeekStrip
-            weekDates={weekDates}
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-            onPrevWeek={() =>
-              setSelectedDate((current) => shiftDateString(current, -7))
-            }
-            onNextWeek={() =>
-              setSelectedDate((current) => shiftDateString(current, 7))
-            }
-          />
+          {activeCategory === "confeccion" ? (
+            // "Confecciones" agrupa por MES: `WeekStrip` (saltos de 7 días)
+            // se reemplaza por navegación explícita de mes — cambiar de
+            // semana movería `selectedDate` sin que se entienda por qué
+            // cambió "el mes" visible (ver Decisiones de Diseño del plan
+            // N-127). Mismos iconos que `WeekStrip` para no sentirse como un
+            // patrón nuevo.
+            <View style={styles.monthNav}>
+              <Pressable
+                accessibilityLabel="Mes anterior"
+                style={styles.monthNavButton}
+                onPress={() =>
+                  setSelectedDate((current) => shiftMonthDateString(current, -1))
+                }
+              >
+                <Ionicons name="chevron-back" size={18} color={colors.primary} />
+              </Pressable>
+              <Text style={styles.monthNavLabel} numberOfLines={1}>
+                {formatMonthForDisplay(selectedDate)}
+              </Text>
+              <Pressable
+                accessibilityLabel="Mes siguiente"
+                style={styles.monthNavButton}
+                onPress={() =>
+                  setSelectedDate((current) => shiftMonthDateString(current, 1))
+                }
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.primary}
+                />
+              </Pressable>
+            </View>
+          ) : (
+            <WeekStrip
+              weekDates={weekDates}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              onPrevWeek={() =>
+                setSelectedDate((current) => shiftDateString(current, -7))
+              }
+              onNextWeek={() =>
+                setSelectedDate((current) => shiftDateString(current, 7))
+              }
+            />
+          )}
 
-          {selectedDate !== todayDateString() ? (
+          {activeCategory === "confeccion" ? (
+            !isSameMonth(selectedDate, todayDateString()) ? (
+              <Pressable
+                accessibilityLabel="Mes actual"
+                style={styles.todayButton}
+                onPress={() => setSelectedDate(todayDateString())}
+              >
+                <Text style={styles.todayButtonText}>Mes actual</Text>
+              </Pressable>
+            ) : null
+          ) : selectedDate !== todayDateString() ? (
             <Pressable
               accessibilityLabel="Ir a hoy"
               style={styles.todayButton}
@@ -518,7 +638,9 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
 
           <View style={styles.header}>
             <Text style={styles.dateLabel} numberOfLines={1}>
-              {formatDateForDisplay(selectedDate)}
+              {activeCategory === "confeccion"
+                ? formatMonthForDisplay(selectedDate)
+                : formatDateForDisplay(selectedDate)}
             </Text>
             <ScheduleDateTimePickerField
               mode="date"
@@ -548,9 +670,20 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
                 )
               )
             ) : dateSchedules.length === 0 ? (
-              <Text style={styles.emptyText}>No hay turnos para este día.</Text>
+              <Text style={styles.emptyText}>
+                {activeCategory === "confeccion"
+                  ? "No hay confecciones agendadas este mes."
+                  : "No hay turnos para este día."}
+              </Text>
             ) : (
-              dateSchedules.map((item) => renderCard(item, item.time))
+              dateSchedules.map((item) =>
+                renderCard(
+                  item,
+                  activeCategory === "confeccion"
+                    ? formatSearchResultLabel(item)
+                    : item.time,
+                ),
+              )
             )}
           </View>
         ) : (
@@ -594,6 +727,7 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
         canToggleOwnerFlag={canToggleOwnerFlag}
         isTogglingOwnerFlag={isTogglingOwnerFlag}
         onToggleOwnerFlag={() => void handleToggleOwnerFlag()}
+        onSaveInlinePrice={handleSheetSaveInlinePrice}
       />
 
       <PinPromptModal
@@ -644,6 +778,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textPrimary,
     padding: 0,
+  },
+  monthNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  monthNavButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  monthNavLabel: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    textTransform: "capitalize",
   },
   header: {
     flexDirection: "row",
