@@ -437,7 +437,7 @@ describe("ScheduleQuickActionSheet", () => {
         />,
       );
 
-      const toggle = getByLabelText("Marcado");
+      const toggle = getByLabelText("Personal");
       expect(toggle.props.value).toBe(true);
       fireEvent(toggle, "valueChange", false);
       expect(onToggleOwnerFlag).toHaveBeenCalledTimes(1);
@@ -462,8 +462,8 @@ describe("ScheduleQuickActionSheet", () => {
         />,
       );
 
-      expect(queryByLabelText("Marcado")).toBeNull();
-      expect(queryByText(/Marcado/)).toBeNull();
+      expect(queryByLabelText("Personal")).toBeNull();
+      expect(queryByText(/Personal/)).toBeNull();
     });
   });
 });

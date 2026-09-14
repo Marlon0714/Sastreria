@@ -9,7 +9,7 @@ describe("useOwnerOnlyVisibility", () => {
     useIdentityStore.getState().reset();
   });
 
-  it("retorna true para role=owner", () => {
+  it("retorna true para role=owner en su propio dispositivo", () => {
     useIdentityStore.getState().setOwnProfile({
       id: "owner-1",
       displayName: "Dueño",
@@ -20,6 +20,19 @@ describe("useOwnerOnlyVisibility", () => {
     const { result } = renderHook(() => useOwnerOnlyVisibility());
 
     expect(result.current).toBe(true);
+  });
+
+  it("retorna false para role=owner en el dispositivo compartido del mostrador (cambio de comportamiento N-120)", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "owner-1",
+      displayName: "Dueño",
+      role: "owner",
+      isSharedDevice: true,
+    });
+
+    const { result } = renderHook(() => useOwnerOnlyVisibility());
+
+    expect(result.current).toBe(false);
   });
 
   it("retorna false para role=operario en su propio dispositivo", () => {
@@ -35,7 +48,7 @@ describe("useOwnerOnlyVisibility", () => {
     expect(result.current).toBe(false);
   });
 
-  it("retorna true para role=operario en el dispositivo compartido del mostrador", () => {
+  it("retorna false para role=operario en el dispositivo compartido del mostrador (cambio de comportamiento N-120)", () => {
     useIdentityStore.getState().setOwnProfile({
       id: "tablet-1",
       displayName: "Tablet mostrador",
@@ -45,7 +58,7 @@ describe("useOwnerOnlyVisibility", () => {
 
     const { result } = renderHook(() => useOwnerOnlyVisibility());
 
-    expect(result.current).toBe(true);
+    expect(result.current).toBe(false);
   });
 
   it("retorna true si el perfil aún no se resolvió (role=null)", () => {

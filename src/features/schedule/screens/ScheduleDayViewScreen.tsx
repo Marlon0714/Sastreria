@@ -383,12 +383,13 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
     return item.time ? `${dateLabel} · ${item.time}` : dateLabel;
   };
 
-  const renderCard = (item: Schedule, dateLabel: string) => {
+  const renderCard = (item: Schedule, dateLabel: string | undefined) => {
     const statusColor = STATUS_COLORS[item.status];
+    const saldo = item.price != null ? computeSaldo(item) : undefined;
     return (
       <Pressable
         key={item.id}
-        accessibilityLabel={`Ver turno de ${clientLabel(item)} (${dateLabel}, ${item.id})`}
+        accessibilityLabel={`Ver turno de ${clientLabel(item)} (${dateLabel ?? "sin hora"}, ${item.id})`}
         style={styles.card}
         onPress={() => setSheetSchedule(item)}
       >
@@ -405,13 +406,19 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
           </View>
         </View>
         <View style={styles.cardSubRow}>
-          <Text style={styles.cardDate}>{dateLabel}</Text>
+          {dateLabel ? <Text style={styles.cardDate}>{dateLabel}</Text> : null}
           {item.price != null ? (
-            <Text style={styles.cardPrice}>
-              {item.abono
-                ? `Saldo ${formatPrice(computeSaldo(item) ?? item.price)}`
-                : formatPrice(item.price)}
-            </Text>
+            saldo === 0 ? (
+              <Text style={[styles.cardPrice, styles.cardPricePaid]}>
+                Pagado
+              </Text>
+            ) : (
+              <Text style={styles.cardPrice}>
+                {item.abono
+                  ? `Saldo ${formatPrice(saldo ?? item.price)}`
+                  : formatPrice(item.price)}
+              </Text>
+            )
           ) : null}
           {item.isPriority ? (
             <View style={styles.priorityBadge}>
@@ -420,7 +427,7 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
           ) : null}
           {canToggleOwnerFlag && item.isOwnerFlagged ? (
             <View style={styles.ownerFlagBadge}>
-              <Text style={styles.ownerFlagBadgeText}>🔖 Marcado</Text>
+              <Text style={styles.ownerFlagBadgeText}>😇 Personal</Text>
             </View>
           ) : null}
         </View>
@@ -543,9 +550,7 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
             ) : dateSchedules.length === 0 ? (
               <Text style={styles.emptyText}>No hay turnos para este día.</Text>
             ) : (
-              dateSchedules.map((item) =>
-                renderCard(item, item.time ?? "Sin hora"),
-              )
+              dateSchedules.map((item) => renderCard(item, item.time))
             )}
           </View>
         ) : (
@@ -718,6 +723,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: colors.textPrimary,
+  },
+  cardPricePaid: {
+    color: colors.success,
   },
   cardNotes: {
     fontSize: 13,

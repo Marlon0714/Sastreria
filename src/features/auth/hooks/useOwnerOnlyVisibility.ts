@@ -1,14 +1,13 @@
 import { useIdentityStore } from "../../../shared/state/identityStore";
 
 /**
- * Formula de visibilidad "solo para el dueño", ya usada inline en
- * `FeatureTabsNavigator` (tabs Clientes/Tallas) y `PricingStackNavigator`
- * (catálogo de precios vs. "Mis arreglos"): un operario en SU propio
- * dispositivo no ve el contenido; el dueño, o cualquiera usando el
- * dispositivo compartido del mostrador (que también tiene role="operario"
- * en su propio perfil, pero lo usa cualquiera), sí lo ve. Sin perfil
- * resuelto (bypass offline ya documentado en `isTabVisibleForRole`) se
- * retorna `true` para no ocultar nada.
+ * Formula de visibilidad exclusiva del dueño (usada para la marca "Personal"
+ * de Agenda, ver N-120): solo el dueño en su propio dispositivo ve/toca este
+ * contenido. En el dispositivo compartido del mostrador nunca se ve, ni
+ * siquiera si quien lo usa en ese momento es el dueño — la marca "Personal"
+ * no debe aparecer ni poder tocarse ahí bajo ninguna circunstancia. Sin
+ * perfil resuelto (bypass offline ya documentado en `isTabVisibleForRole`)
+ * se retorna `true` para no ocultar nada.
  */
 export function useOwnerOnlyVisibility(): boolean {
   const role = useIdentityStore((state) => state.ownProfile?.role ?? null);
@@ -20,5 +19,5 @@ export function useOwnerOnlyVisibility(): boolean {
     return true;
   }
 
-  return !(role === "operario" && !isSharedDevice);
+  return role === "owner" && !isSharedDevice;
 }

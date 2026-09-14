@@ -834,6 +834,42 @@ describe("ScheduleDayViewScreen", () => {
     expect(queryByText(/^\$/)).toBeNull();
   });
 
+  it('no muestra el texto "Sin hora" cuando el turno no tiene hora (N-121)', async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [{ ...scheduledOne, time: undefined }],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByLabelText, queryByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(
+      await findByLabelText("Ver turno de Ana Torres (sin hora, schedule-1)"),
+    ).toBeTruthy();
+    expect(queryByText("Sin hora")).toBeNull();
+  });
+
+  it('muestra "Pagado" en vez del monto cuando el saldo del turno es $0 (N-122)', async () => {
+    mockUseScheduleDayView.mockReturnValue({
+      dateSchedules: [{ ...scheduledOne, price: 50000, abono: 50000 }],
+      pendingSchedules: [],
+      isLoading: false,
+      error: null,
+      reload: jest.fn(async () => Promise.resolve()),
+    });
+
+    const { findByText, queryByText } = render(
+      <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
+    );
+
+    expect(await findByText("Pagado")).toBeTruthy();
+    expect(queryByText("Saldo $0")).toBeNull();
+  });
+
   it("el desplegable de filtro muestra a la vez el conteo de Arreglos y de Confecciones del día", () => {
     mockUseScheduleDayView.mockReturnValue({
       dateSchedules: [
@@ -1162,7 +1198,7 @@ describe("ScheduleDayViewScreen", () => {
         <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
       );
 
-      expect(await findByText("🔖 Marcado")).toBeTruthy();
+      expect(await findByText("😇 Personal")).toBeTruthy();
     });
 
     it("con rol operario, ni el badge ni ningún prop/label relacionado se renderizan", async () => {
@@ -1184,13 +1220,13 @@ describe("ScheduleDayViewScreen", () => {
         <ScheduleDayViewScreen {...buildProps(jest.fn())} />,
       );
 
-      expect(queryByText("🔖 Marcado")).toBeNull();
+      expect(queryByText("😇 Personal")).toBeNull();
 
       fireEvent.press(
         await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
       );
 
-      expect(queryByLabelText("Marcado")).toBeNull();
+      expect(queryByLabelText("Personal")).toBeNull();
     });
 
     it("togglear desde el panel actualiza la tarjeta sin pasar por identityGate.requireIdentity", async () => {
@@ -1221,7 +1257,7 @@ describe("ScheduleDayViewScreen", () => {
         await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
       );
 
-      fireEvent(getByLabelText("Marcado"), "valueChange", true);
+      fireEvent(getByLabelText("Personal"), "valueChange", true);
 
       await waitFor(() => {
         expect(mockScheduleUpdate).toHaveBeenCalledWith(scheduledOne.id, {
@@ -1261,7 +1297,7 @@ describe("ScheduleDayViewScreen", () => {
       fireEvent.press(
         await findByLabelText("Ver turno de Ana Torres (14:30, schedule-1)"),
       );
-      fireEvent(getByLabelText("Marcado"), "valueChange", true);
+      fireEvent(getByLabelText("Personal"), "valueChange", true);
 
       await waitFor(() => {
         expect(errorSpy).toHaveBeenCalledWith(

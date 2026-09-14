@@ -731,9 +731,13 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
               </>
             ) : null}
             {saldo != null ? (
-              <Text style={styles.helperText}>
-                Saldo pendiente: {formatPrice(saldo)}
-              </Text>
+              saldo === 0 ? (
+                <Text style={styles.paidText}>Pagado</Text>
+              ) : (
+                <Text style={styles.helperText}>
+                  Saldo pendiente: {formatPrice(saldo)}
+                </Text>
+              )
             ) : null}
 
             <View style={styles.switchRow}>
@@ -745,6 +749,12 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                   setIsFullyPaid(next);
                   if (next) {
                     setValue("abono", priceValue);
+                  } else {
+                    // Al desmarcar, el campo reaparece vacío para que el
+                    // usuario escriba el abono real, en vez de quedar
+                    // pre-llenado con el valor que tenía al estar marcado
+                    // como pagado (bug N-123).
+                    setValue("abono", undefined);
                   }
                 }}
                 trackColor={{ false: colors.border, true: colors.successSoft }}
@@ -775,9 +785,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             name="isOwnerFlagged"
             render={({ field: { onChange, value } }) => (
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>🔖 Marcado</Text>
+                <Text style={styles.switchLabel}>😇 Personal</Text>
                 <Switch
-                  accessibilityLabel="Marcado"
+                  accessibilityLabel="Personal"
                   value={!!value}
                   onValueChange={onChange}
                   trackColor={{
@@ -1114,6 +1124,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     fontStyle: "italic",
+  },
+  paidText: {
+    color: colors.success,
+    fontSize: 13,
+    fontWeight: "700",
   },
   statusBadge: {
     alignSelf: "flex-start",

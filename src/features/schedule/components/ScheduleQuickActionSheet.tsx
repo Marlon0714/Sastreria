@@ -155,9 +155,9 @@ export function ScheduleQuickActionSheet({
 
         {canToggleOwnerFlag ? (
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>🔖 Marcado</Text>
+            <Text style={styles.switchLabel}>😇 Personal</Text>
             <Switch
-              accessibilityLabel="Marcado"
+              accessibilityLabel="Personal"
               value={!!schedule.isOwnerFlagged}
               onValueChange={onToggleOwnerFlag}
               disabled={isTogglingOwnerFlag}

@@ -414,6 +414,29 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
+  it('muestra "Pagado" en vez del monto cuando el saldo queda en $0 (N-122)', async () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(null)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByPlaceholderText, getByLabelText, findAllByText, queryByText } =
+      render(<ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />);
+
+    fireEvent.changeText(getByPlaceholderText("Ej: 15000"), "100000");
+    fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", true);
+
+    // Aparecen 2 "Pagado": la etiqueta propia del switch (preexistente) y el
+    // indicador de saldo $0 nuevo de N-122 — se distingue por cantidad en
+    // vez de buscar un único nodo, ya que ambos comparten el mismo texto.
+    expect(await findAllByText("Pagado")).toHaveLength(2);
+    expect(queryByText(/Saldo pendiente/)).toBeNull();
+  });
+
   it("cambiar el precio con el switch activo mantiene el abono igual al precio (no lo desmarca)", async () => {
     const submit = jest.fn(async () => Promise.resolve(null));
     mockUseScheduleForm.mockReturnValue({
@@ -445,7 +468,7 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
-  it("desactivar el switch vuelve a mostrar el input de abono conservando el último valor", () => {
+  it("desactivar el switch vuelve a mostrar el input de abono vacío, listo para el abono real (fix N-123)", () => {
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
       isLoading: false,
@@ -464,8 +487,11 @@ describe("ScheduleFormScreen", () => {
 
     fireEvent(getByLabelText("Pagado en su totalidad"), "valueChange", false);
 
+    // Antes del fix N-123 el campo reaparecía pre-llenado con el valor
+    // igualado al precio ("100000") en vez de vacío — bug reportado porque
+    // el usuario debe escribir el abono REAL, no reutilizar el del switch.
     const abonoInput = getByPlaceholderText("Ej: 5000");
-    expect(abonoInput.props.value).toBe("100000");
+    expect(abonoInput.props.value).toBe("");
   });
 
   it("abrir un turno con price === abono ya guardado muestra el switch activado de entrada y oculta el input de abono", () => {
@@ -1683,7 +1709,7 @@ describe("ScheduleFormScreen", () => {
       );
 
       fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
-      fireEvent(getByLabelText("Marcado"), "valueChange", true);
+      fireEvent(getByLabelText("Personal"), "valueChange", true);
       fireEvent.press(getByLabelText("Guardar turno"));
 
       await waitFor(() => {
@@ -1713,8 +1739,8 @@ describe("ScheduleFormScreen", () => {
         <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
       );
 
-      expect(queryByLabelText("Marcado")).toBeNull();
-      expect(queryByText(/Marcado/)).toBeNull();
+      expect(queryByLabelText("Personal")).toBeNull();
+      expect(queryByText(/Personal/)).toBeNull();
     });
 
     it("editar un turno ya marcado por el dueño conserva el valor guardado tras un submit de un operario", async () => {
