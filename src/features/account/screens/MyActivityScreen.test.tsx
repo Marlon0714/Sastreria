@@ -6,6 +6,9 @@ import type { Schedule } from "../../schedule/domain/types";
 import type { UseMyActivityResult } from "../hooks/useMyActivity";
 import MyActivityScreen from "./MyActivityScreen";
 
+const mockParentNavigate = jest.fn();
+const mockGetParent = jest.fn(() => ({ navigate: mockParentNavigate }));
+
 jest.mock("@react-navigation/native", () => {
   const ReactModule = jest.requireActual("react") as typeof import("react");
 
@@ -16,6 +19,7 @@ jest.mock("@react-navigation/native", () => {
         return cleanup;
       }, [effect]);
     },
+    useNavigation: () => ({ getParent: mockGetParent }),
   };
 });
 
@@ -77,6 +81,8 @@ describe("MyActivityScreen", () => {
   beforeEach(() => {
     mockUseMyActivity.mockReset();
     mockUseMyActivity.mockReturnValue(buildActivityResult());
+    mockParentNavigate.mockReset();
+    mockGetParent.mockClear();
   });
 
   it("recarga los datos al recibir foco (ej. al volver de marcar un arreglo listo en Agenda)", () => {
@@ -274,5 +280,72 @@ describe("MyActivityScreen", () => {
     await waitFor(() => {
       expect(addPrice).toHaveBeenCalledWith("schedule-1", 30000);
     });
+  });
+
+  // N-124: cada fila navega al turno completo (ScheduleForm). MyActivityScreen
+  // se registra como "MyActivity" tanto en PricingStackNavigator como en
+  // ScheduleStackNavigator, y solo el segundo tiene la ruta "ScheduleForm" —
+  // por eso la navegación es cruzada de tab (getParent + navigate anidado),
+  // igual que ya hace DashboardScreen con los recordatorios.
+  it("al tocar un ítem navega a ScheduleForm con el scheduleId correcto vía navegación cruzada de tab", () => {
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        items: [{ schedule: baseSchedule, clientLabel: "Ana Torres" }],
+      }),
+    );
+
+    const { getByLabelText } = render(<MyActivityScreen />);
+
+    fireEvent.press(getByLabelText("Ver turno de Ana Torres"));
+
+    expect(mockParentNavigate).toHaveBeenCalledWith("ScheduleTab", {
+      screen: "ScheduleForm",
+      params: { scheduleId: "schedule-1" },
+    });
+  });
+
+  it("tocar 'Agregar precio' no navega al turno (evita el conflicto con la tarjeta tocable)", () => {
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        items: [
+          {
+            schedule: { ...baseSchedule, price: undefined },
+            clientLabel: "Ana Torres",
+          },
+        ],
+      }),
+    );
+
+    const { getByLabelText } = render(<MyActivityScreen />);
+
+    fireEvent.press(getByLabelText("Agregar precio de Ana Torres"));
+
+    expect(mockParentNavigate).not.toHaveBeenCalled();
+  });
+
+  it("tocar 'Guardar precio' (control de edición inline) no navega al turno", async () => {
+    const addPrice = jest.fn(async () => Promise.resolve(true));
+    mockUseMyActivity.mockReturnValue(
+      buildActivityResult({
+        items: [
+          {
+            schedule: { ...baseSchedule, price: undefined },
+            clientLabel: "Ana Torres",
+          },
+        ],
+        addPrice,
+      }),
+    );
+
+    const { getByLabelText } = render(<MyActivityScreen />);
+
+    fireEvent.press(getByLabelText("Agregar precio de Ana Torres"));
+    fireEvent.changeText(getByLabelText("Precio del arreglo"), "30000");
+    fireEvent.press(getByLabelText("Guardar precio"));
+
+    await waitFor(() => {
+      expect(addPrice).toHaveBeenCalledWith("schedule-1", 30000);
+    });
+    expect(mockParentNavigate).not.toHaveBeenCalled();
   });
 });

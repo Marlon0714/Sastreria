@@ -7,8 +7,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NavigationProp } from "@react-navigation/native";
 
+import type { RootTabParamList } from "../../../navigation/types";
 import { ErrorView, LoadingView, PeriodSelectorField } from "../../../shared/components";
 import type { PeriodMode } from "../../../shared/domain/periodRange";
 import { colors } from "../../../shared/theme/colors";
@@ -65,6 +67,7 @@ export default function MyActivityScreen() {
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [priceInput, setPriceInput] = useState("");
   const [isSavingPrice, setIsSavingPrice] = useState(false);
+  const navigation = useNavigation();
 
   // Los tabs no desmontan esta pantalla al cambiar de pestaña, así que sin
   // esto el operario podría volver a "Precios" (ahora raíz de la pestaña) y
@@ -99,6 +102,24 @@ export default function MyActivityScreen() {
       setEditingPriceId(null);
       setPriceInput("");
     }
+  };
+
+  // `MyActivityScreen` está registrada como "MyActivity" en dos stacks
+  // distintos (PricingStackNavigator y ScheduleStackNavigator, ver
+  // PricingStackNavigator.tsx/ScheduleStackNavigator.tsx) y solo el segundo
+  // tiene la ruta "ScheduleForm" — un `navigation.navigate("ScheduleForm", ...)`
+  // directo rompería al llegar desde la pestaña de Precios. Se usa el mismo
+  // patrón de navegación cruzada de tab ya usado en DashboardScreen.tsx para
+  // los recordatorios (`getParent<NavigationProp<RootTabParamList>>()` +
+  // `navigate(tab, { screen, params })`): el padre inmediato de esta pantalla
+  // es siempre el Tab.Navigator (FeatureTabsNavigator), sin importar desde
+  // cuál de los dos stacks se llegó, así que funciona igual en ambos casos.
+  const handlePressItem = (scheduleId: string): void => {
+    const parent = navigation.getParent<NavigationProp<RootTabParamList>>();
+    parent?.navigate("ScheduleTab", {
+      screen: "ScheduleForm",
+      params: { scheduleId },
+    });
   };
 
   const isRangeIncomplete = mode === "rango" && range === null;
@@ -142,7 +163,20 @@ export default function MyActivityScreen() {
               </Text>
             ) : (
               items.map(({ schedule, clientLabel }) => (
-                <View key={schedule.id} style={styles.card}>
+                <Pressable
+                  key={schedule.id}
+                  style={styles.card}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver turno de ${clientLabel}`}
+                  // `accessible={false}` evita que este Pressable colapse todo
+                  // su subárbol (incluidos los controles de precio inline) en
+                  // un solo nodo para lectores de pantalla — sin esto,
+                  // TalkBack/VoiceOver solo podrían activar la navegación al
+                  // turno, dejando "Agregar precio"/"Cancelar"/"Guardar"
+                  // inalcanzables (hallazgo del reviewer en N-124).
+                  accessible={false}
+                  onPress={() => handlePressItem(schedule.id)}
+                >
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardClient} numberOfLines={1}>
                       {CATEGORY_ICONS[schedule.category] ?? ""} {clientLabel}
@@ -200,7 +234,7 @@ export default function MyActivityScreen() {
                   {editingPriceId === schedule.id && priceError ? (
                     <Text style={styles.priceErrorText}>{priceError}</Text>
                   ) : null}
-                </View>
+                </Pressable>
               ))
             )}
           </ScrollView>
