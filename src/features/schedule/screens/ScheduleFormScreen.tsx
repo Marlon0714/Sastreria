@@ -38,6 +38,7 @@ import {
   findDuplicateScheduleByName,
   type NamedSchedule,
 } from "../domain/duplicateCheck";
+import { findUnfinishedScheduleByClient } from "../domain/unfinishedScheduleCheck";
 import {
   createScheduleSchema,
   type CreateScheduleSchemaInput,
@@ -61,6 +62,7 @@ import {
   getManualCorrectionBlockReason,
 } from "../domain/statusDerivation";
 import { evaluateDeliveryGuard } from "../domain/deliveryGuard";
+import { parseDigitsOnlyAmount } from "../domain/priceInput";
 import { formatPrice } from "../../pricing/domain/strings";
 import { useDeleteSchedule } from "../hooks/useDeleteSchedule";
 import { useScheduleForm } from "../hooks/useScheduleForm";
@@ -440,6 +442,49 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       }
     }
 
+    // Aviso de "turno sin terminar del mismo cliente" (N-126): solo aplica
+    // a turnos NUEVOS (nunca al editar) y solo a clientes registrados
+    // (nunca a `unregisteredClientName` — ver Decisiones de Diseño). Corre
+    // DESPUÉS del chequeo de duplicado de N-097 de arriba: si ese ya
+    // encontró conflicto, ya hizo su propio `return` y este bloque nunca
+    // se evalúa en el mismo intento de guardado (evita 2 alerts seguidos).
+    if (!scheduleId && values.clientId) {
+      const clientSchedules = await scheduleRepo.getByClient(values.clientId);
+      const unfinished = findUnfinishedScheduleByClient(
+        clientSchedules,
+        undefined,
+      );
+
+      if (unfinished) {
+        const clientName = resolveScheduleName(values) ?? "Este cliente";
+        const dateLabel = unfinished.date
+          ? `, para el ${formatDateForDisplay(unfinished.date)}`
+          : ", sin fecha asignada";
+
+        Alert.alert(
+          "Turno sin terminar",
+          `${clientName} ya tiene otro turno sin terminar (${
+            STATUS_LABELS[unfinished.status]
+          }${dateLabel}). Si editas ese turno se descartarán los datos que escribiste para este turno nuevo. ¿Qué deseas hacer?`,
+          [
+            { text: "Cancelar", style: "cancel" },
+            {
+              text: "Ir al turno existente",
+              onPress: () =>
+                navigation.replace("ScheduleForm", {
+                  scheduleId: unfinished.id,
+                }),
+            },
+            {
+              text: "Continuar de todas formas",
+              onPress: () => void proceedSubmit(),
+            },
+          ],
+        );
+        return;
+      }
+    }
+
     await proceedSubmit();
   });
 
@@ -679,16 +724,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                 placeholderTextColor={colors.textPlaceholder}
                 keyboardType="numeric"
                 onBlur={onBlur}
-                onChangeText={(text) => {
-                  // Solo dígitos — ver PricingForm.tsx para el motivo: un
-                  // "." acá se confunde con el separador de miles que
-                  // formatPrice usa al MOSTRAR precios en el resto de la
-                  // app, y "15.000" se leería como 15 en vez de 15000.
-                  const digitsOnly = text.replace(/[^0-9]/g, "");
-                  onChange(
-                    digitsOnly === "" ? undefined : parseInt(digitsOnly, 10),
-                  );
-                }}
+                onChangeText={(text) => onChange(parseDigitsOnlyAmount(text))}
                 value={value === undefined ? "" : String(value)}
               />
             )}
@@ -713,14 +749,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
                       placeholderTextColor={colors.textPlaceholder}
                       keyboardType="numeric"
                       onBlur={onBlur}
-                      onChangeText={(text) => {
-                        const digitsOnly = text.replace(/[^0-9]/g, "");
-                        onChange(
-                          digitsOnly === ""
-                            ? undefined
-                            : parseInt(digitsOnly, 10),
-                        );
-                      }}
+                      onChangeText={(text) =>
+                        onChange(parseDigitsOnlyAmount(text))
+                      }
                       value={value === undefined ? "" : String(value)}
                     />
                   )}
