@@ -419,6 +419,64 @@ describe("ClientPickerField", () => {
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
+    it("no deja crear un cliente con un teléfono de menos de 10 dígitos", async () => {
+      const { findByLabelText, getByLabelText, findByText } = render(
+        <ClientPickerField
+          onChangeClientId={jest.fn()}
+          onChangeUnregisteredName={jest.fn()}
+        />,
+      );
+
+      fireEvent.changeText(
+        await findByLabelText("Nombre del cliente"),
+        "María",
+      );
+      fireEvent.press(getByLabelText("Registrar cliente"));
+      fireEvent.changeText(
+        getByLabelText("Apellido del cliente nuevo"),
+        "Gómez",
+      );
+      fireEvent.changeText(
+        getByLabelText("Teléfono del cliente nuevo"),
+        "300555443",
+      );
+      fireEvent.press(getByLabelText("Crear cliente"));
+
+      expect(
+        await findByText("El teléfono debe tener 10 dígitos."),
+      ).toBeTruthy();
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it("permite crear un cliente sin teléfono (sigue siendo opcional)", async () => {
+      mockCreate.mockResolvedValueOnce(newClient);
+      const { findByLabelText, getByLabelText } = render(
+        <ClientPickerField
+          onChangeClientId={jest.fn()}
+          onChangeUnregisteredName={jest.fn()}
+        />,
+      );
+
+      fireEvent.changeText(
+        await findByLabelText("Nombre del cliente"),
+        "María",
+      );
+      fireEvent.press(getByLabelText("Registrar cliente"));
+      fireEvent.changeText(
+        getByLabelText("Apellido del cliente nuevo"),
+        "Gómez",
+      );
+      fireEvent.press(getByLabelText("Crear cliente"));
+
+      await waitFor(() => {
+        expect(mockCreate).toHaveBeenCalledWith({
+          firstName: "María",
+          lastName: "Gómez",
+          phone: "",
+        });
+      });
+    });
+
     it("advierte si el teléfono ya está registrado y permite guardar de todos modos", async () => {
       mockCreate.mockResolvedValueOnce(newClient);
       jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
@@ -573,6 +631,41 @@ describe("ClientPickerField", () => {
       fireEvent.changeText(
         getByLabelText("Apellido del cliente nuevo"),
         "Gómez",
+      );
+
+      await act(async () => {
+        await ref.current?.resolvePendingRegistration();
+      });
+
+      expect(mockCreate).not.toHaveBeenCalled();
+      expect(onChangeUnregisteredName).toHaveBeenCalledWith("María Gómez");
+      expect(onChangeClientId).toHaveBeenCalledWith(undefined);
+    });
+
+    it("guarda solo el nombre sin registrar cliente si el teléfono tiene menos de 10 dígitos", async () => {
+      const onChangeClientId = jest.fn();
+      const onChangeUnregisteredName = jest.fn();
+      const ref = createRef<ClientPickerFieldHandle>();
+      const { findByLabelText, getByLabelText } = render(
+        <ClientPickerField
+          ref={ref}
+          onChangeClientId={onChangeClientId}
+          onChangeUnregisteredName={onChangeUnregisteredName}
+        />,
+      );
+
+      fireEvent.changeText(
+        await findByLabelText("Nombre del cliente"),
+        "María",
+      );
+      fireEvent.press(getByLabelText("Registrar cliente"));
+      fireEvent.changeText(
+        getByLabelText("Apellido del cliente nuevo"),
+        "Gómez",
+      );
+      fireEvent.changeText(
+        getByLabelText("Teléfono del cliente nuevo"),
+        "300555443",
       );
 
       await act(async () => {

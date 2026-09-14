@@ -35,6 +35,9 @@ import {
 } from "../../../shared/utils/textSearch";
 
 const MAX_SUGGESTIONS = 5;
+// Exigido solo en esta alta rápida dentro del turno (N-118) — a propósito
+// no se toca la validación general de Clientes (N-059 la dejó sin mínimo).
+const PHONE_DIGITS_LENGTH = 10;
 
 interface ClientPickerFieldProps {
   clientId?: string;
@@ -244,9 +247,16 @@ export const ClientPickerField = forwardRef<
     const lastName = capitalizeWords(rawLastName);
 
     const trimmedPhone = newPhone.trim();
-    if (trimmedPhone && !PHONE_DIGITS_PATTERN.test(normalizeDigitsInput(trimmedPhone))) {
-      setRegisterError("El teléfono solo puede contener números.");
-      return;
+    if (trimmedPhone) {
+      const normalizedNewPhone = normalizeDigitsInput(trimmedPhone);
+      if (!PHONE_DIGITS_PATTERN.test(normalizedNewPhone)) {
+        setRegisterError("El teléfono solo puede contener números.");
+        return;
+      }
+      if (normalizedNewPhone.length !== PHONE_DIGITS_LENGTH) {
+        setRegisterError("El teléfono debe tener 10 dígitos.");
+        return;
+      }
     }
 
     const duplicate = findDuplicateByName(clients, firstName, lastName);
@@ -303,7 +313,8 @@ export const ClientPickerField = forwardRef<
             PERSON_NAME_PATTERN.test(rawFirstName) &&
             PERSON_NAME_PATTERN.test(rawLastName) &&
             normalizedPhone !== "" &&
-            PHONE_DIGITS_PATTERN.test(normalizedPhone);
+            PHONE_DIGITS_PATTERN.test(normalizedPhone) &&
+            normalizedPhone.length === PHONE_DIGITS_LENGTH;
 
           const firstName = capitalizeWords(rawFirstName);
           const lastName = capitalizeWords(rawLastName);
