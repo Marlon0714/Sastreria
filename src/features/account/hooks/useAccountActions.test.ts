@@ -42,8 +42,8 @@ describe("useAccountActions", () => {
     expect(result.current.currentEmail).toBe("juan@example.com");
   });
 
-  it("changeEmail llama a auth.updateUser con el correo nuevo", async () => {
-    mockUpdateUser.mockResolvedValue({ error: null });
+  it("changeEmail llama al RPC set_own_email (sin confirmación por correo)", async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null });
     const { result } = renderHook(() => useAccountActions());
     await waitFor(() => expect(result.current.isLoadingEmail).toBe(false));
 
@@ -53,7 +53,10 @@ describe("useAccountActions", () => {
     });
 
     expect(ok).toBe(true);
-    expect(mockUpdateUser).toHaveBeenCalledWith({ email: "nuevo@example.com" });
+    expect(mockRpc).toHaveBeenCalledWith("set_own_email", {
+      new_email: "nuevo@example.com",
+    });
+    expect(result.current.currentEmail).toBe("nuevo@example.com");
   });
 
   it("changePassword retorna false y expone el error si Supabase falla", async () => {

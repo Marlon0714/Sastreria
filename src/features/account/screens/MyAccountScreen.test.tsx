@@ -113,7 +113,11 @@ describe("MyAccountScreen", () => {
     await waitFor(() => {
       expect(changeEmail).toHaveBeenCalledWith("nuevo@example.com");
     });
-    expect(await findByText("Correo actualizado.")).toBeTruthy();
+    expect(
+      await findByText(
+        "Correo actualizado. Ya puedes iniciar sesión con el correo nuevo.",
+      ),
+    ).toBeTruthy();
   });
 
   it("rechaza cambiar la contraseña si no coincide con la confirmación", async () => {

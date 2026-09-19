@@ -93,12 +93,9 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
       }
       const ok = await changeEmail(trimmed);
       if (ok) {
-        // El mensaje es deliberadamente neutro: si en Supabase está
-        // habilitada la confirmación de cambio de correo, el usuario recibe
-        // igual el correo pidiéndole confirmar; si está deshabilitada
-        // (Authentication → Settings en el dashboard), el cambio ya quedó
-        // aplicado. La app no controla ese comportamiento.
-        setSuccessMessage("Correo actualizado.");
+        setSuccessMessage(
+          "Correo actualizado. Ya puedes iniciar sesión con el correo nuevo.",
+        );
         cancelEditing();
       }
       return;

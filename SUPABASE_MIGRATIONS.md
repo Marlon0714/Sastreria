@@ -1182,6 +1182,72 @@ ALTER TABLE schedules ADD COLUMN IF NOT EXISTS is_owner_flagged BOOLEAN NOT NULL
 
 ---
 
+### v38_operario_self_service_email (2026-09-19)
+
+**Contexto:** en "Mi cuenta", "Cambiar correo" llamaba directo a
+`supabase.auth.updateUser({ email })`, que activa el flujo estándar de
+Supabase Auth (uno o dos correos de confirmación antes de que el cambio
+aplique de verdad). El usuario lo probó y confirmó que el cambio "no se
+aplica" hasta completar ese paso por correo, y pidió explícitamente saltarse
+la confirmación para este caso — solo para el operario cambiando su propio
+correo, sin tocar el flujo de contraseña ni PIN, que ya son inmediatos.
+**Trade-off aceptado explícitamente por el usuario:** ya no hay garantía de
+que el operario controle de verdad el correo nuevo (podría escribir uno con
+typo o que no es suyo) — se prioriza que el cambio sea inmediato.
+
+Mismo patrón que `set_own_pin` (v34): una función `SECURITY DEFINER` que
+opera siempre sobre `auth.uid()`, nunca recibe un id como parámetro — es
+estructuralmente imposible pedirle que cambie el correo de otra persona.
+
+```sql
+CREATE OR REPLACE FUNCTION set_own_email(new_email TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_email TEXT := lower(trim(new_email));
+  caller_id UUID := auth.uid();
+BEGIN
+  IF caller_id IS NULL THEN
+    RAISE EXCEPTION 'No autenticado.';
+  END IF;
+
+  IF trimmed_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' THEN
+    RAISE EXCEPTION 'Correo inválido.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM auth.users WHERE id <> caller_id AND email = trimmed_email
+  ) THEN
+    RAISE EXCEPTION 'Ese correo ya está en uso.';
+  END IF;
+
+  UPDATE auth.users
+  SET email = trimmed_email,
+      email_confirmed_at = now(),
+      email_change = NULL,
+      email_change_token_new = NULL,
+      email_change_confirm_status = 0,
+      updated_at = now()
+  WHERE id = caller_id;
+END;
+$$;
+```
+
+**Importante — correr esto en Supabase ANTES de probar el cambio de correo**
+desde la app: sin esta función, la RPC falla con "function does not exist".
+
+**Nota de riesgo:** es la primera función del proyecto que escribe directo en
+`auth.users` (todo lo de PIN hasta ahora toca solo `profiles`) — no hay tanto
+kilometraje probado como con `set_own_pin`. Después de correrla, probar
+cambiando el correo de un operario desde la app y luego cerrando sesión para
+volver a entrar con el correo nuevo, confirmando que el login sigue
+funcionando antes de darlo por bueno en producción.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

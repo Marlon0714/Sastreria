@@ -15,11 +15,14 @@ interface UseAccountActionsResult {
 }
 
 /**
- * Cambios de "Mi cuenta". Correo/contraseña van directo contra Supabase Auth
- * (auth.updateUser solo puede tocar la sesión propia, por diseño). El PIN
- * usa set_own_pin (ver SUPABASE_MIGRATIONS.md v34) — a propósito no recibe
- * el id del operario, siempre opera sobre quien está autenticado, así que
- * es imposible pedirle que cambie el PIN de otra persona.
+ * Cambios de "Mi cuenta". Contraseña va directo contra Supabase Auth
+ * (auth.updateUser solo puede tocar la sesión propia, por diseño). Correo y
+ * PIN usan RPCs `set_own_email`/`set_own_pin` (ver SUPABASE_MIGRATIONS.md
+ * v38/v34) — a propósito no reciben el id del operario, siempre operan
+ * sobre quien está autenticado, así que es imposible pedirle a cualquiera
+ * de las dos que cambie el correo/PIN de otra persona. `set_own_email`
+ * aplica el cambio de inmediato, sin el correo de confirmación de doble
+ * verificación de Supabase Auth (decisión explícita: ver needs-backlog.md).
  */
 export function useAccountActions(): UseAccountActionsResult {
   const [currentEmail, setCurrentEmail] = useState<string | null>(null);
@@ -50,13 +53,15 @@ export function useAccountActions(): UseAccountActionsResult {
     setError(null);
     setIsSubmitting(true);
     try {
-      const { error: updateError } = await getSupabaseClient().auth.updateUser(
-        { email: newEmail },
+      const { error: rpcError } = await getSupabaseClient().rpc(
+        "set_own_email",
+        { new_email: newEmail },
       );
-      if (updateError) {
-        setError(updateError.message || "No se pudo cambiar el correo.");
+      if (rpcError) {
+        setError(rpcError.message || "No se pudo cambiar el correo.");
         return false;
       }
+      setCurrentEmail(newEmail.trim().toLowerCase());
       return true;
     } catch {
       setError("No se pudo cambiar el correo. Revisa tu conexión.");
