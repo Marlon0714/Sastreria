@@ -20,6 +20,12 @@ describe("ProfilesCacheRepositoryImpl", () => {
   it("mapea las filas y excluye dispositivos compartidos en la consulta", async () => {
     mockGetAllAsync.mockResolvedValueOnce([
       {
+        id: "owner-1",
+        display_name: "Ana Ruiz",
+        role: "owner",
+        is_shared_device: 0,
+      },
+      {
         id: "user-1",
         display_name: "María Gómez",
         role: "operario",
@@ -32,6 +38,12 @@ describe("ProfilesCacheRepositoryImpl", () => {
 
     expect(result).toEqual([
       {
+        id: "owner-1",
+        displayName: "Ana Ruiz",
+        role: "owner",
+        isSharedDevice: false,
+      },
+      {
         id: "user-1",
         displayName: "María Gómez",
         role: "operario",
@@ -39,7 +51,9 @@ describe("ProfilesCacheRepositoryImpl", () => {
       },
     ]);
     const [sql] = mockGetAllAsync.mock.calls[0] ?? [];
-    expect(sql).toContain("WHERE is_shared_device = 0 AND role = 'operario'");
+    expect(sql).toContain(
+      "WHERE is_shared_device = 0 AND role IN ('operario', 'owner')",
+    );
   });
 
   it("retorna una lista vacía si no hay operarios cacheados", async () => {

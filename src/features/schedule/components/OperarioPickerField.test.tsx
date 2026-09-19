@@ -14,6 +14,12 @@ jest.mock("../../../data/local/profilesCacheDependencies", () => ({
 
 const operarios: Profile[] = [
   {
+    id: "00000000-0000-4000-8000-000000000000",
+    displayName: "Dueña Principal",
+    role: "owner",
+    isSharedDevice: false,
+  },
+  {
     id: "11111111-1111-4111-8111-111111111111",
     displayName: "Ana Torres",
     role: "operario",
@@ -43,10 +49,27 @@ describe("OperarioPickerField", () => {
 
   it("shows the selected operario's name", async () => {
     const { findByText } = render(
-      <OperarioPickerField value={operarios[0]!.id} onChange={jest.fn()} />,
+      <OperarioPickerField value={operarios[1]!.id} onChange={jest.fn()} />,
     );
 
     expect(await findByText("Ana Torres")).toBeTruthy();
+  });
+
+  it("shows owners in the list and allows selecting one", async () => {
+    const onChange = jest.fn();
+    const { findByLabelText, getByLabelText, getByText } = render(
+      <OperarioPickerField onChange={onChange} />,
+    );
+
+    fireEvent.press(await findByLabelText("Seleccionar operario"));
+    await waitFor(() => {
+      expect(getByLabelText("Buscar operario")).toBeTruthy();
+    });
+
+    expect(getByText("Dueña Principal")).toBeTruthy();
+    fireEvent.press(getByLabelText("Elegir a Dueña Principal"));
+
+    expect(onChange).toHaveBeenCalledWith(operarios[0]!.id);
   });
 
   it("opens the search list, filters and selects an operario", async () => {
@@ -68,13 +91,13 @@ describe("OperarioPickerField", () => {
 
     fireEvent.press(getByLabelText("Elegir a Juan Pérez"));
 
-    expect(onChange).toHaveBeenCalledWith(operarios[1]!.id);
+    expect(onChange).toHaveBeenCalledWith(operarios[2]!.id);
   });
 
   it("allows clearing the selection", async () => {
     const onChange = jest.fn();
     const { findByLabelText, getByLabelText } = render(
-      <OperarioPickerField value={operarios[0]!.id} onChange={onChange} />,
+      <OperarioPickerField value={operarios[1]!.id} onChange={onChange} />,
     );
 
     const selector = await findByLabelText("Seleccionar operario");
