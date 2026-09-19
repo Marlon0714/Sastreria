@@ -1,6 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import React from "react";
-import { render, act } from "@testing-library/react-native";
+import { render, act, renderHook } from "@testing-library/react-native";
 import { Text } from "react-native";
 import { usePricingForm } from "./usePricingForm";
 
@@ -76,17 +76,14 @@ describe("usePricingForm", () => {
       }),
       update: jest.fn(),
     }));
-    let hookRef: any = {};
-    function TestComponent() {
-      hookRef.hook = usePricingForm(undefined, { onSuccess });
-      return null;
-    }
-    render(<TestComponent />);
+    const { result } = renderHook(() =>
+      usePricingForm(undefined, { onSuccess }),
+    );
     await act(async () => {
-      await hookRef.hook.onSubmit({ name: "Nuevo", price: 5000 });
+      await result.current.onSubmit({ name: "Nuevo", price: 5000 });
     });
     expect(onSuccess).toHaveBeenCalled();
-    expect(hookRef.hook.error).toBeNull();
+    expect(result.current.error).toBeNull();
   });
 
   it("llama update y onSuccess al editar servicio", async () => {
@@ -100,17 +97,14 @@ describe("usePricingForm", () => {
       }),
       create: jest.fn(),
     }));
-    let hookRef: any = {};
-    function TestComponent() {
-      hookRef.hook = usePricingForm("1", { onSuccess });
-      return null;
-    }
-    render(<TestComponent />);
+    const { result } = renderHook(() =>
+      usePricingForm("1", { onSuccess }),
+    );
     await act(async () => {
-      await hookRef.hook.onSubmit({ name: "Editado", price: 8000 });
+      await result.current.onSubmit({ name: "Editado", price: 8000 });
     });
     expect(onSuccess).toHaveBeenCalled();
-    expect(hookRef.hook.error).toBeNull();
+    expect(result.current.error).toBeNull();
   });
 
   it("setea error si falla create/update", async () => {
@@ -124,24 +118,19 @@ describe("usePricingForm", () => {
         new Error("fail update"),
       ),
     }));
-    let hookRef: any = {};
-    function TestComponent({ id }: { id?: string }) {
-      hookRef.hook = usePricingForm(id, { onError });
-      return null;
-    }
     // Create
-    render(<TestComponent />);
+    const created = renderHook(() => usePricingForm(undefined, { onError }));
     await act(async () => {
-      await hookRef.hook.onSubmit({ name: "Nuevo", price: 5000 });
+      await created.result.current.onSubmit({ name: "Nuevo", price: 5000 });
     });
-    expect(hookRef.hook.error).toBe("fail create");
+    expect(created.result.current.error).toBe("fail create");
     expect(onError).toHaveBeenCalledWith("fail create");
     // Update
-    render(<TestComponent id="1" />);
+    const updated = renderHook(() => usePricingForm("1", { onError }));
     await act(async () => {
-      await hookRef.hook.onSubmit({ name: "Editado", price: 8000 });
+      await updated.result.current.onSubmit({ name: "Editado", price: 8000 });
     });
-    expect(hookRef.hook.error).toBe("fail update");
+    expect(updated.result.current.error).toBe("fail update");
     expect(onError).toHaveBeenCalledWith("fail update");
   });
 });

@@ -401,6 +401,12 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       ? clientPickerRef.current?.resolveClientFullName(item.clientId)
       : item.unregisteredClientName;
 
+  // `clientPickerRef` solo se lee dentro de esta callback, invocada por
+  // react-hook-form vía `handleSubmit` y ejecutada exclusivamente desde
+  // `handleSavePress` (evento real de usuario) — nunca durante el render.
+  // Falso positivo conocido de react-hooks/refs con handlers de libs
+  // externas que el compilador no puede verificar a través de la frontera.
+  // eslint-disable-next-line react-hooks/refs
   const onSubmit = handleSubmit(async (values) => {
     const proceedSubmit = async (): Promise<void> => {
       const result = await submit(values);

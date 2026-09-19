@@ -2,7 +2,12 @@ import { colors } from "../../../shared/theme/colors";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
-import { type Control, type FieldErrors, useForm } from "react-hook-form";
+import {
+  type Control,
+  type FieldErrors,
+  useForm,
+  useWatch,
+} from "react-hook-form";
 import {
   Alert,
   Pressable,
@@ -204,11 +209,11 @@ export default function TallaFormScreen({ navigation, route }: Props) {
     handleSubmit,
     setValue,
     setError,
-    watch,
     formState: { errors },
   } = useForm<TallaFormValues>({ defaultValues: DEFAULTS });
 
-  const nameValue = watch("name");
+  const nameValue = useWatch({ control, name: "name" });
+  const notesValue = useWatch({ control, name: "notes" });
 
   const loadTemplate = useCallback(async () => {
     if (!tallaId) return;
@@ -379,7 +384,7 @@ export default function TallaFormScreen({ navigation, route }: Props) {
           placeholderTextColor={colors.textPlaceholder}
           multiline
           numberOfLines={3}
-          value={watch("notes")}
+          value={notesValue}
           onChangeText={(v) => setValue("notes", v)}
         />
       </View>
