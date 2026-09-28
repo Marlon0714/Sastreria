@@ -1462,6 +1462,35 @@ Login con correo cambiado funcionando.
 
 ---
 
+### v41_schedule_confeccion_dates (2026-09-20) — ✅ confirmado corrido
+
+**Contexto:** el dueño pidió poder registrar una fecha de inicio de trabajo
+y una fecha de entrega planeada para turnos de categoría "confección"
+(no aplica a "arreglo"). Son campos nuevos y distintos de `date` (la fecha
+de la cita agendada) y de `ready_at`/`delivered_at` (timestamps automáticos
+que se setean solos al cambiar de estado) — estos dos son de tipo `TEXT`
+(fecha simple `YYYY-MM-DD`, igual que `date`), no `TIMESTAMPTZ` como
+`ready_at`/`delivered_at`. Ambas columnas son opcionales (nullable, sin
+`DEFAULT`) incluso para confección — no se exige llenarlas.
+
+```sql
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS start_date TEXT;
+ALTER TABLE schedules ADD COLUMN IF NOT EXISTS due_date TEXT;
+```
+
+**Importante:** corre este bloque en el SQL Editor de Supabase antes de que
+el sync de estos dos campos funcione — hasta entonces, `syncSchedule()`
+enviará `start_date`/`due_date` en el `upsert` y Supabase los rechazará con
+`42703 undefined_column` (mismo patrón de error documentado en la nota de
+`createdAt`/`updatedAt` más abajo). Corresponde a la migración local
+`v30_schedule_confeccion_dates` (`src/data/local/migrations.ts`).
+
+**✅ Confirmado 2026-09-25:** el usuario corrió este bloque en el SQL Editor
+de Supabase. Es la última migración documentada en este archivo — no queda
+ninguna pendiente después de esta.
+
+---
+
 ## Notas
 
 - Si agregas una columna local, **agrega aquí el SQL** y ejecútalo en Supabase.

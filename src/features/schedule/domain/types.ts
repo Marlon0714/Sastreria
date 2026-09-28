@@ -38,6 +38,12 @@ export interface Schedule extends BaseEntity {
   abono?: number; // dinero ya pagado a cuenta del price; el saldo se calcula (price - abono), no se guarda
   operarioId?: string;
   notes?: string;
+  // Fechas planeadas de trabajo, solo relevantes para category="confeccion"
+  // (no se muestran/editan para "arreglo"). Distintas de `date` (fecha de
+  // la cita) y de readyAt/deliveredAt (timestamps automáticos de estado).
+  // Opcionales incluso para confección.
+  startDate?: string; // YYYY-MM-DD
+  dueDate?: string; // YYYY-MM-DD
   isPriority: boolean; // marca un turno ya agendado (con fecha) como más urgente que el resto del día
   // Organización personal del dueño (no de negocio) — sin depender de fecha,
   // a diferencia de isPriority. Oculto por completo para role="operario"
@@ -64,6 +70,8 @@ export interface CreateScheduleDTO {
   abono?: number;
   operarioId?: string;
   notes?: string;
+  startDate?: string;
+  dueDate?: string;
   isPriority?: boolean;
   isOwnerFlagged?: boolean;
   category?: ScheduleCategory;
@@ -78,6 +86,8 @@ export interface UpdateScheduleDTO {
   abono?: number;
   operarioId?: string;
   notes?: string;
+  startDate?: string;
+  dueDate?: string;
   isPriority?: boolean;
   isOwnerFlagged?: boolean;
   category?: ScheduleCategory;

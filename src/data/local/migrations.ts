@@ -644,6 +644,20 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE schedules ADD COLUMN is_owner_flagged INTEGER NOT NULL DEFAULT 0;`,
     ],
   },
+  {
+    // Pedido del dueño (2026-09-20): fecha de inicio y de entrega planeadas
+    // para turnos de confección (categoría "confeccion" únicamente, no
+    // "arreglo") — distintas de `date` (fecha de la cita) y de `ready_at`/
+    // `delivered_at` (timestamps automáticos de estado). Ambas nullable, sin
+    // default: son opcionales incluso para confección. Corresponde a
+    // Supabase v41 (ver SUPABASE_MIGRATIONS.md).
+    version: 30,
+    name: "v30_schedule_confeccion_dates",
+    statements: [
+      `ALTER TABLE schedules ADD COLUMN start_date TEXT;`,
+      `ALTER TABLE schedules ADD COLUMN due_date TEXT;`,
+    ],
+  },
 ];
 
 interface UserVersionRow {

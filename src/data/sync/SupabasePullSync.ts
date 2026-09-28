@@ -179,6 +179,8 @@ interface ScheduleRow {
   client_id: string | null;
   unregistered_client_name: string | null;
   notes: string | null;
+  start_date: string | null;
+  due_date: string | null;
   is_priority: boolean;
   is_owner_flagged: boolean;
   category: "arreglo" | "confeccion";
@@ -986,7 +988,7 @@ export class SupabasePullSync {
     let query = supabase
       .from("schedules")
       .select(
-        "id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at",
+        "id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, start_date, due_date",
       )
       .order("updated_at", { ascending: true })
       .order("id", { ascending: true })
@@ -1013,8 +1015,8 @@ export class SupabasePullSync {
         await db.runAsync(
           `
           INSERT INTO schedules
-            (id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')
+            (id, date, time, price, abono, operario_id, client_id, unregistered_client_name, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status, start_date, due_date)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             date                      = excluded.date,
             time                      = excluded.time,
@@ -1032,7 +1034,9 @@ export class SupabasePullSync {
             ready_at                  = excluded.ready_at,
             delivered_at              = excluded.delivered_at,
             updated_at                = excluded.updated_at,
-            sync_status               = 'synced'
+            sync_status               = 'synced',
+            start_date                = excluded.start_date,
+            due_date                  = excluded.due_date
           WHERE excluded.updated_at >= schedules.updated_at;
           `,
           row.id,
@@ -1053,6 +1057,8 @@ export class SupabasePullSync {
           row.delivered_at,
           row.created_at,
           normalizeTimestamp(row.updated_at),
+          row.start_date ?? null,
+          row.due_date ?? null,
         );
       }
     });

@@ -40,6 +40,8 @@ interface ScheduleRow {
   created_at: string;
   updated_at: string;
   sync_status: "pending" | "synced" | "error";
+  start_date: string | null;
+  due_date: string | null;
 }
 
 function mapRow(row: ScheduleRow): Schedule {
@@ -53,6 +55,8 @@ function mapRow(row: ScheduleRow): Schedule {
     abono: row.abono ?? undefined,
     operarioId: row.operario_id ?? undefined,
     notes: row.notes ?? undefined,
+    startDate: row.start_date ?? undefined,
+    dueDate: row.due_date ?? undefined,
     isPriority: row.is_priority === 1,
     isOwnerFlagged: row.is_owner_flagged === 1,
     category: row.category as Schedule["category"],
@@ -130,6 +134,8 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       abono: data.abono,
       operarioId: data.operarioId,
       notes: data.notes,
+      startDate: data.startDate,
+      dueDate: data.dueDate,
       isPriority: data.isPriority ?? false,
       isOwnerFlagged: data.isOwnerFlagged ?? false,
       category: data.category ?? "arreglo",
@@ -140,8 +146,8 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       syncStatus: "pending",
     };
     await db.runAsync(
-      `INSERT INTO schedules (id, client_id, unregistered_client_name, date, time, price, abono, operario_id, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO schedules (id, client_id, unregistered_client_name, date, time, price, abono, operario_id, notes, is_priority, is_owner_flagged, category, status, status_locked, ready_at, delivered_at, created_at, updated_at, sync_status, start_date, due_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       schedule.id,
       schedule.clientId ?? null,
       schedule.unregisteredClientName ?? null,
@@ -161,6 +167,8 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       schedule.createdAt,
       schedule.updatedAt,
       schedule.syncStatus,
+      schedule.startDate ?? null,
+      schedule.dueDate ?? null,
     );
     notifyWriteCommitted(this.options);
     return schedule;
@@ -291,7 +299,7 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
       };
 
       await db.runAsync(
-        `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, abono = ?, operario_id = ?, notes = ?, is_priority = ?, is_owner_flagged = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
+        `UPDATE schedules SET client_id = ?, unregistered_client_name = ?, date = ?, time = ?, price = ?, abono = ?, operario_id = ?, notes = ?, is_priority = ?, is_owner_flagged = ?, category = ?, status = ?, status_locked = ?, ready_at = ?, delivered_at = ?, updated_at = ?, sync_status = ?, start_date = ?, due_date = ? WHERE id = ?`,
         updated.clientId ?? null,
         updated.unregisteredClientName ?? null,
         updated.date ?? null,
@@ -309,6 +317,8 @@ export class ScheduleRepositoryImpl implements ScheduleRepository {
         updated.deliveredAt ?? null,
         updated.updatedAt,
         updated.syncStatus,
+        updated.startDate ?? null,
+        updated.dueDate ?? null,
         updated.id,
       );
     });

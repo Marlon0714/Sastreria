@@ -585,6 +585,31 @@ describe("ScheduleFormScreen", () => {
     });
   });
 
+  it("muestra los campos de fecha de inicio/entrega solo con category='confeccion'", () => {
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit: jest.fn(async () => Promise.resolve(schedule)),
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByLabelText, queryByLabelText, getByText } = render(
+      <ScheduleFormScreen
+        {...buildProps(jest.fn(), jest.fn(), undefined, "confeccion")}
+      />,
+    );
+
+    expect(getByLabelText("Fecha de inicio")).toBeTruthy();
+    expect(getByLabelText("Fecha de entrega")).toBeTruthy();
+
+    fireEvent.press(getByText("✂️ Arreglo"));
+
+    expect(queryByLabelText("Fecha de inicio")).toBeNull();
+    expect(queryByLabelText("Fecha de entrega")).toBeNull();
+  });
+
   it("el checkbox 'Prioritario' solo se ofrece con fecha, y se limpia si se quita", () => {
     mockUseScheduleForm.mockReturnValue({
       schedule: null,

@@ -138,6 +138,56 @@ describe("useScheduleForm", () => {
       expect(identityGate.releaseIdentity).toHaveBeenCalledTimes(1);
     });
 
+    it("limpia startDate/dueDate antes de crear si category no es 'confeccion'", async () => {
+      mockCreate.mockResolvedValueOnce(baseSchedule);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleForm(undefined, identityGate),
+      );
+
+      await act(async () => {
+        await result.current.submit({
+          ...input,
+          category: "arreglo",
+          startDate: "2026-09-01",
+          dueDate: "2026-09-15",
+        });
+      });
+
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: "arreglo",
+          startDate: undefined,
+          dueDate: undefined,
+        }),
+      );
+    });
+
+    it("conserva startDate/dueDate al crear si category es 'confeccion'", async () => {
+      mockCreate.mockResolvedValueOnce(baseSchedule);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleForm(undefined, identityGate),
+      );
+
+      await act(async () => {
+        await result.current.submit({
+          ...input,
+          category: "confeccion",
+          startDate: "2026-09-01",
+          dueDate: "2026-09-15",
+        });
+      });
+
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: "confeccion",
+          startDate: "2026-09-01",
+          dueDate: "2026-09-15",
+        }),
+      );
+    });
+
     it("no guarda nada si no se pudo confirmar la identidad (PIN cancelado)", async () => {
       const identityGate = makeIdentityGate({
         requireIdentity: jest.fn(async () => Promise.resolve(null)),
@@ -241,6 +291,41 @@ describe("useScheduleForm", () => {
         }),
       );
       expect(mockCreateEvent).toHaveBeenCalledTimes(2); // "updated" (operarioId) + "status_auto"
+    });
+
+    it("limpia startDate/dueDate antes de actualizar si se cambia la categoría a 'arreglo'", async () => {
+      mockGetById.mockResolvedValueOnce({
+        ...baseSchedule,
+        category: "confeccion",
+        startDate: "2026-09-01",
+        dueDate: "2026-09-15",
+      });
+      const updated: Schedule = { ...baseSchedule, category: "arreglo" };
+      mockUpdate.mockResolvedValueOnce(updated);
+      const identityGate = makeIdentityGate();
+      const { result } = renderHook(() =>
+        useScheduleForm(baseSchedule.id, identityGate),
+      );
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      await act(async () => {
+        await result.current.submit({
+          ...input,
+          category: "arreglo",
+          startDate: "2026-09-01",
+          dueDate: "2026-09-15",
+        });
+      });
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        baseSchedule.id,
+        expect.objectContaining({
+          category: "arreglo",
+          startDate: undefined,
+          dueDate: undefined,
+        }),
+      );
     });
 
     it("no registra ningún evento si nada cambió", async () => {

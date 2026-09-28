@@ -64,6 +64,8 @@ const baseRow = {
   created_at: "2026-08-01T10:00:00.000Z",
   updated_at: "2026-08-01T10:00:00.000Z",
   sync_status: "pending" as const,
+  start_date: null,
+  due_date: null,
 };
 
 describe("ScheduleRepositoryImpl", () => {
@@ -418,6 +420,44 @@ describe("ScheduleRepositoryImpl", () => {
       const params = mockRunAsync.mock.calls[0] ?? [];
       expect(params).toContain(30000);
     });
+
+    it("persiste startDate y dueDate si se envían (category confeccion)", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+        category: "confeccion",
+        startDate: "2026-09-01",
+        dueDate: "2026-09-15",
+      });
+
+      expect(result.startDate).toBe("2026-09-01");
+      expect(result.dueDate).toBe("2026-09-15");
+      const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("start_date");
+      expect(sql).toContain("due_date");
+      expect(params).toContain("2026-09-01");
+      expect(params).toContain("2026-09-15");
+    });
+
+    it("guarda start_date/due_date como null si no se envían", async () => {
+      mockGenerateDomainUuid.mockReturnValueOnce(baseRow.id);
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.create({
+        clientId: baseRow.client_id,
+      });
+
+      expect(result.startDate).toBeUndefined();
+      expect(result.dueDate).toBeUndefined();
+      const [, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      // Últimas dos posiciones del INSERT (después de sync_status).
+      expect(params[params.length - 2]).toBeNull();
+      expect(params[params.length - 1]).toBeNull();
+    });
   });
 
   describe("update", () => {
@@ -571,6 +611,44 @@ describe("ScheduleRepositoryImpl", () => {
       const result = await repository.update(baseRow.id, { notes: "otra nota" });
 
       expect(result.isOwnerFlagged).toBe(true);
+    });
+
+    it("persiste startDate/dueDate al actualizarlos", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        category: "confeccion",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, {
+        startDate: "2026-09-02",
+        dueDate: "2026-09-20",
+      });
+
+      expect(result.startDate).toBe("2026-09-02");
+      expect(result.dueDate).toBe("2026-09-20");
+      const [sql, ...params] = mockRunAsync.mock.calls[0] ?? [];
+      expect(sql).toContain("start_date = ?");
+      expect(sql).toContain("due_date = ?");
+      expect(params).toContain("2026-09-02");
+      expect(params).toContain("2026-09-20");
+    });
+
+    it("conserva startDate/dueDate existentes si no se envían en el update", async () => {
+      mockGetFirstAsync.mockResolvedValueOnce({
+        ...baseRow,
+        category: "confeccion",
+        start_date: "2026-09-01",
+        due_date: "2026-09-10",
+      });
+      mockRunAsync.mockResolvedValueOnce({});
+      const repository = new ScheduleRepositoryImpl();
+
+      const result = await repository.update(baseRow.id, { notes: "otra nota" });
+
+      expect(result.startDate).toBe("2026-09-01");
+      expect(result.dueDate).toBe("2026-09-10");
     });
   });
 

@@ -519,6 +519,48 @@ describe("SupabasePullSync", () => {
     );
   });
 
+  it("applies schedules incremental upserts including start_date/due_date", async () => {
+    mockQueryResults.schedules.push({
+      data: [
+        {
+          id: "schedule-2",
+          date: "2026-08-10",
+          time: "14:30",
+          price: 100000,
+          abono: 30000,
+          client_id: "c-1",
+          notes: null,
+          is_owner_flagged: false,
+          category: "confeccion",
+          status: "pending",
+          start_date: "2026-09-01",
+          due_date: "2026-09-15",
+          created_at: "2026-08-01T10:00:00.000Z",
+          updated_at: "2026-08-01T10:05:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const checkpointRepository = {
+      getCursor: jest.fn(async () => null),
+      advanceCursor: jest.fn(async () => Promise.resolve()),
+    };
+
+    const pullSync = new SupabasePullSync(checkpointRepository);
+    await pullSync.pullIncremental();
+
+    const scheduleCalls = mockRunAsync.mock.calls.filter((call) =>
+      String(call[0]).includes("INSERT INTO schedules"),
+    );
+    expect(scheduleCalls).toHaveLength(1);
+    const [insertSql, ...params] = scheduleCalls[0] ?? [];
+    expect(insertSql).toContain("start_date");
+    expect(insertSql).toContain("excluded.due_date");
+    expect(params).toContain("2026-09-01");
+    expect(params).toContain("2026-09-15");
+  });
+
   it("applies schedule_events incremental upserts using created_at as cursor", async () => {
     mockQueryResults.schedule_events.push({
       data: [

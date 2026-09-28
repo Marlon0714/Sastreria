@@ -301,7 +301,8 @@ export class SupabaseSyncTransport implements SyncTransport {
     // Requiere la migración v19 aplicada en Supabase (columnas nuevas +
     // CHECK de status actualizado), v21 (is_priority/status_locked), v24
     // (category), v29 (client_id opcional + unregistered_client_name),
-    // v32_schedule_abono y v37_schedule_owner_flag — ver SUPABASE_MIGRATIONS.md.
+    // v32_schedule_abono, v37_schedule_owner_flag y v41 (start_date/
+    // due_date) — ver SUPABASE_MIGRATIONS.md.
     return this.upsertSynced("schedules", {
       id: schedule.id,
       date: schedule.date ?? null,
@@ -312,6 +313,8 @@ export class SupabaseSyncTransport implements SyncTransport {
       client_id: schedule.clientId ?? null,
       unregistered_client_name: schedule.unregisteredClientName ?? null,
       notes: schedule.notes ?? null,
+      start_date: schedule.startDate ?? null,
+      due_date: schedule.dueDate ?? null,
       is_priority: schedule.isPriority,
       is_owner_flagged: schedule.isOwnerFlagged,
       category: schedule.category,

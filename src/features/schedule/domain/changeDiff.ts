@@ -7,6 +7,8 @@ export type ScheduleDiffableField =
   | "abono"
   | "operarioId"
   | "notes"
+  | "startDate"
+  | "dueDate"
   | "isPriority"
   | "category";
 
@@ -27,6 +29,8 @@ const DIFFABLE_FIELDS: readonly ScheduleDiffableField[] = [
   "abono",
   "operarioId",
   "notes",
+  "startDate",
+  "dueDate",
   "isPriority",
   "category",
 ];

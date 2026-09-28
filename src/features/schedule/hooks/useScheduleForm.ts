@@ -121,9 +121,18 @@ export function useScheduleForm(
           return null;
         }
 
+        // startDate/dueDate solo son válidas para category="confeccion" — si
+        // el usuario cambió de categoría antes de guardar (ej. de confección
+        // a arreglo), no deben persistirse fechas de un estado previo que ya
+        // no aplica.
+        const normalizedValues: CreateScheduleDTO =
+          values.category !== "confeccion"
+            ? { ...values, startDate: undefined, dueDate: undefined }
+            : values;
+
         if (scheduleId) {
           const before = schedule;
-          const updated = await repo.update(scheduleId, values);
+          const updated = await repo.update(scheduleId, normalizedValues);
           setSchedule(updated);
 
           // El registro de auditoría es best-effort: la mutación YA se
@@ -168,7 +177,7 @@ export function useScheduleForm(
           return updated;
         }
 
-        const created = await repo.create(values);
+        const created = await repo.create(normalizedValues);
         const fieldChanges = diffScheduleFields({}, created);
         try {
           await eventRepo.create({

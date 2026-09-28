@@ -76,6 +76,10 @@ export const scheduleSchema = z.object({
   abono: z.number().nonnegative("El abono no puede ser negativo").optional(),
   operarioId: z.string().uuid("El operario es inválido").optional(),
   notes: z.string().trim().max(500).optional(),
+  // Solo relevantes para category="confeccion" — opcionales incluso ahí, no
+  // se exige llenarlas (ver ScheduleFormScreen, gated por categoryValue).
+  startDate: optionalDate.optional(),
+  dueDate: optionalDate.optional(),
   isPriority: z.boolean().optional(),
   isOwnerFlagged: z.boolean().optional(),
   category: scheduleCategorySchema.optional(),

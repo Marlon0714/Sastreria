@@ -536,6 +536,38 @@ describe("SupabaseSyncTransport", () => {
         { onConflict: "id" },
       );
     });
+
+    it("incluye start_date/due_date en el upsert cuando vienen definidos", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncSchedule({
+        ...baseSchedule,
+        category: "confeccion",
+        startDate: "2026-09-01",
+        dueDate: "2026-09-15",
+      });
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          start_date: "2026-09-01",
+          due_date: "2026-09-15",
+        }),
+        { onConflict: "id" },
+      );
+    });
+
+    it("envía start_date/due_date como null si no vienen definidos", async () => {
+      mockUpsert.mockResolvedValueOnce({ error: null });
+      const transport = new SupabaseSyncTransport();
+
+      await transport.syncSchedule(baseSchedule);
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({ start_date: null, due_date: null }),
+        { onConflict: "id" },
+      );
+    });
   });
 
   describe("syncScheduleEvent", () => {

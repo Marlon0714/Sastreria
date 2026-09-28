@@ -52,6 +52,15 @@ describe("diffScheduleFields", () => {
     });
   });
 
+  it("detecta cambios en startDate y dueDate", () => {
+    const before = { startDate: "2026-09-01", dueDate: "2026-09-10" };
+    const after = { startDate: "2026-09-02", dueDate: "2026-09-10" };
+
+    expect(diffScheduleFields(before, after)).toEqual({
+      startDate: { before: "2026-09-01", after: "2026-09-02" },
+    });
+  });
+
   // No hay test runtime para "status" porque ScheduleDiffableField ni
   // siquiera lo admite como clave — el compilador ya lo garantiza.
 });

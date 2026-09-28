@@ -163,6 +163,8 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       abono: undefined,
       operarioId: undefined,
       notes: "",
+      startDate: undefined,
+      dueDate: undefined,
       isPriority: false,
       isOwnerFlagged: false,
       category: categoryParam ?? "arreglo",
@@ -195,6 +197,8 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       abono: schedule.abono,
       operarioId: schedule.operarioId,
       notes: schedule.notes ?? "",
+      startDate: schedule.startDate,
+      dueDate: schedule.dueDate,
       isPriority: schedule.isPriority,
       isOwnerFlagged: schedule.isOwnerFlagged,
       category: schedule.category,
@@ -648,6 +652,46 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             )}
           />
         </View>
+
+        {categoryValue === "confeccion" ? (
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Fecha de inicio (opcional)</Text>
+            <Controller
+              control={control}
+              name="startDate"
+              render={({ field: { onChange, value } }) => (
+                <ScheduleDateTimePickerField
+                  mode="date"
+                  value={value}
+                  onChange={onChange}
+                  placeholder="Sin fecha"
+                  accessibilityLabel="Fecha de inicio"
+                  errorMessage={errors.startDate?.message}
+                />
+              )}
+            />
+          </View>
+        ) : null}
+
+        {categoryValue === "confeccion" ? (
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Fecha de entrega (opcional)</Text>
+            <Controller
+              control={control}
+              name="dueDate"
+              render={({ field: { onChange, value } }) => (
+                <ScheduleDateTimePickerField
+                  mode="date"
+                  value={value}
+                  onChange={onChange}
+                  placeholder="Sin fecha"
+                  accessibilityLabel="Fecha de entrega"
+                  errorMessage={errors.dueDate?.message}
+                />
+              )}
+            />
+          </View>
+        ) : null}
 
         {dateValue && pendingCountOnDate !== null ? (
           <Text style={styles.helperText}>
