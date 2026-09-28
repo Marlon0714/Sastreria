@@ -1253,6 +1253,213 @@ cambiando el correo de un operario desde la app y luego cerrando sesión para
 volver a entrar con el correo nuevo, confirmando que el login sigue
 funcionando antes de darlo por bueno en producción.
 
+**⚠️ Bug confirmado 2026-09-20, corregido en v39 (ver abajo):** el cambio de
+correo aplicaba, pero el login con el correo nuevo fallaba después (el
+usuario lo reportó como "parece que la conexión está mal" — ese mensaje es
+justo el que la app muestra cuando Supabase responde con un error de
+red/reintentable, `SupabaseAuthRepository.ts`). **No usar esta versión de la
+función tal cual — ir directo a v39.**
+
+---
+
+### v39_fix_own_email_identities_sync (2026-09-20)
+
+**Contexto — causa raíz del bug reportado tras v38:** Supabase Auth (GoTrue)
+guarda el correo en DOS lugares: `auth.users.email` (lo único que tocaba
+`set_own_email` en v38) y `auth.identities.identity_data->>'email'` (el JSON
+de la identidad del proveedor `'email'`). Un `UPDATE` manual sobre
+`auth.users` que no sincroniza también `auth.identities` deja las dos tablas
+desalineadas — GoTrue detecta la inconsistencia al iniciar sesión y responde
+con un error 500, que `supabase-js` clasifica como error de red/reintentable
+(`isAuthRetryableFetchError`), y por eso la app mostraba "No se pudo
+conectar..." en vez de un error de credenciales — el síntoma exacto que
+reportó el usuario, siempre justo después de cambiar el correo. Confirmado
+que este es un problema conocido de Supabase (actualizar `auth.users.email`
+sin tocar `auth.identities` rompe el login) y no un bug nuevo de este
+proyecto.
+
+```sql
+CREATE OR REPLACE FUNCTION set_own_email(new_email TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  trimmed_email TEXT := lower(trim(new_email));
+  caller_id UUID := auth.uid();
+BEGIN
+  IF caller_id IS NULL THEN
+    RAISE EXCEPTION 'No autenticado.';
+  END IF;
+
+  IF trimmed_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' THEN
+    RAISE EXCEPTION 'Correo inválido.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM auth.users WHERE id <> caller_id AND email = trimmed_email
+  ) THEN
+    RAISE EXCEPTION 'Ese correo ya está en uso.';
+  END IF;
+
+  UPDATE auth.users
+  SET email = trimmed_email,
+      email_confirmed_at = now(),
+      email_change = NULL,
+      email_change_token_new = NULL,
+      email_change_confirm_status = 0,
+      updated_at = now()
+  WHERE id = caller_id;
+
+  -- Arreglo del bug: v38 solo actualizaba auth.users, dejando
+  -- auth.identities con el correo viejo en identity_data — de ahí el login
+  -- roto. Se sincroniza la identidad del proveedor 'email' en el mismo paso.
+  UPDATE auth.identities
+  SET identity_data = jsonb_set(identity_data, '{email}', to_jsonb(trimmed_email)),
+      updated_at = now()
+  WHERE user_id = caller_id AND provider = 'email';
+END;
+$$;
+```
+
+**Importante — reparar cuentas ya afectadas:** cualquier operario que ya haya
+usado "Cambiar correo" bajo la versión v38 de la función quedó con
+`auth.identities` desincronizada y no puede iniciar sesión. Corre esto UNA
+VEZ, después de crear la función de arriba, para sincronizar cualquier fila
+que haya quedado desalineada (no afecta cuentas que nunca usaron esta
+función, es un `WHERE` selectivo):
+
+```sql
+UPDATE auth.identities i
+SET identity_data = jsonb_set(identity_data, '{email}', to_jsonb(u.email)),
+    updated_at = now()
+FROM auth.users u
+WHERE i.user_id = u.id
+  AND i.provider = 'email'
+  AND (i.identity_data->>'email') IS DISTINCT FROM u.email;
+```
+
+**Después de correr ambos bloques**, probar de nuevo: cambiar el correo de
+un operario desde la app, cerrar sesión, y volver a entrar con el correo
+nuevo — debería funcionar. Sin build de EAS (mismo alcance que v38, solo
+cambia la función SQL).
+
+**⚠️ v39 corrida y confirmada por el usuario 2026-09-20, pero el login
+siguió roto igual — causa raíz real identificada en v40 (ver abajo). No
+usar v39 tal cual, ir directo a v40.**
+
+---
+
+### v40_fix_own_email_null_tokens (2026-09-20) — ✅ confirmado corrido
+
+**Contexto — la causa raíz real no era (solo) `auth.identities`.** Tras
+correr v39 el login seguía fallando con el mismo síntoma. Investigación más
+profunda: es un problema **conocido y documentado del propio GoTrue** (el
+servicio de Auth de Supabase) — cuatro columnas de `auth.users`
+(`confirmation_token`, `email_change`, `email_change_token_new`,
+`recovery_token`, y también `email_change_token_current`/`phone_change`/
+`phone_change_token`) están declaradas para aceptar `NULL` a nivel de SQL,
+pero el código Go de GoTrue que lee esas filas **espera siempre un string,
+nunca NULL** — si encuentra `NULL` al hacer scan de la fila, revienta con un
+error interno tipo "converting NULL to string is unsupported", que se
+traduce en un 500 al iniciar sesión (el mismo 500 que `supabase-js`
+reporta como error de red/reintentable). Tanto v38 como v39 dejaban
+`email_change`/`email_change_token_new` en `NULL` en vez de `''` (string
+vacío) — de ahí que el bug sobreviviera al fix de `auth.identities`. Esto
+solo pasa por escribir directo en `auth.users` vía SQL en vez de la Admin
+API (que siempre escribe `''`, nunca `NULL`), confirmado como problema
+reportado en el propio repo de `supabase/auth`.
+
+**Nota de sintaxis 2026-09-20:** la primera versión de este bloque usaba una
+expresión regular (`!~ '^[^@\s]+@...$'`) para validar el formato del correo.
+Al pegarla en el SQL Editor de Supabase, el usuario recibió
+`ERROR: 42601: syntax error at or near ")"` justo en el bloque `IF EXISTS`
+siguiente — lo más probable es una barra invertida o comilla que se alteró
+al copiar/pegar (autocorrección de texto, etc.), rompiendo el parseo del
+literal de la expresión regular más arriba y arrastrando el error a la
+siguiente línea con paréntesis. Se reemplazó por una validación equivalente
+sin ninguna barra invertida ni caracteres especiales de regex, para que sea
+robusta al copiar/pegar.
+
+```sql
+CREATE OR REPLACE FUNCTION set_own_email(new_email TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $function$
+DECLARE
+  trimmed_email TEXT := lower(trim(new_email));
+  caller_id UUID := auth.uid();
+BEGIN
+  IF caller_id IS NULL THEN
+    RAISE EXCEPTION 'No autenticado.';
+  END IF;
+
+  IF trimmed_email = ''
+     OR trimmed_email NOT LIKE '%@%.%'
+     OR trimmed_email LIKE '% %' THEN
+    RAISE EXCEPTION 'Correo inválido.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM auth.users WHERE id <> caller_id AND email = trimmed_email
+  ) THEN
+    RAISE EXCEPTION 'Ese correo ya está en uso.';
+  END IF;
+
+  UPDATE auth.users
+  SET email = trimmed_email,
+      email_confirmed_at = now(),
+      email_change = '',
+      email_change_token_new = '',
+      email_change_token_current = '',
+      email_change_confirm_status = 0,
+      updated_at = now()
+  WHERE id = caller_id;
+
+  UPDATE auth.identities
+  SET identity_data = jsonb_set(identity_data, '{email}', to_jsonb(trimmed_email)),
+      updated_at = now()
+  WHERE user_id = caller_id AND provider = 'email';
+END;
+$function$;
+```
+
+**Importante — reparar cuentas ya afectadas por v38/v39:** cualquier
+operario que ya haya cambiado su correo bajo v38 o v39 tiene esas columnas
+en `NULL` hoy mismo y sigue bloqueado. Corre esto UNA VEZ (cubre también
+`confirmation_token`/`recovery_token`/`phone_change*` por si acaso, aunque
+esta función no los toca — son el mismo tipo de columna y el mismo bug si
+alguna vez quedaron en `NULL` por otro motivo):
+
+```sql
+UPDATE auth.users
+SET confirmation_token = COALESCE(confirmation_token, ''),
+    email_change = COALESCE(email_change, ''),
+    email_change_token_new = COALESCE(email_change_token_new, ''),
+    email_change_token_current = COALESCE(email_change_token_current, ''),
+    recovery_token = COALESCE(recovery_token, ''),
+    phone_change = COALESCE(phone_change, ''),
+    phone_change_token = COALESCE(phone_change_token, '')
+WHERE confirmation_token IS NULL
+   OR email_change IS NULL
+   OR email_change_token_new IS NULL
+   OR email_change_token_current IS NULL
+   OR recovery_token IS NULL
+   OR phone_change IS NULL
+   OR phone_change_token IS NULL;
+```
+
+**Después de correr ambos bloques**, probar de nuevo cambiando el correo de
+un operario y volviendo a entrar con el correo nuevo. Sin build de EAS
+(mismo alcance que v38/v39, solo SQL).
+
+**✅ Confirmado 2026-09-25:** el usuario corrió ambos bloques (la función y
+el `UPDATE` de reparación de cuentas afectadas por v38/v39) en Supabase.
+Login con correo cambiado funcionando.
+
 ---
 
 ## Notas
