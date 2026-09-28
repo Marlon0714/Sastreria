@@ -106,4 +106,53 @@ describe("getDatabase", () => {
 
     expect(callOrder).toEqual(["first", "second"]);
   });
+
+  it("reabre la conexion y reintenta una vez si expo-sqlite libera el objeto nativo (expo/expo#49799)", async () => {
+    const brokenRunAsync = jest.fn(async () => {
+      throw new Error(
+        "Call to function 'NativeDatabase.prepareAsync' has been rejected.\n" +
+          "→ Caused by: Cannot use shared object that was already released",
+      );
+    });
+    const freshRunAsync = jest.fn(async () => "ok");
+
+    mockOpenDatabaseSync
+      .mockReturnValueOnce({
+        withTransactionAsync: jest.fn(),
+        runAsync: brokenRunAsync,
+      })
+      .mockReturnValueOnce({
+        withTransactionAsync: jest.fn(),
+        runAsync: freshRunAsync,
+      });
+
+    const { getDatabase } = require("./database") as typeof import("./database");
+    const db = getDatabase();
+
+    const result = await db.runAsync("INSERT INTO x VALUES (1)");
+
+    expect(result).toBe("ok");
+    expect(brokenRunAsync).toHaveBeenCalledTimes(1);
+    expect(freshRunAsync).toHaveBeenCalledTimes(1);
+    expect(mockOpenDatabaseSync).toHaveBeenCalledTimes(2);
+  });
+
+  it("no reintenta y deja pasar el error si no es el bug conocido de shared object liberado", async () => {
+    const runAsync = jest.fn(async () => {
+      throw new Error("otro error real de SQL");
+    });
+
+    mockOpenDatabaseSync.mockReturnValue({
+      withTransactionAsync: jest.fn(),
+      runAsync,
+    });
+
+    const { getDatabase } = require("./database") as typeof import("./database");
+    const db = getDatabase();
+
+    await expect(db.runAsync("INSERT INTO x VALUES (1)")).rejects.toThrow(
+      "otro error real de SQL",
+    );
+    expect(mockOpenDatabaseSync).toHaveBeenCalledTimes(1);
+  });
 });

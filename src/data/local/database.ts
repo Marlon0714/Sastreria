@@ -30,12 +30,71 @@ function serializeTransactions(db: SQLiteDatabase): SQLiteDatabase {
   return db;
 }
 
+const RECOVERABLE_METHODS = [
+  "execAsync",
+  "runAsync",
+  "withTransactionAsync",
+] as const;
+
+function isReleasedSharedObjectError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes("shared object that was already released")
+  );
+}
+
+function openFreshDatabase(): SQLiteDatabase {
+  return withReleaseRecovery(serializeTransactions(openDatabaseSync(DATABASE_NAME)));
+}
+
+/**
+ * Bug conocido y sin arreglar de expo-modules-core en Android (New
+ * Architecture, expo/expo#49799): el GC de la JVM puede liberar el handle
+ * nativo de la conexión SQLite justo mientras una llamada async está en
+ * curso, lanzando "Cannot use shared object that was already released" — no
+ * es nada que hagamos mal nosotros, es la conexión nativa la que queda
+ * muerta de ahí en adelante. Sin este wrapper, TODO sync futuro fallaría
+ * igual hasta reiniciar la app entera (el singleton nunca se renovaba
+ * solo). Se detecta ese error puntual, se abre una conexión nueva, y se
+ * reintenta la MISMA llamada una sola vez sobre esa conexión nueva.
+ */
+function withReleaseRecovery(db: SQLiteDatabase): SQLiteDatabase {
+  for (const name of RECOVERABLE_METHODS) {
+    const original = db[name];
+    if (typeof original !== "function") {
+      continue;
+    }
+
+    const bound = original.bind(db) as (
+      ...args: unknown[]
+    ) => Promise<unknown>;
+    // @ts-expect-error mismo patrón de reasignación que serializeTransactions
+    db[name] = async (...args: unknown[]) => {
+      try {
+        return await bound(...args);
+      } catch (error) {
+        if (!isReleasedSharedObjectError(error)) {
+          throw error;
+        }
+
+        databaseInstance = openFreshDatabase();
+        const retry = (
+          databaseInstance[name] as (...args: unknown[]) => Promise<unknown>
+        ).bind(databaseInstance);
+        return retry(...args);
+      }
+    };
+  }
+
+  return db;
+}
+
 export function getDatabase(): SQLiteDatabase {
   if (databaseInstance) {
     return databaseInstance;
   }
 
-  databaseInstance = serializeTransactions(openDatabaseSync(DATABASE_NAME));
+  databaseInstance = openFreshDatabase();
   return databaseInstance;
 }
 
