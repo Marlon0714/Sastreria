@@ -32,6 +32,7 @@ import {
 } from "../components/ClientPickerField";
 import { OperarioPickerField } from "../components/OperarioPickerField";
 import { ScheduleHistoryList } from "../components/ScheduleHistoryList";
+import { PrintArregloLabelButton } from "../../printing/components/PrintArregloLabelButton";
 import { getDefaultScheduleRepository } from "../../../data/local/scheduleDependencies";
 import { formatDateForDisplay } from "../domain/dateUtils";
 import {
@@ -977,6 +978,8 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
               </Text>
             </Pressable>
           ) : null}
+
+          <PrintArregloLabelButton schedule={displaySchedule} />
 
           <Pressable
             accessibilityLabel="Corrección manual de estado"

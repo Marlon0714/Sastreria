@@ -17,8 +17,11 @@ import { SupabaseRealtimeInvalidationSubscriber } from "./src/data/sync/Supabase
 import { SyncLifecycleController } from "./src/data/sync/SyncLifecycleController";
 import type { SyncTriggerSource } from "./src/data/sync/types";
 import { ClientsDependenciesProvider } from "./src/features/clients/hooks/ClientsDependenciesProvider";
+import { getPrintingDependencies } from "./src/data/local/printingDependencies";
+import { PrintingDependenciesProvider } from "./src/features/printing/hooks/PrintingDependenciesProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { useDebugModeStore } from "./src/shared/state/debugModeStore";
+import { usePrinterSettingsStore } from "./src/shared/state/printerSettingsStore";
 import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
 import { interceptLogs } from "./src/shared/utils/logInterceptor";
 import { LogViewer } from "./src/shared/components/LogViewer";
@@ -30,6 +33,10 @@ export default function App() {
   const debugModeUnlocked = useDebugModeStore((state) => state.debugModeUnlocked);
   const clientsDependencies = useMemo(
     () => (isReady ? getClientsDependencies() : null),
+    [isReady],
+  );
+  const printingDependencies = useMemo(
+    () => (isReady ? getPrintingDependencies() : null),
     [isReady],
   );
 
@@ -145,6 +152,10 @@ export default function App() {
     void useDebugModeStore.getState().hydrate();
   }, []);
 
+  useEffect(() => {
+    void usePrinterSettingsStore.getState().hydrate();
+  }, []);
+
   if (error) {
     return (
       <GestureHandlerRootView style={styles.flex}>
@@ -155,7 +166,7 @@ export default function App() {
     );
   }
 
-  if (!isReady || !clientsDependencies) {
+  if (!isReady || !clientsDependencies || !printingDependencies) {
     return (
       <GestureHandlerRootView style={styles.flex}>
         <View style={styles.centered}>
@@ -170,7 +181,9 @@ export default function App() {
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
         <ClientsDependenciesProvider dependencies={clientsDependencies}>
-          <RootNavigator />
+          <PrintingDependenciesProvider dependencies={printingDependencies}>
+            <RootNavigator />
+          </PrintingDependenciesProvider>
         </ClientsDependenciesProvider>
         {debugModeUnlocked ? (
           <>

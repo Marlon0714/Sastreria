@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MyAccountScreen from "../features/account/screens/MyAccountScreen";
 import DashboardScreen from "../features/dashboard/screens/DashboardScreen";
 import ScheduleListByStatusScreen from "../features/dashboard/screens/ScheduleListByStatusScreen";
+import PrinterSettingsScreen from "../features/printing/screens/PrinterSettingsScreen";
 import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { DashboardStackParamList } from "./types";
 
@@ -29,6 +30,11 @@ export default function DashboardStackNavigator() {
         name="ScheduleListByStatus"
         component={ScheduleListByStatusScreen}
         options={({ route }) => ({ title: route.params.cardLabel })}
+      />
+      <Stack.Screen
+        name="PrinterSettings"
+        component={PrinterSettingsScreen}
+        options={{ title: "Impresoras" }}
       />
     </Stack.Navigator>
   );

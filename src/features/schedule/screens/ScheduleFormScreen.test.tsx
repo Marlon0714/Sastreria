@@ -175,6 +175,13 @@ jest.mock("../components/ScheduleHistoryList", () => ({
   ScheduleHistoryList: () => null,
 }));
 
+// PrintArregloLabelButton necesita ClientsDependenciesProvider +
+// PrintingDependenciesProvider (fuera del alcance de este test, que solo
+// verifica el formulario de turno) — se reemplaza por un stub simple.
+jest.mock("../../printing/components/PrintArregloLabelButton", () => ({
+  PrintArregloLabelButton: () => null,
+}));
+
 type ScreenProps = React.ComponentProps<typeof ScheduleFormScreen>;
 
 function buildProps(

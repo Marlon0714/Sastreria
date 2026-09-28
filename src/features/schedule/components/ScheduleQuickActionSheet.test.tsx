@@ -11,6 +11,13 @@ jest.mock("../../../data/local/profilesCacheDependencies", () => ({
   }),
 }));
 
+// PrintArregloLabelButton necesita ClientsDependenciesProvider +
+// PrintingDependenciesProvider (fuera del alcance de este test, que solo
+// verifica el panel de acciones rápidas) — se reemplaza por un stub simple.
+jest.mock("../../printing/components/PrintArregloLabelButton", () => ({
+  PrintArregloLabelButton: () => null,
+}));
+
 const noopSaveInlinePrice = jest.fn<
   (price: number) => Promise<Schedule | null>
 >(async () => Promise.resolve(null));
@@ -53,6 +60,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -76,6 +84,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -100,6 +109,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -124,6 +134,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -148,6 +159,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -177,6 +189,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -210,6 +223,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -243,6 +257,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -278,6 +293,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -313,6 +329,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -339,6 +356,7 @@ describe("ScheduleQuickActionSheet", () => {
         isTogglingOwnerFlag={false}
         onToggleOwnerFlag={jest.fn()}
         onSaveInlinePrice={noopSaveInlinePrice}
+        client={null}
       />,
     );
 
@@ -367,6 +385,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={onToggleOwnerFlag}
           onSaveInlinePrice={noopSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -393,6 +412,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={noopSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -425,6 +445,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={noopSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -456,6 +477,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={noopSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -485,6 +507,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={onSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -532,6 +555,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={onSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -578,6 +602,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={onSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -614,6 +639,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={onSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -652,6 +678,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={noopSaveInlinePrice}
+          client={null}
         />,
       );
 
@@ -685,6 +712,7 @@ describe("ScheduleQuickActionSheet", () => {
           isTogglingOwnerFlag={false}
           onToggleOwnerFlag={jest.fn()}
           onSaveInlinePrice={noopSaveInlinePrice}
+          client={null}
         />,
       );
 

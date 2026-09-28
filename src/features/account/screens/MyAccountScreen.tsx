@@ -24,7 +24,11 @@ interface MyAccountScreenProps {
   // Opcional: el dueño (modo solo lectura, N-106 fase a) nunca ve el botón
   // "Mis arreglos" que lo invoca, así que `DashboardStackNavigator` (que no
   // registra la ruta "MyActivity") puede montar esta screen sin pasarlo.
-  navigation?: { navigate: (screen: "MyActivity") => void };
+  // "PrinterSettings" sí está disponible para el dueño en los stacks que
+  // registran esa ruta (Schedule, Pricing, Dashboard).
+  navigation?: {
+    navigate: (screen: "MyActivity" | "PrinterSettings") => void;
+  };
 }
 
 const NEW_VALUE_LABELS: Record<EditableField, string> = {
@@ -153,6 +157,18 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
           >
             <Ionicons name="cut-outline" size={20} color={colors.primary} />
             <Text style={styles.activityButtonText}>Mis arreglos</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+          </Pressable>
+        ) : null}
+
+        {isOwner ? (
+          <Pressable
+            accessibilityLabel="Impresoras"
+            style={styles.activityButton}
+            onPress={() => navigation?.navigate("PrinterSettings")}
+          >
+            <Ionicons name="print-outline" size={20} color={colors.primary} />
+            <Text style={styles.activityButtonText}>Impresoras</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.primary} />
           </Pressable>
         ) : null}

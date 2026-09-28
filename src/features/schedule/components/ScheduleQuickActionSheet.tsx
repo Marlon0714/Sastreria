@@ -14,6 +14,8 @@ import {
 } from "react-native";
 
 import { colors } from "../../../shared/theme/colors";
+import type { Client } from "../../clients/domain/types";
+import { PrintArregloLabelButton } from "../../printing/components/PrintArregloLabelButton";
 import { formatPrice } from "../../pricing/domain/strings";
 import { evaluateDeliveryGuard } from "../domain/deliveryGuard";
 import { parseDigitsOnlyAmount } from "../domain/priceInput";
@@ -32,6 +34,12 @@ interface ScheduleQuickActionSheetProps {
   visible: boolean;
   schedule: Schedule | null;
   clientLabel: string;
+  /**
+   * Cliente ya resuelto por `ScheduleDayViewScreen` (mantiene `clientsById`
+   * en estado) — se pasa directo a `PrintArregloLabelButton` para que no
+   * tenga que volver a resolverlo.
+   */
+  client: Client | null;
   isProcessing: boolean;
   error: string | null;
   onMarkReady: () => void;
@@ -68,6 +76,7 @@ export function ScheduleQuickActionSheet({
   visible,
   schedule,
   clientLabel,
+  client,
   isProcessing,
   error,
   onMarkReady,
@@ -320,6 +329,8 @@ export function ScheduleQuickActionSheet({
               <Text style={styles.secondaryButtonText}>Ver turno completo</Text>
             </Pressable>
           ) : null}
+
+          <PrintArregloLabelButton schedule={schedule} client={client} />
 
           <Pressable
             accessibilityLabel="Cerrar"

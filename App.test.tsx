@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react-native";
 
 import App from "./App";
 import type { ClientsDependencies } from "./src/features/clients/domain/repository";
+import type { PrintingDependencies } from "./src/features/printing/domain/repository";
 import { useSyncStatusStore } from "./src/shared/state/syncStatusStore";
 
 jest.setTimeout(15000);
@@ -10,6 +11,7 @@ jest.setTimeout(15000);
 const mockGetDatabase = jest.fn<() => object>();
 const mockRunMigrations = jest.fn<(db: object) => Promise<void>>();
 const mockGetClientsDependencies = jest.fn<() => ClientsDependencies>();
+const mockGetPrintingDependencies = jest.fn<() => PrintingDependencies>();
 const mockRequestRun = jest.fn<() => Promise<void>>();
 const mockPullIncremental = jest.fn<() => Promise<void>>();
 const mockRealtimeStart = jest.fn<() => void>();
@@ -38,6 +40,11 @@ jest.mock("./src/data/local/clientsDependencies", () => ({
   getClientsSyncOrchestrator: () => ({
     requestRun: (): Promise<void> => mockRequestRun(),
   }),
+}));
+
+jest.mock("./src/data/local/printingDependencies", () => ({
+  getPrintingDependencies: (): PrintingDependencies =>
+    mockGetPrintingDependencies(),
 }));
 
 jest.mock("./src/data/sync/SupabasePullSync", () => ({
@@ -86,6 +93,19 @@ jest.mock("./src/navigation/RootNavigator", () => {
   };
 });
 
+function buildPrintingDependencies(): PrintingDependencies {
+  return {
+    labelPrinterRepository: {
+      printLabelJob: jest.fn(async () => Promise.resolve()),
+    },
+    decodeLabelBitmap: jest.fn(() => new Uint8Array()),
+    printerDiscoveryRepository: {
+      scanPort: jest.fn(async () => Promise.resolve([])),
+    },
+    getLocalNetworkInfo: jest.fn(async () => Promise.resolve(null)),
+  };
+}
+
 function buildDependencies(): ClientsDependencies {
   return {
     clientRepository: {
@@ -117,6 +137,7 @@ describe("App bootstrap sync trigger", () => {
     mockGetDatabase.mockReset();
     mockRunMigrations.mockReset();
     mockGetClientsDependencies.mockReset();
+    mockGetPrintingDependencies.mockReset();
     mockRequestRun.mockReset();
     mockPullIncremental.mockReset();
     mockRealtimeStart.mockReset();
@@ -129,6 +150,7 @@ describe("App bootstrap sync trigger", () => {
 
     mockGetDatabase.mockReturnValue({});
     mockGetClientsDependencies.mockReturnValue(buildDependencies());
+    mockGetPrintingDependencies.mockReturnValue(buildPrintingDependencies());
     mockRunMigrations.mockResolvedValue(undefined);
     mockRequestRun.mockResolvedValue(undefined);
     mockPullIncremental.mockResolvedValue(undefined);

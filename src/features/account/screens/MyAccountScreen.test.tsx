@@ -237,5 +237,24 @@ describe("MyAccountScreen", () => {
       expect(queryByLabelText("Cambiar PIN")).toBeNull();
       expect(queryByLabelText("Ver mis arreglos")).toBeNull();
     });
+
+    it("muestra el acceso a Impresoras y navega a PrinterSettings", () => {
+      const navigate = jest.fn();
+      const { getByLabelText } = render(
+        <MyAccountScreen navigation={{ navigate }} />,
+      );
+
+      fireEvent.press(getByLabelText("Impresoras"));
+
+      expect(navigate).toHaveBeenCalledWith("PrinterSettings");
+    });
+  });
+
+  it("no muestra el acceso a Impresoras para el operario", () => {
+    const { queryByLabelText } = render(
+      <MyAccountScreen navigation={{ navigate: jest.fn() }} />,
+    );
+
+    expect(queryByLabelText("Impresoras")).toBeNull();
   });
 });

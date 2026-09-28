@@ -52,6 +52,13 @@ jest.mock("../../clients/hooks/ClientsDependenciesProvider", () => ({
   }),
 }));
 
+// PrintArregloLabelButton necesita ClientsDependenciesProvider +
+// PrintingDependenciesProvider (fuera del alcance de este test, que solo
+// verifica la vista de agenda del día) — se reemplaza por un stub simple.
+jest.mock("../../printing/components/PrintArregloLabelButton", () => ({
+  PrintArregloLabelButton: () => null,
+}));
+
 // "Hoy" fijo en 2026-08-15 sin usar fake timers globales (chocan con
 // findBy*/waitFor de @testing-library, que dependen de setTimeout real).
 jest.mock("../domain/dateUtils", () => {

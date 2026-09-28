@@ -728,6 +728,11 @@ export default function ScheduleDayViewScreen({ navigation, route }: Props) {
         isTogglingOwnerFlag={isTogglingOwnerFlag}
         onToggleOwnerFlag={() => void handleToggleOwnerFlag()}
         onSaveInlinePrice={handleSheetSaveInlinePrice}
+        client={
+          sheetSchedule?.clientId
+            ? (clientsById[sheetSchedule.clientId] ?? null)
+            : null
+        }
       />
 
       <PinPromptModal

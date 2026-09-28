@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import MyAccountScreen from "../features/account/screens/MyAccountScreen";
 import MyActivityScreen from "../features/account/screens/MyActivityScreen";
+import PrinterSettingsScreen from "../features/printing/screens/PrinterSettingsScreen";
 import ScheduleDayViewScreen from "../features/schedule/screens/ScheduleDayViewScreen";
 import ScheduleFormScreen from "../features/schedule/screens/ScheduleFormScreen";
 import { withTabSwipeLock } from "./withTabSwipeLock";
@@ -36,6 +37,11 @@ export default function ScheduleStackNavigator() {
         name="MyActivity"
         component={MyActivityScreen}
         options={{ title: "Mis arreglos" }}
+      />
+      <Stack.Screen
+        name="PrinterSettings"
+        component={PrinterSettingsScreen}
+        options={{ title: "Impresoras" }}
       />
     </Stack.Navigator>
   );

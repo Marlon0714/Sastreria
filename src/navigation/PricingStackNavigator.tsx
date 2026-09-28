@@ -7,6 +7,7 @@ import PricingPlaceholderScreen from "../features/pricing/screens/PricingPlaceho
 import PricingListScreen from "../features/pricing/screens/PricingListScreen";
 import PricingDetailScreen from "../features/pricing/screens/PricingDetailScreen";
 import PricingFormScreen from "../features/pricing/screens/PricingFormScreen";
+import PrinterSettingsScreen from "../features/printing/screens/PrinterSettingsScreen";
 import { useIdentityStore } from "../shared/state/identityStore";
 import { withTabSwipeLock } from "./withTabSwipeLock";
 import type { PricingStackParamList } from "./types";
@@ -68,6 +69,11 @@ export default function PricingStackNavigator() {
         name="MyActivity"
         component={MyActivityScreen}
         options={{ title: "Mis arreglos" }}
+      />
+      <Stack.Screen
+        name="PrinterSettings"
+        component={PrinterSettingsScreen}
+        options={{ title: "Impresoras" }}
       />
     </Stack.Navigator>
   );
