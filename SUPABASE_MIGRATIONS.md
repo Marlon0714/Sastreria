@@ -446,7 +446,14 @@ Para la cuenta de la tablet compartida: mismo flujo pero `is_shared_device = tru
 
 ---
 
-### v19_schedule_redesign — script consolidado, Supabase pendiente (Fases 1-3 del Bloque 1, N-077)
+### v19_schedule_redesign — script consolidado, confirmado corrido en Supabase (Fases 1-3 del Bloque 1, N-077)
+
+**✅ Confirmado 2026-09-25:** el dueño verificó que `schedules` y
+`schedule_events` ya existen en Supabase — esta migración sí se corrió en
+algún momento, solo había quedado sin documentar. Cierra la única brecha de
+confirmación que quedaba abierta en todo este archivo; todas las migraciones
+posteriores que hacen `ALTER TABLE schedules` (v21, v24, v25, v29, v32,
+v37, v41) dependen de que esta ya esté aplicada, y ya lo está.
 
 **Contexto:** Rediseño de la Agenda — `date`/`time` pasan a opcionales, `status` cambia de valores placeholder (`pending/confirmed/completed/cancelled`) a los 5 estados de negocio reales (`pendiente/agendado/en_proceso/listo_para_entregar/entregado`), y se agregan `price`/`operario_id`/`ready_at`/`delivered_at` + la tabla `schedule_events` (historial append-only). El lado **SQLite ya está aplicado** (migración `v19_schedule_redesign` en `migrations.ts`, patrón "recrear tabla" — primera vez en el proyecto) y el **motor de sync ya está completamente cableado** en la app (Fase 3: `schedule` con las columnas nuevas + `schedule_event` como entidad nueva create-only, en los 6 archivos de siempre + el subscriber de realtime). El lado **Supabase todavía NO se ha migrado** — el SQL de abajo sigue sin ejecutarse.
 
