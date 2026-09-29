@@ -13,8 +13,10 @@ import {
 import { colors } from "../../../shared/theme/colors";
 import { usePrinterSettingsStore } from "../../../shared/state/printerSettingsStore";
 import { LabelPreviewModal } from "../components/LabelPreviewModal";
+import { buildEscPosTextTestJob } from "../domain/escposRaster";
 import { DEFAULT_LABEL_PRINTER_PORT, PrinterConfigValidationError } from "../domain/printerConfig";
 import type { ArregloLabelData, PrinterTarget } from "../domain/types";
+import { useLabelPrinterRepository } from "../hooks/PrintingDependenciesProvider";
 import { usePrinterDiscovery } from "../hooks/usePrinterDiscovery";
 
 /**
@@ -39,11 +41,13 @@ export default function PrinterSettingsScreen(): ReactElement {
   const printers = usePrinterSettingsStore((state) => state.printers);
   const addPrinter = usePrinterSettingsStore((state) => state.addPrinter);
   const removePrinter = usePrinterSettingsStore((state) => state.removePrinter);
+  const labelPrinterRepository = useLabelPrinterRepository();
 
   const [name, setName] = useState("");
   const [host, setHost] = useState("");
   const [port, setPort] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null);
 
   const {
     isScanning,
@@ -88,6 +92,30 @@ export default function PrinterSettingsScreen(): ReactElement {
     }
   };
 
+  const handleTestPrint = async (printer: PrinterTarget): Promise<void> => {
+    setTestingPrinterId(printer.id);
+    try {
+      const job = buildEscPosTextTestJob([
+        "PRUEBA DE IMPRESION",
+        printer.name,
+        `${printer.host}:${printer.port}`,
+        "Si esto se lee bien,",
+        "la conexion y la",
+        "impresora funcionan.",
+      ]);
+      await labelPrinterRepository.printLabelJob(printer, job);
+    } catch (error) {
+      Alert.alert(
+        "No se pudo enviar la prueba",
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado. Intenta de nuevo.",
+      );
+    } finally {
+      setTestingPrinterId(null);
+    }
+  };
+
   const handleRemove = (printer: PrinterTarget): void => {
     Alert.alert(
       "Eliminar impresora",
@@ -128,13 +156,27 @@ export default function PrinterSettingsScreen(): ReactElement {
                 {item.host}:{item.port}
               </Text>
             </View>
-            <Pressable
-              accessibilityLabel={`Eliminar ${item.name}`}
-              style={styles.removeButton}
-              onPress={() => handleRemove(item)}
-            >
-              <Text style={styles.removeButtonText}>Eliminar</Text>
-            </Pressable>
+            <View style={styles.printerActions}>
+              <Pressable
+                accessibilityLabel={`Enviar prueba de texto a ${item.name}`}
+                style={styles.testButton}
+                onPress={() => void handleTestPrint(item)}
+                disabled={testingPrinterId === item.id}
+              >
+                {testingPrinterId === item.id ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <Text style={styles.testButtonText}>Probar</Text>
+                )}
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Eliminar ${item.name}`}
+                style={styles.removeButton}
+                onPress={() => handleRemove(item)}
+              >
+                <Text style={styles.removeButtonText}>Eliminar</Text>
+              </Pressable>
+            </View>
           </View>
         )}
       />
@@ -302,6 +344,22 @@ const styles = StyleSheet.create({
   printerAddress: {
     fontSize: 13,
     color: colors.textMuted,
+  },
+  printerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  testButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 56,
+    alignItems: "center",
+  },
+  testButtonText: {
+    color: colors.primary,
+    fontWeight: "600",
+    fontSize: 13,
   },
   removeButton: {
     paddingHorizontal: 12,

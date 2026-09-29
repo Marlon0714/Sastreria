@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { buildEscPosLabelJob } from "./escposRaster";
+import { buildEscPosLabelJob, buildEscPosTextTestJob } from "./escposRaster";
 import type { MonochromeBitmap } from "./types";
 
 describe("buildEscPosLabelJob", () => {
@@ -71,5 +71,27 @@ describe("buildEscPosLabelJob", () => {
     const job = buildEscPosLabelJob(bitmap);
 
     expect(job).toHaveLength(2 + 8 + 4 + 4);
+  });
+});
+
+describe("buildEscPosTextTestJob", () => {
+  it("arma ESC @ + texto ASCII + corte, sin comando ráster (caso feliz)", () => {
+    const job = buildEscPosTextTestJob(["Prueba", "Linea 2"]);
+
+    const expectedText = "Prueba\nLinea 2\n\n";
+    const expectedBytes = [
+      0x1b, 0x40, // ESC @
+      ...Array.from(expectedText).map((char) => char.charCodeAt(0)),
+      0x1d, 0x56, 0x42, 0x00, // GS V corte parcial
+    ];
+
+    expect(Array.from(job)).toEqual(expectedBytes);
+  });
+
+  it("produce solo ESC_INIT + corte cuando no hay líneas", () => {
+    const job = buildEscPosTextTestJob([]);
+
+    // ESC_INIT (2) + "\n\n" (2) + corte (4) = 8
+    expect(job).toHaveLength(8);
   });
 });

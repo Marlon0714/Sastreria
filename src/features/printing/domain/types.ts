@@ -52,6 +52,21 @@ export interface CapturedLabelBitmap {
 }
 
 /**
+ * Resultado de `LabelBitmapDecoder`: píxeles RGBA crudos ya reescalados al
+ * ancho físico fijo de la impresora (`ARREGLO_LABEL_WIDTH_PX`), junto con las
+ * dimensiones REALES de ese bitmap — nunca las dimensiones que se le pidieron
+ * a la captura (`CapturedLabelBitmap.width/height`), que son solo una
+ * solicitud y pueden no coincidir con el PNG real producido por
+ * `react-native-view-shot` en un dispositivo concreto. Ver
+ * `src/data/local/SkiaPixelDecoder.ts`.
+ */
+export interface DecodedLabelBitmap {
+  pixels: Uint8Array;
+  width: number;
+  height: number;
+}
+
+/**
  * Bitmap monocromo empaquetado 1 bit por píxel (MSB primero), formato que
  * exige el comando ráster ESC/POS `GS v 0` (ver `escposRaster.ts`).
  * `bytesPerRow` es `ceil(width / 8)`: cada fila se redondea a un número

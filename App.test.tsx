@@ -98,7 +98,7 @@ function buildPrintingDependencies(): PrintingDependencies {
     labelPrinterRepository: {
       printLabelJob: jest.fn(async () => Promise.resolve()),
     },
-    decodeLabelBitmap: jest.fn(() => new Uint8Array()),
+    decodeLabelBitmap: jest.fn(() => ({ pixels: new Uint8Array(), width: 0, height: 0 })),
     printerDiscoveryRepository: {
       scanPort: jest.fn(async () => Promise.resolve([])),
     },

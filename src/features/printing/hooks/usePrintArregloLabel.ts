@@ -35,8 +35,8 @@ export function usePrintArregloLabel(): {
       setIsPrinting(true);
       try {
         const captured = await capture();
-        const pixels = decodeLabelBitmap(captured);
-        const bitmap = toMonochromeBitmap(pixels, captured.width, captured.height);
+        const { pixels, width, height } = decodeLabelBitmap(captured);
+        const bitmap = toMonochromeBitmap(pixels, width, height);
         const job = buildEscPosLabelJob(bitmap);
         await labelPrinterRepository.printLabelJob(target, job);
       } finally {

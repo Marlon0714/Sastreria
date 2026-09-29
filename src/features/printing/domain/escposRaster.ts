@@ -52,3 +52,37 @@ export function buildEscPosLabelJob(bitmap: MonochromeBitmap): Uint8Array {
 
   return job;
 }
+
+/**
+ * Codifica texto ASCII a bytes crudos (sin acentos/ñ — este job es solo para
+ * diagnóstico técnico, no para etiquetas reales).
+ */
+function encodeAscii(text: string): Uint8Array {
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i += 1) {
+    bytes[i] = text.charCodeAt(i) & 0xff;
+  }
+  return bytes;
+}
+
+/**
+ * Arma un trabajo ESC/POS de solo texto plano (sin el comando ráster
+ * `GS v 0`, sin pasar por captura/Skia/monocromo). Sirve como prueba de
+ * diagnóstico: si esto imprime limpio en una sola hoja pero la etiqueta con
+ * imagen sigue saliendo con símbolos ilegibles en varias hojas, el problema
+ * está en la conversión de imagen a bitmap (captura/decodificación/empacado),
+ * no en la conexión TCP ni en el soporte ESC/POS de la impresora.
+ */
+export function buildEscPosTextTestJob(lines: string[]): Uint8Array {
+  const textBytes = encodeAscii(lines.join("\n") + "\n\n");
+
+  const job = new Uint8Array(ESC_INIT.length + textBytes.length + GS_CUT_PARTIAL.length);
+  let offset = 0;
+  job.set(ESC_INIT, offset);
+  offset += ESC_INIT.length;
+  job.set(textBytes, offset);
+  offset += textBytes.length;
+  job.set(GS_CUT_PARTIAL, offset);
+
+  return job;
+}

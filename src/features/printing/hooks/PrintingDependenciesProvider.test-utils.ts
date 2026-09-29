@@ -11,7 +11,7 @@ export const noopPrintingDependencies: PrintingDependencies = {
   labelPrinterRepository: {
     printLabelJob: async () => Promise.reject(new Error("noop")),
   },
-  decodeLabelBitmap: () => new Uint8Array(0),
+  decodeLabelBitmap: () => ({ pixels: new Uint8Array(0), width: 0, height: 0 }),
   printerDiscoveryRepository: {
     scanPort: async () => Promise.resolve([]),
   },

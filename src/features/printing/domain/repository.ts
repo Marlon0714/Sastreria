@@ -1,4 +1,4 @@
-import type { CapturedLabelBitmap, PrinterTarget } from "./types";
+import type { CapturedLabelBitmap, DecodedLabelBitmap, PrinterTarget } from "./types";
 
 /**
  * Puerto agnóstico de marca/protocolo para enviar un trabajo de impresión ya
@@ -14,12 +14,13 @@ export interface LabelPrinterRepository {
 
 /**
  * Decodifica una captura de `ArregloLabelView` (PNG base64) a píxeles RGBA
- * crudos. Aislado como dependencia inyectable (en vez de un import directo
- * de `@shopify/react-native-skia` en el hook de orquestación) para poder
- * testear `usePrintArregloLabel` sin el motor nativo de Skia — ver
+ * crudos, YA reescalados al ancho físico fijo de la impresora — ver
+ * `DecodedLabelBitmap`. Aislado como dependencia inyectable (en vez de un
+ * import directo de `@shopify/react-native-skia` en el hook de orquestación)
+ * para poder testear `usePrintArregloLabel` sin el motor nativo de Skia — ver
  * `src/data/local/SkiaPixelDecoder.ts` para la implementación real.
  */
-export type LabelBitmapDecoder = (captured: CapturedLabelBitmap) => Uint8Array;
+export type LabelBitmapDecoder = (captured: CapturedLabelBitmap) => DecodedLabelBitmap;
 
 /**
  * Puerto agnóstico de transporte para el descubrimiento de impresoras en la

@@ -68,6 +68,30 @@ describe("PrinterSettingsScreen", () => {
     expect(usePrinterSettingsStore.getState().printers).toHaveLength(0);
   });
 
+  it("envía una prueba de texto a la impresora y muestra error si falla", async () => {
+    await usePrinterSettingsStore.getState().addPrinter({ name: "Taller", host: "192.168.1.60" });
+    const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
+      async () => Promise.reject(new Error("No se pudo conectar con la impresora")),
+    );
+
+    const { getByLabelText } = renderScreen({ labelPrinterRepository: { printLabelJob } });
+
+    fireEvent.press(getByLabelText("Enviar prueba de texto a Taller"));
+
+    await waitFor(() => {
+      expect(printLabelJob).toHaveBeenCalledTimes(1);
+    });
+    const [target, job] = printLabelJob.mock.calls[0]!;
+    expect(target.name).toBe("Taller");
+    expect(job).toBeInstanceOf(Uint8Array);
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "No se pudo enviar la prueba",
+        "No se pudo conectar con la impresora",
+      );
+    });
+  });
+
   it("elimina una impresora tras confirmar en el Alert", async () => {
     await usePrinterSettingsStore.getState().addPrinter({ name: "Taller", host: "192.168.1.60" });
 

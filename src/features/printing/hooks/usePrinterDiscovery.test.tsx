@@ -9,7 +9,11 @@ import { usePrinterDiscovery } from "./usePrinterDiscovery";
 const noopLabelPrinter: PrintingDependencies["labelPrinterRepository"] = {
   printLabelJob: async () => Promise.reject(new Error("noop")),
 };
-const noopDecodeLabelBitmap: PrintingDependencies["decodeLabelBitmap"] = () => new Uint8Array(0);
+const noopDecodeLabelBitmap: PrintingDependencies["decodeLabelBitmap"] = () => ({
+  pixels: new Uint8Array(0),
+  width: 0,
+  height: 0,
+});
 
 function makeWrapper(dependencies: PrintingDependencies) {
   return function Wrapper({ children }: { children: ReactNode }): ReactElement {

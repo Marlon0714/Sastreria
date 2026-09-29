@@ -33,9 +33,11 @@ describe("usePrintArregloLabel", () => {
     const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
       async () => Promise.resolve(),
     );
-    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() =>
-      new Uint8Array(8 * 4).fill(0), // todo blanco
-    );
+    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() => ({
+      pixels: new Uint8Array(8 * 4).fill(0), // todo blanco
+      width: 8,
+      height: 1,
+    }));
     const dependencies: PrintingDependencies = {
       labelPrinterRepository: { printLabelJob },
       decodeLabelBitmap,
@@ -66,9 +68,11 @@ describe("usePrintArregloLabel", () => {
     const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
       async () => Promise.reject(new Error("No se pudo conectar con la impresora")),
     );
-    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() =>
-      new Uint8Array(8 * 4).fill(0),
-    );
+    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() => ({
+      pixels: new Uint8Array(8 * 4).fill(0),
+      width: 8,
+      height: 1,
+    }));
     const dependencies: PrintingDependencies = {
       labelPrinterRepository: { printLabelJob },
       decodeLabelBitmap,
@@ -95,9 +99,11 @@ describe("usePrintArregloLabel", () => {
     const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
       async () => Promise.resolve(),
     );
-    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() =>
-      new Uint8Array(8 * 4).fill(0),
-    );
+    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() => ({
+      pixels: new Uint8Array(8 * 4).fill(0),
+      width: 8,
+      height: 1,
+    }));
     const dependencies: PrintingDependencies = {
       labelPrinterRepository: { printLabelJob },
       decodeLabelBitmap,
