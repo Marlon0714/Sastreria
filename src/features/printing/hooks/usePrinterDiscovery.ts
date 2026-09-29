@@ -21,10 +21,24 @@ const UNSUPPORTED_SUBNET_MESSAGE =
 
 const SCAN_FAILED_MESSAGE = "Ocurrió un error al buscar impresoras en la red.";
 
+interface ScanProgress {
+  checked: number;
+  total: number;
+}
+
 interface UsePrinterDiscoveryResult {
   isScanning: boolean;
   results: string[];
   error: string | null;
+  progress: ScanProgress | null;
+  /**
+   * Detalle técnico crudo del último error (mensaje de excepción original,
+   * no el mensaje amigable de `error`). Temporal: sirve para diagnosticar
+   * fallas en builds `preview`/producción que no muestran la consola de
+   * Metro — quitar de la UI una vez que el descubrimiento esté verificado
+   * de forma estable contra hardware real.
+   */
+  debugDetail: string | null;
   scan: () => Promise<void>;
 }
 
@@ -45,11 +59,15 @@ export function usePrinterDiscovery(): UsePrinterDiscoveryResult {
   const [isScanning, setIsScanning] = useState(false);
   const [results, setResults] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ScanProgress | null>(null);
+  const [debugDetail, setDebugDetail] = useState<string | null>(null);
 
   const scan = useCallback(async (): Promise<void> => {
     setIsScanning(true);
     setError(null);
+    setDebugDetail(null);
     setResults([]);
+    setProgress(null);
 
     try {
       const networkInfo = await getLocalNetworkInfo();
@@ -64,26 +82,31 @@ export function usePrinterDiscovery(): UsePrinterDiscoveryResult {
         return;
       }
 
+      setProgress({ checked: 0, total: hosts.length });
       const found = await printerDiscoveryRepository.scanPort(
         hosts,
         DISCOVERY_PORT,
         PROBE_TIMEOUT_MS,
+        (checked, total) => setProgress({ checked, total }),
       );
       setResults(found);
     } catch (scanError) {
+      const rawMessage = scanError instanceof Error ? scanError.message : String(scanError);
       console.error(
         JSON.stringify({
           level: "error",
           service: "usePrinterDiscovery",
           message: "Fallo al escanear la red en busca de impresoras",
-          error: scanError instanceof Error ? scanError.message : String(scanError),
+          error: rawMessage,
         }),
       );
       setError(SCAN_FAILED_MESSAGE);
+      setDebugDetail(rawMessage);
     } finally {
       setIsScanning(false);
+      setProgress(null);
     }
   }, [getLocalNetworkInfo, printerDiscoveryRepository]);
 
-  return { isScanning, results, error, scan };
+  return { isScanning, results, error, progress, debugDetail, scan };
 }

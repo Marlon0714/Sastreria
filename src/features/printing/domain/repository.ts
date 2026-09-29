@@ -30,7 +30,12 @@ export type LabelBitmapDecoder = (captured: CapturedLabelBitmap) => Uint8Array;
  * `src/data/local/TcpPrinterDiscoveryRepositoryImpl.ts`.
  */
 export interface PrinterDiscoveryRepository {
-  scanPort(hosts: string[], port: number, timeoutMs: number): Promise<string[]>;
+  scanPort(
+    hosts: string[],
+    port: number,
+    timeoutMs: number,
+    onProgress?: (checked: number, total: number) => void,
+  ): Promise<string[]>;
 }
 
 /**

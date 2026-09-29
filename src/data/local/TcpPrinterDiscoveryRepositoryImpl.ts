@@ -58,7 +58,12 @@ function probeHost(host: string, port: number, timeoutMs: number): Promise<strin
  * que `TcpLabelPrinterRepositoryImpl`.
  */
 export class TcpPrinterDiscoveryRepositoryImpl implements PrinterDiscoveryRepository {
-  async scanPort(hosts: string[], port: number, timeoutMs: number): Promise<string[]> {
+  async scanPort(
+    hosts: string[],
+    port: number,
+    timeoutMs: number,
+    onProgress?: (checked: number, total: number) => void,
+  ): Promise<string[]> {
     const found: string[] = [];
 
     for (let offset = 0; offset < hosts.length; offset += CONCURRENT_PROBES) {
@@ -72,6 +77,8 @@ export class TcpPrinterDiscoveryRepositoryImpl implements PrinterDiscoveryReposi
           found.push(result);
         }
       }
+
+      onProgress?.(Math.min(offset + CONCURRENT_PROBES, hosts.length), hosts.length);
     }
 
     return found;

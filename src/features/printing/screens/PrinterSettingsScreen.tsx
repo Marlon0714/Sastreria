@@ -31,8 +31,14 @@ export default function PrinterSettingsScreen(): ReactElement {
   const [port, setPort] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const { isScanning, results: discoveredHosts, error: discoveryError, scan } =
-    usePrinterDiscovery();
+  const {
+    isScanning,
+    results: discoveredHosts,
+    error: discoveryError,
+    progress: scanProgress,
+    debugDetail: discoveryDebugDetail,
+    scan,
+  } = usePrinterDiscovery();
   const [hasScanned, setHasScanned] = useState(false);
 
   const handleScan = async (): Promise<void> => {
@@ -132,10 +138,31 @@ export default function PrinterSettingsScreen(): ReactElement {
           )}
         </Pressable>
 
-        {discoveryError && <Text style={styles.discoveryError}>{discoveryError}</Text>}
+        {isScanning && scanProgress && (
+          <Text style={styles.discoveryHint}>
+            Buscando… revisadas {scanProgress.checked} de {scanProgress.total} direcciones
+          </Text>
+        )}
+
+        {discoveryError && (
+          <>
+            <Text style={styles.discoveryError}>{discoveryError}</Text>
+            {/* Detalle técnico temporal para depurar builds preview/producción
+                sin acceso a Metro — quitar una vez verificado en hardware real. */}
+            {discoveryDebugDetail && (
+              <Text style={styles.discoveryDebugDetail}>Detalle técnico: {discoveryDebugDetail}</Text>
+            )}
+          </>
+        )}
 
         {!isScanning && !discoveryError && hasScanned && discoveredHosts.length === 0 && (
           <Text style={styles.discoveryHint}>No se encontraron impresoras en la red.</Text>
+        )}
+
+        {!isScanning && !discoveryError && discoveredHosts.length > 0 && (
+          <Text style={styles.discoveryHint}>
+            Se {discoveredHosts.length === 1 ? "encontró 1 impresora" : `encontraron ${discoveredHosts.length} impresoras`} en la red:
+          </Text>
         )}
 
         {discoveredHosts.map((discoveredHost) => (
@@ -284,6 +311,11 @@ const styles = StyleSheet.create({
   discoveryError: {
     fontSize: 13,
     color: colors.danger,
+    textAlign: "center",
+  },
+  discoveryDebugDetail: {
+    fontSize: 11,
+    color: colors.textMuted,
     textAlign: "center",
   },
   discoveryResultRow: {
