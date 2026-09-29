@@ -13,6 +13,7 @@ import type { PrinterTarget } from "../domain/types";
 import { useArregloLabelCapture } from "../hooks/useArregloLabelCapture";
 import { usePrintArregloLabel } from "../hooks/usePrintArregloLabel";
 import { ArregloLabelView } from "./ArregloLabelView";
+import { LabelPreviewModal } from "./LabelPreviewModal";
 
 interface PrintArregloLabelButtonProps {
   schedule: Schedule;
@@ -46,6 +47,7 @@ export function PrintArregloLabelButton({
   const { viewRef, onLayout, capture } = useArregloLabelCapture();
   const { isPrinting, printLabel } = usePrintArregloLabel();
   const [resolvedClient, setResolvedClient] = useState<Client | null>(client ?? null);
+  const [pendingTarget, setPendingTarget] = useState<PrinterTarget | null>(null);
 
   useEffect(() => {
     if (client) {
@@ -123,17 +125,25 @@ export function PrintArregloLabelButton({
     }
 
     if (printers.length === 1) {
-      void printToTarget(printers[0]!);
+      setPendingTarget(printers[0]!);
       return;
     }
 
     Alert.alert("Elegir impresora", "¿En cuál impresora deseas imprimir esta etiqueta?", [
       ...printers.map((printer) => ({
         text: printer.name,
-        onPress: () => void printToTarget(printer),
+        onPress: () => setPendingTarget(printer),
       })),
       { text: "Cancelar", style: "cancel" as const },
     ]);
+  };
+
+  const handleConfirmPrint = async (): Promise<void> => {
+    if (!pendingTarget) {
+      return;
+    }
+    await printToTarget(pendingTarget);
+    setPendingTarget(null);
   };
 
   if (schedule.category !== "arreglo") {
@@ -161,6 +171,19 @@ export function PrintArregloLabelButton({
           {isPrinting ? "Imprimiendo…" : "Imprimir etiqueta"}
         </Text>
       </Pressable>
+
+      <LabelPreviewModal
+        visible={pendingTarget !== null}
+        label={label}
+        targetName={pendingTarget?.name}
+        isConfirming={isPrinting}
+        onConfirm={handleConfirmPrint}
+        onClose={() => {
+          if (!isPrinting) {
+            setPendingTarget(null);
+          }
+        }}
+      />
     </View>
   );
 }

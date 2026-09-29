@@ -12,9 +12,23 @@ import {
 
 import { colors } from "../../../shared/theme/colors";
 import { usePrinterSettingsStore } from "../../../shared/state/printerSettingsStore";
+import { LabelPreviewModal } from "../components/LabelPreviewModal";
 import { DEFAULT_LABEL_PRINTER_PORT, PrinterConfigValidationError } from "../domain/printerConfig";
-import type { PrinterTarget } from "../domain/types";
+import type { ArregloLabelData, PrinterTarget } from "../domain/types";
 import { usePrinterDiscovery } from "../hooks/usePrinterDiscovery";
+
+/**
+ * Datos de ejemplo (no un turno/cliente real) para el botón "Ver diseño de
+ * etiqueta" — permite revisar cómo se ve la etiqueta sin depender de un
+ * turno existente.
+ */
+const SAMPLE_ARREGLO_LABEL: ArregloLabelData = {
+  clientName: "Ana Torres",
+  clientPhone: "3001234567",
+  date: "2026-09-29",
+  price: 50000,
+  saldo: 20000,
+};
 
 /**
  * Primera pantalla de "ajustes" de la app (no existía ninguna hasta ahora):
@@ -40,6 +54,7 @@ export default function PrinterSettingsScreen(): ReactElement {
     scan,
   } = usePrinterDiscovery();
   const [hasScanned, setHasScanned] = useState(false);
+  const [showLabelPreview, setShowLabelPreview] = useState(false);
 
   const handleScan = async (): Promise<void> => {
     await scan();
@@ -122,6 +137,22 @@ export default function PrinterSettingsScreen(): ReactElement {
             </Pressable>
           </View>
         )}
+      />
+
+      <View style={styles.previewCard}>
+        <Pressable
+          accessibilityLabel="Ver diseño de etiqueta"
+          style={styles.previewButton}
+          onPress={() => setShowLabelPreview(true)}
+        >
+          <Text style={styles.previewButtonText}>Ver diseño de etiqueta</Text>
+        </Pressable>
+      </View>
+
+      <LabelPreviewModal
+        visible={showLabelPreview}
+        label={SAMPLE_ARREGLO_LABEL}
+        onClose={() => setShowLabelPreview(false)}
       />
 
       <View style={styles.discoveryCard}>
@@ -280,6 +311,25 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: "600",
     fontSize: 13,
+  },
+  previewCard: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 16,
+  },
+  previewButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  previewButtonText: {
+    color: colors.textPrimary,
+    fontWeight: "700",
+    fontSize: 15,
   },
   discoveryCard: {
     borderTopWidth: 1,

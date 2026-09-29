@@ -113,7 +113,7 @@ describe("PrintArregloLabelButton", () => {
     expect(mockPrintLabel).not.toHaveBeenCalled();
   });
 
-  it("imprime directo cuando hay una sola impresora configurada", async () => {
+  it("muestra la vista previa y solo imprime al confirmar cuando hay una sola impresora configurada", async () => {
     usePrinterSettingsStore.setState({ printers: [printerA] });
     const { getByLabelText } = renderButton({
       schedule: arregloSchedule,
@@ -121,6 +121,11 @@ describe("PrintArregloLabelButton", () => {
     });
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
+
+    expect(getByLabelText("Confirmar impresión")).toBeTruthy();
+    expect(mockPrintLabel).not.toHaveBeenCalled();
+
+    fireEvent.press(getByLabelText("Confirmar impresión"));
 
     await waitFor(() => {
       expect(mockPrintLabel).toHaveBeenCalledTimes(1);
@@ -174,6 +179,7 @@ describe("PrintArregloLabelButton", () => {
     const { getByLabelText } = renderButton({ schedule: arregloSchedule, client: null });
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
+    fireEvent.press(getByLabelText("Confirmar impresión"));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(

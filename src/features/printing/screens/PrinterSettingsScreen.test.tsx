@@ -86,6 +86,21 @@ describe("PrinterSettingsScreen", () => {
     expect(usePrinterSettingsStore.getState().printers).toHaveLength(0);
   });
 
+  it("muestra y cierra la vista previa de etiqueta de ejemplo", async () => {
+    const { getByLabelText, getByText, queryByText } = renderScreen();
+
+    fireEvent.press(getByLabelText("Ver diseño de etiqueta"));
+
+    expect(getByText("Vista previa de etiqueta")).toBeTruthy();
+    expect(getByText("Ana Torres")).toBeTruthy();
+
+    fireEvent.press(getByLabelText("Cerrar"));
+
+    await waitFor(() => {
+      expect(queryByText("Vista previa de etiqueta")).toBeNull();
+    });
+  });
+
   describe("Buscar en la red", () => {
     it("escanea la red y lista los hosts encontrados como filas tocables", async () => {
       const getLocalNetworkInfo = jest.fn<PrintingDependencies["getLocalNetworkInfo"]>(async () =>
