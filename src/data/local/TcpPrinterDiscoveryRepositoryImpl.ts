@@ -28,11 +28,11 @@ function probeHost(host: string, port: number, timeoutMs: number): Promise<strin
     const socket = TcpSocket.createConnection(
       { host, port, tls: false, connectTimeout: timeoutMs },
       () => {
-        socket.destroy();
         if (settled) {
           return;
         }
         settled = true;
+        socket.destroy();
         resolve(host);
       },
     );

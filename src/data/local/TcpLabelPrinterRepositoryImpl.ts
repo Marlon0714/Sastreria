@@ -38,11 +38,11 @@ export class TcpLabelPrinterRepositoryImpl implements LabelPrinterRepository {
         },
         () => {
           socket.write(job, undefined, (error?: Error) => {
-            socket.destroy();
             if (settled) {
               return;
             }
             settled = true;
+            socket.destroy();
             if (error) {
               reject(
                 new Error(`No se pudo enviar la etiqueta a "${target.name}": ${error.message}`),
