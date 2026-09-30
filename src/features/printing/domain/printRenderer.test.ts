@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { buildEscPosLabelJob } from "./escposRaster";
+import { buildEscPosBitImageJob, buildEscPosLabelJob } from "./escposRaster";
 import { resolveLabelRenderer, UnsupportedPrintProtocolError } from "./printRenderer";
 import type { MonochromeBitmap, PrinterTarget, PrintProtocol } from "./types";
 
@@ -25,6 +25,14 @@ describe("resolveLabelRenderer", () => {
     const job = renderer.render(BITMAP, TARGET);
 
     expect(Array.from(job)).toEqual(Array.from(buildEscPosLabelJob(BITMAP)));
+  });
+
+  it("resuelve el renderer bit-image (ESC *) y produce el mismo job que buildEscPosBitImageJob directo", () => {
+    const renderer = resolveLabelRenderer("escpos-bitimage");
+
+    const job = renderer.render(BITMAP, TARGET);
+
+    expect(Array.from(job)).toEqual(Array.from(buildEscPosBitImageJob(BITMAP)));
   });
 
   it("lanza UnsupportedPrintProtocolError con un protocolo desconocido", () => {

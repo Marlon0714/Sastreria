@@ -12,11 +12,18 @@ import {
 
 import { colors } from "../../../shared/theme/colors";
 import { usePrinterSettingsStore } from "../../../shared/state/printerSettingsStore";
+import { ArregloLabelView } from "../components/ArregloLabelView";
 import { LabelPreviewModal } from "../components/LabelPreviewModal";
 import { buildEscPosTextTestJob } from "../domain/escposRaster";
+import { toMonochromeBitmap } from "../domain/monochromeBitmap";
 import { DEFAULT_LABEL_PRINTER_PORT, PrinterConfigValidationError } from "../domain/printerConfig";
+import { resolveLabelRenderer } from "../domain/printRenderer";
 import type { ArregloLabelData, PrinterTarget } from "../domain/types";
-import { useLabelPrinterRepository } from "../hooks/PrintingDependenciesProvider";
+import {
+  useLabelBitmapDecoder,
+  useLabelPrinterRepository,
+} from "../hooks/PrintingDependenciesProvider";
+import { useArregloLabelCapture } from "../hooks/useArregloLabelCapture";
 import { usePrinterDiscovery } from "../hooks/usePrinterDiscovery";
 
 /**
@@ -42,12 +49,21 @@ export default function PrinterSettingsScreen(): ReactElement {
   const addPrinter = usePrinterSettingsStore((state) => state.addPrinter);
   const removePrinter = usePrinterSettingsStore((state) => state.removePrinter);
   const labelPrinterRepository = useLabelPrinterRepository();
+  const decodeLabelBitmap = useLabelBitmapDecoder();
+  const {
+    viewRef: sampleLabelViewRef,
+    onLayout: sampleLabelOnLayout,
+    capture: captureSampleLabel,
+  } = useArregloLabelCapture();
 
   const [name, setName] = useState("");
   const [host, setHost] = useState("");
   const [port, setPort] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null);
+  const [testingAlternateImagePrinterId, setTestingAlternateImagePrinterId] = useState<
+    string | null
+  >(null);
 
   const {
     isScanning,
@@ -116,6 +132,33 @@ export default function PrinterSettingsScreen(): ReactElement {
     }
   };
 
+  /**
+   * Diagnóstico temporal: manda la etiqueta de ejemplo forzando el comando
+   * `ESC *` (bit-image) en vez del protocolo configurado en la impresora —
+   * para aislar si una impresora que imprime símbolos en vez de la imagen
+   * con `GS v 0` funciona mejor con este comando más viejo y universal. Ver
+   * `PrintProtocol`/`printRenderer.ts`.
+   */
+  const handleTestAlternateImage = async (printer: PrinterTarget): Promise<void> => {
+    setTestingAlternateImagePrinterId(printer.id);
+    try {
+      const captured = await captureSampleLabel();
+      const { pixels, width, height } = decodeLabelBitmap(captured);
+      const bitmap = toMonochromeBitmap(pixels, width, height);
+      const job = resolveLabelRenderer("escpos-bitimage").render(bitmap, printer);
+      await labelPrinterRepository.printLabelJob(printer, job);
+    } catch (error) {
+      Alert.alert(
+        "No se pudo enviar la prueba",
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado. Intenta de nuevo.",
+      );
+    } finally {
+      setTestingAlternateImagePrinterId(null);
+    }
+  };
+
   const handleRemove = (printer: PrinterTarget): void => {
     Alert.alert(
       "Eliminar impresora",
@@ -133,6 +176,14 @@ export default function PrinterSettingsScreen(): ReactElement {
 
   return (
     <View style={styles.container}>
+      <View style={styles.offscreen} pointerEvents="none">
+        <ArregloLabelView
+          ref={sampleLabelViewRef}
+          label={SAMPLE_ARREGLO_LABEL}
+          onLayout={sampleLabelOnLayout}
+        />
+      </View>
+
       <FlatList
         data={printers}
         keyExtractor={(item) => item.id}
@@ -167,6 +218,18 @@ export default function PrinterSettingsScreen(): ReactElement {
                   <ActivityIndicator color={colors.primary} size="small" />
                 ) : (
                   <Text style={styles.testButtonText}>Probar</Text>
+                )}
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Enviar prueba de imagen alterna a ${item.name}`}
+                style={styles.testButton}
+                onPress={() => void handleTestAlternateImage(item)}
+                disabled={testingAlternateImagePrinterId === item.id}
+              >
+                {testingAlternateImagePrinterId === item.id ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <Text style={styles.testButtonText}>Img. alterna</Text>
                 )}
               </Pressable>
               <Pressable
@@ -298,6 +361,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  offscreen: {
+    position: "absolute",
+    top: -9999,
+    left: -9999,
   },
   listContent: {
     padding: 16,

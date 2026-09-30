@@ -54,6 +54,78 @@ export function buildEscPosLabelJob(bitmap: MonochromeBitmap): Uint8Array {
 }
 
 /**
+ * `ESC 3 n` — fija el espaciado entre líneas a `n` puntos. Se usa antes de
+ * imprimir la imagen en modo bit-image para que cada salto de línea avance
+ * el papel exactamente lo que mide la franja recién impresa (8 puntos), sin
+ * dejar huecos ni superposición entre franjas.
+ */
+const ESC_SET_LINE_SPACING_8_DOTS = new Uint8Array([0x1b, 0x33, 0x08]);
+
+/** `ESC 2` — restaura el espaciado de línea por defecto (1/6 de pulgada). */
+const ESC_RESET_LINE_SPACING = new Uint8Array([0x1b, 0x32]);
+
+const LINE_FEED = new Uint8Array([0x0a]);
+
+/** Alto de cada franja del comando `ESC * m=0` (modo "8-dot single density"). */
+const BIT_IMAGE_BAND_HEIGHT = 8;
+
+function concatUint8Arrays(chunks: Uint8Array[]): Uint8Array {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+
+/**
+ * Arma un job de imagen usando el comando ESC/POS `ESC *` (modo bit-image de
+ * 8 puntos, `m=0`) en vez del comando ráster `GS v 0` que usa
+ * `buildEscPosLabelJob`. Existe como alternativa de diagnóstico: `GS v 0` es
+ * un comando más nuevo y no todas las impresoras ESC/POS (sobre todo modelos
+ * económicos o más viejos) lo soportan — si una impresora imprime símbolos
+ * ilegibles en vez de la etiqueta, puede ser porque no reconoce `GS v 0` y
+ * termina interpretando esos bytes como texto suelto. `ESC *` es el comando
+ * de imagen "clásico", casi universalmente soportado.
+ *
+ * A diferencia de `GS v 0` (una fila = un byte cada 8 píxeles horizontales),
+ * `ESC *` codifica por COLUMNAS: cada byte representa 8 píxeles verticales de
+ * una misma columna, y hay que repetir el comando una vez por cada franja de
+ * 8 filas de alto (`BIT_IMAGE_BAND_HEIGHT`), con un salto de línea entre
+ * franjas ajustado a esa misma altura (`ESC 3 8`) para que no queden huecos.
+ */
+export function buildEscPosBitImageJob(bitmap: MonochromeBitmap): Uint8Array {
+  const { width, height, bytesPerRow, data } = bitmap;
+  const chunks: Uint8Array[] = [ESC_INIT, ESC_SET_LINE_SPACING_8_DOTS];
+
+  for (let bandStart = 0; bandStart < height; bandStart += BIT_IMAGE_BAND_HEIGHT) {
+    const bandHeight = Math.min(BIT_IMAGE_BAND_HEIGHT, height - bandStart);
+    const header = new Uint8Array([0x1b, 0x2a, 0x00, width & 0xff, (width >> 8) & 0xff]);
+    const columnData = new Uint8Array(width);
+
+    for (let x = 0; x < width; x += 1) {
+      let byte = 0;
+      for (let bit = 0; bit < bandHeight; bit += 1) {
+        const sourceByte = data[(bandStart + bit) * bytesPerRow + Math.floor(x / 8)] ?? 0;
+        const pixelOn = (sourceByte & (1 << (7 - (x % 8)))) !== 0;
+        if (pixelOn) {
+          byte |= 1 << (7 - bit);
+        }
+      }
+      columnData[x] = byte;
+    }
+
+    chunks.push(header, columnData, LINE_FEED);
+  }
+
+  chunks.push(ESC_RESET_LINE_SPACING, GS_CUT_PARTIAL);
+
+  return concatUint8Arrays(chunks);
+}
+
+/**
  * Codifica texto ASCII a bytes crudos (sin acentos/ñ — este job es solo para
  * diagnóstico técnico, no para etiquetas reales).
  */

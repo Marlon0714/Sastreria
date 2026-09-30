@@ -1,4 +1,4 @@
-import { buildEscPosLabelJob } from "./escposRaster";
+import { buildEscPosBitImageJob, buildEscPosLabelJob } from "./escposRaster";
 import type { MonochromeBitmap, PrinterTarget, PrintProtocol } from "./types";
 
 /**
@@ -22,15 +22,18 @@ export type LabelRenderer = PrintRenderer<MonochromeBitmap>;
 
 /**
  * Se lanza cuando una impresora declara un `protocol` que no tiene ningún
- * renderer registrado — hoy solo existe un protocolo, así que este caso es
- * defensivo (protege ante datos corruptos en el storage local o una unión
- * `PrintProtocol` ampliada sin su entrada correspondiente en el registro).
+ * renderer registrado — protege ante datos corruptos en el storage local o
+ * una unión `PrintProtocol` ampliada sin su entrada correspondiente en el
+ * registro.
  */
 export class UnsupportedPrintProtocolError extends Error {}
 
 const LABEL_RENDERERS: Record<PrintProtocol, LabelRenderer> = {
   "escpos-raster": {
     render: (bitmap) => buildEscPosLabelJob(bitmap),
+  },
+  "escpos-bitimage": {
+    render: (bitmap) => buildEscPosBitImageJob(bitmap),
   },
 };
 

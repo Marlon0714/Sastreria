@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { buildEscPosLabelJob, buildEscPosTextTestJob } from "./escposRaster";
+import { buildEscPosBitImageJob, buildEscPosLabelJob, buildEscPosTextTestJob } from "./escposRaster";
 import type { MonochromeBitmap } from "./types";
 
 describe("buildEscPosLabelJob", () => {
@@ -71,6 +71,68 @@ describe("buildEscPosLabelJob", () => {
     const job = buildEscPosLabelJob(bitmap);
 
     expect(job).toHaveLength(2 + 8 + 4 + 4);
+  });
+});
+
+describe("buildEscPosBitImageJob", () => {
+  it("arma ESC * por franja de 8 filas con el mismo patrón que GS v 0 (caso feliz, una sola franja)", () => {
+    const bitmap: MonochromeBitmap = {
+      width: 8,
+      height: 1,
+      bytesPerRow: 1,
+      data: new Uint8Array([0b1010_1010]),
+    };
+
+    const job = buildEscPosBitImageJob(bitmap);
+
+    expect(Array.from(job)).toEqual([
+      0x1b, 0x40, // ESC @
+      0x1b, 0x33, 0x08, // ESC 3 8 (espaciado de línea = 8 puntos)
+      0x1b, 0x2a, 0x00, 0x08, 0x00, // ESC * m=0, nL nH (8 columnas)
+      0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, // columnas: negro/blanco alternado
+      0x0a, // salto de línea (avanza la franja)
+      0x1b, 0x32, // ESC 2 (restaura espaciado por defecto)
+      0x1d, 0x56, 0x42, 0x00, // GS V corte parcial
+    ]);
+  });
+
+  it("divide un bitmap de más de 8 filas en varias franjas de 8 puntos", () => {
+    const height = 12;
+    const bitmap: MonochromeBitmap = {
+      width: 8,
+      height,
+      bytesPerRow: 1,
+      data: new Uint8Array(height).fill(0xff), // todo negro
+    };
+
+    const job = buildEscPosBitImageJob(bitmap);
+
+    expect(Array.from(job)).toEqual([
+      0x1b, 0x40,
+      0x1b, 0x33, 0x08,
+      0x1b, 0x2a, 0x00, 0x08, 0x00, // franja 1: filas 0-7 (8 puntos)
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0x0a,
+      0x1b, 0x2a, 0x00, 0x08, 0x00, // franja 2: filas 8-11 (4 puntos, resto del byte en 0)
+      0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0,
+      0x0a,
+      0x1b, 0x32,
+      0x1d, 0x56, 0x42, 0x00,
+    ]);
+  });
+
+  it("produce un job sin franjas cuando el bitmap no tiene alto (bitmap vacío)", () => {
+    const bitmap: MonochromeBitmap = {
+      width: 0,
+      height: 0,
+      bytesPerRow: 0,
+      data: new Uint8Array(0),
+    };
+
+    const job = buildEscPosBitImageJob(bitmap);
+
+    // ESC_INIT(2) + ESC_SET_LINE_SPACING(3) + ESC_RESET_LINE_SPACING(2) + corte(4) = 11
+    expect(job).toHaveLength(11);
   });
 });
 

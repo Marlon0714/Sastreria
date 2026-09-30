@@ -15,6 +15,18 @@ jest.mock("expo-secure-store", () => ({
   setItemAsync: (key: string, value: string): Promise<void> => mockSetItemAsync(key, value),
 }));
 
+const mockCaptureSampleLabel = jest.fn(async () =>
+  Promise.resolve({ base64Png: "fake", width: 8, height: 1 }),
+);
+
+jest.mock("../hooks/useArregloLabelCapture", () => ({
+  useArregloLabelCapture: () => ({
+    viewRef: { current: null },
+    onLayout: jest.fn(),
+    capture: mockCaptureSampleLabel,
+  }),
+}));
+
 function renderScreen(overrides: Partial<PrintingDependencies> = {}): RenderAPI {
   const dependencies: PrintingDependencies = { ...noopPrintingDependencies, ...overrides };
 
@@ -29,6 +41,7 @@ describe("PrinterSettingsScreen", () => {
   beforeEach(() => {
     mockSetItemAsync.mockReset();
     mockSetItemAsync.mockResolvedValue();
+    mockCaptureSampleLabel.mockClear();
     usePrinterSettingsStore.setState({ printers: [] });
     jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
   });
@@ -92,6 +105,30 @@ describe("PrinterSettingsScreen", () => {
     });
   });
 
+  it("envía una prueba de imagen alterna (ESC *) y muestra error si falla", async () => {
+    await usePrinterSettingsStore.getState().addPrinter({ name: "Taller", host: "192.168.1.60" });
+    const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
+      async () => Promise.reject(new Error("No se pudo conectar con la impresora")),
+    );
+
+    const { getByLabelText } = renderScreen({ labelPrinterRepository: { printLabelJob } });
+
+    fireEvent.press(getByLabelText("Enviar prueba de imagen alterna a Taller"));
+
+    await waitFor(() => {
+      expect(printLabelJob).toHaveBeenCalledTimes(1);
+    });
+    const [target, job] = printLabelJob.mock.calls[0]!;
+    expect(target.name).toBe("Taller");
+    expect(job).toBeInstanceOf(Uint8Array);
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "No se pudo enviar la prueba",
+        "No se pudo conectar con la impresora",
+      );
+    });
+  });
+
   it("elimina una impresora tras confirmar en el Alert", async () => {
     await usePrinterSettingsStore.getState().addPrinter({ name: "Taller", host: "192.168.1.60" });
 
@@ -111,12 +148,14 @@ describe("PrinterSettingsScreen", () => {
   });
 
   it("muestra y cierra la vista previa de etiqueta de ejemplo", async () => {
-    const { getByLabelText, getByText, queryByText } = renderScreen();
+    const { getByLabelText, getByText, getAllByText, queryByText } = renderScreen();
 
     fireEvent.press(getByLabelText("Ver diseño de etiqueta"));
 
     expect(getByText("Vista previa de etiqueta")).toBeTruthy();
-    expect(getByText("Ana Torres")).toBeTruthy();
+    // "Ana Torres" aparece dos veces: en el modal visible y en la vista
+    // oculta que captura la etiqueta de ejemplo para el botón "Img. alterna".
+    expect(getAllByText("Ana Torres").length).toBeGreaterThan(0);
 
     fireEvent.press(getByLabelText("Cerrar"));
 

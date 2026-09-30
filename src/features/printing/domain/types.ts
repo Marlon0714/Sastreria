@@ -28,12 +28,19 @@ export interface ArregloLabelData {
 
 /**
  * Protocolo de impresión con el que se codifica el job de bytes para una
- * impresora dada. Hoy solo existe "escpos-raster" — se deja como unión
- * abierta a propósito para que agregar una impresora con otro protocolo
- * (ej. "tspl-raster") en el futuro no requiera tocar hooks/UI, solo sumar
- * un miembro a la unión y una entrada al registro de `printRenderer.ts`.
+ * impresora dada. Se deja como unión abierta a propósito para que agregar
+ * una impresora con otro protocolo (ej. "tspl-raster") en el futuro no
+ * requiera tocar hooks/UI, solo sumar un miembro a la unión y una entrada al
+ * registro de `printRenderer.ts`.
+ *
+ * - "escpos-raster": comando `GS v 0` (ver `escposRaster.ts`), el más nuevo
+ *   y compacto, pero no todas las impresoras ESC/POS lo soportan.
+ * - "escpos-bitimage": comando `ESC *` (ver `buildEscPosBitImageJob`), más
+ *   viejo y casi universalmente soportado — alternativa de diagnóstico
+ *   cuando una impresora concreta no interpreta bien `GS v 0` (imprime
+ *   símbolos en vez de la imagen).
  */
-export type PrintProtocol = "escpos-raster";
+export type PrintProtocol = "escpos-raster" | "escpos-bitimage";
 
 /**
  * Impresora térmica configurada por el dueño (`printerSettingsStore`).
