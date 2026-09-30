@@ -1,7 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { buildEscPosLabelJob } from "./escposRaster";
-import { decodeEscPosLabelJob, EscPosJobFormatError } from "./escposRasterDecoder";
+import { buildEscPosBitImageJob, buildEscPosLabelJob } from "./escposRaster";
+import {
+  decodeEscPosBitImageJob,
+  decodeEscPosLabelJob,
+  EscPosBitImageJobFormatError,
+  EscPosJobFormatError,
+} from "./escposRasterDecoder";
 import type { MonochromeBitmap } from "./types";
 
 describe("decodeEscPosLabelJob", () => {
@@ -105,5 +110,85 @@ describe("decodeEscPosLabelJob", () => {
     const withExtra = new Uint8Array([...job, 0x00, 0x00]);
 
     expect(() => decodeEscPosLabelJob(withExtra)).toThrow(EscPosJobFormatError);
+  });
+});
+
+describe("decodeEscPosBitImageJob", () => {
+  it("hace round-trip con una sola franja (8x8, altura múltiplo de 8)", () => {
+    const bitmap: MonochromeBitmap = {
+      width: 8,
+      height: 8,
+      bytesPerRow: 1,
+      data: new Uint8Array([0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00]),
+    };
+
+    const decoded = decodeEscPosBitImageJob(buildEscPosBitImageJob(bitmap));
+
+    expect(decoded).toEqual(bitmap);
+  });
+
+  it("hace round-trip con varias franjas (altura múltiplo de 8 > 8)", () => {
+    const bitmap: MonochromeBitmap = {
+      width: 16,
+      height: 24,
+      bytesPerRow: 2,
+      data: new Uint8Array(2 * 24).map((_, index) => index % 256),
+    };
+
+    const decoded = decodeEscPosBitImageJob(buildEscPosBitImageJob(bitmap));
+
+    expect(decoded).toEqual(bitmap);
+  });
+
+  it("hace round-trip con un bitmap vacío (sin franjas)", () => {
+    const bitmap: MonochromeBitmap = {
+      width: 0,
+      height: 0,
+      bytesPerRow: 0,
+      data: new Uint8Array(0),
+    };
+
+    const decoded = decodeEscPosBitImageJob(buildEscPosBitImageJob(bitmap));
+
+    expect(decoded).toEqual(bitmap);
+  });
+
+  it("lanza EscPosBitImageJobFormatError si el header ESC_INIT está corrupto", () => {
+    const bitmap: MonochromeBitmap = {
+      width: 8,
+      height: 8,
+      bytesPerRow: 1,
+      data: new Uint8Array(8).fill(0xff),
+    };
+    const job = buildEscPosBitImageJob(bitmap);
+    job[0] = 0x00;
+
+    expect(() => decodeEscPosBitImageJob(job)).toThrow(EscPosBitImageJobFormatError);
+  });
+
+  it("lanza EscPosBitImageJobFormatError si una franja queda truncada", () => {
+    const bitmap: MonochromeBitmap = {
+      width: 8,
+      height: 8,
+      bytesPerRow: 1,
+      data: new Uint8Array(8).fill(0xff),
+    };
+    const job = buildEscPosBitImageJob(bitmap);
+    const truncated = job.slice(0, job.length - 6); // corta dentro de la franja/cierre
+
+    expect(() => decodeEscPosBitImageJob(truncated)).toThrow(EscPosBitImageJobFormatError);
+  });
+
+  it("lanza EscPosBitImageJobFormatError si el job tiene bytes sobrantes al final", () => {
+    const bitmap: MonochromeBitmap = {
+      width: 8,
+      height: 8,
+      bytesPerRow: 1,
+      data: new Uint8Array(8).fill(0xff),
+    };
+    const job = buildEscPosBitImageJob(bitmap);
+    const withExtra = new Uint8Array([...job, 0x00, 0x00]);
+
+    expect(() => decodeEscPosBitImageJob(withExtra)).toThrow(EscPosBitImageJobFormatError);
   });
 });

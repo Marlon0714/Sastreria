@@ -34,6 +34,10 @@ const path = require("path");
 const ESC_INIT = [0x1b, 0x40];
 const RASTER_HEADER_PREFIX = [0x1d, 0x76, 0x30, 0x00];
 const GS_CUT_PARTIAL_LENGTH = 4;
+const ESC_SET_LINE_SPACING_8_DOTS = [0x1b, 0x33, 0x08];
+const ESC_BIT_IMAGE_HEADER_PREFIX = [0x1b, 0x2a, 0x00];
+const ESC_RESET_LINE_SPACING = [0x1b, 0x32];
+const BIT_IMAGE_BAND_HEIGHT = 8;
 
 const ANSI_GREEN = "\x1b[32m";
 const ANSI_RED = "\x1b[31m";
@@ -100,6 +104,99 @@ function decodeRasterJob(buffer) {
   const data = buffer.slice(dataStart, dataStart + bytesPerRow * height);
 
   return { ok: true, bitmap: { width: bytesPerRow * 8, height, bytesPerRow, data } };
+}
+
+function isBitImageJob(buffer) {
+  return (
+    buffer.length >= ESC_INIT.length + ESC_SET_LINE_SPACING_8_DOTS.length &&
+    matchesBytes(buffer, ESC_INIT.length, ESC_SET_LINE_SPACING_8_DOTS)
+  );
+}
+
+/**
+ * Puerto en JS plano de `decodeEscPosBitImageJob` — ver el comentario de
+ * cabecera de este archivo sobre por qué está duplicado.
+ */
+function decodeBitImageJob(buffer) {
+  let offset = 0;
+
+  function fail(reason) {
+    return { ok: false, reason };
+  }
+
+  if (buffer.length < ESC_INIT.length + ESC_SET_LINE_SPACING_8_DOTS.length) {
+    return fail("job demasiado corto");
+  }
+  if (!matchesBytes(buffer, offset, ESC_INIT)) {
+    return fail("header ESC_INIT inválido");
+  }
+  offset += ESC_INIT.length;
+  if (!matchesBytes(buffer, offset, ESC_SET_LINE_SPACING_8_DOTS)) {
+    return fail("header ESC 3 8 (espaciado de línea) inválido");
+  }
+  offset += ESC_SET_LINE_SPACING_8_DOTS.length;
+
+  const bands = [];
+  let width = 0;
+
+  while (matchesBytes(buffer, offset, ESC_BIT_IMAGE_HEADER_PREFIX)) {
+    offset += ESC_BIT_IMAGE_HEADER_PREFIX.length;
+    if (buffer.length < offset + 2) {
+      return fail("header ESC * incompleto");
+    }
+    const bandWidth = buffer[offset] | (buffer[offset + 1] << 8);
+    offset += 2;
+
+    if (bands.length === 0) {
+      width = bandWidth;
+    } else if (bandWidth !== width) {
+      return fail("ancho inconsistente entre franjas");
+    }
+
+    if (buffer.length < offset + bandWidth + 1) {
+      return fail("franja de imagen truncada");
+    }
+    const columnData = buffer.slice(offset, offset + bandWidth);
+    offset += bandWidth;
+
+    if (buffer[offset] !== 0x0a) {
+      return fail("falta el salto de línea después de una franja");
+    }
+    offset += 1;
+
+    bands.push(columnData);
+  }
+
+  if (!matchesBytes(buffer, offset, ESC_RESET_LINE_SPACING)) {
+    return fail("header ESC 2 (restaurar espaciado) inválido");
+  }
+  offset += ESC_RESET_LINE_SPACING.length;
+
+  if (buffer.length - offset !== GS_CUT_PARTIAL_LENGTH) {
+    return fail(
+      `longitud inconsistente al final del job: quedaron ${buffer.length - offset} bytes, se esperaban ${GS_CUT_PARTIAL_LENGTH}`,
+    );
+  }
+
+  const height = bands.length * BIT_IMAGE_BAND_HEIGHT;
+  const bytesPerRow = Math.ceil(width / 8);
+  const data = Buffer.alloc(bytesPerRow * height);
+
+  bands.forEach((columnData, bandIndex) => {
+    for (let x = 0; x < width; x += 1) {
+      const byte = columnData[x] ?? 0;
+      for (let bit = 0; bit < BIT_IMAGE_BAND_HEIGHT; bit += 1) {
+        const pixelOn = (byte & (1 << (7 - bit))) !== 0;
+        if (pixelOn) {
+          const y = bandIndex * BIT_IMAGE_BAND_HEIGHT + bit;
+          const byteIndex = y * bytesPerRow + Math.floor(x / 8);
+          data[byteIndex] |= 1 << (7 - (x % 8));
+        }
+      }
+    }
+  });
+
+  return { ok: true, bitmap: { width, height, bytesPerRow, data } };
 }
 
 function decodeTextJob(buffer) {
@@ -179,7 +276,7 @@ function handleJob(buffer, outDir) {
   if (isRasterJob(buffer)) {
     const result = decodeRasterJob(buffer);
     if (!result.ok) {
-      console.error(`${ANSI_RED}✖ Job ráster inválido: ${result.reason}${ANSI_RESET}`);
+      console.error(`${ANSI_RED}✖ Job ráster (GS v 0) inválido: ${result.reason}${ANSI_RESET}`);
       return;
     }
 
@@ -187,7 +284,24 @@ function handleJob(buffer, outDir) {
     const outputPath = buildOutputPath(outDir);
     writeMonochromeBmp(result.bitmap, outputPath);
     console.log(
-      `${ANSI_GREEN}✔ Etiqueta recibida (${result.bitmap.width}x${result.bitmap.height}px) guardada en: ${outputPath}${ANSI_RESET}`,
+      `${ANSI_GREEN}✔ Etiqueta (GS v 0, ${result.bitmap.width}x${result.bitmap.height}px) guardada en: ${outputPath}${ANSI_RESET}`,
+    );
+    console.log("  Ábrela y confirma que se ve bien ANTES de imprimir en la impresora real.");
+    return;
+  }
+
+  if (isBitImageJob(buffer)) {
+    const result = decodeBitImageJob(buffer);
+    if (!result.ok) {
+      console.error(`${ANSI_RED}✖ Job de imagen (ESC *) inválido: ${result.reason}${ANSI_RESET}`);
+      return;
+    }
+
+    fs.mkdirSync(outDir, { recursive: true });
+    const outputPath = buildOutputPath(outDir);
+    writeMonochromeBmp(result.bitmap, outputPath);
+    console.log(
+      `${ANSI_GREEN}✔ Etiqueta (ESC *, ${result.bitmap.width}x${result.bitmap.height}px) guardada en: ${outputPath}${ANSI_RESET}`,
     );
     console.log("  Ábrela y confirma que se ve bien ANTES de imprimir en la impresora real.");
     return;
@@ -245,6 +359,8 @@ module.exports = {
   parseArgs,
   isRasterJob,
   decodeRasterJob,
+  isBitImageJob,
+  decodeBitImageJob,
   decodeTextJob,
   writeMonochromeBmp,
   buildOutputPath,
