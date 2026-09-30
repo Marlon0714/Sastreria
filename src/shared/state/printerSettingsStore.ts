@@ -7,6 +7,7 @@ import {
   parsePrinterConfigInput,
   type CreatePrinterConfigInput,
 } from "../../features/printing/domain/printerConfig";
+import { DEFAULT_PRINT_PROTOCOL } from "../../features/printing/domain/printRenderer";
 import type { PrinterTarget } from "../../features/printing/domain/types";
 
 const PRINTER_SETTINGS_STORAGE_KEY = "sastreria_printer_targets";
@@ -34,7 +35,10 @@ function deserialize(raw: string): PrinterTarget[] {
   if (!Array.isArray(parsed)) {
     return [];
   }
-  return parsed as PrinterTarget[];
+  return (parsed as PrinterTarget[]).map((entry) => ({
+    ...entry,
+    protocol: entry.protocol ?? DEFAULT_PRINT_PROTOCOL,
+  }));
 }
 
 /**
@@ -78,6 +82,7 @@ export const usePrinterSettingsStore = create<PrinterSettingsStore>((set, get) =
       name: parsed.name,
       host: parsed.host,
       port: parsed.port,
+      protocol: DEFAULT_PRINT_PROTOCOL,
     };
 
     const nextPrinters = [...get().printers, printer];

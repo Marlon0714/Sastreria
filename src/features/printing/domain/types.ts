@@ -27,6 +27,15 @@ export interface ArregloLabelData {
 }
 
 /**
+ * Protocolo de impresión con el que se codifica el job de bytes para una
+ * impresora dada. Hoy solo existe "escpos-raster" — se deja como unión
+ * abierta a propósito para que agregar una impresora con otro protocolo
+ * (ej. "tspl-raster") en el futuro no requiera tocar hooks/UI, solo sumar
+ * un miembro a la unión y una entrada al registro de `printRenderer.ts`.
+ */
+export type PrintProtocol = "escpos-raster";
+
+/**
  * Impresora térmica configurada por el dueño (`printerSettingsStore`).
  * Deliberadamente simple: no extiende `BaseEntity` ni tiene `syncStatus` —
  * es configuración local por dispositivo, no una entidad de negocio
@@ -37,6 +46,12 @@ export interface PrinterTarget {
   name: string;
   host: string;
   port: number;
+  /**
+   * Opcional: impresoras ya guardadas o construidas a mano en tests no lo
+   * tienen — se asume "escpos-raster" en el punto de uso (ver
+   * `printRenderer.ts`).
+   */
+  protocol?: PrintProtocol;
 }
 
 /**
