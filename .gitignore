@@ -50,3 +50,6 @@ coverage/
 # generated native folders
 /ios
 /android
+
+# salida del simulador local de impresora (scripts/print-simulator.js)
+/label-previews/
