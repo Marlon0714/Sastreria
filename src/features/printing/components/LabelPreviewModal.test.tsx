@@ -19,7 +19,7 @@ describe("LabelPreviewModal", () => {
     );
 
     expect(getByText("Ana Torres")).toBeTruthy();
-    expect(getByText("3001234567")).toBeTruthy();
+    expect(getByText("Tel. 3001234567")).toBeTruthy();
   });
 
   it("en modo solo-ver muestra únicamente 'Cerrar' y lo invoca al tocarlo", () => {

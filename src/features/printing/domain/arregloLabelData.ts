@@ -19,6 +19,7 @@ export function buildArregloLabelData(
     clientPhone: contact.phone,
     date: schedule.date,
     price: schedule.price,
+    abono: schedule.abono,
     saldo: computeSaldo(schedule),
   };
 }

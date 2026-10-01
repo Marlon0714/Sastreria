@@ -38,6 +38,8 @@ export interface ArregloLabelData {
   clientPhone?: string;
   date?: string; // YYYY-MM-DD, sin formatear
   price?: number;
+  /** Monto ya pagado a cuenta de `price` — distinto de `saldo` (lo que falta). */
+  abono?: number;
   saldo?: number;
 }
 

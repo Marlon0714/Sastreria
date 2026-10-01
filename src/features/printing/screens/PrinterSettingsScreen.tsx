@@ -36,7 +36,8 @@ const SAMPLE_ARREGLO_LABEL: ArregloLabelData = {
   clientPhone: "3001234567",
   date: "2026-09-29",
   price: 50000,
-  saldo: 20000,
+  abono: 20000,
+  saldo: 30000,
 };
 
 /**

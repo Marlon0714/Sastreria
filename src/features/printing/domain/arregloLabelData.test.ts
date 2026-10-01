@@ -14,6 +14,7 @@ describe("buildArregloLabelData", () => {
       clientPhone: "3001234567",
       date: "2026-09-30",
       price: 50000,
+      abono: 20000,
       saldo: 30000,
     });
   });
