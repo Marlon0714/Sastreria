@@ -1,11 +1,26 @@
+import { mmToDots, type PaperSize } from "./paperSize";
+
+/**
+ * Papel adhesivo de etiqueta: rollos de 58mm traen típicamente 48mm de área
+ * imprimible real (el resto es margen mecánico del cabezal) — la convención
+ * más común en impresoras térmicas de etiquetas WiFi económicas. El papel de
+ * recibo (cuando exista `ReceiptData`) va a tener su propio `PaperSize`
+ * distinto — por eso esto vive acá, específico de la etiqueta, y no como una
+ * constante global.
+ */
+export const ARREGLO_LABEL_PAPER: PaperSize = { widthMm: 48 };
+
+/** DPI asumido para la etiqueta — ver `ARREGLO_LABEL_PAPER`. */
+export const ARREGLO_LABEL_DPI = 203;
+
 /**
  * Ancho fijo (en píxeles) con el que se renderiza y captura
- * `ArregloLabelView`. 384px es el ancho estándar de impresión para rollos de
- * 58mm a 203dpi, la medida más común en impresoras térmicas de etiquetas
- * WiFi económicas — coincide con `bytesPerRow = 48` exacto (384 / 8), sin
- * relleno de bits sobrantes.
+ * `ArregloLabelView`. Se deriva de `ARREGLO_LABEL_PAPER`/`ARREGLO_LABEL_DPI`
+ * vía `mmToDots` (ver `paperSize.ts`) en vez de ser un número mágico —
+ * 384px coincide con `bytesPerRow = 48` exacto (384 / 8), sin relleno de
+ * bits sobrantes.
  */
-export const ARREGLO_LABEL_WIDTH_PX = 384;
+export const ARREGLO_LABEL_WIDTH_PX = mmToDots(ARREGLO_LABEL_PAPER.widthMm, ARREGLO_LABEL_DPI);
 
 /**
  * Datos crudos (sin formatear) de una etiqueta de arreglo. El formateo de
