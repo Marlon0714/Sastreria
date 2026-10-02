@@ -64,8 +64,12 @@ export interface ArregloLabelData {
  *   viejo y casi universalmente soportado — alternativa de diagnóstico
  *   cuando una impresora concreta no interpreta bien `GS v 0` (imprime
  *   símbolos en vez de la imagen).
+ * - "tspl-bitmap": comando `BITMAP` de TSPL (ver `buildTsplBitmapJob`) —
+ *   protocolo completamente distinto de ESC/POS, necesario para impresoras
+ *   2-en-1 cuyo "modo etiqueta" (con sensor de espacio entre etiquetas) no
+ *   entiende ESC/POS en absoluto.
  */
-export type PrintProtocol = "escpos-raster" | "escpos-bitimage";
+export type PrintProtocol = "escpos-raster" | "escpos-bitimage" | "tspl-bitmap";
 
 /**
  * Impresora térmica configurada por el dueño (`printerSettingsStore`).

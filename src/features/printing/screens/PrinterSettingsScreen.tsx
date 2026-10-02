@@ -15,15 +15,11 @@ import { usePrinterSettingsStore } from "../../../shared/state/printerSettingsSt
 import { ArregloLabelView } from "../components/ArregloLabelView";
 import { LabelPreviewModal } from "../components/LabelPreviewModal";
 import { buildEscPosTextTestJob } from "../domain/escposRaster";
-import { toMonochromeBitmap } from "../domain/monochromeBitmap";
-import { mmToDots } from "../domain/paperSize";
+import { prepareArregloLabelBitmap } from "../domain/prepareLabelBitmap";
 import { DEFAULT_LABEL_PRINTER_PORT, PrinterConfigValidationError } from "../domain/printerConfig";
 import { resolveLabelRenderer } from "../domain/printRenderer";
-import { rotatePixelsClockwise90 } from "../domain/rotatePixels";
-import { scaleRgbaPixels } from "../domain/scalePixels";
 import { buildTsplTextTestJob } from "../domain/tsplTextTestJob";
 import {
-  ARREGLO_LABEL_DPI,
   DEFAULT_LABEL_LENGTH_MM,
   DEFAULT_LABEL_WIDTH_MM,
   type ArregloLabelData,
@@ -78,6 +74,7 @@ export default function PrinterSettingsScreen(): ReactElement {
     string | null
   >(null);
   const [testingTsplPrinterId, setTestingTsplPrinterId] = useState<string | null>(null);
+  const [testingTsplImagePrinterId, setTestingTsplImagePrinterId] = useState<string | null>(null);
 
   const {
     isScanning,
@@ -162,19 +159,7 @@ export default function PrinterSettingsScreen(): ReactElement {
     try {
       const captured = await captureSampleLabel();
       const decoded = decodeLabelBitmap(captured);
-
-      const widthMm = printer.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM;
-      const lengthMm = printer.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM;
-      const scaled = scaleRgbaPixels(
-        decoded.pixels,
-        decoded.width,
-        decoded.height,
-        mmToDots(lengthMm, ARREGLO_LABEL_DPI),
-        mmToDots(widthMm, ARREGLO_LABEL_DPI),
-      );
-
-      const rotated = rotatePixelsClockwise90(scaled.pixels, scaled.width, scaled.height);
-      const bitmap = toMonochromeBitmap(rotated.pixels, rotated.width, rotated.height);
+      const bitmap = prepareArregloLabelBitmap(decoded, printer);
       const job = resolveLabelRenderer("escpos-bitimage").render(bitmap, printer);
       await labelPrinterRepository.printLabelJob(printer, job);
     } catch (error) {
@@ -190,10 +175,10 @@ export default function PrinterSettingsScreen(): ReactElement {
   };
 
   /**
-   * Diagnóstico de spike: manda un script TSPL mínimo (sin pasar por
-   * `PrintRenderer`/el registro de protocolos) para verificar si "modo
-   * etiqueta" entiende TSPL antes de invertir en construir un renderer TSPL
-   * completo. Ver `buildTsplTextTestJob`.
+   * Diagnóstico de spike: manda un script TSPL mínimo de solo texto (sin
+   * pasar por `PrintRenderer`/el registro de protocolos) para verificar si
+   * "modo etiqueta" entiende TSPL. Ya confirmado que sí — ver
+   * `handleTestTsplImage` para la prueba con la imagen real de la etiqueta.
    */
   const handleTestTspl = async (printer: PrinterTarget): Promise<void> => {
     setTestingTsplPrinterId(printer.id);
@@ -212,6 +197,31 @@ export default function PrinterSettingsScreen(): ReactElement {
       );
     } finally {
       setTestingTsplPrinterId(null);
+    }
+  };
+
+  /**
+   * Prueba la etiqueta de ejemplo real (no solo texto) codificada vía TSPL
+   * (`buildTsplBitmapJob`, comando `BITMAP`) — para confirmar que "modo
+   * etiqueta" imprime bien la imagen completa, no solo texto plano.
+   */
+  const handleTestTsplImage = async (printer: PrinterTarget): Promise<void> => {
+    setTestingTsplImagePrinterId(printer.id);
+    try {
+      const captured = await captureSampleLabel();
+      const decoded = decodeLabelBitmap(captured);
+      const bitmap = prepareArregloLabelBitmap(decoded, printer);
+      const job = resolveLabelRenderer("tspl-bitmap").render(bitmap, printer);
+      await labelPrinterRepository.printLabelJob(printer, job);
+    } catch (error) {
+      Alert.alert(
+        "No se pudo enviar la prueba",
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado. Intenta de nuevo.",
+      );
+    } finally {
+      setTestingTsplImagePrinterId(null);
     }
   };
 
@@ -298,6 +308,18 @@ export default function PrinterSettingsScreen(): ReactElement {
                   <ActivityIndicator color={colors.primary} size="small" />
                 ) : (
                   <Text style={styles.testButtonText}>Probar TSPL</Text>
+                )}
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Enviar prueba de imagen TSPL a ${item.name}`}
+                style={styles.testButton}
+                onPress={() => void handleTestTsplImage(item)}
+                disabled={testingTsplImagePrinterId === item.id}
+              >
+                {testingTsplImagePrinterId === item.id ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <Text style={styles.testButtonText}>Img. TSPL</Text>
                 )}
               </Pressable>
               <Pressable

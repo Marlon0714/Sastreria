@@ -1,4 +1,5 @@
 import { buildEscPosBitImageJob, buildEscPosLabelJob } from "./escposRaster";
+import { buildTsplBitmapJob } from "./tsplRaster";
 import type { MonochromeBitmap, PrinterTarget, PrintProtocol } from "./types";
 
 /**
@@ -34,6 +35,9 @@ const LABEL_RENDERERS: Record<PrintProtocol, LabelRenderer> = {
   },
   "escpos-bitimage": {
     render: (bitmap) => buildEscPosBitImageJob(bitmap),
+  },
+  "tspl-bitmap": {
+    render: (bitmap) => buildTsplBitmapJob(bitmap),
   },
 };
 
