@@ -56,7 +56,7 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
       >
         <View style={styles.header}>
           <Image
-            source={require("../../../../assets/label/icono-tijeras.png")}
+            source={require("../../../../assets/label/icono-traje.png")}
             style={styles.headerIcon}
             resizeMode="contain"
           />
