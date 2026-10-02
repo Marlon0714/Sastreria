@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -273,7 +274,11 @@ export default function PrinterSettingsScreen(): ReactElement {
                 {item.host}:{item.port}
               </Text>
             </View>
-            <View style={styles.printerActions}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.printerActions}
+            >
               <Pressable
                 accessibilityLabel={`Enviar prueba de texto a ${item.name}`}
                 style={styles.testButton}
@@ -329,7 +334,7 @@ export default function PrinterSettingsScreen(): ReactElement {
               >
                 <Text style={styles.removeButtonText}>Eliminar</Text>
               </Pressable>
-            </View>
+            </ScrollView>
           </View>
         )}
       />
@@ -500,14 +505,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   printerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 14,
+    gap: 8,
   },
   printerInfo: {
     gap: 2,
