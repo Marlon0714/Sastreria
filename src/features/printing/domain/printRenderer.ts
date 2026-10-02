@@ -5,9 +5,9 @@ import type { MonochromeBitmap, PrinterTarget, PrintProtocol } from "./types";
 /**
  * Protocolo usado cuando una `PrinterTarget` no trae `protocol` explícito
  * (impresoras ya persistidas antes de este campo, o construidas a mano en
- * tests) — hoy es el único protocolo soportado.
+ * tests). TSPL es el protocolo verificado para las etiquetas del taller.
  */
-export const DEFAULT_PRINT_PROTOCOL: PrintProtocol = "escpos-raster";
+export const DEFAULT_PRINT_PROTOCOL: PrintProtocol = "tspl-bitmap";
 
 /**
  * Convierte los datos ya preparados de un documento de impresión (`T`) en los

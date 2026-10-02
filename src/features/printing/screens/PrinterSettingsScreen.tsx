@@ -17,13 +17,20 @@ import { ArregloLabelView } from "../components/ArregloLabelView";
 import { LabelPreviewModal } from "../components/LabelPreviewModal";
 import { buildEscPosTextTestJob } from "../domain/escposRaster";
 import { prepareArregloLabelBitmap } from "../domain/prepareLabelBitmap";
-import { DEFAULT_LABEL_PRINTER_PORT, PrinterConfigValidationError } from "../domain/printerConfig";
-import { resolveLabelRenderer } from "../domain/printRenderer";
+import {
+  DEFAULT_LABEL_PRINTER_PORT,
+  PrinterConfigValidationError,
+} from "../domain/printerConfig";
+import {
+  DEFAULT_PRINT_PROTOCOL,
+  resolveLabelRenderer,
+} from "../domain/printRenderer";
 import { buildTsplTextTestJob } from "../domain/tsplTextTestJob";
 import {
   DEFAULT_LABEL_LENGTH_MM,
   DEFAULT_LABEL_WIDTH_MM,
   type ArregloLabelData,
+  type PrintProtocol,
   type PrinterTarget,
 } from "../domain/types";
 import {
@@ -32,6 +39,12 @@ import {
 } from "../hooks/PrintingDependenciesProvider";
 import { useArregloLabelCapture } from "../hooks/useArregloLabelCapture";
 import { usePrinterDiscovery } from "../hooks/usePrinterDiscovery";
+
+const PROTOCOL_OPTIONS: { value: PrintProtocol; label: string }[] = [
+  { value: "tspl-bitmap", label: "TSPL" },
+  { value: "escpos-raster", label: "ESC/POS" },
+  { value: "escpos-bitimage", label: "ESC *" },
+];
 
 /**
  * Datos de ejemplo (no un turno/cliente real) para el botón "Ver diseño de
@@ -55,6 +68,9 @@ const SAMPLE_ARREGLO_LABEL: ArregloLabelData = {
 export default function PrinterSettingsScreen(): ReactElement {
   const printers = usePrinterSettingsStore((state) => state.printers);
   const addPrinter = usePrinterSettingsStore((state) => state.addPrinter);
+  const updateProtocol = usePrinterSettingsStore(
+    (state) => state.updateProtocol,
+  );
   const removePrinter = usePrinterSettingsStore((state) => state.removePrinter);
   const labelPrinterRepository = useLabelPrinterRepository();
   const decodeLabelBitmap = useLabelBitmapDecoder();
@@ -71,11 +87,14 @@ export default function PrinterSettingsScreen(): ReactElement {
   const [labelLengthMm, setLabelLengthMm] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null);
-  const [testingAlternateImagePrinterId, setTestingAlternateImagePrinterId] = useState<
+  const [testingAlternateImagePrinterId, setTestingAlternateImagePrinterId] =
+    useState<string | null>(null);
+  const [testingTsplPrinterId, setTestingTsplPrinterId] = useState<
     string | null
   >(null);
-  const [testingTsplPrinterId, setTestingTsplPrinterId] = useState<string | null>(null);
-  const [testingTsplImagePrinterId, setTestingTsplImagePrinterId] = useState<string | null>(null);
+  const [testingTsplImagePrinterId, setTestingTsplImagePrinterId] = useState<
+    string | null
+  >(null);
 
   const {
     isScanning,
@@ -87,6 +106,33 @@ export default function PrinterSettingsScreen(): ReactElement {
   } = usePrinterDiscovery();
   const [hasScanned, setHasScanned] = useState(false);
   const [showLabelPreview, setShowLabelPreview] = useState(false);
+  const [updatingProtocolId, setUpdatingProtocolId] = useState<string | null>(
+    null,
+  );
+
+  const handleProtocolChange = async (
+    printer: PrinterTarget,
+    protocol: PrintProtocol,
+  ): Promise<void> => {
+    setUpdatingProtocolId(printer.id);
+    try {
+      await updateProtocol(printer.id, protocol);
+    } catch {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "PrinterSettingsScreen",
+          message: "No se pudo guardar el protocolo de impresión",
+        }),
+      );
+      Alert.alert(
+        "No se pudo guardar",
+        "No se pudo guardar el protocolo de la impresora. Intenta de nuevo.",
+      );
+    } finally {
+      setUpdatingProtocolId(null);
+    }
+  };
 
   const handleScan = async (): Promise<void> => {
     await scan();
@@ -105,8 +151,10 @@ export default function PrinterSettingsScreen(): ReactElement {
         name,
         host,
         port: port.trim() === "" ? undefined : Number(port),
-        labelWidthMm: labelWidthMm.trim() === "" ? undefined : Number(labelWidthMm),
-        labelLengthMm: labelLengthMm.trim() === "" ? undefined : Number(labelLengthMm),
+        labelWidthMm:
+          labelWidthMm.trim() === "" ? undefined : Number(labelWidthMm),
+        labelLengthMm:
+          labelLengthMm.trim() === "" ? undefined : Number(labelLengthMm),
       });
       setName("");
       setHost("");
@@ -155,13 +203,18 @@ export default function PrinterSettingsScreen(): ReactElement {
    * con `GS v 0` funciona mejor con este comando más viejo y universal. Ver
    * `PrintProtocol`/`printRenderer.ts`.
    */
-  const handleTestAlternateImage = async (printer: PrinterTarget): Promise<void> => {
+  const handleTestAlternateImage = async (
+    printer: PrinterTarget,
+  ): Promise<void> => {
     setTestingAlternateImagePrinterId(printer.id);
     try {
       const captured = await captureSampleLabel();
       const decoded = decodeLabelBitmap(captured);
       const bitmap = prepareArregloLabelBitmap(decoded, printer);
-      const job = resolveLabelRenderer("escpos-bitimage").render(bitmap, printer);
+      const job = resolveLabelRenderer("escpos-bitimage").render(
+        bitmap,
+        printer,
+      );
       await labelPrinterRepository.printLabelJob(printer, job);
     } catch (error) {
       Alert.alert(
@@ -261,8 +314,8 @@ export default function PrinterSettingsScreen(): ReactElement {
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>Sin impresoras configuradas</Text>
             <Text style={styles.emptySubtitle}>
-              Agrega la dirección IP y el puerto de cada impresora térmica de
-              la red WiFi del taller.
+              Agrega la dirección IP y el puerto de cada impresora térmica de la
+              red WiFi del taller.
             </Text>
           </View>
         }
@@ -273,6 +326,33 @@ export default function PrinterSettingsScreen(): ReactElement {
               <Text style={styles.printerAddress}>
                 {item.host}:{item.port}
               </Text>
+            </View>
+            <View style={styles.protocolOptions} accessibilityRole="radiogroup">
+              {PROTOCOL_OPTIONS.map((option) => {
+                const selected =
+                  (item.protocol ?? DEFAULT_PRINT_PROTOCOL) === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`Usar ${option.label} en ${item.name}`}
+                    accessibilityState={{
+                      checked: selected,
+                      disabled: updatingProtocolId === item.id,
+                    }}
+                    style={[
+                      styles.protocolOption,
+                      selected && styles.protocolSelected,
+                    ]}
+                    disabled={updatingProtocolId === item.id}
+                    onPress={() =>
+                      void handleProtocolChange(item, option.value)
+                    }
+                  >
+                    <Text style={styles.testButtonText}>{option.label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
             <ScrollView
               horizontal
@@ -358,7 +438,10 @@ export default function PrinterSettingsScreen(): ReactElement {
       <View style={styles.discoveryCard}>
         <Pressable
           accessibilityLabel="Buscar impresoras en la red"
-          style={[styles.searchButton, isScanning && styles.searchButtonDisabled]}
+          style={[
+            styles.searchButton,
+            isScanning && styles.searchButtonDisabled,
+          ]}
           onPress={() => void handleScan()}
           disabled={isScanning}
         >
@@ -371,7 +454,8 @@ export default function PrinterSettingsScreen(): ReactElement {
 
         {isScanning && scanProgress && (
           <Text style={styles.discoveryHint}>
-            Buscando… revisadas {scanProgress.checked} de {scanProgress.total} direcciones
+            Buscando… revisadas {scanProgress.checked} de {scanProgress.total}{" "}
+            direcciones
           </Text>
         )}
 
@@ -381,18 +465,29 @@ export default function PrinterSettingsScreen(): ReactElement {
             {/* Detalle técnico temporal para depurar builds preview/producción
                 sin acceso a Metro — quitar una vez verificado en hardware real. */}
             {discoveryDebugDetail && (
-              <Text style={styles.discoveryDebugDetail}>Detalle técnico: {discoveryDebugDetail}</Text>
+              <Text style={styles.discoveryDebugDetail}>
+                Detalle técnico: {discoveryDebugDetail}
+              </Text>
             )}
           </>
         )}
 
-        {!isScanning && !discoveryError && hasScanned && discoveredHosts.length === 0 && (
-          <Text style={styles.discoveryHint}>No se encontraron impresoras en la red.</Text>
-        )}
+        {!isScanning &&
+          !discoveryError &&
+          hasScanned &&
+          discoveredHosts.length === 0 && (
+            <Text style={styles.discoveryHint}>
+              No se encontraron impresoras en la red.
+            </Text>
+          )}
 
         {!isScanning && !discoveryError && discoveredHosts.length > 0 && (
           <Text style={styles.discoveryHint}>
-            Se {discoveredHosts.length === 1 ? "encontró 1 impresora" : `encontraron ${discoveredHosts.length} impresoras`} en la red:
+            Se{" "}
+            {discoveredHosts.length === 1
+              ? "encontró 1 impresora"
+              : `encontraron ${discoveredHosts.length} impresoras`}{" "}
+            en la red:
           </Text>
         )}
 
@@ -514,6 +609,23 @@ const styles = StyleSheet.create({
   },
   printerInfo: {
     gap: 2,
+  },
+  protocolOptions: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  protocolOption: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 4,
+  },
+  protocolSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
   },
   printerName: {
     fontSize: 15,

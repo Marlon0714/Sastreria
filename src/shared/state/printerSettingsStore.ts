@@ -11,6 +11,7 @@ import { DEFAULT_PRINT_PROTOCOL } from "../../features/printing/domain/printRend
 import {
   DEFAULT_LABEL_LENGTH_MM,
   DEFAULT_LABEL_WIDTH_MM,
+  type PrintProtocol,
   type PrinterTarget,
 } from "../../features/printing/domain/types";
 
@@ -27,6 +28,7 @@ type PrinterSettingsStore = {
   printers: PrinterTarget[];
   hydrate: () => Promise<void>;
   addPrinter: (input: CreatePrinterConfigInput) => Promise<PrinterTarget>;
+  updateProtocol: (id: string, protocol: PrintProtocol) => Promise<void>;
   removePrinter: (id: string) => Promise<void>;
 };
 
@@ -52,56 +54,76 @@ function deserialize(raw: string): PrinterTarget[] {
  * con Supabase — ver `PrinterTarget`). Persistida en `expo-secure-store`, igual
  * patrón que `debugModeStore`. Cada dispositivo mantiene su propia lista.
  */
-export const usePrinterSettingsStore = create<PrinterSettingsStore>((set, get) => ({
-  printers: [],
-  hydrate: async () => {
-    const raw = await SecureStore.getItemAsync(PRINTER_SETTINGS_STORAGE_KEY);
-    if (raw == null) {
-      return;
-    }
-    try {
-      set({ printers: deserialize(raw) });
-    } catch (error) {
-      console.error(
-        JSON.stringify({
-          level: "error",
-          service: "printerSettingsStore",
-          message: "No se pudo leer la configuración de impresoras guardada",
-          error: String(error),
-        }),
-      );
-    }
-  },
-  addPrinter: async (input) => {
-    let parsed;
-    try {
-      parsed = parsePrinterConfigInput(input);
-    } catch (error) {
-      if (error instanceof PrinterConfigValidationError) {
-        throw new PrinterSettingsValidationError(error.message);
+export const usePrinterSettingsStore = create<PrinterSettingsStore>(
+  (set, get) => ({
+    printers: [],
+    hydrate: async () => {
+      const raw = await SecureStore.getItemAsync(PRINTER_SETTINGS_STORAGE_KEY);
+      if (raw == null) {
+        return;
       }
-      throw error;
-    }
+      try {
+        set({ printers: deserialize(raw) });
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            level: "error",
+            service: "printerSettingsStore",
+            message: "No se pudo leer la configuración de impresoras guardada",
+            error: String(error),
+          }),
+        );
+      }
+    },
+    addPrinter: async (input) => {
+      let parsed;
+      try {
+        parsed = parsePrinterConfigInput(input);
+      } catch (error) {
+        if (error instanceof PrinterConfigValidationError) {
+          throw new PrinterSettingsValidationError(error.message);
+        }
+        throw error;
+      }
 
-    const printer: PrinterTarget = {
-      id: generateDomainUuid(),
-      name: parsed.name,
-      host: parsed.host,
-      port: parsed.port,
-      protocol: DEFAULT_PRINT_PROTOCOL,
-      labelWidthMm: parsed.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
-      labelLengthMm: parsed.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
-    };
+      const printer: PrinterTarget = {
+        id: generateDomainUuid(),
+        name: parsed.name,
+        host: parsed.host,
+        port: parsed.port,
+        protocol: DEFAULT_PRINT_PROTOCOL,
+        labelWidthMm: parsed.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
+        labelLengthMm: parsed.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
+      };
 
-    const nextPrinters = [...get().printers, printer];
-    await SecureStore.setItemAsync(PRINTER_SETTINGS_STORAGE_KEY, serialize(nextPrinters));
-    set({ printers: nextPrinters });
+      const nextPrinters = [...get().printers, printer];
+      await SecureStore.setItemAsync(
+        PRINTER_SETTINGS_STORAGE_KEY,
+        serialize(nextPrinters),
+      );
+      set({ printers: nextPrinters });
 
-    return printer;
-  },
-  removePrinter: async (id) => {
-    const nextPrinters = get().printers.filter((printer) => printer.id !== id);
-    await SecureStore.setItemAsync(PRINTER_SETTINGS_STORAGE_KEY, serialize(nextPrinters));
-    set({ printers: nextPrinters });
-  },
-}));
+      return printer;
+    },
+    updateProtocol: async (id, protocol) => {
+      const nextPrinters = get().printers.map((printer) =>
+        printer.id === id ? { ...printer, protocol } : printer,
+      );
+      await SecureStore.setItemAsync(
+        PRINTER_SETTINGS_STORAGE_KEY,
+        serialize(nextPrinters),
+      );
+      set({ printers: nextPrinters });
+    },
+    removePrinter: async (id) => {
+      const nextPrinters = get().printers.filter(
+        (printer) => printer.id !== id,
+      );
+      await SecureStore.setItemAsync(
+        PRINTER_SETTINGS_STORAGE_KEY,
+        serialize(nextPrinters),
+      );
+      set({ printers: nextPrinters });
+    },
+  }),
+);

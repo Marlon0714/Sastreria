@@ -20,7 +20,10 @@ export const ARREGLO_LABEL_DPI = 203;
  * 384px coincide con `bytesPerRow = 48` exacto (384 / 8), sin relleno de
  * bits sobrantes.
  */
-export const ARREGLO_LABEL_WIDTH_PX = mmToDots(ARREGLO_LABEL_PAPER.widthMm, ARREGLO_LABEL_DPI);
+export const ARREGLO_LABEL_WIDTH_PX = mmToDots(
+  ARREGLO_LABEL_PAPER.widthMm,
+  ARREGLO_LABEL_DPI,
+);
 
 /**
  * Medida física real de la etiqueta adhesiva (confirmada con el dueño),
@@ -84,7 +87,7 @@ export interface PrinterTarget {
   port: number;
   /**
    * Opcional: impresoras ya guardadas o construidas a mano en tests no lo
-   * tienen — se asume "escpos-raster" en el punto de uso (ver
+   * tienen — se asume "tspl-bitmap" en el punto de uso (ver
    * `printRenderer.ts`).
    */
   protocol?: PrintProtocol;
@@ -115,8 +118,8 @@ export interface CapturedLabelBitmap {
 }
 
 /**
- * Resultado de `LabelBitmapDecoder`: píxeles RGBA crudos ya reescalados al
- * ancho físico fijo de la impresora (`ARREGLO_LABEL_WIDTH_PX`), junto con las
+ * Resultado de `LabelBitmapDecoder`: píxeles RGBA crudos conservados a la
+ * resolución original de la captura, junto con las
  * dimensiones REALES de ese bitmap — nunca las dimensiones que se le pidieron
  * a la captura (`CapturedLabelBitmap.width/height`), que son solo una
  * solicitud y pueden no coincidir con el PNG real producido por

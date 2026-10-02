@@ -6,18 +6,9 @@ import type { CapturedLabelBitmap } from "../domain/types";
 
 /**
  * Envuelve `react-native-view-shot` para capturar `ArregloLabelView` como
- * PNG en base64. Se fuerza `width`/`height` explícitos en la opción de
- * captura, iguales al layout en puntos lógicos (dp) — así el PNG resultante
- * mide exactamente `ARREGLO_LABEL_WIDTH_PX` (384) píxeles de ancho, el ancho
- * físico de puntos que espera la impresora térmica, sin importar la densidad
- * de píxeles del dispositivo (`PixelRatio.get()`).
- *
- * Sin este forzado, `captureRef` renderiza a la resolución nativa del
- * dispositivo (dp × densidad, p. ej. 3x en muchos Android), y el bitmap
- * resultante queda 2-3 veces más ancho que los 384 puntos físicos del
- * cabezal de impresión — la impresora recibe un ráster con un ancho de fila
- * que no coincide con su buffer, y termina interpretando los bytes como
- * texto/comandos sueltos (símbolos ilegibles, avance de papel sin fin).
+ * PNG en base64 al doble del layout lógico para conservar detalle antes
+ * del remuestreo. El tamaño enviado a la impresora se fija posteriormente
+ * en `prepareArregloLabelBitmap`, no en la captura.
  *
  * Sin test unitario a propósito (regla del plan): depende del timing real de
  * layout + captura nativa de `react-native-view-shot`, no reproducible de
@@ -31,7 +22,10 @@ export function useArregloLabelCapture(): {
   capture: () => Promise<CapturedLabelBitmap>;
 } {
   const viewRef = useRef<View | null>(null);
-  const [layoutSize, setLayoutSize] = useState<{ width: number; height: number } | null>(null);
+  const [layoutSize, setLayoutSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -43,8 +37,8 @@ export function useArregloLabelCapture(): {
       throw new Error("La etiqueta todavía no está lista para capturarse");
     }
 
-    const width = Math.round(layoutSize.width);
-    const height = Math.round(layoutSize.height);
+    const width = Math.round(layoutSize.width * 2);
+    const height = Math.round(layoutSize.height * 2);
 
     const base64Png = await captureRef(viewRef, {
       format: "png",

@@ -29,46 +29,69 @@ function makeWrapper(dependencies: PrintingDependencies) {
 }
 
 describe("usePrintArregloLabel", () => {
-  it("encadena captura → decodificación → empaquetado → impresión (caso feliz)", async () => {
-    const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
-      async () => Promise.resolve(),
-    );
-    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() => ({
-      pixels: new Uint8Array(8 * 4).fill(0), // todo blanco
-      width: 8,
-      height: 1,
-    }));
-    const dependencies: PrintingDependencies = {
-      labelPrinterRepository: { printLabelJob },
-      decodeLabelBitmap,
-      printerDiscoveryRepository: { scanPort: jest.fn(async () => Promise.resolve([])) },
-      getLocalNetworkInfo: jest.fn(async () => Promise.resolve(null)),
-    };
+  it.each([
+    { protocol: undefined, prefix: "SIZE " },
+    { protocol: "tspl-bitmap" as const, prefix: "SIZE " },
+    { protocol: "escpos-raster" as const, prefix: "\x1b@" },
+  ])(
+    "encadena el flujo de impresión con protocolo $protocol",
+    async ({ protocol, prefix }) => {
+      const printLabelJob = jest.fn<
+        PrintingDependencies["labelPrinterRepository"]["printLabelJob"]
+      >(async () => Promise.resolve());
+      const decodeLabelBitmap = jest.fn<
+        PrintingDependencies["decodeLabelBitmap"]
+      >(() => ({
+        pixels: new Uint8Array(8 * 4).fill(0), // todo blanco
+        width: 8,
+        height: 1,
+      }));
+      const dependencies: PrintingDependencies = {
+        labelPrinterRepository: { printLabelJob },
+        decodeLabelBitmap,
+        printerDiscoveryRepository: {
+          scanPort: jest.fn(async () => Promise.resolve([])),
+        },
+        getLocalNetworkInfo: jest.fn(async () => Promise.resolve(null)),
+      };
 
-    const { result } = renderHook(() => usePrintArregloLabel(), {
-      wrapper: makeWrapper(dependencies),
-    });
+      const { result } = renderHook(() => usePrintArregloLabel(), {
+        wrapper: makeWrapper(dependencies),
+      });
 
-    const capture = jest.fn(async () => Promise.resolve(makeCapturedBitmap()));
+      const capture = jest.fn(async () =>
+        Promise.resolve(makeCapturedBitmap()),
+      );
+      const configuredTarget = { ...target, protocol };
 
-    await act(async () => {
-      await result.current.printLabel({ capture, target });
-    });
+      await act(async () => {
+        await result.current.printLabel({ capture, target: configuredTarget });
+      });
 
-    expect(capture).toHaveBeenCalledTimes(1);
-    expect(decodeLabelBitmap).toHaveBeenCalledWith(makeCapturedBitmap());
-    expect(printLabelJob).toHaveBeenCalledTimes(1);
-    const [calledTarget, job] = printLabelJob.mock.calls[0]!;
-    expect(calledTarget).toBe(target);
-    expect(job).toBeInstanceOf(Uint8Array);
-    expect(result.current.isPrinting).toBe(false);
-  });
+      expect(capture).toHaveBeenCalledTimes(1);
+      expect(decodeLabelBitmap).toHaveBeenCalledWith(makeCapturedBitmap());
+      expect(printLabelJob).toHaveBeenCalledTimes(1);
+      const [calledTarget, job] = printLabelJob.mock.calls[0]!;
+      expect(calledTarget).toBe(configuredTarget);
+      expect(job).toBeInstanceOf(Uint8Array);
+      expect(
+        Array.from(job.slice(0, prefix.length), (byte) =>
+          String.fromCharCode(byte),
+        ).join(""),
+      ).toBe(prefix);
+      expect(result.current.isPrinting).toBe(false);
+    },
+  );
 
   it("propaga el error si la impresora rechaza el trabajo, y deja isPrinting en false", async () => {
-    const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
-      async () => Promise.reject(new Error("No se pudo conectar con la impresora")),
+    const printLabelJob = jest.fn<
+      PrintingDependencies["labelPrinterRepository"]["printLabelJob"]
+    >(async () =>
+      Promise.reject(new Error("No se pudo conectar con la impresora")),
     );
-    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() => ({
+    const decodeLabelBitmap = jest.fn<
+      PrintingDependencies["decodeLabelBitmap"]
+    >(() => ({
       pixels: new Uint8Array(8 * 4).fill(0),
       width: 8,
       height: 1,
@@ -76,7 +99,9 @@ describe("usePrintArregloLabel", () => {
     const dependencies: PrintingDependencies = {
       labelPrinterRepository: { printLabelJob },
       decodeLabelBitmap,
-      printerDiscoveryRepository: { scanPort: jest.fn(async () => Promise.resolve([])) },
+      printerDiscoveryRepository: {
+        scanPort: jest.fn(async () => Promise.resolve([])),
+      },
       getLocalNetworkInfo: jest.fn(async () => Promise.resolve(null)),
     };
 
@@ -96,10 +121,12 @@ describe("usePrintArregloLabel", () => {
   });
 
   it("marca isPrinting en true mientras la captura está en curso", async () => {
-    const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
-      async () => Promise.resolve(),
-    );
-    const decodeLabelBitmap = jest.fn<PrintingDependencies["decodeLabelBitmap"]>(() => ({
+    const printLabelJob = jest.fn<
+      PrintingDependencies["labelPrinterRepository"]["printLabelJob"]
+    >(async () => Promise.resolve());
+    const decodeLabelBitmap = jest.fn<
+      PrintingDependencies["decodeLabelBitmap"]
+    >(() => ({
       pixels: new Uint8Array(8 * 4).fill(0),
       width: 8,
       height: 1,
@@ -107,7 +134,9 @@ describe("usePrintArregloLabel", () => {
     const dependencies: PrintingDependencies = {
       labelPrinterRepository: { printLabelJob },
       decodeLabelBitmap,
-      printerDiscoveryRepository: { scanPort: jest.fn(async () => Promise.resolve([])) },
+      printerDiscoveryRepository: {
+        scanPort: jest.fn(async () => Promise.resolve([])),
+      },
       getLocalNetworkInfo: jest.fn(async () => Promise.resolve(null)),
     };
 

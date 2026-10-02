@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { fireEvent, render, waitFor, type RenderAPI } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  waitFor,
+  type RenderAPI,
+} from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 import { usePrinterSettingsStore } from "../../../shared/state/printerSettingsStore";
@@ -8,11 +13,13 @@ import { PrintingDependenciesProvider } from "../hooks/PrintingDependenciesProvi
 import { noopPrintingDependencies } from "../hooks/PrintingDependenciesProvider.test-utils";
 import PrinterSettingsScreen from "./PrinterSettingsScreen";
 
-const mockSetItemAsync = jest.fn<(key: string, value: string) => Promise<void>>();
+const mockSetItemAsync =
+  jest.fn<(key: string, value: string) => Promise<void>>();
 
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(async () => Promise.resolve(null)),
-  setItemAsync: (key: string, value: string): Promise<void> => mockSetItemAsync(key, value),
+  setItemAsync: (key: string, value: string): Promise<void> =>
+    mockSetItemAsync(key, value),
 }));
 
 const mockCaptureSampleLabel = jest.fn(async () =>
@@ -27,8 +34,13 @@ jest.mock("../hooks/useArregloLabelCapture", () => ({
   }),
 }));
 
-function renderScreen(overrides: Partial<PrintingDependencies> = {}): RenderAPI {
-  const dependencies: PrintingDependencies = { ...noopPrintingDependencies, ...overrides };
+function renderScreen(
+  overrides: Partial<PrintingDependencies> = {},
+): RenderAPI {
+  const dependencies: PrintingDependencies = {
+    ...noopPrintingDependencies,
+    ...overrides,
+  };
 
   return render(
     <PrintingDependenciesProvider dependencies={dependencies}>
@@ -56,7 +68,10 @@ describe("PrinterSettingsScreen", () => {
     const { getByLabelText, getByText } = renderScreen();
 
     fireEvent.changeText(getByLabelText("Nombre de la impresora"), "Mostrador");
-    fireEvent.changeText(getByLabelText("Dirección IP de la impresora"), "192.168.1.50");
+    fireEvent.changeText(
+      getByLabelText("Dirección IP de la impresora"),
+      "192.168.1.50",
+    );
     fireEvent.press(getByLabelText("Guardar impresora"));
 
     await waitFor(() => {
@@ -66,10 +81,38 @@ describe("PrinterSettingsScreen", () => {
     expect(usePrinterSettingsStore.getState().printers).toHaveLength(1);
   });
 
+  it("cambia una impresora existente de ESC/POS a TSPL y persiste la selección", async () => {
+    const printer = await usePrinterSettingsStore.getState().addPrinter({
+      name: "Taller",
+      host: "192.168.1.60",
+    });
+    await usePrinterSettingsStore
+      .getState()
+      .updateProtocol(printer.id, "escpos-raster");
+    const { getByLabelText } = renderScreen();
+
+    fireEvent.press(getByLabelText("Usar TSPL en Taller"));
+
+    await waitFor(() => {
+      expect(
+        getByLabelText("Usar TSPL en Taller").props.accessibilityState.checked,
+      ).toBe(true);
+    });
+    expect(usePrinterSettingsStore.getState().printers[0]?.protocol).toBe(
+      "tspl-bitmap",
+    );
+    expect(JSON.parse(mockSetItemAsync.mock.calls.at(-1)![1])[0].protocol).toBe(
+      "tspl-bitmap",
+    );
+  });
+
   it("muestra un error y no agrega nada si el nombre está vacío", async () => {
     const { getByLabelText } = renderScreen();
 
-    fireEvent.changeText(getByLabelText("Dirección IP de la impresora"), "192.168.1.50");
+    fireEvent.changeText(
+      getByLabelText("Dirección IP de la impresora"),
+      "192.168.1.50",
+    );
     fireEvent.press(getByLabelText("Guardar impresora"));
 
     await waitFor(() => {
@@ -82,12 +125,18 @@ describe("PrinterSettingsScreen", () => {
   });
 
   it("envía una prueba de texto a la impresora y muestra error si falla", async () => {
-    await usePrinterSettingsStore.getState().addPrinter({ name: "Taller", host: "192.168.1.60" });
-    const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
-      async () => Promise.reject(new Error("No se pudo conectar con la impresora")),
+    await usePrinterSettingsStore
+      .getState()
+      .addPrinter({ name: "Taller", host: "192.168.1.60" });
+    const printLabelJob = jest.fn<
+      PrintingDependencies["labelPrinterRepository"]["printLabelJob"]
+    >(async () =>
+      Promise.reject(new Error("No se pudo conectar con la impresora")),
     );
 
-    const { getByLabelText } = renderScreen({ labelPrinterRepository: { printLabelJob } });
+    const { getByLabelText } = renderScreen({
+      labelPrinterRepository: { printLabelJob },
+    });
 
     fireEvent.press(getByLabelText("Enviar prueba de texto a Taller"));
 
@@ -106,12 +155,18 @@ describe("PrinterSettingsScreen", () => {
   });
 
   it("envía una prueba de imagen alterna (ESC *) y muestra error si falla", async () => {
-    await usePrinterSettingsStore.getState().addPrinter({ name: "Taller", host: "192.168.1.60" });
-    const printLabelJob = jest.fn<PrintingDependencies["labelPrinterRepository"]["printLabelJob"]>(
-      async () => Promise.reject(new Error("No se pudo conectar con la impresora")),
+    await usePrinterSettingsStore
+      .getState()
+      .addPrinter({ name: "Taller", host: "192.168.1.60" });
+    const printLabelJob = jest.fn<
+      PrintingDependencies["labelPrinterRepository"]["printLabelJob"]
+    >(async () =>
+      Promise.reject(new Error("No se pudo conectar con la impresora")),
     );
 
-    const { getByLabelText } = renderScreen({ labelPrinterRepository: { printLabelJob } });
+    const { getByLabelText } = renderScreen({
+      labelPrinterRepository: { printLabelJob },
+    });
 
     fireEvent.press(getByLabelText("Enviar prueba de imagen alterna a Taller"));
 
@@ -130,12 +185,18 @@ describe("PrinterSettingsScreen", () => {
   });
 
   it("elimina una impresora tras confirmar en el Alert", async () => {
-    await usePrinterSettingsStore.getState().addPrinter({ name: "Taller", host: "192.168.1.60" });
+    await usePrinterSettingsStore
+      .getState()
+      .addPrinter({ name: "Taller", host: "192.168.1.60" });
 
-    jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
-      const confirmButton = buttons?.find((button) => button.text === "Eliminar");
-      confirmButton?.onPress?.();
-    });
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        const confirmButton = buttons?.find(
+          (button) => button.text === "Eliminar",
+        );
+        confirmButton?.onPress?.();
+      });
 
     const { getByLabelText, queryByText } = renderScreen();
 
@@ -148,7 +209,8 @@ describe("PrinterSettingsScreen", () => {
   });
 
   it("muestra y cierra la vista previa de etiqueta de ejemplo", async () => {
-    const { getByLabelText, getByText, getAllByText, queryByText } = renderScreen();
+    const { getByLabelText, getByText, getAllByText, queryByText } =
+      renderScreen();
 
     fireEvent.press(getByLabelText("Ver diseño de etiqueta"));
 
@@ -166,12 +228,17 @@ describe("PrinterSettingsScreen", () => {
 
   describe("Buscar en la red", () => {
     it("escanea la red y lista los hosts encontrados como filas tocables", async () => {
-      const getLocalNetworkInfo = jest.fn<PrintingDependencies["getLocalNetworkInfo"]>(async () =>
-        Promise.resolve({ ipAddress: "192.168.1.34", subnetMask: "255.255.255.0" }),
+      const getLocalNetworkInfo = jest.fn<
+        PrintingDependencies["getLocalNetworkInfo"]
+      >(async () =>
+        Promise.resolve({
+          ipAddress: "192.168.1.34",
+          subnetMask: "255.255.255.0",
+        }),
       );
-      const scanPort = jest.fn<PrintingDependencies["printerDiscoveryRepository"]["scanPort"]>(
-        async () => Promise.resolve(["192.168.1.77"]),
-      );
+      const scanPort = jest.fn<
+        PrintingDependencies["printerDiscoveryRepository"]["scanPort"]
+      >(async () => Promise.resolve(["192.168.1.77"]));
 
       const { getByLabelText, getByText } = renderScreen({
         getLocalNetworkInfo,
@@ -188,12 +255,17 @@ describe("PrinterSettingsScreen", () => {
     });
 
     it("precarga host y puerto del formulario al tocar un resultado, sin crear la impresora", async () => {
-      const getLocalNetworkInfo = jest.fn<PrintingDependencies["getLocalNetworkInfo"]>(async () =>
-        Promise.resolve({ ipAddress: "192.168.1.34", subnetMask: "255.255.255.0" }),
+      const getLocalNetworkInfo = jest.fn<
+        PrintingDependencies["getLocalNetworkInfo"]
+      >(async () =>
+        Promise.resolve({
+          ipAddress: "192.168.1.34",
+          subnetMask: "255.255.255.0",
+        }),
       );
-      const scanPort = jest.fn<PrintingDependencies["printerDiscoveryRepository"]["scanPort"]>(
-        async () => Promise.resolve(["192.168.1.77"]),
-      );
+      const scanPort = jest.fn<
+        PrintingDependencies["printerDiscoveryRepository"]["scanPort"]
+      >(async () => Promise.resolve(["192.168.1.77"]));
 
       const { getByLabelText, getByText } = renderScreen({
         getLocalNetworkInfo,
@@ -206,20 +278,24 @@ describe("PrinterSettingsScreen", () => {
         expect(getByText("192.168.1.77")).toBeTruthy();
       });
 
-      fireEvent.press(getByLabelText("Usar impresora encontrada en 192.168.1.77"));
+      fireEvent.press(
+        getByLabelText("Usar impresora encontrada en 192.168.1.77"),
+      );
 
-      expect(getByLabelText("Dirección IP de la impresora").props.value).toBe("192.168.1.77");
+      expect(getByLabelText("Dirección IP de la impresora").props.value).toBe(
+        "192.168.1.77",
+      );
       expect(getByLabelText("Puerto de la impresora").props.value).toBe("9100");
       expect(usePrinterSettingsStore.getState().printers).toHaveLength(0);
     });
 
     it("muestra el mensaje de error cuando no hay red soportada", async () => {
-      const getLocalNetworkInfo = jest.fn<PrintingDependencies["getLocalNetworkInfo"]>(async () =>
-        Promise.resolve(null),
-      );
-      const scanPort = jest.fn<PrintingDependencies["printerDiscoveryRepository"]["scanPort"]>(
-        async () => Promise.resolve([]),
-      );
+      const getLocalNetworkInfo = jest.fn<
+        PrintingDependencies["getLocalNetworkInfo"]
+      >(async () => Promise.resolve(null));
+      const scanPort = jest.fn<
+        PrintingDependencies["printerDiscoveryRepository"]["scanPort"]
+      >(async () => Promise.resolve([]));
 
       const { getByLabelText, getByText } = renderScreen({
         getLocalNetworkInfo,
@@ -235,12 +311,17 @@ describe("PrinterSettingsScreen", () => {
     });
 
     it("muestra un aviso cuando el escaneo no encuentra ninguna impresora", async () => {
-      const getLocalNetworkInfo = jest.fn<PrintingDependencies["getLocalNetworkInfo"]>(async () =>
-        Promise.resolve({ ipAddress: "192.168.1.34", subnetMask: "255.255.255.0" }),
+      const getLocalNetworkInfo = jest.fn<
+        PrintingDependencies["getLocalNetworkInfo"]
+      >(async () =>
+        Promise.resolve({
+          ipAddress: "192.168.1.34",
+          subnetMask: "255.255.255.0",
+        }),
       );
-      const scanPort = jest.fn<PrintingDependencies["printerDiscoveryRepository"]["scanPort"]>(
-        async () => Promise.resolve([]),
-      );
+      const scanPort = jest.fn<
+        PrintingDependencies["printerDiscoveryRepository"]["scanPort"]
+      >(async () => Promise.resolve([]));
 
       const { getByLabelText, getByText } = renderScreen({
         getLocalNetworkInfo,
@@ -250,7 +331,9 @@ describe("PrinterSettingsScreen", () => {
       fireEvent.press(getByLabelText("Buscar impresoras en la red"));
 
       await waitFor(() => {
-        expect(getByText("No se encontraron impresoras en la red.")).toBeTruthy();
+        expect(
+          getByText("No se encontraron impresoras en la red."),
+        ).toBeTruthy();
       });
     });
   });

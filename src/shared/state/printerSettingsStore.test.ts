@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { PrinterSettingsValidationError, usePrinterSettingsStore } from "./printerSettingsStore";
+import {
+  PrinterSettingsValidationError,
+  usePrinterSettingsStore,
+} from "./printerSettingsStore";
 
 const mockGetItemAsync = jest.fn<(key: string) => Promise<string | null>>();
-const mockSetItemAsync = jest.fn<(key: string, value: string) => Promise<void>>();
+const mockSetItemAsync =
+  jest.fn<(key: string, value: string) => Promise<void>>();
 
 jest.mock("expo-secure-store", () => ({
   getItemAsync: (key: string): Promise<string | null> => mockGetItemAsync(key),
-  setItemAsync: (key: string, value: string): Promise<void> => mockSetItemAsync(key, value),
+  setItemAsync: (key: string, value: string): Promise<void> =>
+    mockSetItemAsync(key, value),
 }));
 
 describe("printerSettingsStore", () => {
@@ -55,21 +60,46 @@ describe("printerSettingsStore", () => {
       .addPrinter({ name: "Taller", host: "192.168.1.60" });
 
     expect(printer.port).toBe(9100);
+    expect(printer.protocol).toBe("tspl-bitmap");
     expect(usePrinterSettingsStore.getState().printers).toHaveLength(1);
     expect(mockSetItemAsync).toHaveBeenCalledTimes(1);
   });
 
   it("addPrinter rechaza datos inválidos sin persistir nada", async () => {
     await expect(
-      usePrinterSettingsStore.getState().addPrinter({ name: "", host: "192.168.1.60" }),
+      usePrinterSettingsStore
+        .getState()
+        .addPrinter({ name: "", host: "192.168.1.60" }),
     ).rejects.toBeInstanceOf(PrinterSettingsValidationError);
 
     expect(mockSetItemAsync).not.toHaveBeenCalled();
     expect(usePrinterSettingsStore.getState().printers).toEqual([]);
   });
 
+  it("actualiza y persiste el protocolo de una impresora existente", async () => {
+    const printer = await usePrinterSettingsStore.getState().addPrinter({
+      name: "Taller",
+      host: "192.168.1.60",
+    });
+    await usePrinterSettingsStore
+      .getState()
+      .updateProtocol(printer.id, "escpos-raster");
+    await usePrinterSettingsStore
+      .getState()
+      .updateProtocol(printer.id, "tspl-bitmap");
+
+    expect(usePrinterSettingsStore.getState().printers[0]?.protocol).toBe(
+      "tspl-bitmap",
+    );
+    expect(JSON.parse(mockSetItemAsync.mock.calls.at(-1)![1])[0].protocol).toBe(
+      "tspl-bitmap",
+    );
+  });
+
   it("removePrinter quita la impresora indicada y persiste el cambio", async () => {
-    await usePrinterSettingsStore.getState().addPrinter({ name: "Taller", host: "192.168.1.60" });
+    await usePrinterSettingsStore
+      .getState()
+      .addPrinter({ name: "Taller", host: "192.168.1.60" });
     const [existing] = usePrinterSettingsStore.getState().printers;
 
     await usePrinterSettingsStore.getState().removePrinter(existing!.id);
