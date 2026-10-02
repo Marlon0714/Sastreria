@@ -13,7 +13,6 @@ jest.mock(
   () => ({
     captureRef: (...args: unknown[]) => mockCaptureRef(...args),
   }),
-  { virtual: true },
 );
 
 describe("useArregloLabelCapture", () => {
