@@ -164,7 +164,7 @@ describe("buildMyActivityItems", () => {
 
   it("incluye un turno completado justo en el límite inicial del rango (inclusive)", () => {
     const items = buildMyActivityItems(
-      [{ ...baseSchedule, readyAt: "2026-08-10T00:30:00.000Z" }],
+      [{ ...baseSchedule, readyAt: new Date(2026, 7, 10, 0, 30).toISOString() }],
       clientsById,
       OWN_PROFILE_ID,
       "2026-08-10",
