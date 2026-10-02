@@ -8,8 +8,10 @@ export class EscPosJobFormatError extends Error {}
 
 const ESC_INIT_BYTES = [0x1b, 0x40];
 const RASTER_HEADER_PREFIX = [0x1d, 0x76, 0x30, 0x00];
+/** `ESC J n` antes del corte (ver `ESC_FEED_BEFORE_CUT` en `escposRaster.ts`) — 3 bytes, el valor de `n` no importa para reconstruir el bitmap. */
+const ESC_FEED_BEFORE_CUT_LENGTH = 3;
 const GS_CUT_PARTIAL_LENGTH = 4;
-const MIN_JOB_LENGTH = ESC_INIT_BYTES.length + 8 + GS_CUT_PARTIAL_LENGTH;
+const MIN_JOB_LENGTH = ESC_INIT_BYTES.length + 8 + ESC_FEED_BEFORE_CUT_LENGTH + GS_CUT_PARTIAL_LENGTH;
 
 function matchesBytes(job: Uint8Array, offset: number, expected: number[]): boolean {
   return expected.every((byte, index) => job[offset + index] === byte);
@@ -49,7 +51,12 @@ export function decodeEscPosLabelJob(job: Uint8Array): MonochromeBitmap {
 
   const bytesPerRow = job[6]! | (job[7]! << 8);
   const height = job[8]! | (job[9]! << 8);
-  const expectedLength = ESC_INIT_BYTES.length + 8 + bytesPerRow * height + GS_CUT_PARTIAL_LENGTH;
+  const expectedLength =
+    ESC_INIT_BYTES.length +
+    8 +
+    bytesPerRow * height +
+    ESC_FEED_BEFORE_CUT_LENGTH +
+    GS_CUT_PARTIAL_LENGTH;
 
   if (job.length !== expectedLength) {
     throw new EscPosJobFormatError(
@@ -141,7 +148,7 @@ export function decodeEscPosBitImageJob(job: Uint8Array): MonochromeBitmap {
   }
 
   expect(ESC_RESET_LINE_SPACING, "Header ESC 2 (restaurar espaciado)");
-  const expectedRemaining = GS_CUT_PARTIAL_LENGTH;
+  const expectedRemaining = ESC_FEED_BEFORE_CUT_LENGTH + GS_CUT_PARTIAL_LENGTH;
   if (job.length - offset !== expectedRemaining) {
     throw new EscPosBitImageJobFormatError(
       `Job truncado o con bytes sobrantes: se esperaban ${expectedRemaining} bytes finales, quedaron ${job.length - offset}.`,

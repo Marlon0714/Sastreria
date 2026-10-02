@@ -20,6 +20,7 @@ describe("buildEscPosLabelJob", () => {
       0x01, 0x00, // xL xH (bytesPerRow = 1)
       0x01, 0x00, // yL yH (height = 1)
       0b1010_1010, // dato del bitmap
+      0x1b, 0x4a, 0x50, // ESC J 80 (avance antes del corte, ~10mm a 203dpi)
       0x1d, 0x56, 0x42, 0x00, // GS V corte parcial
     ]);
   });
@@ -56,11 +57,11 @@ describe("buildEscPosLabelJob", () => {
 
     const job = buildEscPosLabelJob(bitmap);
 
-    // ESC_INIT (2) + header (8) + data (0) + corte (4) = 14
-    expect(job).toHaveLength(14);
+    // ESC_INIT (2) + header (8) + data (0) + avance (3) + corte (4) = 17
+    expect(job).toHaveLength(17);
   });
 
-  it("respeta el tamaño total = ESC_INIT + header + data + corte", () => {
+  it("respeta el tamaño total = ESC_INIT + header + data + avance + corte", () => {
     const bitmap: MonochromeBitmap = {
       width: 16,
       height: 2,
@@ -70,7 +71,7 @@ describe("buildEscPosLabelJob", () => {
 
     const job = buildEscPosLabelJob(bitmap);
 
-    expect(job).toHaveLength(2 + 8 + 4 + 4);
+    expect(job).toHaveLength(2 + 8 + 4 + 3 + 4);
   });
 });
 
@@ -92,6 +93,7 @@ describe("buildEscPosBitImageJob", () => {
       0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, // columnas: negro/blanco alternado
       0x0a, // salto de línea (avanza la franja)
       0x1b, 0x32, // ESC 2 (restaura espaciado por defecto)
+      0x1b, 0x4a, 0x50, // ESC J 80 (avance antes del corte, ~10mm a 203dpi)
       0x1d, 0x56, 0x42, 0x00, // GS V corte parcial
     ]);
   });
@@ -117,6 +119,7 @@ describe("buildEscPosBitImageJob", () => {
       0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0, 0xf0,
       0x0a,
       0x1b, 0x32,
+      0x1b, 0x4a, 0x50,
       0x1d, 0x56, 0x42, 0x00,
     ]);
   });
@@ -131,8 +134,8 @@ describe("buildEscPosBitImageJob", () => {
 
     const job = buildEscPosBitImageJob(bitmap);
 
-    // ESC_INIT(2) + ESC_SET_LINE_SPACING(3) + ESC_RESET_LINE_SPACING(2) + corte(4) = 11
-    expect(job).toHaveLength(11);
+    // ESC_INIT(2) + ESC_SET_LINE_SPACING(3) + ESC_RESET_LINE_SPACING(2) + avance(3) + corte(4) = 14
+    expect(job).toHaveLength(14);
   });
 });
 

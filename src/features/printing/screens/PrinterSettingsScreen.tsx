@@ -18,6 +18,7 @@ import { buildEscPosTextTestJob } from "../domain/escposRaster";
 import { toMonochromeBitmap } from "../domain/monochromeBitmap";
 import { DEFAULT_LABEL_PRINTER_PORT, PrinterConfigValidationError } from "../domain/printerConfig";
 import { resolveLabelRenderer } from "../domain/printRenderer";
+import { rotatePixelsClockwise90 } from "../domain/rotatePixels";
 import type { ArregloLabelData, PrinterTarget } from "../domain/types";
 import {
   useLabelBitmapDecoder,
@@ -144,8 +145,9 @@ export default function PrinterSettingsScreen(): ReactElement {
     setTestingAlternateImagePrinterId(printer.id);
     try {
       const captured = await captureSampleLabel();
-      const { pixels, width, height } = decodeLabelBitmap(captured);
-      const bitmap = toMonochromeBitmap(pixels, width, height);
+      const decoded = decodeLabelBitmap(captured);
+      const rotated = rotatePixelsClockwise90(decoded.pixels, decoded.width, decoded.height);
+      const bitmap = toMonochromeBitmap(rotated.pixels, rotated.width, rotated.height);
       const job = resolveLabelRenderer("escpos-bitimage").render(bitmap, printer);
       await labelPrinterRepository.printLabelJob(printer, job);
     } catch (error) {

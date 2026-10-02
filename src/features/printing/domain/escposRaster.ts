@@ -15,6 +15,26 @@ const ESC_INIT = new Uint8Array([0x1b, 0x40]);
 const GS_CUT_PARTIAL = new Uint8Array([0x1d, 0x56, 0x42, 0x00]);
 
 /**
+ * Cantidad de puntos a avanzar con `ESC J n` antes de cortar (ver
+ * `ESC_FEED_BEFORE_CUT`). ~80 puntos ≈ 10mm a 203dpi — valor de partida
+ * conservador para que el corte quede limpio sin pisar el contenido
+ * impreso; ajustar según lo que reporte el usuario al probar en hardware
+ * real (algunas impresoras necesitan más o menos margen físico entre el
+ * cabezal y la cuchilla de corte).
+ */
+const CUT_FEED_DOTS = 80;
+
+/**
+ * `ESC J n` (`0x1B 0x4A n`) — avanza el papel `n` unidades de movimiento
+ * vertical (sin imprimir nada) antes del corte. Sin esto, el corte ocurre
+ * casi pegado al final de la imagen/texto: en hardware real, el usuario
+ * reportó que había que apretar el botón de avance manual para que
+ * alcanzara a cortar limpio. Se envía justo antes de `GS_CUT_PARTIAL` en
+ * todos los jobs de imagen.
+ */
+const ESC_FEED_BEFORE_CUT = new Uint8Array([0x1b, 0x4a, CUT_FEED_DOTS]);
+
+/**
  * Arma el comando ráster ESC/POS `GS v 0` (`0x1D 0x76 0x30`) a partir de un
  * bitmap monocromo ya empaquetado (ver `toMonochromeBitmap`). Formato del
  * comando: `GS v 0 m xL xH yL yH d1...dk`, con:
@@ -39,7 +59,11 @@ export function buildEscPosLabelJob(bitmap: MonochromeBitmap): Uint8Array {
   const header = new Uint8Array([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
 
   const job = new Uint8Array(
-    ESC_INIT.length + header.length + bitmap.data.length + GS_CUT_PARTIAL.length,
+    ESC_INIT.length +
+      header.length +
+      bitmap.data.length +
+      ESC_FEED_BEFORE_CUT.length +
+      GS_CUT_PARTIAL.length,
   );
   let offset = 0;
   job.set(ESC_INIT, offset);
@@ -48,6 +72,8 @@ export function buildEscPosLabelJob(bitmap: MonochromeBitmap): Uint8Array {
   offset += header.length;
   job.set(bitmap.data, offset);
   offset += bitmap.data.length;
+  job.set(ESC_FEED_BEFORE_CUT, offset);
+  offset += ESC_FEED_BEFORE_CUT.length;
   job.set(GS_CUT_PARTIAL, offset);
 
   return job;
@@ -120,7 +146,7 @@ export function buildEscPosBitImageJob(bitmap: MonochromeBitmap): Uint8Array {
     chunks.push(header, columnData, LINE_FEED);
   }
 
-  chunks.push(ESC_RESET_LINE_SPACING, GS_CUT_PARTIAL);
+  chunks.push(ESC_RESET_LINE_SPACING, ESC_FEED_BEFORE_CUT, GS_CUT_PARTIAL);
 
   return concatUint8Arrays(chunks);
 }

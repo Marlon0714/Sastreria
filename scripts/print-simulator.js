@@ -34,6 +34,8 @@ const path = require("path");
 const ESC_INIT = [0x1b, 0x40];
 const RASTER_HEADER_PREFIX = [0x1d, 0x76, 0x30, 0x00];
 const GS_CUT_PARTIAL_LENGTH = 4;
+/** `ESC J n` antes del corte (ver ESC_FEED_BEFORE_CUT en escposRaster.ts) -- 3 bytes, solo en los jobs de imagen, no en el de texto plano. */
+const ESC_FEED_BEFORE_CUT_LENGTH = 3;
 const ESC_SET_LINE_SPACING_8_DOTS = [0x1b, 0x33, 0x08];
 const ESC_BIT_IMAGE_HEADER_PREFIX = [0x1b, 0x2a, 0x00];
 const ESC_RESET_LINE_SPACING = [0x1b, 0x32];
@@ -78,7 +80,7 @@ function isRasterJob(buffer) {
  * loguear en rojo sin tumbar la conexión.
  */
 function decodeRasterJob(buffer) {
-  const minLength = ESC_INIT.length + 8 + GS_CUT_PARTIAL_LENGTH;
+  const minLength = ESC_INIT.length + 8 + ESC_FEED_BEFORE_CUT_LENGTH + GS_CUT_PARTIAL_LENGTH;
   if (buffer.length < minLength) {
     return { ok: false, reason: `job demasiado corto (${buffer.length} bytes, mínimo ${minLength})` };
   }
@@ -91,7 +93,8 @@ function decodeRasterJob(buffer) {
 
   const bytesPerRow = buffer[6] | (buffer[7] << 8);
   const height = buffer[8] | (buffer[9] << 8);
-  const expectedLength = ESC_INIT.length + 8 + bytesPerRow * height + GS_CUT_PARTIAL_LENGTH;
+  const expectedLength =
+    ESC_INIT.length + 8 + bytesPerRow * height + ESC_FEED_BEFORE_CUT_LENGTH + GS_CUT_PARTIAL_LENGTH;
 
   if (buffer.length !== expectedLength) {
     return {
@@ -172,9 +175,10 @@ function decodeBitImageJob(buffer) {
   }
   offset += ESC_RESET_LINE_SPACING.length;
 
-  if (buffer.length - offset !== GS_CUT_PARTIAL_LENGTH) {
+  const expectedRemaining = ESC_FEED_BEFORE_CUT_LENGTH + GS_CUT_PARTIAL_LENGTH;
+  if (buffer.length - offset !== expectedRemaining) {
     return fail(
-      `longitud inconsistente al final del job: quedaron ${buffer.length - offset} bytes, se esperaban ${GS_CUT_PARTIAL_LENGTH}`,
+      `longitud inconsistente al final del job: quedaron ${buffer.length - offset} bytes, se esperaban ${expectedRemaining}`,
     );
   }
 
