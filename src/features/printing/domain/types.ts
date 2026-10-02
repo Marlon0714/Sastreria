@@ -23,6 +23,14 @@ export const ARREGLO_LABEL_DPI = 203;
 export const ARREGLO_LABEL_WIDTH_PX = mmToDots(ARREGLO_LABEL_PAPER.widthMm, ARREGLO_LABEL_DPI);
 
 /**
+ * Medida física real de la etiqueta adhesiva (confirmada con el dueño),
+ * usada como default cuando una `PrinterTarget` no trae
+ * `labelWidthMm`/`labelLengthMm` propios.
+ */
+export const DEFAULT_LABEL_WIDTH_MM = 50;
+export const DEFAULT_LABEL_LENGTH_MM = 70;
+
+/**
  * Datos crudos (sin formatear) de una etiqueta de arreglo. El formateo de
  * despliegue (moneda, fecha) se hace en el punto de uso reutilizando
  * `formatPrice` (`src/features/pricing/domain/strings.ts`) y
@@ -76,6 +84,18 @@ export interface PrinterTarget {
    * `printRenderer.ts`).
    */
   protocol?: PrintProtocol;
+  /**
+   * Medida física real de la etiqueta adhesiva cargada en esta impresora
+   * (confirmada con el dueño: 50mm × 70mm). El contenido se reescala a esta
+   * medida antes de imprimir (ver `scalePixels.ts`/`usePrintArregloLabel.ts`)
+   * para aprovechar el tamaño real de la etiqueta en vez de quedarse con lo
+   * que mida el contenido naturalmente. Opcional — impresoras ya guardadas
+   * o construidas a mano en tests no lo tienen; se asume 50×70mm en el
+   * punto de uso. Específico de cómo se escala la etiqueta de arreglo, no
+   * un concepto genérico de "papel de impresora" todavía.
+   */
+  labelWidthMm?: number;
+  labelLengthMm?: number;
 }
 
 /**

@@ -1,9 +1,17 @@
 import { useCallback, useState } from "react";
 
 import { toMonochromeBitmap } from "../domain/monochromeBitmap";
+import { mmToDots } from "../domain/paperSize";
 import { DEFAULT_PRINT_PROTOCOL, resolveLabelRenderer } from "../domain/printRenderer";
 import { rotatePixelsClockwise90 } from "../domain/rotatePixels";
-import type { CapturedLabelBitmap, PrinterTarget } from "../domain/types";
+import { scaleRgbaPixels } from "../domain/scalePixels";
+import {
+  ARREGLO_LABEL_DPI,
+  DEFAULT_LABEL_LENGTH_MM,
+  DEFAULT_LABEL_WIDTH_MM,
+  type CapturedLabelBitmap,
+  type PrinterTarget,
+} from "../domain/types";
 import { usePrintingDependencies } from "./PrintingDependenciesProvider";
 
 interface PrintArregloLabelParams {
@@ -13,12 +21,16 @@ interface PrintArregloLabelParams {
 
 /**
  * Orquesta el flujo completo de impresión de una etiqueta de arreglo:
- * captura → decodifica píxeles → rota 90° horario (ver `rotatePixelsClockwise90`
- * — la etiqueta física es más larga que ancha, y el cabezal de la impresora
- * no gira, así que hay que rotar los píxeles para que el contenido aproveche
- * el largo en vez de dejar espacio en blanco) → empaqueta a monocromo →
- * resuelve el renderer según el protocolo de la impresora destino → lo
- * envía. Cada paso reutiliza una pieza de
+ * captura → decodifica píxeles → escala al tamaño físico configurado de la
+ * etiqueta (ver `scaleRgbaPixels`/`PrinterTarget.labelWidthMm/labelLengthMm`
+ * — el escalado se calcula ya pensando en la rotación que sigue, por eso el
+ * ancho/alto objetivo quedan "cruzados") → rota 90° horario (ver
+ * `rotatePixelsClockwise90` — la etiqueta física es más larga que ancha, y
+ * el cabezal de la impresora no gira, así que hay que rotar los píxeles
+ * para que el contenido aproveche el largo en vez de dejar espacio en
+ * blanco) → empaqueta a monocromo → resuelve el renderer según el
+ * protocolo de la impresora destino → lo envía. Cada paso reutiliza una
+ * pieza de
  * dominio puro ya testeada por separado; este hook solo los encadena, por lo
  * que sus propios tests inyectan un `capture()` y unas `PrintingDependencies`
  * mockeadas (sin tocar Skia/TCP reales).
@@ -41,7 +53,18 @@ export function usePrintArregloLabel(): {
       try {
         const captured = await capture();
         const decoded = decodeLabelBitmap(captured);
-        const rotated = rotatePixelsClockwise90(decoded.pixels, decoded.width, decoded.height);
+
+        const labelWidthMm = target.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM;
+        const labelLengthMm = target.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM;
+        const scaled = scaleRgbaPixels(
+          decoded.pixels,
+          decoded.width,
+          decoded.height,
+          mmToDots(labelLengthMm, ARREGLO_LABEL_DPI),
+          mmToDots(labelWidthMm, ARREGLO_LABEL_DPI),
+        );
+
+        const rotated = rotatePixelsClockwise90(scaled.pixels, scaled.width, scaled.height);
         const bitmap = toMonochromeBitmap(rotated.pixels, rotated.width, rotated.height);
         const renderer = resolveLabelRenderer(target.protocol ?? DEFAULT_PRINT_PROTOCOL);
         const job = renderer.render(bitmap, target);

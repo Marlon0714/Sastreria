@@ -8,7 +8,11 @@ import {
   type CreatePrinterConfigInput,
 } from "../../features/printing/domain/printerConfig";
 import { DEFAULT_PRINT_PROTOCOL } from "../../features/printing/domain/printRenderer";
-import type { PrinterTarget } from "../../features/printing/domain/types";
+import {
+  DEFAULT_LABEL_LENGTH_MM,
+  DEFAULT_LABEL_WIDTH_MM,
+  type PrinterTarget,
+} from "../../features/printing/domain/types";
 
 const PRINTER_SETTINGS_STORAGE_KEY = "sastreria_printer_targets";
 
@@ -38,6 +42,8 @@ function deserialize(raw: string): PrinterTarget[] {
   return (parsed as PrinterTarget[]).map((entry) => ({
     ...entry,
     protocol: entry.protocol ?? DEFAULT_PRINT_PROTOCOL,
+    labelWidthMm: entry.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
+    labelLengthMm: entry.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
   }));
 }
 
@@ -83,6 +89,8 @@ export const usePrinterSettingsStore = create<PrinterSettingsStore>((set, get) =
       host: parsed.host,
       port: parsed.port,
       protocol: DEFAULT_PRINT_PROTOCOL,
+      labelWidthMm: parsed.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
+      labelLengthMm: parsed.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
     };
 
     const nextPrinters = [...get().printers, printer];

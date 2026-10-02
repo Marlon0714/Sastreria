@@ -32,7 +32,15 @@ describe("printerSettingsStore", () => {
 
   it("hydrate restaura la lista de impresoras guardada", async () => {
     const stored = [
-      { id: "p1", name: "Mostrador", host: "192.168.1.50", port: 9100, protocol: "escpos-raster" },
+      {
+        id: "p1",
+        name: "Mostrador",
+        host: "192.168.1.50",
+        port: 9100,
+        protocol: "escpos-raster",
+        labelWidthMm: 50,
+        labelLengthMm: 70,
+      },
     ];
     mockGetItemAsync.mockResolvedValue(JSON.stringify(stored));
 

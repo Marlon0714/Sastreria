@@ -36,6 +36,8 @@ export const printerConfigSchema = z.object({
     .int("El puerto debe ser un número entero")
     .min(1, "El puerto debe ser mayor a 0")
     .max(65535, "El puerto debe ser menor a 65536"),
+  labelWidthMm: z.number().positive("El ancho debe ser mayor a 0").optional(),
+  labelLengthMm: z.number().positive("El largo debe ser mayor a 0").optional(),
 });
 
 export type PrinterConfig = z.infer<typeof printerConfigSchema>;

@@ -16,10 +16,19 @@ import { ArregloLabelView } from "../components/ArregloLabelView";
 import { LabelPreviewModal } from "../components/LabelPreviewModal";
 import { buildEscPosTextTestJob } from "../domain/escposRaster";
 import { toMonochromeBitmap } from "../domain/monochromeBitmap";
+import { mmToDots } from "../domain/paperSize";
 import { DEFAULT_LABEL_PRINTER_PORT, PrinterConfigValidationError } from "../domain/printerConfig";
 import { resolveLabelRenderer } from "../domain/printRenderer";
 import { rotatePixelsClockwise90 } from "../domain/rotatePixels";
-import type { ArregloLabelData, PrinterTarget } from "../domain/types";
+import { scaleRgbaPixels } from "../domain/scalePixels";
+import { buildTsplTextTestJob } from "../domain/tsplTextTestJob";
+import {
+  ARREGLO_LABEL_DPI,
+  DEFAULT_LABEL_LENGTH_MM,
+  DEFAULT_LABEL_WIDTH_MM,
+  type ArregloLabelData,
+  type PrinterTarget,
+} from "../domain/types";
 import {
   useLabelBitmapDecoder,
   useLabelPrinterRepository,
@@ -61,11 +70,14 @@ export default function PrinterSettingsScreen(): ReactElement {
   const [name, setName] = useState("");
   const [host, setHost] = useState("");
   const [port, setPort] = useState("");
+  const [labelWidthMm, setLabelWidthMm] = useState("");
+  const [labelLengthMm, setLabelLengthMm] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null);
   const [testingAlternateImagePrinterId, setTestingAlternateImagePrinterId] = useState<
     string | null
   >(null);
+  const [testingTsplPrinterId, setTestingTsplPrinterId] = useState<string | null>(null);
 
   const {
     isScanning,
@@ -95,10 +107,14 @@ export default function PrinterSettingsScreen(): ReactElement {
         name,
         host,
         port: port.trim() === "" ? undefined : Number(port),
+        labelWidthMm: labelWidthMm.trim() === "" ? undefined : Number(labelWidthMm),
+        labelLengthMm: labelLengthMm.trim() === "" ? undefined : Number(labelLengthMm),
       });
       setName("");
       setHost("");
       setPort("");
+      setLabelWidthMm("");
+      setLabelLengthMm("");
     } catch (error) {
       const message =
         error instanceof PrinterConfigValidationError
@@ -146,7 +162,18 @@ export default function PrinterSettingsScreen(): ReactElement {
     try {
       const captured = await captureSampleLabel();
       const decoded = decodeLabelBitmap(captured);
-      const rotated = rotatePixelsClockwise90(decoded.pixels, decoded.width, decoded.height);
+
+      const widthMm = printer.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM;
+      const lengthMm = printer.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM;
+      const scaled = scaleRgbaPixels(
+        decoded.pixels,
+        decoded.width,
+        decoded.height,
+        mmToDots(lengthMm, ARREGLO_LABEL_DPI),
+        mmToDots(widthMm, ARREGLO_LABEL_DPI),
+      );
+
+      const rotated = rotatePixelsClockwise90(scaled.pixels, scaled.width, scaled.height);
       const bitmap = toMonochromeBitmap(rotated.pixels, rotated.width, rotated.height);
       const job = resolveLabelRenderer("escpos-bitimage").render(bitmap, printer);
       await labelPrinterRepository.printLabelJob(printer, job);
@@ -159,6 +186,32 @@ export default function PrinterSettingsScreen(): ReactElement {
       );
     } finally {
       setTestingAlternateImagePrinterId(null);
+    }
+  };
+
+  /**
+   * Diagnóstico de spike: manda un script TSPL mínimo (sin pasar por
+   * `PrintRenderer`/el registro de protocolos) para verificar si "modo
+   * etiqueta" entiende TSPL antes de invertir en construir un renderer TSPL
+   * completo. Ver `buildTsplTextTestJob`.
+   */
+  const handleTestTspl = async (printer: PrinterTarget): Promise<void> => {
+    setTestingTsplPrinterId(printer.id);
+    try {
+      const job = buildTsplTextTestJob(["PRUEBA TSPL", printer.name], {
+        widthMm: printer.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
+        heightMm: printer.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
+      });
+      await labelPrinterRepository.printLabelJob(printer, job);
+    } catch (error) {
+      Alert.alert(
+        "No se pudo enviar la prueba",
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado. Intenta de nuevo.",
+      );
+    } finally {
+      setTestingTsplPrinterId(null);
     }
   };
 
@@ -233,6 +286,18 @@ export default function PrinterSettingsScreen(): ReactElement {
                   <ActivityIndicator color={colors.primary} size="small" />
                 ) : (
                   <Text style={styles.testButtonText}>Img. alterna</Text>
+                )}
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Enviar prueba TSPL a ${item.name}`}
+                style={styles.testButton}
+                onPress={() => void handleTestTspl(item)}
+                disabled={testingTsplPrinterId === item.id}
+              >
+                {testingTsplPrinterId === item.id ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <Text style={styles.testButtonText}>Probar TSPL</Text>
                 )}
               </Pressable>
               <Pressable
@@ -344,6 +409,24 @@ export default function PrinterSettingsScreen(): ReactElement {
           keyboardType="numeric"
           value={port}
           onChangeText={setPort}
+        />
+        <TextInput
+          accessibilityLabel="Ancho de etiqueta (mm)"
+          style={styles.input}
+          placeholder={`${DEFAULT_LABEL_WIDTH_MM} (por defecto)`}
+          placeholderTextColor={colors.textPlaceholder}
+          keyboardType="numeric"
+          value={labelWidthMm}
+          onChangeText={setLabelWidthMm}
+        />
+        <TextInput
+          accessibilityLabel="Largo de etiqueta (mm)"
+          style={styles.input}
+          placeholder={`${DEFAULT_LABEL_LENGTH_MM} (por defecto)`}
+          placeholderTextColor={colors.textPlaceholder}
+          keyboardType="numeric"
+          value={labelLengthMm}
+          onChangeText={setLabelLengthMm}
         />
         <Pressable
           accessibilityLabel="Guardar impresora"
