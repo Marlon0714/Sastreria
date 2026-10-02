@@ -61,8 +61,20 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
             resizeMode="contain"
           />
           <View style={styles.headerTitle}>
-            <Text style={styles.businessName}>{BUSINESS_NAME}</Text>
-            <Text style={styles.businessSubtitle}>{BUSINESS_SUBTITLE}</Text>
+            <Text
+              style={styles.businessName}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {BUSINESS_NAME}
+            </Text>
+            <Text
+              style={styles.businessSubtitle}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {BUSINESS_SUBTITLE}
+            </Text>
           </View>
           <Image
             source={require("../../../../assets/label/emblema-monograma.png")}
@@ -167,33 +179,34 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   header: {
+    height: 110,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
   },
   headerIcon: {
-    width: 76,
-    height: 76,
+    width: 110,
+    height: 110,
   },
   headerTitle: {
     flex: 1,
     alignItems: "center",
   },
   headerEmblem: {
-    width: 84,
-    height: 84,
+    width: 102,
+    height: 102,
   },
   businessName: {
-    fontSize: 28,
-    lineHeight: 32,
+    fontSize: 36,
+    lineHeight: 42,
     fontWeight: "700",
     color: "#000000",
     textAlign: "center",
   },
   businessSubtitle: {
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 24,
+    lineHeight: 28,
     fontWeight: "700",
     color: "#000000",
     letterSpacing: 0,
