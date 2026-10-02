@@ -8,12 +8,9 @@ const mockCaptureRef = jest.fn<(...args: unknown[]) => Promise<string>>(
   async () => "captured-png",
 );
 
-jest.mock(
-  "react-native-view-shot",
-  () => ({
-    captureRef: (...args: unknown[]) => mockCaptureRef(...args),
-  }),
-);
+jest.mock("react-native-view-shot", () => ({
+  captureRef: (...args: unknown[]) => mockCaptureRef(...args),
+}));
 
 describe("useArregloLabelCapture", () => {
   it("captura al doble del layout para conservar detalle antes del escalado final", async () => {
