@@ -1,9 +1,19 @@
 import { forwardRef } from "react";
-import { Image, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import {
+  Image,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
 
 import { formatPrice } from "../../pricing/domain/strings";
 import { formatDateForDisplay } from "../../schedule/domain/dateUtils";
-import { ARREGLO_LABEL_WIDTH_PX, type ArregloLabelData } from "../domain/types";
+import {
+  ARREGLO_LABEL_CANVAS_HEIGHT_PX,
+  ARREGLO_LABEL_CANVAS_WIDTH_PX,
+  type ArregloLabelData,
+} from "../domain/types";
 
 interface ArregloLabelViewProps {
   label: ArregloLabelData;
@@ -25,8 +35,8 @@ function Divider(): React.ReactElement {
 /**
  * Vista puramente presentacional de la etiqueta de arreglo — se captura con
  * `react-native-view-shot` (`useArregloLabelCapture`) para convertirla en un
- * bitmap que termina impreso. Ancho fijo en `ARREGLO_LABEL_WIDTH_PX` para
- * que coincida con el ancho de impresión asumido por `escposRaster.ts`.
+ * bitmap que termina impreso. Lienzo fijo en dots (ver
+ * `ARREGLO_LABEL_CANVAS_WIDTH_PX`) con la proporción física de la etiqueta.
  *
  * Layout diseñado en Figma por el dueño (logo + líneas divisorias + caja de
  * saldo), con los dos íconos exportados como PNG en `assets/label/`.
@@ -38,15 +48,22 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
     const hasTotalRow = label.price != null || label.abono != null;
 
     return (
-      <View ref={ref} style={styles.container} collapsable={false} onLayout={onLayout}>
+      <View
+        ref={ref}
+        style={styles.container}
+        collapsable={false}
+        onLayout={onLayout}
+      >
         <View style={styles.header}>
-          {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
-          <Image source={require("../../../../assets/label/icono-tijeras.png")} style={styles.headerIcon} resizeMode="contain" />
+          <Image
+            source={require("../../../../assets/label/icono-tijeras.png")}
+            style={styles.headerIcon}
+            resizeMode="contain"
+          />
           <View style={styles.headerTitle}>
             <Text style={styles.businessName}>{BUSINESS_NAME}</Text>
             <Text style={styles.businessSubtitle}>{BUSINESS_SUBTITLE}</Text>
           </View>
-          {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
           <Image
             source={require("../../../../assets/label/emblema-monograma.png")}
             style={styles.headerEmblem}
@@ -55,16 +72,35 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
         </View>
         <Divider />
 
-        <Text style={styles.sectionLabel}>CLIENTE</Text>
-        <Text style={styles.clientName}>{label.clientName}</Text>
-        {label.clientPhone ? <Text style={styles.text}>Tel. {label.clientPhone}</Text> : null}
+        <View>
+          <Text style={styles.sectionLabel}>CLIENTE</Text>
+          <Text
+            style={styles.clientName}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {label.clientName}
+          </Text>
+          {label.clientPhone ? (
+            <Text style={styles.text} numberOfLines={1} adjustsFontSizeToFit>
+              Tel. {label.clientPhone}
+            </Text>
+          ) : null}
+        </View>
 
         {label.date ? (
           <>
             <Divider />
             <View style={styles.row}>
               <Text style={styles.sectionLabel}>ENTREGA</Text>
-              <Text style={styles.rowValue}>{formatDateForDisplay(label.date)}</Text>
+              <Text
+                style={styles.rowValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {formatDateForDisplay(label.date)}
+              </Text>
             </View>
           </>
         ) : null}
@@ -76,7 +112,13 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
               {label.price != null ? (
                 <View style={styles.amountColumn}>
                   <Text style={styles.sectionLabel}>Total</Text>
-                  <Text style={styles.amountValue}>{formatPrice(label.price)}</Text>
+                  <Text
+                    style={styles.amountValue}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {formatPrice(label.price)}
+                  </Text>
                 </View>
               ) : null}
               {label.price != null && label.abono != null ? (
@@ -85,7 +127,13 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
               {label.abono != null ? (
                 <View style={styles.amountColumn}>
                   <Text style={styles.sectionLabel}>Abono</Text>
-                  <Text style={styles.amountValue}>{formatPrice(label.abono)}</Text>
+                  <Text
+                    style={styles.amountValue}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {formatPrice(label.abono)}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -95,7 +143,13 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
         {label.saldo != null ? (
           <View style={styles.saldoBox}>
             <Text style={styles.saldoLabel}>SALDO</Text>
-            <Text style={styles.saldoValue}>{formatPrice(label.saldo)}</Text>
+            <Text
+              style={styles.saldoValue}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {formatPrice(label.saldo)}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -105,69 +159,74 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
 
 const styles = StyleSheet.create({
   container: {
-    width: ARREGLO_LABEL_WIDTH_PX,
+    width: ARREGLO_LABEL_CANVAS_WIDTH_PX,
+    height: ARREGLO_LABEL_CANVAS_HEIGHT_PX,
     backgroundColor: "#ffffff",
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    justifyContent: "space-between",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
-    paddingBottom: 4,
   },
   headerIcon: {
-    width: 36,
-    height: 36,
+    width: 76,
+    height: 76,
   },
   headerTitle: {
     flex: 1,
     alignItems: "center",
   },
   headerEmblem: {
-    width: 44,
-    height: 44,
+    width: 84,
+    height: 84,
   },
   businessName: {
-    fontSize: 18,
+    fontSize: 28,
+    lineHeight: 32,
     fontWeight: "700",
     color: "#000000",
     textAlign: "center",
   },
   businessSubtitle: {
-    fontSize: 12,
+    fontSize: 16,
+    lineHeight: 20,
     fontWeight: "700",
     color: "#000000",
-    letterSpacing: 1,
+    letterSpacing: 0,
     textAlign: "center",
   },
   divider: {
-    height: 2,
+    height: 3,
     backgroundColor: "#000000",
-    marginVertical: 6,
   },
   verticalDivider: {
-    width: 2,
+    width: 3,
     alignSelf: "stretch",
     backgroundColor: "#000000",
-    marginHorizontal: 8,
+    marginHorizontal: 12,
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: 15,
+    lineHeight: 18,
     fontWeight: "700",
     color: "#000000",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   clientName: {
-    fontSize: 20,
+    fontSize: 38,
+    lineHeight: 44,
     fontWeight: "700",
     color: "#000000",
   },
   text: {
-    fontSize: 14,
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: "700",
     color: "#000000",
   },
   row: {
@@ -176,15 +235,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   rowValue: {
-    fontSize: 18,
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 22,
+    lineHeight: 26,
     fontWeight: "700",
     color: "#000000",
+    textAlign: "right",
   },
   amountColumn: {
     flex: 1,
   },
   amountValue: {
-    fontSize: 18,
+    fontSize: 26,
+    lineHeight: 30,
     fontWeight: "700",
     color: "#000000",
   },
@@ -192,21 +256,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: "#000000",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginTop: 8,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
   },
   saldoLabel: {
-    fontSize: 14,
+    fontSize: 22,
+    lineHeight: 26,
     fontWeight: "700",
     color: "#000000",
     textTransform: "uppercase",
   },
   saldoValue: {
-    fontSize: 26,
+    flex: 1,
+    marginLeft: 12,
+    textAlign: "right",
+    fontSize: 42,
+    lineHeight: 48,
     fontWeight: "700",
     color: "#000000",
   },

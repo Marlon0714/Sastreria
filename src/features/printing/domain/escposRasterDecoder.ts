@@ -11,9 +11,17 @@ const RASTER_HEADER_PREFIX = [0x1d, 0x76, 0x30, 0x00];
 /** `ESC J n` antes del corte (ver `ESC_FEED_BEFORE_CUT` en `escposRaster.ts`) — 3 bytes, el valor de `n` no importa para reconstruir el bitmap. */
 const ESC_FEED_BEFORE_CUT_LENGTH = 3;
 const GS_CUT_PARTIAL_LENGTH = 4;
-const MIN_JOB_LENGTH = ESC_INIT_BYTES.length + 8 + ESC_FEED_BEFORE_CUT_LENGTH + GS_CUT_PARTIAL_LENGTH;
+const MIN_JOB_LENGTH =
+  ESC_INIT_BYTES.length +
+  8 +
+  ESC_FEED_BEFORE_CUT_LENGTH +
+  GS_CUT_PARTIAL_LENGTH;
 
-function matchesBytes(job: Uint8Array, offset: number, expected: number[]): boolean {
+function matchesBytes(
+  job: Uint8Array,
+  offset: number,
+  expected: number[],
+): boolean {
   return expected.every((byte, index) => job[offset + index] === byte);
 }
 
@@ -29,7 +37,7 @@ function matchesBytes(job: Uint8Array, offset: number, expected: number[]): bool
  * `bytesPerRow` y `height` (ver `escposRaster.ts`). Este decoder solo puede
  * reconstruir `width = bytesPerRow * 8`, que coincide con el ancho original
  * únicamente cuando ese ancho ya era múltiplo de 8 — el caso real de
- * producción (`ARREGLO_LABEL_WIDTH_PX = 384 = 48 * 8`, ver `types.ts`). Para
+ * de una etiqueta de 400 dots de ancho tras rotar. Para
  * un ancho que no sea múltiplo de 8, el valor original se pierde (los bits de
  * relleno del último byte de cada fila ya quedan en 0 desde `toMonochromeBitmap`
  * y son indistinguibles de columnas reales en blanco).
@@ -46,7 +54,9 @@ export function decodeEscPosLabelJob(job: Uint8Array): MonochromeBitmap {
   }
 
   if (!matchesBytes(job, 2, RASTER_HEADER_PREFIX)) {
-    throw new EscPosJobFormatError("Header GS v 0 inválido o modo m distinto de 0.");
+    throw new EscPosJobFormatError(
+      "Header GS v 0 inválido o modo m distinto de 0.",
+    );
   }
 
   const bytesPerRow = job[6]! | (job[7]! << 8);
@@ -105,7 +115,9 @@ export function decodeEscPosBitImageJob(job: Uint8Array): MonochromeBitmap {
 
   function expect(expected: number[], label: string): void {
     if (!matchesBytes(job, offset, expected)) {
-      throw new EscPosBitImageJobFormatError(`${label} inválido en offset ${offset}.`);
+      throw new EscPosBitImageJobFormatError(
+        `${label} inválido en offset ${offset}.`,
+      );
     }
     offset += expected.length;
   }
@@ -130,7 +142,9 @@ export function decodeEscPosBitImageJob(job: Uint8Array): MonochromeBitmap {
     if (bands.length === 0) {
       width = bandWidth;
     } else if (bandWidth !== width) {
-      throw new EscPosBitImageJobFormatError("Ancho inconsistente entre franjas.");
+      throw new EscPosBitImageJobFormatError(
+        "Ancho inconsistente entre franjas.",
+      );
     }
 
     if (job.length < offset + bandWidth + 1) {
@@ -140,7 +154,9 @@ export function decodeEscPosBitImageJob(job: Uint8Array): MonochromeBitmap {
     offset += bandWidth;
 
     if (job[offset] !== 0x0a) {
-      throw new EscPosBitImageJobFormatError("Falta el salto de línea después de una franja.");
+      throw new EscPosBitImageJobFormatError(
+        "Falta el salto de línea después de una franja.",
+      );
     }
     offset += 1;
 

@@ -1,29 +1,7 @@
-import { mmToDots, type PaperSize } from "./paperSize";
+import { mmToDots } from "./paperSize";
 
-/**
- * Papel adhesivo de etiqueta: rollos de 58mm traen típicamente 48mm de área
- * imprimible real (el resto es margen mecánico del cabezal) — la convención
- * más común en impresoras térmicas de etiquetas WiFi económicas. El papel de
- * recibo (cuando exista `ReceiptData`) va a tener su propio `PaperSize`
- * distinto — por eso esto vive acá, específico de la etiqueta, y no como una
- * constante global.
- */
-export const ARREGLO_LABEL_PAPER: PaperSize = { widthMm: 48 };
-
-/** DPI asumido para la etiqueta — ver `ARREGLO_LABEL_PAPER`. */
+/** DPI asumido para la etiqueta (203 DPI = 8 dots/mm). */
 export const ARREGLO_LABEL_DPI = 203;
-
-/**
- * Ancho fijo (en píxeles) con el que se renderiza y captura
- * `ArregloLabelView`. Se deriva de `ARREGLO_LABEL_PAPER`/`ARREGLO_LABEL_DPI`
- * vía `mmToDots` (ver `paperSize.ts`) en vez de ser un número mágico —
- * 384px coincide con `bytesPerRow = 48` exacto (384 / 8), sin relleno de
- * bits sobrantes.
- */
-export const ARREGLO_LABEL_WIDTH_PX = mmToDots(
-  ARREGLO_LABEL_PAPER.widthMm,
-  ARREGLO_LABEL_DPI,
-);
 
 /**
  * Medida física real de la etiqueta adhesiva (confirmada con el dueño),
@@ -32,6 +10,21 @@ export const ARREGLO_LABEL_WIDTH_PX = mmToDots(
  */
 export const DEFAULT_LABEL_WIDTH_MM = 50;
 export const DEFAULT_LABEL_LENGTH_MM = 70;
+
+/**
+ * Lienzo (en dots, antes de rotar) con el que se diseña y captura
+ * `ArregloLabelView`: el tamaño físico por defecto en landscape, para que 1
+ * punto de layout sea 1 dot impreso y el escalado final no deforme ni
+ * ablande el texto.
+ */
+export const ARREGLO_LABEL_CANVAS_WIDTH_PX = mmToDots(
+  DEFAULT_LABEL_LENGTH_MM,
+  ARREGLO_LABEL_DPI,
+);
+export const ARREGLO_LABEL_CANVAS_HEIGHT_PX = mmToDots(
+  DEFAULT_LABEL_WIDTH_MM,
+  ARREGLO_LABEL_DPI,
+);
 
 /**
  * Datos crudos (sin formatear) de una etiqueta de arreglo. El formateo de

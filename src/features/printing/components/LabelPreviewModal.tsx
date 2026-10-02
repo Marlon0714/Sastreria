@@ -34,8 +34,8 @@ interface LabelPreviewModalProps {
  * (`PrintArregloLabelButton`, con `onConfirm`). Mismo patrón visual de modal
  * que `OfflineActorPickerModal`.
  *
- * `ArregloLabelView` tiene ancho fijo en `ARREGLO_LABEL_WIDTH_PX` (384,
- * pensado como puntos físicos de impresora, no como tamaño de pantalla), así
+ * `ArregloLabelView` tiene lienzo fijo en `ARREGLO_LABEL_CANVAS_WIDTH_PX`
+ * (pensado como puntos físicos de impresora, no como tamaño de pantalla), así
  * que se envuelve en un `ScrollView` horizontal para que nunca se recorte en
  * pantallas angostas, en vez de escalarla.
  */
@@ -50,7 +50,12 @@ export function LabelPreviewModal({
   const isConfirmMode = onConfirm != null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
         <View style={styles.card}>
           <Text style={styles.title}>
@@ -60,7 +65,10 @@ export function LabelPreviewModal({
             <Text style={styles.subtitle}>Se enviará a: {targetName}</Text>
           ) : null}
 
-          <ScrollView horizontal contentContainerStyle={styles.previewScrollContent}>
+          <ScrollView
+            horizontal
+            contentContainerStyle={styles.previewScrollContent}
+          >
             <ArregloLabelView label={label} />
           </ScrollView>
 
@@ -76,7 +84,11 @@ export function LabelPreviewModal({
               </TouchableOpacity>
               <TouchableOpacity
                 accessibilityLabel="Confirmar impresión"
-                style={[styles.button, styles.confirmButton, isConfirming && styles.buttonDisabled]}
+                style={[
+                  styles.button,
+                  styles.confirmButton,
+                  isConfirming && styles.buttonDisabled,
+                ]}
                 onPress={onConfirm}
                 disabled={isConfirming}
               >
@@ -88,7 +100,11 @@ export function LabelPreviewModal({
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity accessibilityLabel="Cerrar" style={styles.closeButton} onPress={onClose}>
+            <TouchableOpacity
+              accessibilityLabel="Cerrar"
+              style={styles.closeButton}
+              onPress={onClose}
+            >
               <Text style={styles.closeButtonText}>Cerrar</Text>
             </TouchableOpacity>
           )}

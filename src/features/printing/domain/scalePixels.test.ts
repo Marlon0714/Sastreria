@@ -14,7 +14,13 @@ function build2x2Pixels(): Uint8Array {
 
 describe("scaleRgbaPixels", () => {
   it("agranda 2x2 a 4x4 duplicando cada píxel en un bloque de 2x2 (vecino más cercano exacto)", () => {
-    const { pixels, width, height } = scaleRgbaPixels(build2x2Pixels(), 2, 2, 4, 4);
+    const { pixels, width, height } = scaleRgbaPixels(
+      build2x2Pixels(),
+      2,
+      2,
+      4,
+      4,
+    );
 
     expect(width).toBe(4);
     expect(height).toBe(4);
@@ -32,7 +38,7 @@ describe("scaleRgbaPixels", () => {
     expect(rAt(3, 3)).toBe(4);
   });
 
-  it("achica 4x4 a 2x2 tomando una muestra por bloque", () => {
+  it("achica 4x4 a 2x2 promediando cada bloque de 2x2", () => {
     const pixels = new Uint8Array(4 * 4 * 4);
     for (let i = 0; i < 16; i += 1) {
       pixels[i * 4] = i + 1;
@@ -43,6 +49,22 @@ describe("scaleRgbaPixels", () => {
     expect(result.width).toBe(2);
     expect(result.height).toBe(2);
     expect(result.pixels.length).toBe(2 * 2 * 4);
+    expect(result.pixels[0]).toBe(4);
+    expect(result.pixels[4]).toBe(6);
+    expect(result.pixels[8]).toBe(12);
+    expect(result.pixels[12]).toBe(14);
+  });
+
+  it("pondera los píxeles parciales cuando la razón no es entera (3 -> 2)", () => {
+    const pixels = new Uint8Array(3 * 4);
+    pixels[0] = 0;
+    pixels[4] = 90;
+    pixels[8] = 180;
+
+    const result = scaleRgbaPixels(pixels, 3, 1, 2, 1);
+
+    expect(result.pixels[0]).toBe(30);
+    expect(result.pixels[4]).toBe(150);
   });
 
   it("funciona con 1x1 -> 1x1 (identidad)", () => {
