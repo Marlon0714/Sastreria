@@ -1,6 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
 import type { Client } from "../../clients/domain/types";
@@ -44,10 +51,17 @@ export function PrintArregloLabelButton({
 }: PrintArregloLabelButtonProps): ReactElement | null {
   const clientRepository = useClientRepository();
   const printers = usePrinterSettingsStore((state) => state.printers);
+  const defaultPrinterId = usePrinterSettingsStore(
+    (state) => state.defaultPrinterId,
+  );
   const { viewRef, onLayout, capture } = useArregloLabelCapture();
   const { isPrinting, printLabel } = usePrintArregloLabel();
-  const [resolvedClient, setResolvedClient] = useState<Client | null>(client ?? null);
-  const [pendingTarget, setPendingTarget] = useState<PrinterTarget | null>(null);
+  const [resolvedClient, setResolvedClient] = useState<Client | null>(
+    client ?? null,
+  );
+  const [pendingTarget, setPendingTarget] = useState<PrinterTarget | null>(
+    null,
+  );
 
   useEffect(() => {
     if (client) {
@@ -72,7 +86,8 @@ export function PrintArregloLabelButton({
           JSON.stringify({
             level: "error",
             service: "PrintArregloLabelButton",
-            message: "No se pudo resolver el cliente para la etiqueta de arreglo",
+            message:
+              "No se pudo resolver el cliente para la etiqueta de arreglo",
             error: error instanceof Error ? error.message : String(error),
           }),
         );
@@ -94,9 +109,10 @@ export function PrintArregloLabelButton({
   const contact = resolveClientContact(schedule, clientsById);
   const label = buildArregloLabelData(schedule, contact);
 
-  const printToTarget = async (target: PrinterTarget): Promise<void> => {
+  const printToTarget = async (target: PrinterTarget): Promise<boolean> => {
     try {
       await printLabel({ capture, target });
+      return true;
     } catch (error) {
       Alert.alert(
         "No se pudo imprimir",
@@ -112,7 +128,22 @@ export function PrintArregloLabelButton({
           error: error instanceof Error ? error.message : String(error),
         }),
       );
+      return false;
     }
+  };
+
+  const choosePrinter = (): void => {
+    Alert.alert(
+      "Elegir impresora",
+      "¿En cuál impresora deseas imprimir esta etiqueta?",
+      [
+        ...printers.map((printer) => ({
+          text: printer.name,
+          onPress: () => setPendingTarget(printer),
+        })),
+        { text: "Cancelar", style: "cancel" as const },
+      ],
+    );
   };
 
   const handlePrintPress = (): void => {
@@ -124,26 +155,47 @@ export function PrintArregloLabelButton({
       return;
     }
 
-    if (printers.length === 1) {
-      setPendingTarget(printers[0]!);
+    const preferred = printers.find(
+      (printer) => printer.id === defaultPrinterId,
+    );
+    if (preferred || printers.length === 1) {
+      setPendingTarget(preferred ?? printers[0]!);
       return;
     }
 
-    Alert.alert("Elegir impresora", "¿En cuál impresora deseas imprimir esta etiqueta?", [
-      ...printers.map((printer) => ({
-        text: printer.name,
-        onPress: () => setPendingTarget(printer),
-      })),
-      { text: "Cancelar", style: "cancel" as const },
-    ]);
+    choosePrinter();
   };
 
   const handleConfirmPrint = async (): Promise<void> => {
     if (!pendingTarget) {
       return;
     }
-    await printToTarget(pendingTarget);
-    setPendingTarget(null);
+    const current = usePrinterSettingsStore
+      .getState()
+      .printers.find((printer) => printer.id === pendingTarget.id);
+    if (!current) {
+      setPendingTarget(null);
+      Alert.alert(
+        "Impresora no disponible",
+        "La impresora ya no está configurada en este dispositivo.",
+      );
+      return;
+    }
+    if (
+      current.host !== pendingTarget.host ||
+      current.port !== pendingTarget.port ||
+      current.protocol !== pendingTarget.protocol ||
+      current.labelWidthMm !== pendingTarget.labelWidthMm ||
+      current.labelLengthMm !== pendingTarget.labelLengthMm
+    ) {
+      setPendingTarget(current);
+      Alert.alert(
+        "Configuración actualizada",
+        "Revisa la impresora y confirma de nuevo antes de enviar.",
+      );
+      return;
+    }
+    if (await printToTarget(current)) setPendingTarget(null);
   };
 
   if (schedule.category !== "arreglo") {
@@ -178,6 +230,7 @@ export function PrintArregloLabelButton({
         targetName={pendingTarget?.name}
         isConfirming={isPrinting}
         onConfirm={handleConfirmPrint}
+        onChooseTarget={printers.length > 1 ? choosePrinter : undefined}
         onClose={() => {
           if (!isPrinting) {
             setPendingTarget(null);

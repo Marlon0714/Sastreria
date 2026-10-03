@@ -3,29 +3,29 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 
 import { colors } from "../../../shared/theme/colors";
-import { usePrinterSettingsStore } from "../../../shared/state/printerSettingsStore";
+import { PinPromptModal } from "../../auth/components/PinPromptModal";
+import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
+import { ReauthStep } from "../../account/components/ReauthStep";
 import { ArregloLabelView } from "../components/ArregloLabelView";
 import { LabelPreviewModal } from "../components/LabelPreviewModal";
-import { buildEscPosTextTestJob } from "../domain/escposRaster";
-import { prepareArregloLabelBitmap } from "../domain/prepareLabelBitmap";
 import {
-  DEFAULT_LABEL_PRINTER_PORT,
-  PrinterConfigValidationError,
+  printerFormSchema,
+  type PrinterFormInput,
+  type CreatePrinterConfigOutput,
 } from "../domain/printerConfig";
-import {
-  DEFAULT_PRINT_PROTOCOL,
-  resolveLabelRenderer,
-} from "../domain/printRenderer";
-import { buildTsplTextTestJob } from "../domain/tsplTextTestJob";
+import { DEFAULT_PRINT_PROTOCOL } from "../domain/printRenderer";
 import {
   DEFAULT_LABEL_LENGTH_MM,
   DEFAULT_LABEL_WIDTH_MM,
@@ -33,588 +33,656 @@ import {
   type PrintProtocol,
   type PrinterTarget,
 } from "../domain/types";
-import {
-  useLabelBitmapDecoder,
-  useLabelPrinterRepository,
-} from "../hooks/PrintingDependenciesProvider";
 import { useArregloLabelCapture } from "../hooks/useArregloLabelCapture";
 import { usePrinterDiscovery } from "../hooks/usePrinterDiscovery";
+import { usePrinterManagement } from "../hooks/usePrinterManagement";
 
+const SAMPLE_LABEL: ArregloLabelData = { clientName: "PRUEBA DE IMPRESION" };
 const PROTOCOL_OPTIONS: { value: PrintProtocol; label: string }[] = [
   { value: "tspl-bitmap", label: "TSPL" },
   { value: "escpos-raster", label: "ESC/POS" },
   { value: "escpos-bitimage", label: "ESC *" },
 ];
-
-/**
- * Datos de ejemplo (no un turno/cliente real) para el botón "Ver diseño de
- * etiqueta" — permite revisar cómo se ve la etiqueta sin depender de un
- * turno existente.
- */
-const SAMPLE_ARREGLO_LABEL: ArregloLabelData = {
-  clientName: "Ana Torres",
-  clientPhone: "3001234567",
-  date: "2026-09-29",
-  price: 50000,
-  abono: 20000,
-  saldo: 30000,
+const EMPTY_FORM: PrinterFormInput = {
+  name: "",
+  host: "",
+  port: "9100",
+  labelWidthMm: "50",
+  labelLengthMm: "70",
+  protocol: "tspl-bitmap",
 };
+const INPUT_FIELDS = [
+  { name: "name", label: "Nombre de la impresora", numeric: false },
+  { name: "host", label: "Dirección IP de la impresora", numeric: false },
+  { name: "port", label: "Puerto de la impresora", numeric: true },
+  { name: "labelWidthMm", label: "Ancho de etiqueta (mm)", numeric: true },
+  { name: "labelLengthMm", label: "Largo de etiqueta (mm)", numeric: true },
+] as const;
 
-/**
- * Primera pantalla de "ajustes" de la app (no existía ninguna hasta ahora):
- * lista + alta/baja de impresoras térmicas configuradas. Solo visible para el
- * dueño (ver fila "Impresoras" en `MyAccountScreen.tsx`).
- */
 export default function PrinterSettingsScreen(): ReactElement {
-  const printers = usePrinterSettingsStore((state) => state.printers);
-  const addPrinter = usePrinterSettingsStore((state) => state.addPrinter);
-  const updateProtocol = usePrinterSettingsStore(
-    (state) => state.updateProtocol,
-  );
-  const removePrinter = usePrinterSettingsStore((state) => state.removePrinter);
-  const labelPrinterRepository = useLabelPrinterRepository();
-  const decodeLabelBitmap = useLabelBitmapDecoder();
-  const {
-    viewRef: sampleLabelViewRef,
-    onLayout: sampleLabelOnLayout,
-    capture: captureSampleLabel,
-  } = useArregloLabelCapture();
-
-  const [name, setName] = useState("");
-  const [host, setHost] = useState("");
-  const [port, setPort] = useState("");
-  const [labelWidthMm, setLabelWidthMm] = useState("");
-  const [labelLengthMm, setLabelLengthMm] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null);
-  const [testingAlternateImagePrinterId, setTestingAlternateImagePrinterId] =
-    useState<string | null>(null);
-  const [testingTsplPrinterId, setTestingTsplPrinterId] = useState<
-    string | null
-  >(null);
-  const [testingTsplImagePrinterId, setTestingTsplImagePrinterId] = useState<
-    string | null
-  >(null);
-
-  const {
-    isScanning,
-    results: discoveredHosts,
-    error: discoveryError,
-    progress: scanProgress,
-    debugDetail: discoveryDebugDetail,
-    scan,
-  } = usePrinterDiscovery();
-  const [hasScanned, setHasScanned] = useState(false);
-  const [showLabelPreview, setShowLabelPreview] = useState(false);
-  const [updatingProtocolId, setUpdatingProtocolId] = useState<string | null>(
+  const { viewRef, onLayout, capture } = useArregloLabelCapture();
+  const management = usePrinterManagement(capture);
+  const discovery = usePrinterDiscovery();
+  const [editor, setEditor] = useState<{ id?: string } | null>(null);
+  const [recoveryPrinter, setRecoveryPrinter] = useState<PrinterTarget | null>(
     null,
   );
+  const [recoveryHost, setRecoveryHost] = useState("");
+  const [advanced, setAdvanced] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const form = useForm<PrinterFormInput, unknown, CreatePrinterConfigOutput>({
+    resolver: zodResolver(printerFormSchema),
+    defaultValues: EMPTY_FORM,
+  });
+  const disabled = management.isBusy || discovery.isScanning;
 
-  const handleProtocolChange = async (
-    printer: PrinterTarget,
-    protocol: PrintProtocol,
-  ): Promise<void> => {
-    setUpdatingProtocolId(printer.id);
-    try {
-      await updateProtocol(printer.id, protocol);
-    } catch {
-      console.error(
-        JSON.stringify({
-          level: "error",
-          service: "PrinterSettingsScreen",
-          message: "No se pudo guardar el protocolo de impresión",
-        }),
-      );
-      Alert.alert(
-        "No se pudo guardar",
-        "No se pudo guardar el protocolo de la impresora. Intenta de nuevo.",
-      );
-    } finally {
-      setUpdatingProtocolId(null);
+  const openEditor = async (printer?: PrinterTarget): Promise<void> => {
+    if (!management.canManage && !(await management.authorizeAdministration()))
+      return;
+    management.cancelRecovery();
+    setRecoveryPrinter(null);
+    setAdvanced(false);
+    form.reset(
+      printer
+        ? {
+            name: printer.name,
+            host: printer.host,
+            port: String(printer.port),
+            labelWidthMm: String(
+              printer.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
+            ),
+            labelLengthMm: String(
+              printer.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
+            ),
+            protocol: printer.protocol ?? DEFAULT_PRINT_PROTOCOL,
+          }
+        : EMPTY_FORM,
+    );
+    setEditor({ id: printer?.id });
+  };
+
+  const save = form.handleSubmit(async (values) => {
+    if (await management.savePrinter(values, editor?.id)) {
+      setEditor(null);
+      form.reset(EMPTY_FORM);
     }
-  };
+  });
 
-  const handleScan = async (): Promise<void> => {
-    await scan();
-    setHasScanned(true);
-  };
-
-  const handleSelectDiscoveredHost = (discoveredHost: string): void => {
-    setHost(discoveredHost);
-    setPort(String(DEFAULT_LABEL_PRINTER_PORT));
-  };
-
-  const handleAdd = async (): Promise<void> => {
-    setIsSaving(true);
-    try {
-      await addPrinter({
-        name,
-        host,
-        port: port.trim() === "" ? undefined : Number(port),
-        labelWidthMm:
-          labelWidthMm.trim() === "" ? undefined : Number(labelWidthMm),
-        labelLengthMm:
-          labelLengthMm.trim() === "" ? undefined : Number(labelLengthMm),
-      });
-      setName("");
-      setHost("");
-      setPort("");
-      setLabelWidthMm("");
-      setLabelLengthMm("");
-    } catch (error) {
-      const message =
-        error instanceof PrinterConfigValidationError
-          ? error.message
-          : "No se pudo guardar la impresora. Intenta de nuevo.";
-      Alert.alert("No se pudo guardar", message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleTestPrint = async (printer: PrinterTarget): Promise<void> => {
-    setTestingPrinterId(printer.id);
-    try {
-      const job = buildEscPosTextTestJob([
-        "PRUEBA DE IMPRESION",
-        printer.name,
-        `${printer.host}:${printer.port}`,
-        "Si esto se lee bien,",
-        "la conexion y la",
-        "impresora funcionan.",
-      ]);
-      await labelPrinterRepository.printLabelJob(printer, job);
-    } catch (error) {
-      Alert.alert(
-        "No se pudo enviar la prueba",
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error inesperado. Intenta de nuevo.",
-      );
-    } finally {
-      setTestingPrinterId(null);
-    }
-  };
-
-  /**
-   * Diagnóstico temporal: manda la etiqueta de ejemplo forzando el comando
-   * `ESC *` (bit-image) en vez del protocolo configurado en la impresora —
-   * para aislar si una impresora que imprime símbolos en vez de la imagen
-   * con `GS v 0` funciona mejor con este comando más viejo y universal. Ver
-   * `PrintProtocol`/`printRenderer.ts`.
-   */
-  const handleTestAlternateImage = async (
-    printer: PrinterTarget,
-  ): Promise<void> => {
-    setTestingAlternateImagePrinterId(printer.id);
-    try {
-      const captured = await captureSampleLabel();
-      const decoded = decodeLabelBitmap(captured);
-      const bitmap = prepareArregloLabelBitmap(decoded, printer);
-      const job = resolveLabelRenderer("escpos-bitimage").render(
-        bitmap,
-        printer,
-      );
-      await labelPrinterRepository.printLabelJob(printer, job);
-    } catch (error) {
-      Alert.alert(
-        "No se pudo enviar la prueba",
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error inesperado. Intenta de nuevo.",
-      );
-    } finally {
-      setTestingAlternateImagePrinterId(null);
-    }
-  };
-
-  /**
-   * Diagnóstico de spike: manda un script TSPL mínimo de solo texto (sin
-   * pasar por `PrintRenderer`/el registro de protocolos) para verificar si
-   * "modo etiqueta" entiende TSPL. Ya confirmado que sí — ver
-   * `handleTestTsplImage` para la prueba con la imagen real de la etiqueta.
-   */
-  const handleTestTspl = async (printer: PrinterTarget): Promise<void> => {
-    setTestingTsplPrinterId(printer.id);
-    try {
-      const job = buildTsplTextTestJob(["PRUEBA TSPL", printer.name], {
-        widthMm: printer.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
-        heightMm: printer.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
-      });
-      await labelPrinterRepository.printLabelJob(printer, job);
-    } catch (error) {
-      Alert.alert(
-        "No se pudo enviar la prueba",
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error inesperado. Intenta de nuevo.",
-      );
-    } finally {
-      setTestingTsplPrinterId(null);
-    }
-  };
-
-  /**
-   * Prueba la etiqueta de ejemplo real (no solo texto) codificada vía TSPL
-   * (`buildTsplBitmapJob`, comando `BITMAP`) — para confirmar que "modo
-   * etiqueta" imprime bien la imagen completa, no solo texto plano.
-   */
-  const handleTestTsplImage = async (printer: PrinterTarget): Promise<void> => {
-    setTestingTsplImagePrinterId(printer.id);
-    try {
-      const captured = await captureSampleLabel();
-      const decoded = decodeLabelBitmap(captured);
-      const bitmap = prepareArregloLabelBitmap(decoded, printer);
-      const job = resolveLabelRenderer("tspl-bitmap").render(bitmap, printer);
-      await labelPrinterRepository.printLabelJob(printer, job);
-    } catch (error) {
-      Alert.alert(
-        "No se pudo enviar la prueba",
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error inesperado. Intenta de nuevo.",
-      );
-    } finally {
-      setTestingTsplImagePrinterId(null);
-    }
-  };
-
-  const handleRemove = (printer: PrinterTarget): void => {
+  const remove = (printer: PrinterTarget): void => {
     Alert.alert(
       "Eliminar impresora",
-      `¿Seguro que deseas eliminar "${printer.name}"?`,
+      `¿Eliminar "${printer.name}" de este dispositivo?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
           text: "Eliminar",
           style: "destructive",
-          onPress: () => void removePrinter(printer.id),
+          onPress: () => {
+            void management.removePrinter(printer.id);
+          },
         },
       ],
     );
+  };
+
+  const confirmRecovery = (): void => {
+    Alert.alert(
+      "Confirmar impresora",
+      "¿La etiqueta de prueba salió en la impresora correcta?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+          onPress: management.cancelRecovery,
+        },
+        {
+          text: "Sí, guardar IP",
+          onPress: () => {
+            void management.confirmConnection().then((saved) => {
+              if (saved) setRecoveryPrinter(null);
+            });
+          },
+        },
+      ],
+    );
+  };
+
+  const scan = async (): Promise<void> => {
+    await discovery.scan();
+    setHasScanned(true);
+  };
+  const selectHost = (host: string): void => {
+    management.cancelRecovery();
+    if (recoveryPrinter) setRecoveryHost(host);
+    else form.setValue("host", host, { shouldValidate: true });
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.offscreen} pointerEvents="none">
         <ArregloLabelView
-          ref={sampleLabelViewRef}
-          label={SAMPLE_ARREGLO_LABEL}
-          onLayout={sampleLabelOnLayout}
+          ref={viewRef}
+          label={SAMPLE_LABEL}
+          onLayout={onLayout}
         />
       </View>
-
       <FlatList
-        data={printers}
+        data={management.printers}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={
-          printers.length === 0 ? styles.emptyContainer : styles.listContent
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Sin impresoras configuradas</Text>
-            <Text style={styles.emptySubtitle}>
-              Agrega la dirección IP y el puerto de cada impresora térmica de la
-              red WiFi del taller.
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.printerRow}>
-            <View style={styles.printerInfo}>
-              <Text style={styles.printerName}>{item.name}</Text>
-              <Text style={styles.printerAddress}>
-                {item.host}:{item.port}
-              </Text>
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View style={styles.section}>
+            <View style={styles.actions}>
+              {(management.canManage || management.canAuthorizeOwner) && (
+                <Pressable
+                  accessibilityLabel="Agregar impresora"
+                  style={styles.command}
+                  disabled={disabled}
+                  onPress={() => {
+                    void openEditor();
+                  }}
+                >
+                  <Ionicons
+                    name="add-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.commandText}>Agregar impresora</Text>
+                </Pressable>
+              )}
+              <Pressable
+                accessibilityLabel="Ver diseño de etiqueta"
+                style={styles.command}
+                onPress={() => setPreview(true)}
+              >
+                <Ionicons name="eye-outline" size={20} color={colors.primary} />
+                <Text style={styles.commandText}>Vista previa</Text>
+              </Pressable>
             </View>
-            <View style={styles.protocolOptions} accessibilityRole="radiogroup">
-              {PROTOCOL_OPTIONS.map((option) => {
-                const selected =
-                  (item.protocol ?? DEFAULT_PRINT_PROTOCOL) === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    accessibilityRole="radio"
-                    accessibilityLabel={`Usar ${option.label} en ${item.name}`}
-                    accessibilityState={{
-                      checked: selected,
-                      disabled: updatingProtocolId === item.id,
-                    }}
-                    style={[
-                      styles.protocolOption,
-                      selected && styles.protocolSelected,
-                    ]}
-                    disabled={updatingProtocolId === item.id}
-                    onPress={() =>
-                      void handleProtocolChange(item, option.value)
-                    }
-                  >
-                    <Text style={styles.testButtonText}>{option.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.printerActions}
-            >
-              <Pressable
-                accessibilityLabel={`Enviar prueba de texto a ${item.name}`}
-                style={styles.testButton}
-                onPress={() => void handleTestPrint(item)}
-                disabled={testingPrinterId === item.id}
-              >
-                {testingPrinterId === item.id ? (
-                  <ActivityIndicator color={colors.primary} size="small" />
-                ) : (
-                  <Text style={styles.testButtonText}>Probar</Text>
-                )}
-              </Pressable>
-              <Pressable
-                accessibilityLabel={`Enviar prueba de imagen alterna a ${item.name}`}
-                style={styles.testButton}
-                onPress={() => void handleTestAlternateImage(item)}
-                disabled={testingAlternateImagePrinterId === item.id}
-              >
-                {testingAlternateImagePrinterId === item.id ? (
-                  <ActivityIndicator color={colors.primary} size="small" />
-                ) : (
-                  <Text style={styles.testButtonText}>Img. alterna</Text>
-                )}
-              </Pressable>
-              <Pressable
-                accessibilityLabel={`Enviar prueba TSPL a ${item.name}`}
-                style={styles.testButton}
-                onPress={() => void handleTestTspl(item)}
-                disabled={testingTsplPrinterId === item.id}
-              >
-                {testingTsplPrinterId === item.id ? (
-                  <ActivityIndicator color={colors.primary} size="small" />
-                ) : (
-                  <Text style={styles.testButtonText}>Probar TSPL</Text>
-                )}
-              </Pressable>
-              <Pressable
-                accessibilityLabel={`Enviar prueba de imagen TSPL a ${item.name}`}
-                style={styles.testButton}
-                onPress={() => void handleTestTsplImage(item)}
-                disabled={testingTsplImagePrinterId === item.id}
-              >
-                {testingTsplImagePrinterId === item.id ? (
-                  <ActivityIndicator color={colors.primary} size="small" />
-                ) : (
-                  <Text style={styles.testButtonText}>Img. TSPL</Text>
-                )}
-              </Pressable>
-              <Pressable
-                accessibilityLabel={`Eliminar ${item.name}`}
-                style={styles.removeButton}
-                onPress={() => handleRemove(item)}
-              >
-                <Text style={styles.removeButtonText}>Eliminar</Text>
-              </Pressable>
-            </ScrollView>
-          </View>
-        )}
-      />
-
-      <View style={styles.previewCard}>
-        <Pressable
-          accessibilityLabel="Ver diseño de etiqueta"
-          style={styles.previewButton}
-          onPress={() => setShowLabelPreview(true)}
-        >
-          <Text style={styles.previewButtonText}>Ver diseño de etiqueta</Text>
-        </Pressable>
-      </View>
-
-      <LabelPreviewModal
-        visible={showLabelPreview}
-        label={SAMPLE_ARREGLO_LABEL}
-        onClose={() => setShowLabelPreview(false)}
-      />
-
-      <View style={styles.discoveryCard}>
-        <Pressable
-          accessibilityLabel="Buscar impresoras en la red"
-          style={[
-            styles.searchButton,
-            isScanning && styles.searchButtonDisabled,
-          ]}
-          onPress={() => void handleScan()}
-          disabled={isScanning}
-        >
-          {isScanning ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <Text style={styles.searchButtonText}>Buscar en la red</Text>
-          )}
-        </Pressable>
-
-        {isScanning && scanProgress && (
-          <Text style={styles.discoveryHint}>
-            Buscando… revisadas {scanProgress.checked} de {scanProgress.total}{" "}
-            direcciones
-          </Text>
-        )}
-
-        {discoveryError && (
-          <>
-            <Text style={styles.discoveryError}>{discoveryError}</Text>
-            {/* Detalle técnico temporal para depurar builds preview/producción
-                sin acceso a Metro — quitar una vez verificado en hardware real. */}
-            {discoveryDebugDetail && (
-              <Text style={styles.discoveryDebugDetail}>
-                Detalle técnico: {discoveryDebugDetail}
+            {management.error && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {management.error}
               </Text>
             )}
-          </>
+            {management.isBusy && (
+              <ActivityIndicator accessibilityLabel="Operación de impresora en curso" />
+            )}
+          </View>
+        }
+        ListEmptyComponent={
+          <Text style={styles.empty}>Sin impresoras configuradas</Text>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.printer}>
+            <View style={styles.heading}>
+              <View style={styles.info}>
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.detail}>
+                  {item.host}:{item.port}
+                </Text>
+                <Text style={styles.detail}>
+                  {item.protocol ?? DEFAULT_PRINT_PROTOCOL} ·{" "}
+                  {item.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM} ×{" "}
+                  {item.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM} mm
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityLabel={`Predeterminada ${item.name}`}
+                accessibilityState={{
+                  checked: management.defaultPrinterId === item.id,
+                  disabled,
+                }}
+                disabled={disabled}
+                style={styles.iconButton}
+                onPress={() => {
+                  void management.setDefaultPrinter(item.id);
+                }}
+              >
+                <Ionicons
+                  name={
+                    management.defaultPrinterId === item.id
+                      ? "star"
+                      : "star-outline"
+                  }
+                  size={24}
+                  color={colors.primary}
+                />
+              </Pressable>
+            </View>
+            {management.defaultPrinterId === item.id && (
+              <Text style={styles.detail}>Predeterminada</Text>
+            )}
+            {management.testResult &&
+              management.testResult.printerId === item.id && (
+                <Text style={styles.detail}>
+                  {management.testResult.status === "sent"
+                    ? "Prueba enviada"
+                    : "No se pudo enviar la prueba"}
+                </Text>
+              )}
+            <View style={styles.actions}>
+              <Pressable
+                accessibilityLabel={`Imprimir prueba en ${item.name}`}
+                style={styles.command}
+                disabled={disabled}
+                onPress={() => {
+                  void management.sendTest(item);
+                }}
+              >
+                <Ionicons
+                  name="print-outline"
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={styles.commandText}>Probar</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Resolver conexión de ${item.name}`}
+                style={styles.command}
+                disabled={disabled}
+                onPress={() => {
+                  setEditor(null);
+                  management.cancelAdministration();
+                  management.cancelRecovery();
+                  setRecoveryPrinter(item);
+                  setRecoveryHost(item.host);
+                }}
+              >
+                <Ionicons
+                  name="wifi-outline"
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={styles.commandText}>Conexión</Text>
+              </Pressable>
+              {(management.canManage || management.canAuthorizeOwner) && (
+                <Pressable
+                  accessibilityLabel={`Editar ${item.name}`}
+                  style={styles.iconButton}
+                  disabled={disabled}
+                  onPress={() => {
+                    void openEditor(item);
+                  }}
+                >
+                  <Ionicons
+                    name="create-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                </Pressable>
+              )}
+              {management.canManage && (
+                <Pressable
+                  accessibilityLabel={`Eliminar ${item.name}`}
+                  style={styles.iconButton}
+                  disabled={disabled}
+                  onPress={() => remove(item)}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={20}
+                    color={colors.danger}
+                  />
+                </Pressable>
+              )}
+            </View>
+          </View>
         )}
-
-        {!isScanning &&
-          !discoveryError &&
-          hasScanned &&
-          discoveredHosts.length === 0 && (
-            <Text style={styles.discoveryHint}>
-              No se encontraron impresoras en la red.
-            </Text>
-          )}
-
-        {!isScanning && !discoveryError && discoveredHosts.length > 0 && (
-          <Text style={styles.discoveryHint}>
-            Se{" "}
-            {discoveredHosts.length === 1
-              ? "encontró 1 impresora"
-              : `encontraron ${discoveredHosts.length} impresoras`}{" "}
-            en la red:
-          </Text>
-        )}
-
-        {discoveredHosts.map((discoveredHost) => (
-          <Pressable
-            key={discoveredHost}
-            accessibilityLabel={`Usar impresora encontrada en ${discoveredHost}`}
-            style={styles.discoveryResultRow}
-            onPress={() => handleSelectDiscoveredHost(discoveredHost)}
-          >
-            <Text style={styles.discoveryResultText}>{discoveredHost}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={styles.formCard}>
-        <Text style={styles.formTitle}>Agregar impresora</Text>
-        <TextInput
-          accessibilityLabel="Nombre de la impresora"
-          style={styles.input}
-          placeholder="Ej: Mostrador"
-          placeholderTextColor={colors.textPlaceholder}
-          value={name}
-          onChangeText={setName}
-        />
-        <TextInput
-          accessibilityLabel="Dirección IP de la impresora"
-          style={styles.input}
-          placeholder="Ej: 192.168.1.50"
-          placeholderTextColor={colors.textPlaceholder}
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={host}
-          onChangeText={setHost}
-        />
-        <TextInput
-          accessibilityLabel="Puerto de la impresora"
-          style={styles.input}
-          placeholder="9100 (por defecto)"
-          placeholderTextColor={colors.textPlaceholder}
-          keyboardType="numeric"
-          value={port}
-          onChangeText={setPort}
-        />
-        <TextInput
-          accessibilityLabel="Ancho de etiqueta (mm)"
-          style={styles.input}
-          placeholder={`${DEFAULT_LABEL_WIDTH_MM} (por defecto)`}
-          placeholderTextColor={colors.textPlaceholder}
-          keyboardType="numeric"
-          value={labelWidthMm}
-          onChangeText={setLabelWidthMm}
-        />
-        <TextInput
-          accessibilityLabel="Largo de etiqueta (mm)"
-          style={styles.input}
-          placeholder={`${DEFAULT_LABEL_LENGTH_MM} (por defecto)`}
-          placeholderTextColor={colors.textPlaceholder}
-          keyboardType="numeric"
-          value={labelLengthMm}
-          onChangeText={setLabelLengthMm}
-        />
-        <Pressable
-          accessibilityLabel="Guardar impresora"
-          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-          onPress={() => void handleAdd()}
-          disabled={isSaving}
-        >
-          <Text style={styles.saveButtonText}>
-            {isSaving ? "Guardando…" : "Agregar impresora"}
-          </Text>
-        </Pressable>
-      </View>
+        ListFooterComponent={
+          <View>
+            {editor && management.canManage && (
+              <View style={styles.section}>
+                <Text style={styles.title}>
+                  {editor.id ? "Editar impresora" : "Agregar impresora"}
+                </Text>
+                {INPUT_FIELDS.filter(
+                  (field) =>
+                    advanced || field.name === "name" || field.name === "host",
+                ).map((input) => (
+                  <View key={input.name} style={styles.field}>
+                    <Text style={styles.detail}>{input.label}</Text>
+                    <Controller
+                      control={form.control}
+                      name={input.name}
+                      render={({ field: { value, onChange, onBlur } }) => (
+                        <TextInput
+                          accessibilityLabel={input.label}
+                          style={styles.input}
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          editable={!disabled}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          keyboardType={input.numeric ? "numeric" : "default"}
+                        />
+                      )}
+                    />
+                    {form.formState.errors[input.name]?.message && (
+                      <Text style={styles.error}>
+                        {form.formState.errors[input.name]?.message}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+                <Pressable
+                  accessibilityLabel="Ajustes avanzados"
+                  style={styles.command}
+                  onPress={() => setAdvanced(!advanced)}
+                >
+                  <Ionicons
+                    name={
+                      advanced ? "chevron-up-outline" : "chevron-down-outline"
+                    }
+                    size={18}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.commandText}>Ajustes avanzados</Text>
+                </Pressable>
+                {advanced && (
+                  <Controller
+                    control={form.control}
+                    name="protocol"
+                    render={({ field }) => (
+                      <View
+                        style={styles.protocols}
+                        accessibilityRole="radiogroup"
+                      >
+                        {PROTOCOL_OPTIONS.map((option) => (
+                          <Pressable
+                            key={option.value}
+                            accessibilityRole="radio"
+                            accessibilityLabel={`Protocolo ${option.label}`}
+                            accessibilityState={{
+                              checked: field.value === option.value,
+                              disabled,
+                            }}
+                            disabled={disabled}
+                            style={[
+                              styles.protocol,
+                              field.value === option.value && styles.selected,
+                            ]}
+                            onPress={() => field.onChange(option.value)}
+                          >
+                            <Text style={styles.commandText}>
+                              {option.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+                  />
+                )}
+                <View style={styles.actions}>
+                  <Pressable
+                    accessibilityLabel="Guardar impresora"
+                    style={styles.command}
+                    disabled={disabled}
+                    onPress={() => {
+                      void save();
+                    }}
+                  >
+                    <Ionicons
+                      name="save-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.commandText}>Guardar</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="Cancelar edición"
+                    style={styles.command}
+                    disabled={disabled}
+                    onPress={() => {
+                      setEditor(null);
+                      management.cancelAdministration();
+                    }}
+                  >
+                    <Text style={styles.commandText}>Cancelar</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+            {recoveryPrinter && (
+              <View style={styles.section}>
+                <Text style={styles.title}>
+                  Conexión · {recoveryPrinter.name}
+                </Text>
+                <TextInput
+                  accessibilityLabel="Nueva IP de la impresora"
+                  style={styles.input}
+                  value={recoveryHost}
+                  editable={!disabled}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onChangeText={(host) => {
+                    management.cancelRecovery();
+                    setRecoveryHost(host);
+                  }}
+                />
+                <View style={styles.actions}>
+                  <Pressable
+                    accessibilityLabel="Probar nueva conexión"
+                    style={styles.command}
+                    disabled={disabled}
+                    onPress={() => {
+                      void management.testConnection(
+                        recoveryPrinter,
+                        recoveryHost,
+                      );
+                    }}
+                  >
+                    <Ionicons
+                      name="print-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.commandText}>Enviar prueba</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="Cancelar recuperación"
+                    style={styles.command}
+                    disabled={disabled}
+                    onPress={() => {
+                      management.cancelRecovery();
+                      setRecoveryPrinter(null);
+                    }}
+                  >
+                    <Text style={styles.commandText}>Cancelar</Text>
+                  </Pressable>
+                </View>
+                {management.pendingRecovery && (
+                  <Pressable
+                    accessibilityLabel="Confirmar impresora encontrada"
+                    style={styles.command}
+                    disabled={disabled}
+                    onPress={confirmRecovery}
+                  >
+                    <Ionicons
+                      name="checkmark-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.commandText}>Confirmar impresora</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+            {(editor || recoveryPrinter) && (
+              <View style={styles.section}>
+                <Pressable
+                  accessibilityLabel="Buscar impresoras en la red"
+                  style={styles.command}
+                  disabled={disabled}
+                  onPress={() => {
+                    void scan();
+                  }}
+                >
+                  <Ionicons
+                    name="search-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.commandText}>Buscar en la red</Text>
+                </Pressable>
+                {discovery.isScanning && (
+                  <ActivityIndicator accessibilityLabel="Buscando impresoras" />
+                )}
+                {discovery.progress && (
+                  <Text style={styles.detail}>
+                    {discovery.progress.checked} / {discovery.progress.total}
+                  </Text>
+                )}
+                {discovery.error && (
+                  <Text style={styles.error}>{discovery.error}</Text>
+                )}
+                {hasScanned &&
+                  !discovery.isScanning &&
+                  !discovery.error &&
+                  discovery.results.length === 0 && (
+                    <Text style={styles.detail}>
+                      No se encontraron impresoras en la red.
+                    </Text>
+                  )}
+                {discovery.results.map((host) => (
+                  <Pressable
+                    key={host}
+                    accessibilityLabel={`Usar impresora encontrada en ${host}`}
+                    style={styles.command}
+                    disabled={disabled}
+                    onPress={() => selectHost(host)}
+                  >
+                    <Ionicons
+                      name="print-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.commandText}>{host}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        }
+      />
+      <LabelPreviewModal
+        visible={preview}
+        label={SAMPLE_LABEL}
+        onClose={() => setPreview(false)}
+      />
+      <Modal
+        visible={management.isOwnerVerificationVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={management.cancelOwnerVerification}
+      >
+        <View style={styles.verificationOverlay}>
+          <View style={styles.verificationDialog}>
+            <Text style={styles.title}>Autorización del dueño</Text>
+            <ReauthStep
+              allowPin={false}
+              onVerified={management.completeOwnerVerification}
+              onCancel={management.cancelOwnerVerification}
+            />
+          </View>
+        </View>
+      </Modal>
+      <PinPromptModal
+        visible={management.identityGate.isPinPromptVisible}
+        error={management.identityGate.pinError}
+        onSubmit={management.identityGate.submitPin}
+        onCancel={management.identityGate.cancelPinPrompt}
+      />
+      <OfflineActorPickerModal
+        visible={management.identityGate.isOfflineActorPickerVisible}
+        operarios={management.identityGate.offlineOperarios}
+        isLoading={management.identityGate.isLoadingOfflineOperarios}
+        onSelect={management.identityGate.submitOfflineActor}
+        onCancel={management.identityGate.cancelOfflineActorPicker}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: colors.background },
+  verificationOverlay: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  offscreen: {
-    position: "absolute",
-    top: -9999,
-    left: -9999,
-  },
-  listContent: {
-    padding: 16,
-    gap: 10,
-  },
-  emptyContainer: {
-    flexGrow: 1,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
     justifyContent: "center",
-    padding: 40,
+    padding: 24,
+    backgroundColor: "rgba(0,0,0,0.4)",
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: colors.textMuted,
-    textAlign: "center",
-  },
-  printerRow: {
+  verificationDialog: {
+    padding: 20,
+    gap: 12,
+    borderRadius: 8,
     backgroundColor: colors.surface,
-    borderRadius: 12,
+  },
+  offscreen: { position: "absolute", top: -9999, left: -9999 },
+  list: { padding: 16, gap: 12 },
+  section: { paddingVertical: 12, gap: 10 },
+  printer: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
+    borderRadius: 8,
+    padding: 12,
     gap: 8,
   },
-  printerInfo: {
-    gap: 2,
+  heading: { flexDirection: "row", alignItems: "center", gap: 8 },
+  info: { flex: 1, minWidth: 0, gap: 4 },
+  name: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+  detail: { fontSize: 13, color: colors.textMuted },
+  empty: {
+    fontSize: 15,
+    color: colors.textMuted,
+    paddingVertical: 24,
+    textAlign: "center",
   },
-  protocolOptions: {
+  title: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+  actions: {
     flexDirection: "row",
-    gap: 4,
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
   },
-  protocolOption: {
+  command: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    minHeight: 44,
+  },
+  commandText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+    flexShrink: 1,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  field: { gap: 4 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
+  },
+  error: { fontSize: 13, color: colors.danger },
+  protocols: { flexDirection: "row", gap: 4 },
+  protocol: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 10,
@@ -622,147 +690,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 4,
   },
-  protocolSelected: {
+  selected: {
     borderColor: colors.primary,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-  },
-  printerName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  printerAddress: {
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  printerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  testButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 56,
-    alignItems: "center",
-  },
-  testButtonText: {
-    color: colors.primary,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  removeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  removeButtonText: {
-    color: colors.danger,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  previewCard: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 16,
-  },
-  previewButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  previewButtonText: {
-    color: colors.textPrimary,
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  discoveryCard: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 16,
-    gap: 8,
-  },
-  searchButton: {
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: colors.primarySoft,
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  searchButtonDisabled: {
-    opacity: 0.6,
-  },
-  searchButtonText: {
-    color: colors.primary,
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  discoveryHint: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: "center",
-  },
-  discoveryError: {
-    fontSize: 13,
-    color: colors.danger,
-    textAlign: "center",
-  },
-  discoveryDebugDetail: {
-    fontSize: 11,
-    color: colors.textMuted,
-    textAlign: "center",
-  },
-  discoveryResultRow: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  discoveryResultText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  formCard: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 16,
-    gap: 10,
-  },
-  formTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    backgroundColor: colors.background,
-    color: colors.textPrimary,
-  },
-  saveButton: {
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 15,
   },
 });

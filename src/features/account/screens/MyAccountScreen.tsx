@@ -24,7 +24,7 @@ interface MyAccountScreenProps {
   // Opcional: el dueño (modo solo lectura, N-106 fase a) nunca ve el botón
   // "Mis arreglos" que lo invoca, así que `DashboardStackNavigator` (que no
   // registra la ruta "MyActivity") puede montar esta screen sin pasarlo.
-  // "PrinterSettings" sí está disponible para el dueño en los stacks que
+  // "PrinterSettings" está disponible con permisos por perfil en los stacks que
   // registran esa ruta (Schedule, Pricing, Dashboard).
   navigation?: {
     navigate: (screen: "MyActivity" | "PrinterSettings") => void;
@@ -58,9 +58,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
     clearError,
   } = useAccountActions();
 
-  const [editingField, setEditingField] = useState<EditableField | null>(
-    null,
-  );
+  const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [isReauthed, setIsReauthed] = useState(false);
   const [newValue, setNewValue] = useState("");
   const [confirmValue, setConfirmValue] = useState("");
@@ -161,7 +159,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
           </Pressable>
         ) : null}
 
-        {isOwner ? (
+        {navigation ? (
           <Pressable
             accessibilityLabel="Impresoras"
             style={styles.activityButton}
@@ -290,10 +288,7 @@ export default function MyAccountScreen({ navigation }: MyAccountScreenProps) {
                   </Pressable>
                   <Pressable
                     accessibilityLabel="Guardar cambio"
-                    style={[
-                      styles.saveButton,
-                      isSubmitting && styles.disabled,
-                    ]}
+                    style={[styles.saveButton, isSubmitting && styles.disabled]}
                     disabled={isSubmitting}
                     onPress={() => void handleSubmit()}
                   >

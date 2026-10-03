@@ -36,7 +36,10 @@ jest.mock("../components/ReauthStep", () => {
     }) =>
       ReactModule.createElement(
         Pressable,
-        { accessibilityLabel: "Confirmar identidad (mock)", onPress: onVerified },
+        {
+          accessibilityLabel: "Confirmar identidad (mock)",
+          onPress: onVerified,
+        },
         ReactModule.createElement(Text, null, "Confirmar identidad (mock)"),
       ),
   };
@@ -91,11 +94,16 @@ describe("MyAccountScreen", () => {
     expect(navigate).toHaveBeenCalledWith("MyActivity");
   });
 
+  it("permite al operario abrir la configuración de impresoras del dispositivo", () => {
+    const navigate = jest.fn();
+    const screen = render(<MyAccountScreen navigation={{ navigate }} />);
+    fireEvent.press(screen.getByLabelText("Impresoras"));
+    expect(navigate).toHaveBeenCalledWith("PrinterSettings");
+  });
+
   it("cambia el correo tras confirmar identidad", async () => {
     const changeEmail = jest.fn(async () => Promise.resolve(true));
-    mockUseAccountActions.mockReturnValue(
-      buildAccountActions({ changeEmail }),
-    );
+    mockUseAccountActions.mockReturnValue(buildAccountActions({ changeEmail }));
 
     const { getByLabelText, findByText } = render(
       <MyAccountScreen navigation={{ navigate: jest.fn() }} />,
@@ -104,10 +112,7 @@ describe("MyAccountScreen", () => {
     fireEvent.press(getByLabelText("Cambiar correo"));
     fireEvent.press(getByLabelText("Confirmar identidad (mock)"));
 
-    fireEvent.changeText(
-      getByLabelText("Nuevo correo"),
-      "nuevo@example.com",
-    );
+    fireEvent.changeText(getByLabelText("Nuevo correo"), "nuevo@example.com");
     fireEvent.press(getByLabelText("Guardar cambio"));
 
     await waitFor(() => {
@@ -250,10 +255,8 @@ describe("MyAccountScreen", () => {
     });
   });
 
-  it("no muestra el acceso a Impresoras para el operario", () => {
-    const { queryByLabelText } = render(
-      <MyAccountScreen navigation={{ navigate: jest.fn() }} />,
-    );
+  it("no muestra el acceso a Impresoras si no hay navegación disponible", () => {
+    const { queryByLabelText } = render(<MyAccountScreen />);
 
     expect(queryByLabelText("Impresoras")).toBeNull();
   });

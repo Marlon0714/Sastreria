@@ -22,6 +22,7 @@ interface LabelPreviewModalProps {
    * `onClose` se usa para cancelar.
    */
   onConfirm?: () => void;
+  onChooseTarget?: () => void;
   isConfirming?: boolean;
   /** Ej. "Mostrador" — solo se muestra cuando hay `onConfirm`. */
   targetName?: string;
@@ -44,6 +45,7 @@ export function LabelPreviewModal({
   label,
   onClose,
   onConfirm,
+  onChooseTarget,
   isConfirming = false,
   targetName,
 }: LabelPreviewModalProps): ReactElement {
@@ -64,6 +66,16 @@ export function LabelPreviewModal({
           {isConfirmMode && targetName ? (
             <Text style={styles.subtitle}>Se enviará a: {targetName}</Text>
           ) : null}
+          {isConfirmMode && onChooseTarget && (
+            <TouchableOpacity
+              accessibilityLabel="Cambiar impresora"
+              onPress={onChooseTarget}
+              disabled={isConfirming}
+              style={styles.changeTarget}
+            >
+              <Text style={styles.cancelButtonText}>Cambiar impresora</Text>
+            </TouchableOpacity>
+          )}
 
           <ScrollView
             horizontal
@@ -146,6 +158,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingVertical: 16,
+  },
+  changeTarget: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonRow: {
     flexDirection: "row",

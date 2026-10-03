@@ -68,14 +68,23 @@ describe("createPrinterConfigSchema", () => {
 
 describe("parsePrinterConfigInput", () => {
   it("devuelve el input parseado (caso feliz)", () => {
-    const parsed = parsePrinterConfigInput({ name: "Mostrador", host: "192.168.1.50", port: 9100 });
+    const parsed = parsePrinterConfigInput({
+      name: "Mostrador",
+      host: "192.168.1.50",
+      port: 9100,
+    });
 
-    expect(parsed).toEqual({ name: "Mostrador", host: "192.168.1.50", port: 9100 });
+    expect(parsed).toEqual({
+      name: "Mostrador",
+      host: "192.168.1.50",
+      port: 9100,
+      protocol: "tspl-bitmap",
+    });
   });
 
   it("lanza PrinterConfigValidationError con un mensaje en español si el input es inválido", () => {
-    expect(() => parsePrinterConfigInput({ name: "", host: "192.168.1.50" })).toThrow(
-      PrinterConfigValidationError,
-    );
+    expect(() =>
+      parsePrinterConfigInput({ name: "", host: "192.168.1.50" }),
+    ).toThrow(PrinterConfigValidationError);
   });
 });

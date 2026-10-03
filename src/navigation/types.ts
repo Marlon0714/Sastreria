@@ -66,7 +66,7 @@ export type ScheduleStackParamList = {
   MyAccount: undefined;
   /** Arreglos que el operario marcó listo/entregado en un día, con su precio (para calcular su comisión). */
   MyActivity: undefined;
-  /** Alta/baja de impresoras térmicas de etiquetas (solo dueño) — ver `PrinterSettingsScreen`. */
+  /** Gestión local de impresoras con permisos según el perfil activo. */
   PrinterSettings: undefined;
 };
 
@@ -79,7 +79,7 @@ export type PricingStackParamList = {
   MyAccount: undefined;
   /** Arreglos que el operario marcó listo/entregado en un día, con su precio (para calcular su comisión). */
   MyActivity: undefined;
-  /** Alta/baja de impresoras térmicas de etiquetas (solo dueño) — ver `PrinterSettingsScreen`. */
+  /** Gestión local de impresoras con permisos según el perfil activo. */
   PrinterSettings: undefined;
 };
 
@@ -119,7 +119,7 @@ export type DashboardStackParamList = {
     startDate?: string;
     endDate?: string;
   };
-  /** Alta/baja de impresoras térmicas de etiquetas (solo dueño) — ver `PrinterSettingsScreen`. */
+  /** Gestión local de impresoras con permisos según el perfil activo. */
   PrinterSettings: undefined;
 };
 

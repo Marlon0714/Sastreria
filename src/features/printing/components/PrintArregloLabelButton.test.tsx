@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 import type { ClientsDependencies } from "../../clients/domain/repository";
@@ -70,7 +70,10 @@ const arregloSchedule: Schedule = {
   syncStatus: "pending",
 };
 
-const confeccionSchedule: Schedule = { ...arregloSchedule, category: "confeccion" };
+const confeccionSchedule: Schedule = {
+  ...arregloSchedule,
+  category: "confeccion",
+};
 
 function renderButton(props: { schedule: Schedule; client?: Client | null }) {
   return render(
@@ -88,12 +91,15 @@ describe("PrintArregloLabelButton", () => {
     mockFindById.mockReset();
     mockFindById.mockResolvedValue(null);
     mockIsPrinting = false;
-    usePrinterSettingsStore.setState({ printers: [] });
+    usePrinterSettingsStore.setState({ printers: [], defaultPrinterId: null });
     jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
   });
 
   it("no renderiza nada para un turno de categoría 'confeccion'", () => {
-    const { queryByLabelText } = renderButton({ schedule: confeccionSchedule, client: null });
+    const { queryByLabelText } = renderButton({
+      schedule: confeccionSchedule,
+      client: null,
+    });
 
     expect(queryByLabelText("Imprimir etiqueta")).toBeNull();
   });
@@ -101,7 +107,17 @@ describe("PrintArregloLabelButton", () => {
   it("avisa que no hay impresoras configuradas si la lista está vacía", () => {
     const { getByLabelText } = renderButton({
       schedule: arregloSchedule,
-      client: { id: "client-1", firstName: "Ana", lastName: "Torres", phone: "300", notes: null, measurements: [], createdAt: "2026-08-01T10:00:00.000Z", updatedAt: "2026-08-01T10:00:00.000Z", syncStatus: "pending" },
+      client: {
+        id: "client-1",
+        firstName: "Ana",
+        lastName: "Torres",
+        phone: "300",
+        notes: null,
+        measurements: [],
+        createdAt: "2026-08-01T10:00:00.000Z",
+        updatedAt: "2026-08-01T10:00:00.000Z",
+        syncStatus: "pending",
+      },
     });
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
@@ -117,7 +133,17 @@ describe("PrintArregloLabelButton", () => {
     usePrinterSettingsStore.setState({ printers: [printerA] });
     const { getByLabelText } = renderButton({
       schedule: arregloSchedule,
-      client: { id: "client-1", firstName: "Ana", lastName: "Torres", phone: "300", notes: null, measurements: [], createdAt: "2026-08-01T10:00:00.000Z", updatedAt: "2026-08-01T10:00:00.000Z", syncStatus: "pending" },
+      client: {
+        id: "client-1",
+        firstName: "Ana",
+        lastName: "Torres",
+        phone: "300",
+        notes: null,
+        measurements: [],
+        createdAt: "2026-08-01T10:00:00.000Z",
+        updatedAt: "2026-08-01T10:00:00.000Z",
+        syncStatus: "pending",
+      },
     });
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
@@ -137,7 +163,10 @@ describe("PrintArregloLabelButton", () => {
 
   it("pregunta cuál impresora usar cuando hay más de una configurada", () => {
     usePrinterSettingsStore.setState({ printers: [printerA, printerB] });
-    const { getByLabelText } = renderButton({ schedule: arregloSchedule, client: null });
+    const { getByLabelText } = renderButton({
+      schedule: arregloSchedule,
+      client: null,
+    });
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
 
@@ -150,6 +179,32 @@ describe("PrintArregloLabelButton", () => {
       ]),
     );
     expect(mockPrintLabel).not.toHaveBeenCalled();
+  });
+
+  it("preselecciona la predeterminada y permite cambiar solo para este trabajo", async () => {
+    usePrinterSettingsStore.setState({
+      printers: [printerA, printerB],
+      defaultPrinterId: printerB.id,
+    });
+    const screen = renderButton({ schedule: arregloSchedule, client: null });
+    fireEvent.press(screen.getByLabelText("Imprimir etiqueta"));
+    expect(screen.getByText("Se enviará a: Taller")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Cambiar impresora"));
+    const choices = jest.mocked(Alert.alert).mock.calls.at(-1)?.[2];
+    act(() => {
+      choices?.find((choice) => choice.text === "Mostrador")?.onPress?.();
+    });
+    expect(screen.getByText("Se enviará a: Mostrador")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Confirmar impresión"));
+    await waitFor(() =>
+      expect(mockPrintLabel).toHaveBeenCalledWith(
+        expect.objectContaining({ target: printerA }),
+      ),
+    );
+    expect(choices?.find((choice) => choice.text === "Mostrador")).toBeTruthy();
+    expect(usePrinterSettingsStore.getState().defaultPrinterId).toBe(
+      printerB.id,
+    );
   });
 
   it("resuelve el cliente por su cuenta cuando no se le pasa la prop client", async () => {
@@ -175,8 +230,13 @@ describe("PrintArregloLabelButton", () => {
 
   it("muestra un error con Alert.alert si la impresión falla", async () => {
     usePrinterSettingsStore.setState({ printers: [printerA] });
-    mockPrintLabel.mockRejectedValueOnce(new Error("No se pudo conectar con la impresora"));
-    const { getByLabelText } = renderButton({ schedule: arregloSchedule, client: null });
+    mockPrintLabel.mockRejectedValueOnce(
+      new Error("No se pudo conectar con la impresora"),
+    );
+    const { getByLabelText } = renderButton({
+      schedule: arregloSchedule,
+      client: null,
+    });
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
     fireEvent.press(getByLabelText("Confirmar impresión"));
@@ -187,5 +247,7 @@ describe("PrintArregloLabelButton", () => {
         "No se pudo conectar con la impresora",
       );
     });
+    expect(getByLabelText("Confirmar impresión")).toBeTruthy();
+    expect(mockPrintLabel).toHaveBeenCalledTimes(1);
   });
 });

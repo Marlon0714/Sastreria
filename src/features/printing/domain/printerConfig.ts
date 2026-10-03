@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SAFE_FREE_TEXT_PATTERN } from "../../../shared/domain/textPatterns";
+import { DEFAULT_PRINT_PROTOCOL } from "./printRenderer";
 
 /**
  * Puerto AppSocket/JetDirect estándar para impresoras térmicas de red
@@ -16,6 +17,19 @@ export const DEFAULT_LABEL_PRINTER_PORT = 9100;
  * también puede tener DNS local o mDNS.
  */
 const HOST_PATTERN = /^[a-zA-Z0-9.-]+$/;
+export const printProtocolSchema = z.enum([
+  "tspl-bitmap",
+  "escpos-raster",
+  "escpos-bitimage",
+]);
+export const recoveryHostSchema = z.ipv4().refine((host) => {
+  const [first, second] = host.split(".").map(Number);
+  return (
+    first === 10 ||
+    (first === 192 && second === 168) ||
+    (first === 172 && second >= 16 && second <= 31)
+  );
+}, "Usa una dirección IPv4 de la red local del taller.");
 
 export const printerConfigSchema = z.object({
   id: z.string().uuid(),
@@ -24,20 +38,35 @@ export const printerConfigSchema = z.object({
     .trim()
     .min(1, "El nombre es obligatorio")
     .max(40, "Máximo 40 caracteres")
-    .regex(SAFE_FREE_TEXT_PATTERN, "El nombre contiene caracteres no permitidos"),
+    .regex(
+      SAFE_FREE_TEXT_PATTERN,
+      "El nombre contiene caracteres no permitidos",
+    ),
   host: z
     .string()
     .trim()
     .min(1, "La dirección de la impresora es obligatoria")
     .max(255)
-    .regex(HOST_PATTERN, "La dirección solo puede contener letras, números, puntos y guiones"),
+    .regex(
+      HOST_PATTERN,
+      "La dirección solo puede contener letras, números, puntos y guiones",
+    ),
   port: z
     .number()
     .int("El puerto debe ser un número entero")
     .min(1, "El puerto debe ser mayor a 0")
     .max(65535, "El puerto debe ser menor a 65536"),
-  labelWidthMm: z.number().positive("El ancho debe ser mayor a 0").optional(),
-  labelLengthMm: z.number().positive("El largo debe ser mayor a 0").optional(),
+  labelWidthMm: z
+    .number()
+    .positive("El ancho debe ser mayor a 0")
+    .max(120, "Máximo 120 mm de ancho")
+    .optional(),
+  labelLengthMm: z
+    .number()
+    .positive("El largo debe ser mayor a 0")
+    .max(300, "Máximo 300 mm de largo")
+    .optional(),
+  protocol: printProtocolSchema.optional().default(DEFAULT_PRINT_PROTOCOL),
 });
 
 export type PrinterConfig = z.infer<typeof printerConfigSchema>;
@@ -59,8 +88,37 @@ export const createPrinterConfigSchema = printerConfigSchema
       .transform((value) => value ?? DEFAULT_LABEL_PRINTER_PORT),
   });
 
-export type CreatePrinterConfigInput = z.input<typeof createPrinterConfigSchema>;
-export type CreatePrinterConfigOutput = z.output<typeof createPrinterConfigSchema>;
+export type CreatePrinterConfigInput = z.input<
+  typeof createPrinterConfigSchema
+>;
+export type CreatePrinterConfigOutput = z.output<
+  typeof createPrinterConfigSchema
+>;
+
+export const printerFormSchema = z
+  .object({
+    name: z.string(),
+    host: z.string(),
+    port: z.string(),
+    labelWidthMm: z.string(),
+    labelLengthMm: z.string(),
+    protocol: printProtocolSchema,
+  })
+  .transform(
+    (input): CreatePrinterConfigInput => ({
+      ...input,
+      port: input.port.trim() ? Number(input.port) : undefined,
+      labelWidthMm: input.labelWidthMm.trim()
+        ? Number(input.labelWidthMm)
+        : undefined,
+      labelLengthMm: input.labelLengthMm.trim()
+        ? Number(input.labelLengthMm)
+        : undefined,
+    }),
+  )
+  .pipe(createPrinterConfigSchema);
+
+export type PrinterFormInput = z.input<typeof printerFormSchema>;
 
 /**
  * Violación de una regla de negocio esperada (host/puerto inválidos al

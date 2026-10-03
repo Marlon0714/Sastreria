@@ -120,6 +120,47 @@ describe("usePrintArregloLabel", () => {
     expect(result.current.isPrinting).toBe(false);
   });
 
+  it("rechaza el segundo envío mientras la primera captura sigue pendiente", async () => {
+    let finish: ((bitmap: CapturedLabelBitmap) => void) | undefined;
+    const capture = jest.fn(
+      () =>
+        new Promise<CapturedLabelBitmap>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const printLabelJob = jest.fn<
+      PrintingDependencies["labelPrinterRepository"]["printLabelJob"]
+    >(async () => {});
+    const dependencies: PrintingDependencies = {
+      labelPrinterRepository: { printLabelJob },
+      decodeLabelBitmap: () => ({
+        pixels: new Uint8Array(32),
+        width: 8,
+        height: 1,
+      }),
+      printerDiscoveryRepository: { scanPort: async () => [] },
+      getLocalNetworkInfo: async () => null,
+    };
+    const { result } = renderHook(() => usePrintArregloLabel(), {
+      wrapper: makeWrapper(dependencies),
+    });
+    let first: Promise<void> | undefined;
+    act(() => {
+      first = result.current.printLabel({ capture, target });
+    });
+    await act(async () => {
+      await expect(
+        result.current.printLabel({ capture, target }),
+      ).rejects.toThrow(/en curso/);
+    });
+    expect(capture).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish?.(makeCapturedBitmap());
+      await first;
+    });
+    expect(printLabelJob).toHaveBeenCalledTimes(1);
+  });
+
   it("marca isPrinting en true mientras la captura está en curso", async () => {
     const printLabelJob = jest.fn<
       PrintingDependencies["labelPrinterRepository"]["printLabelJob"]

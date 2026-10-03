@@ -1,7 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { prepareArregloLabelBitmap } from "../domain/prepareLabelBitmap";
-import { DEFAULT_PRINT_PROTOCOL, resolveLabelRenderer } from "../domain/printRenderer";
+import {
+  DEFAULT_PRINT_PROTOCOL,
+  resolveLabelRenderer,
+} from "../domain/printRenderer";
 import type { CapturedLabelBitmap, PrinterTarget } from "../domain/types";
 import { usePrintingDependencies } from "./PrintingDependenciesProvider";
 
@@ -29,20 +32,28 @@ export function usePrintArregloLabel(): {
   isPrinting: boolean;
   printLabel: (params: PrintArregloLabelParams) => Promise<void>;
 } {
-  const { decodeLabelBitmap, labelPrinterRepository } = usePrintingDependencies();
+  const { decodeLabelBitmap, labelPrinterRepository } =
+    usePrintingDependencies();
   const [isPrinting, setIsPrinting] = useState(false);
+  const inFlight = useRef(false);
 
   const printLabel = useCallback(
     async ({ capture, target }: PrintArregloLabelParams): Promise<void> => {
+      if (inFlight.current)
+        throw new Error("Ya hay un envío de etiqueta en curso.");
+      inFlight.current = true;
       setIsPrinting(true);
       try {
         const captured = await capture();
         const decoded = decodeLabelBitmap(captured);
         const bitmap = prepareArregloLabelBitmap(decoded, target);
-        const renderer = resolveLabelRenderer(target.protocol ?? DEFAULT_PRINT_PROTOCOL);
+        const renderer = resolveLabelRenderer(
+          target.protocol ?? DEFAULT_PRINT_PROTOCOL,
+        );
         const job = renderer.render(bitmap, target);
         await labelPrinterRepository.printLabelJob(target, job);
       } finally {
+        inFlight.current = false;
         setIsPrinting(false);
       }
     },
