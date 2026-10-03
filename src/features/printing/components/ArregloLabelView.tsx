@@ -104,10 +104,10 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
         {label.date ? (
           <>
             <Divider />
-            <View style={styles.row}>
-              <Text style={styles.sectionLabel}>ENTREGA</Text>
+            <View style={styles.deliveryRow}>
+              <Text style={styles.deliveryLabel}>ENTREGA</Text>
               <Text
-                style={styles.rowValue}
+                style={styles.deliveryValue}
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
@@ -179,23 +179,23 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   header: {
-    height: 110,
+    height: 116,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
   },
   headerIcon: {
-    width: 110,
-    height: 110,
+    width: 116,
+    height: 116,
   },
   headerTitle: {
     flex: 1,
     alignItems: "center",
   },
   headerEmblem: {
-    width: 102,
-    height: 102,
+    width: 110,
+    height: 110,
   },
   businessName: {
     fontSize: 36,
@@ -247,11 +247,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  rowValue: {
+  deliveryRow: {
+    height: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  deliveryLabel: {
+    width: 96,
+    flexShrink: 0,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "700",
+    color: "#000000",
+  },
+  deliveryValue: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: 22,
-    lineHeight: 26,
+    minWidth: 0,
+    fontSize: 24,
+    lineHeight: 30,
     fontWeight: "700",
     color: "#000000",
     textAlign: "right",
