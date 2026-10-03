@@ -11,6 +11,7 @@ type ReauthMethod = "password" | "pin";
 interface ReauthStepProps {
   onVerified: () => void;
   onCancel: () => void;
+  allowPin?: boolean;
 }
 
 /**
@@ -18,7 +19,11 @@ interface ReauthStepProps {
  * de dejar cambiar correo/contraseña/PIN — con contraseña o con PIN, lo que
  * el operario tenga a mano.
  */
-export function ReauthStep({ onVerified, onCancel }: ReauthStepProps) {
+export function ReauthStep({
+  onVerified,
+  onCancel,
+  allowPin = true,
+}: ReauthStepProps) {
   const { isVerifying, error, verifyPassword, verifyPin } = useReauth();
   const [method, setMethod] = useState<ReauthMethod>("password");
   const [value, setValue] = useState("");
@@ -33,6 +38,7 @@ export function ReauthStep({ onVerified, onCancel }: ReauthStepProps) {
       method === "password"
         ? await verifyPassword(value)
         : await verifyPin(value);
+    setValue("");
     if (ok) {
       onVerified();
     }
@@ -64,25 +70,32 @@ export function ReauthStep({ onVerified, onCancel }: ReauthStepProps) {
             Contraseña
           </Text>
         </Pressable>
-        <Pressable
-          accessibilityLabel="Usar PIN"
-          accessibilityState={{ selected: method === "pin" }}
-          style={[styles.methodChip, method === "pin" && styles.methodChipActive]}
-          onPress={() => selectMethod("pin")}
-        >
-          <Text
+        {allowPin && (
+          <Pressable
+            accessibilityLabel="Usar PIN"
+            accessibilityState={{ selected: method === "pin" }}
             style={[
-              styles.methodChipText,
-              method === "pin" && styles.methodChipTextActive,
+              styles.methodChip,
+              method === "pin" && styles.methodChipActive,
             ]}
+            onPress={() => selectMethod("pin")}
           >
-            PIN
-          </Text>
-        </Pressable>
+            <Text
+              style={[
+                styles.methodChipText,
+                method === "pin" && styles.methodChipTextActive,
+              ]}
+            >
+              PIN
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       <TextInput
-        accessibilityLabel={method === "password" ? "Contraseña actual" : "PIN actual"}
+        accessibilityLabel={
+          method === "password" ? "Contraseña actual" : "PIN actual"
+        }
         style={styles.input}
         value={value}
         onChangeText={(text) =>
@@ -101,7 +114,13 @@ export function ReauthStep({ onVerified, onCancel }: ReauthStepProps) {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.buttonRow}>
-        <Pressable accessibilityLabel="Cancelar" onPress={onCancel}>
+        <Pressable
+          accessibilityLabel="Cancelar"
+          onPress={() => {
+            setValue("");
+            onCancel();
+          }}
+        >
           <Text style={styles.cancelText}>Cancelar</Text>
         </Pressable>
         <Pressable

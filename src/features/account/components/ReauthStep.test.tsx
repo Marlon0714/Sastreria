@@ -16,6 +16,18 @@ jest.mock("../hooks/useReauth", () => ({
 }));
 
 describe("ReauthStep", () => {
+  it("oculta el PIN cuando se exige contraseña del dueño", () => {
+    const screen = render(
+      <ReauthStep
+        allowPin={false}
+        onVerified={jest.fn()}
+        onCancel={jest.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("Usar PIN")).toBeNull();
+    expect(screen.getByLabelText("Contraseña actual")).toBeTruthy();
+  });
+
   it("por defecto usa contraseña y llama a verifyPassword al confirmar", async () => {
     mockVerifyPassword.mockResolvedValueOnce(true);
     const onVerified = jest.fn();
