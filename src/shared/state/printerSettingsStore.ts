@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { z } from "zod";
 
 import { generateDomainUuid } from "../../features/clients/domain/types";
+import { getDefaultPrinterSettingsRepository } from "../../data/supabase/printerSettingsDependencies";
 import {
   PrinterConfigValidationError,
   parsePrinterConfigInput,
@@ -15,6 +16,7 @@ import {
   DEFAULT_LABEL_LENGTH_MM,
   DEFAULT_LABEL_WIDTH_MM,
   type PrintProtocol,
+  type PrinterSettingsSnapshot,
   type PrinterTarget,
 } from "../../features/printing/domain/types";
 
@@ -43,6 +45,8 @@ type PrinterSettingsStore = {
   printers: PrinterTarget[];
   defaultPrinterId: string | null;
   loadError: string | null;
+  remoteSyncStatus: "synced" | "pending" | "error";
+  isHydrating: boolean;
   hydrate: () => Promise<void>;
   addPrinter: (input: CreatePrinterConfigInput) => Promise<PrinterTarget>;
   updatePrinter: (id: string, input: CreatePrinterConfigInput) => Promise<void>;
@@ -53,18 +57,26 @@ type PrinterSettingsStore = {
 };
 
 function serialize(
-  printers: PrinterTarget[],
-  defaultPrinterId: string | null,
+  settings: PrinterSettingsSnapshot,
+  remoteSyncStatus: "synced" | "pending",
 ): string {
-  return JSON.stringify({ version: 1, printers, defaultPrinterId });
+  return JSON.stringify({ version: 2, ...settings, remoteSyncStatus });
 }
 
 function deserialize(
   raw: string,
-): Pick<PrinterSettingsStore, "printers" | "defaultPrinterId"> {
+): {
+  settings: PrinterSettingsSnapshot;
+  remoteSyncStatus: "synced" | "pending";
+} {
   const parsed: unknown = JSON.parse(raw);
   const stored = Array.isArray(parsed)
-    ? { version: 1, printers: parsed, defaultPrinterId: null }
+    ? {
+        version: 1,
+        printers: parsed,
+        defaultPrinterId: null,
+        updatedAt: new Date(0).toISOString(),
+      }
     : parsed;
   if (
     !stored ||
@@ -76,7 +88,10 @@ function deserialize(
       "Configuración de impresoras inválida.",
     );
   }
-  if (!("version" in stored) || stored.version !== 1) {
+  if (
+    !("version" in stored) ||
+    (stored.version !== 1 && stored.version !== 2)
+  ) {
     throw new PrinterSettingsValidationError(
       "Versión de configuración no soportada.",
     );
@@ -98,158 +113,259 @@ function deserialize(
   )
     ? (storedDefault as string)
     : (printers[0]?.id ?? null);
-  return { printers, defaultPrinterId };
+  const updatedAt =
+    "updatedAt" in stored && typeof stored.updatedAt === "string"
+      ? stored.updatedAt
+      : new Date(0).toISOString();
+  const remoteSyncStatus =
+    "remoteSyncStatus" in stored && stored.remoteSyncStatus === "synced"
+      ? "synced"
+      : "pending";
+  return {
+    settings: { printers, defaultPrinterId, updatedAt },
+    remoteSyncStatus,
+  };
 }
 
 /**
- * Impresoras térmicas configuradas por el dueño (config local, NO sincronizada
- * con Supabase — ver `PrinterTarget`). Persistida en `expo-secure-store`, igual
- * patrón que `debugModeStore`. Cada dispositivo mantiene su propia lista.
+ * La copia local se escribe antes de intentar sincronizar con Supabase. Así,
+ * un fallo de red nunca bloquea la impresión ni descarta una edición del dueño.
  */
 export const usePrinterSettingsStore = create<PrinterSettingsStore>(
-  (set, get) => ({
-    printers: [],
-    defaultPrinterId: null,
-    loadError: null,
-    hydrate: async () => {
+  (set, get) => {
+    const persistSettings = async (
+      printers: PrinterTarget[],
+      defaultPrinterId: string | null,
+    ): Promise<void> => {
+      const settings: PrinterSettingsSnapshot = {
+        printers,
+        defaultPrinterId,
+        updatedAt: new Date().toISOString(),
+      };
+      await SecureStore.setItemAsync(
+        PRINTER_SETTINGS_STORAGE_KEY,
+        serialize(settings, "pending"),
+      );
+      set({
+        printers,
+        defaultPrinterId,
+        remoteSyncStatus: "pending",
+        loadError: null,
+      });
+
       try {
-        const raw = await SecureStore.getItemAsync(
-          PRINTER_SETTINGS_STORAGE_KEY,
-        );
-        if (raw == null) {
-          set({ loadError: null });
-          return;
+        await getDefaultPrinterSettingsRepository().save(settings);
+        set({ remoteSyncStatus: "synced", loadError: null });
+        try {
+          await SecureStore.setItemAsync(
+            PRINTER_SETTINGS_STORAGE_KEY,
+            serialize(settings, "synced"),
+          );
+        } catch {
+          // La edición ya está guardada; solo se reintentará marcarla synced.
         }
-        set({ ...deserialize(raw), loadError: null });
-      } catch (error) {
+      } catch {
         set({
+          remoteSyncStatus: "error",
           loadError:
-            "No se pudo leer la configuración de impresoras de este dispositivo.",
+            "Configuración guardada en este dispositivo. Se sincronizará al recuperar la conexión.",
         });
         console.error(
           JSON.stringify({
             level: "error",
             service: "printerSettingsStore",
-            message: "No se pudo leer la configuración de impresoras guardada",
-            errorCode:
-              error instanceof PrinterSettingsValidationError
-                ? "invalid_configuration"
-                : "configuration_read_failed",
+            message: "No se pudo sincronizar la configuración de impresoras",
           }),
         );
       }
-    },
-    addPrinter: async (input) => {
-      assertPrinterAccess(true);
-      let parsed;
-      try {
-        parsed = parsePrinterConfigInput(input);
-      } catch (error) {
-        if (error instanceof PrinterConfigValidationError) {
-          throw new PrinterSettingsValidationError(error.message);
-        }
-        throw error;
-      }
+    };
 
-      const printer: PrinterTarget = {
-        id: generateDomainUuid(),
-        name: parsed.name,
-        host: parsed.host,
-        port: parsed.port,
-        protocol: parsed.protocol,
-        labelWidthMm: parsed.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
-        labelLengthMm: parsed.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
-      };
-
-      const nextPrinters = [...get().printers, printer];
-      const defaultPrinterId = get().defaultPrinterId ?? printer.id;
-      await SecureStore.setItemAsync(
-        PRINTER_SETTINGS_STORAGE_KEY,
-        serialize(nextPrinters, defaultPrinterId),
-      );
-      set({ printers: nextPrinters, defaultPrinterId, loadError: null });
-
-      return printer;
-    },
-    updatePrinter: async (id, input) => {
-      assertPrinterAccess(true);
-      const parsed = parsePrinterConfigInput(input);
-      if (!get().printers.some((printer) => printer.id === id)) {
-        throw new PrinterSettingsValidationError(
-          "La impresora ya no está configurada.",
-        );
-      }
-      const nextPrinters = get().printers.map((printer) =>
-        printer.id === id
-          ? {
-              ...printer,
-              ...parsed,
-              labelWidthMm: parsed.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
-              labelLengthMm: parsed.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
+    return {
+        printers: [],
+        defaultPrinterId: null,
+        loadError: null,
+        remoteSyncStatus: "pending",
+        isHydrating: false,
+        hydrate: async () => {
+          set({ isHydrating: true });
+          let cached: ReturnType<typeof deserialize> | null = null;
+          try {
+            const raw = await SecureStore.getItemAsync(
+              PRINTER_SETTINGS_STORAGE_KEY,
+            );
+            if (raw != null) {
+              cached = deserialize(raw);
+              set({
+                printers: cached.settings.printers,
+                defaultPrinterId: cached.settings.defaultPrinterId,
+                remoteSyncStatus: cached.remoteSyncStatus,
+                loadError: null,
+              });
             }
-          : printer,
-      );
-      await SecureStore.setItemAsync(
-        PRINTER_SETTINGS_STORAGE_KEY,
-        serialize(nextPrinters, get().defaultPrinterId),
-      );
-      set({ printers: nextPrinters, loadError: null });
-    },
-    updateConnection: async (id, host) => {
-      assertPrinterAccess(false);
-      const result = recoveryHostSchema.safeParse(host.trim());
-      if (!result.success)
-        throw new PrinterSettingsValidationError(
-          result.error.issues[0]?.message ?? "Dirección inválida.",
-        );
-      if (!get().printers.some((printer) => printer.id === id))
-        throw new PrinterSettingsValidationError(
-          "La impresora ya no está configurada.",
-        );
-      const nextPrinters = get().printers.map((printer) =>
-        printer.id === id ? { ...printer, host: result.data } : printer,
-      );
-      await SecureStore.setItemAsync(
-        PRINTER_SETTINGS_STORAGE_KEY,
-        serialize(nextPrinters, get().defaultPrinterId),
-      );
-      set({ printers: nextPrinters, loadError: null });
-    },
-    setDefaultPrinter: async (id) => {
-      assertPrinterAccess(false);
-      if (!get().printers.some((printer) => printer.id === id)) {
-        throw new PrinterSettingsValidationError(
-          "La impresora ya no está configurada.",
-        );
-      }
-      await SecureStore.setItemAsync(
-        PRINTER_SETTINGS_STORAGE_KEY,
-        serialize(get().printers, id),
-      );
-      set({ defaultPrinterId: id });
-    },
-    updateProtocol: async (id, protocol) => {
-      const printer = get().printers.find((entry) => entry.id === id);
-      if (!printer)
-        throw new PrinterSettingsValidationError(
-          "La impresora ya no está configurada.",
-        );
-      await get().updatePrinter(id, { ...printer, protocol });
-    },
-    removePrinter: async (id) => {
-      assertPrinterAccess(true);
-      const nextPrinters = get().printers.filter(
-        (printer) => printer.id !== id,
-      );
-      const defaultPrinterId =
-        get().defaultPrinterId === id
-          ? (nextPrinters[0]?.id ?? null)
-          : get().defaultPrinterId;
-      await SecureStore.setItemAsync(
-        PRINTER_SETTINGS_STORAGE_KEY,
-        serialize(nextPrinters, defaultPrinterId),
-      );
-      set({ printers: nextPrinters, defaultPrinterId });
-    },
-  }),
+          } catch (error) {
+            set({
+              loadError:
+                "No se pudo leer la configuración de impresoras de este dispositivo.",
+            });
+            console.error(
+              JSON.stringify({
+                level: "error",
+                service: "printerSettingsStore",
+                message: "No se pudo leer la configuración de impresoras guardada",
+                errorCode:
+                  error instanceof PrinterSettingsValidationError
+                    ? "invalid_configuration"
+                    : "configuration_read_failed",
+              }),
+            );
+          }
+          try {
+            const remote = await getDefaultPrinterSettingsRepository().load();
+            if (!remote) {
+              if (cached?.remoteSyncStatus === "pending") {
+                await getDefaultPrinterSettingsRepository().save(cached.settings);
+                await SecureStore.setItemAsync(
+                  PRINTER_SETTINGS_STORAGE_KEY,
+                  serialize(cached.settings, "synced"),
+                );
+                set({ remoteSyncStatus: "synced", loadError: null });
+              } else if (!cached) {
+                set({ remoteSyncStatus: "synced", loadError: null });
+              }
+              return;
+            }
+
+            let selected = remote;
+            if (
+              cached !== null &&
+              cached.remoteSyncStatus === "pending" &&
+              Date.parse(cached.settings.updatedAt) > Date.parse(remote.updatedAt)
+            ) {
+              selected = cached.settings;
+              await getDefaultPrinterSettingsRepository().save(selected);
+            }
+            await SecureStore.setItemAsync(
+              PRINTER_SETTINGS_STORAGE_KEY,
+              serialize(selected, "synced"),
+            );
+            set({
+              printers: selected.printers,
+              defaultPrinterId: selected.defaultPrinterId,
+              remoteSyncStatus: "synced",
+              loadError: null,
+            });
+          } catch {
+            set({
+              remoteSyncStatus: "error",
+              loadError:
+                "No se pudo sincronizar la configuración compartida. Se conserva la última copia local.",
+            });
+            console.error(
+              JSON.stringify({
+                level: "error",
+                service: "printerSettingsStore",
+                message: "Falló la lectura o sincronización de impresoras compartidas",
+              }),
+            );
+          } finally {
+            set({ isHydrating: false });
+          }
+        },
+        addPrinter: async (input) => {
+          assertPrinterAccess(true);
+          let parsed;
+          try {
+            parsed = parsePrinterConfigInput(input);
+          } catch (error) {
+            if (error instanceof PrinterConfigValidationError) {
+              throw new PrinterSettingsValidationError(error.message);
+            }
+            throw error;
+          }
+
+          const printer: PrinterTarget = {
+            id: generateDomainUuid(),
+            name: parsed.name,
+            host: parsed.host,
+            port: parsed.port,
+            protocol: parsed.protocol,
+            labelWidthMm: parsed.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
+            labelLengthMm: parsed.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
+          };
+
+          const nextPrinters = [...get().printers, printer];
+          const defaultPrinterId = get().defaultPrinterId ?? printer.id;
+          await persistSettings(nextPrinters, defaultPrinterId);
+
+          return printer;
+        },
+        updatePrinter: async (id, input) => {
+          assertPrinterAccess(true);
+          const parsed = parsePrinterConfigInput(input);
+          if (!get().printers.some((printer) => printer.id === id)) {
+            throw new PrinterSettingsValidationError(
+              "La impresora ya no está configurada.",
+            );
+          }
+          const nextPrinters = get().printers.map((printer) =>
+            printer.id === id
+              ? {
+                  ...printer,
+                  ...parsed,
+                  labelWidthMm: parsed.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM,
+                  labelLengthMm: parsed.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM,
+                }
+              : printer,
+          );
+          await persistSettings(nextPrinters, get().defaultPrinterId);
+        },
+        updateConnection: async (id, host) => {
+          assertPrinterAccess(true);
+          const result = recoveryHostSchema.safeParse(host.trim());
+          if (!result.success) {
+            throw new PrinterSettingsValidationError(
+              result.error.issues[0]?.message ?? "Dirección inválida.",
+            );
+          }
+          if (!get().printers.some((printer) => printer.id === id)) {
+            throw new PrinterSettingsValidationError(
+              "La impresora ya no está configurada.",
+            );
+          }
+          const nextPrinters = get().printers.map((printer) =>
+            printer.id === id ? { ...printer, host: result.data } : printer,
+          );
+          await persistSettings(nextPrinters, get().defaultPrinterId);
+        },
+        setDefaultPrinter: async (id) => {
+          assertPrinterAccess(true);
+          if (!get().printers.some((printer) => printer.id === id)) {
+            throw new PrinterSettingsValidationError(
+              "La impresora ya no está configurada.",
+            );
+          }
+          await persistSettings(get().printers, id);
+        },
+        updateProtocol: async (id, protocol) => {
+          const printer = get().printers.find((entry) => entry.id === id);
+          if (!printer) {
+            throw new PrinterSettingsValidationError(
+              "La impresora ya no está configurada.",
+            );
+          }
+          await get().updatePrinter(id, { ...printer, protocol });
+        },
+        removePrinter: async (id) => {
+          assertPrinterAccess(true);
+          const nextPrinters = get().printers.filter(
+            (printer) => printer.id !== id,
+          );
+          const defaultPrinterId =
+            get().defaultPrinterId === id
+              ? (nextPrinters[0]?.id ?? null)
+              : get().defaultPrinterId;
+          await persistSettings(nextPrinters, defaultPrinterId);
+        },
+      };
+  },
 );

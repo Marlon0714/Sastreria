@@ -69,9 +69,8 @@ export type PrintProtocol = "escpos-raster" | "escpos-bitimage" | "tspl-bitmap";
 
 /**
  * Impresora térmica configurada por el dueño (`printerSettingsStore`).
- * Deliberadamente simple: no extiende `BaseEntity` ni tiene `syncStatus` —
- * es configuración local por dispositivo, no una entidad de negocio
- * sincronizada con Supabase.
+ * Deliberadamente simple: no extiende `BaseEntity` ni tiene `syncStatus`;
+ * se comparte como configuración del taller en Supabase y se cachea localmente.
  */
 export interface PrinterTarget {
   id: string;
@@ -96,6 +95,13 @@ export interface PrinterTarget {
    */
   labelWidthMm?: number;
   labelLengthMm?: number;
+}
+
+/** Configuración del taller compartida entre dispositivos mediante Supabase. */
+export interface PrinterSettingsSnapshot {
+  printers: PrinterTarget[];
+  defaultPrinterId: string | null;
+  updatedAt: string;
 }
 
 /**

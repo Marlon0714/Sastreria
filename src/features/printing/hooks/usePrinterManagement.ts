@@ -118,6 +118,7 @@ export function usePrinterManagement(
       succeeded = true;
       return true;
     } catch (failure) {
+      if (ownerOnly) setPendingRecovery(null);
       const expected =
         failure instanceof PrinterSettingsValidationError ||
         failure instanceof PrinterConfigValidationError;
@@ -191,7 +192,7 @@ export function usePrinterManagement(
     });
 
   const confirmConnection = (): Promise<boolean> =>
-    execute(false, async (identity) => {
+    execute(true, async (identity) => {
       const recovery = pendingRecovery;
       const current = usePrinterSettingsStore
         .getState()
@@ -263,7 +264,7 @@ export function usePrinterManagement(
     testConnection,
     confirmConnection,
     setDefaultPrinter: (id: string) =>
-      execute(false, () =>
+      execute(true, () =>
         usePrinterSettingsStore.getState().setDefaultPrinter(id),
       ),
     removePrinter: (id: string) =>

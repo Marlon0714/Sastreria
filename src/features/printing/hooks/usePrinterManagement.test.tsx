@@ -156,7 +156,7 @@ describe("usePrinterManagement", () => {
     expect(useIdentityStore.getState().resolvedActor).toBeNull();
   });
 
-  it("un operario cambia solo la IP después de prueba y confirmación", async () => {
+  it("un operario puede probar una IP, pero no guardar cambios de configuración", async () => {
     const printer = await usePrinterSettingsStore
       .getState()
       .addPrinter({ name: "Taller", host: "192.168.1.60" });
@@ -174,13 +174,12 @@ describe("usePrinterManagement", () => {
       target: { ...printer, host: "192.168.1.77" },
     });
     await act(async () => {
-      expect(await result.current.confirmConnection()).toBe(true);
+      expect(await result.current.confirmConnection()).toBe(false);
     });
     expect(usePrinterSettingsStore.getState().printers[0]).toEqual({
       ...printer,
-      host: "192.168.1.77",
     });
-    expect(mockSetItem).toHaveBeenCalledTimes(1);
+    expect(mockSetItem).not.toHaveBeenCalled();
   });
 
   it("una prueba fallida no habilita confirmación ni actualiza la IP", async () => {
@@ -275,7 +274,7 @@ describe("usePrinterManagement", () => {
     expect(result.current.isBusy).toBe(false);
   });
 
-  it("permite recuperar IP offline en tablet compartida sin habilitar administración", async () => {
+  it("no permite que un operario de tablet compartida cambie la IP compartida", async () => {
     const printer = await usePrinterSettingsStore
       .getState()
       .addPrinter({ name: "Taller", host: "192.168.1.60" });
@@ -290,11 +289,9 @@ describe("usePrinterManagement", () => {
       );
     });
     await act(async () => {
-      expect(await result.current.confirmConnection()).toBe(true);
+      expect(await result.current.confirmConnection()).toBe(false);
     });
-    expect(usePrinterSettingsStore.getState().printers[0]?.host).toBe(
-      "192.168.1.77",
-    );
+    expect(usePrinterSettingsStore.getState().printers[0]?.host).toBe(printer.host);
     expect(result.current.canManage).toBe(false);
     await act(async () => {
       expect(await result.current.authorizeAdministration()).toBe(false);

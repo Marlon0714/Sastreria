@@ -1,4 +1,15 @@
-import type { CapturedLabelBitmap, DecodedLabelBitmap, PrinterTarget } from "./types";
+import type {
+  CapturedLabelBitmap,
+  DecodedLabelBitmap,
+  PrinterSettingsSnapshot,
+  PrinterTarget,
+} from "./types";
+
+/** Puerto de configuración compartida; la caché local sigue siendo prioritaria. */
+export interface PrinterSettingsRepository {
+  load(): Promise<PrinterSettingsSnapshot | null>;
+  save(settings: PrinterSettingsSnapshot): Promise<void>;
+}
 
 /**
  * Puerto agnóstico de marca/protocolo para enviar un trabajo de impresión ya
@@ -9,7 +20,11 @@ import type { CapturedLabelBitmap, DecodedLabelBitmap, PrinterTarget } from "./t
  * conocen esta interfaz.
  */
 export interface LabelPrinterRepository {
-  printLabelJob(target: PrinterTarget, job: Uint8Array): Promise<void>;
+  printLabelJob(
+    target: PrinterTarget,
+    job: Uint8Array,
+    jobKey?: string,
+  ): Promise<void>;
 }
 
 /**

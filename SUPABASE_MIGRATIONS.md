@@ -445,6 +445,7 @@ Para la cuenta de la tablet compartida: mismo flujo pero `is_shared_device = tru
 **⚠️ Seguridad (detectado 2026-08-04, QA previa a la build de Bloque 1): NO habilitar Supabase Realtime para `profiles`.** El `REVOKE SELECT (pin_hash)` de arriba solo protege consultas `SELECT`/REST — Supabase Realtime (`postgres_changes`) lee directo del WAL de Postgres y entrega la fila completa por websocket a cualquier cliente suscrito a esa tabla, sin respetar revokes a nivel de columna. Si en el Dashboard de Supabase (Database → Replication) `profiles` llegara a estar marcada para Realtime, cualquier INSERT/UPDATE sobre esa tabla filtraría el `pin_hash` (ya hasheado con bcrypt, pero igual innecesario exponerlo) a todos los clientes conectados. El código de la app (`SupabaseRealtimeInvalidationSubscriber.ts`) ya NO se suscribe a `profiles` por este motivo — pero conviene confirmar también en el Dashboard que la tabla no esté habilitada para Realtime, como segunda capa.
 
 ---
+---
 
 ### v19_schedule_redesign — script consolidado, confirmado corrido en Supabase (Fases 1-3 del Bloque 1, N-077)
 
@@ -1488,6 +1489,83 @@ enviará `start_date`/`due_date` en el `upsert` y Supabase los rechazará con
 **✅ Confirmado 2026-09-25:** el usuario corrió este bloque en el SQL Editor
 de Supabase. Es la última migración documentada en este archivo — no queda
 ninguna pendiente después de esta.
+
+---
+
+### v44_printer_settings_shared (2026-10-11)
+
+**Aplicar manualmente en Supabase Dashboard → SQL Editor antes de desplegar
+la versión que comparte impresoras.** Cada negocio utiliza su propio proyecto
+Supabase, así que la tabla contiene una única fila del taller y no requiere
+`business_id`. Los usuarios autenticados pueden leerla para imprimir; solo un
+perfil `owner` puede insertar, actualizar o eliminar la configuración.
+
+```sql
+CREATE TABLE IF NOT EXISTS public.printer_settings (
+  id TEXT PRIMARY KEY CHECK (id = 'workshop'),
+  printers JSONB NOT NULL DEFAULT '[]'::jsonb
+    CHECK (jsonb_typeof(printers) = 'array'),
+  default_printer_id TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.printer_settings ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.printer_settings TO authenticated;
+
+DROP POLICY IF EXISTS "authenticated read printer settings"
+  ON public.printer_settings;
+CREATE POLICY "authenticated read printer settings"
+  ON public.printer_settings FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "owner insert printer settings"
+  ON public.printer_settings;
+CREATE POLICY "owner insert printer settings"
+  ON public.printer_settings FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid() AND profiles.role = 'owner'
+    )
+  );
+
+DROP POLICY IF EXISTS "owner update printer settings"
+  ON public.printer_settings;
+CREATE POLICY "owner update printer settings"
+  ON public.printer_settings FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid() AND profiles.role = 'owner'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid() AND profiles.role = 'owner'
+    )
+  );
+
+DROP POLICY IF EXISTS "owner delete printer settings"
+  ON public.printer_settings;
+CREATE POLICY "owner delete printer settings"
+  ON public.printer_settings FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid() AND profiles.role = 'owner'
+    )
+  );
+```
+
+La app conserva una copia local segura y la guarda antes de intentar el envío
+remoto. Si no hay red, la configuración local sigue disponible y se intenta
+sincronizar otra vez al abrir los ajustes o volver a la pantalla de impresión.
+La impresión continúa siendo TCP directa desde el teléfono conectado al Wi-Fi
+del taller: la cola local permite un solo envío activo y coalesce solicitudes
+duplicadas del mismo arreglo en ese dispositivo. No existe claim global entre
+dispositivos y el protocolo TCP no informa si la etiqueta realmente salió;
+por tanto el operador debe confirmar físicamente el resultado si es necesario.
 
 ---
 

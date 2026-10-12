@@ -45,7 +45,12 @@ async function configuredPrinter() {
 describe("PrinterSettingsScreen", () => {
   beforeEach(() => {
     mockSetItemAsync.mockReset().mockResolvedValue();
-    usePrinterSettingsStore.setState({ printers: [], defaultPrinterId: null });
+    usePrinterSettingsStore.setState({
+      printers: [],
+      defaultPrinterId: null,
+      isHydrating: false,
+      hydrate: async () => {},
+    });
     useIdentityStore
       .getState()
       .setOwnProfile({
@@ -137,7 +142,7 @@ describe("PrinterSettingsScreen", () => {
     expect(screen.queryByText("Impreso")).toBeNull();
   });
 
-  it("permite al operario recuperación y predeterminada pero no administración", async () => {
+  it("permite al operario probar impresoras, pero no editar su configuración compartida", async () => {
     await configuredPrinter();
     useIdentityStore
       .getState()
@@ -151,9 +156,8 @@ describe("PrinterSettingsScreen", () => {
     expect(screen.queryByLabelText("Agregar impresora")).toBeNull();
     expect(screen.queryByLabelText("Editar Taller")).toBeNull();
     expect(screen.queryByLabelText("Eliminar Taller")).toBeNull();
-    expect(screen.getByLabelText("Predeterminada Taller")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("Resolver conexión de Taller"));
-    expect(screen.getByLabelText("Nueva IP de la impresora")).toBeTruthy();
+    expect(screen.queryByLabelText("Predeterminada Taller")).toBeNull();
+    expect(screen.queryByLabelText("Resolver conexión de Taller")).toBeNull();
     expect(screen.queryByLabelText("Ancho de etiqueta (mm)")).toBeNull();
   });
 

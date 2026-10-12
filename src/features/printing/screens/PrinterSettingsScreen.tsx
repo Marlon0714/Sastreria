@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 
 import { colors } from "../../../shared/theme/colors";
+import { usePrinterSettingsStore } from "../../../shared/state/printerSettingsStore";
 import { PinPromptModal } from "../../auth/components/PinPromptModal";
 import { OfflineActorPickerModal } from "../../auth/components/OfflineActorPickerModal";
 import { ReauthStep } from "../../account/components/ReauthStep";
@@ -60,6 +61,8 @@ const INPUT_FIELDS = [
 ] as const;
 
 export default function PrinterSettingsScreen(): ReactElement {
+  const hydratePrinters = usePrinterSettingsStore((state) => state.hydrate);
+  const isHydrating = usePrinterSettingsStore((state) => state.isHydrating);
   const { viewRef, onLayout, capture } = useArregloLabelCapture();
   const management = usePrinterManagement(capture);
   const discovery = usePrinterDiscovery();
@@ -75,7 +78,11 @@ export default function PrinterSettingsScreen(): ReactElement {
     resolver: zodResolver(printerFormSchema),
     defaultValues: EMPTY_FORM,
   });
-  const disabled = management.isBusy || discovery.isScanning;
+  const disabled = management.isBusy || discovery.isScanning || isHydrating;
+
+  useEffect(() => {
+    void hydratePrinters();
+  }, [hydratePrinters]);
 
   const openEditor = async (printer?: PrinterTarget): Promise<void> => {
     if (!management.canManage && !(await management.authorizeAdministration()))
@@ -209,6 +216,9 @@ export default function PrinterSettingsScreen(): ReactElement {
             {management.isBusy && (
               <ActivityIndicator accessibilityLabel="Operación de impresora en curso" />
             )}
+            {isHydrating && (
+              <ActivityIndicator accessibilityLabel="Sincronizando impresoras" />
+            )}
           </View>
         }
         ListEmptyComponent={
@@ -228,29 +238,31 @@ export default function PrinterSettingsScreen(): ReactElement {
                   {item.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM} mm
                 </Text>
               </View>
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityLabel={`Predeterminada ${item.name}`}
-                accessibilityState={{
-                  checked: management.defaultPrinterId === item.id,
-                  disabled,
-                }}
-                disabled={disabled}
-                style={styles.iconButton}
-                onPress={() => {
-                  void management.setDefaultPrinter(item.id);
-                }}
-              >
-                <Ionicons
-                  name={
-                    management.defaultPrinterId === item.id
-                      ? "star"
-                      : "star-outline"
-                  }
-                  size={24}
-                  color={colors.primary}
-                />
-              </Pressable>
+              {(management.canManage || management.canAuthorizeOwner) && (
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityLabel={`Predeterminada ${item.name}`}
+                  accessibilityState={{
+                    checked: management.defaultPrinterId === item.id,
+                    disabled,
+                  }}
+                  disabled={disabled}
+                  style={styles.iconButton}
+                  onPress={() => {
+                    void management.setDefaultPrinter(item.id);
+                  }}
+                >
+                  <Ionicons
+                    name={
+                      management.defaultPrinterId === item.id
+                        ? "star"
+                        : "star-outline"
+                    }
+                    size={24}
+                    color={colors.primary}
+                  />
+                </Pressable>
+              )}
             </View>
             {management.defaultPrinterId === item.id && (
               <Text style={styles.detail}>Predeterminada</Text>
@@ -279,25 +291,27 @@ export default function PrinterSettingsScreen(): ReactElement {
                 />
                 <Text style={styles.commandText}>Probar</Text>
               </Pressable>
-              <Pressable
-                accessibilityLabel={`Resolver conexión de ${item.name}`}
-                style={styles.command}
-                disabled={disabled}
-                onPress={() => {
-                  setEditor(null);
-                  management.cancelAdministration();
-                  management.cancelRecovery();
-                  setRecoveryPrinter(item);
-                  setRecoveryHost(item.host);
-                }}
-              >
-                <Ionicons
-                  name="wifi-outline"
-                  size={18}
-                  color={colors.primary}
-                />
-                <Text style={styles.commandText}>Conexión</Text>
-              </Pressable>
+              {(management.canManage || management.canAuthorizeOwner) && (
+                <Pressable
+                  accessibilityLabel={`Resolver conexión de ${item.name}`}
+                  style={styles.command}
+                  disabled={disabled}
+                  onPress={() => {
+                    setEditor(null);
+                    management.cancelAdministration();
+                    management.cancelRecovery();
+                    setRecoveryPrinter(item);
+                    setRecoveryHost(item.host);
+                  }}
+                >
+                  <Ionicons
+                    name="wifi-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.commandText}>Conexión</Text>
+                </Pressable>
+              )}
               {(management.canManage || management.canAuthorizeOwner) && (
                 <Pressable
                   accessibilityLabel={`Editar ${item.name}`}

@@ -5,6 +5,7 @@ import {
   PrinterSettingsValidationError,
   usePrinterSettingsStore,
 } from "./printerSettingsStore";
+import type { PrinterSettingsSnapshot } from "../../features/printing/domain/types";
 
 const mockGetItemAsync = jest.fn<(key: string) => Promise<string | null>>();
 let mockNextUuid = 0;
@@ -14,11 +15,23 @@ jest.mock("expo-crypto", () => ({
 }));
 const mockSetItemAsync =
   jest.fn<(key: string, value: string) => Promise<void>>();
+const mockRemoteLoad =
+  jest.fn<() => Promise<PrinterSettingsSnapshot | null>>();
+const mockRemoteSave =
+  jest.fn<
+    (settings: unknown) => Promise<void>
+  >();
 
 jest.mock("expo-secure-store", () => ({
   getItemAsync: (key: string): Promise<string | null> => mockGetItemAsync(key),
   setItemAsync: (key: string, value: string): Promise<void> =>
     mockSetItemAsync(key, value),
+}));
+jest.mock("../../data/supabase/printerSettingsDependencies", () => ({
+  getDefaultPrinterSettingsRepository: () => ({
+    load: () => mockRemoteLoad(),
+    save: (settings: unknown) => mockRemoteSave(settings),
+  }),
 }));
 
 describe("printerSettingsStore", () => {
@@ -27,7 +40,14 @@ describe("printerSettingsStore", () => {
     mockNextUuid = 0;
     mockSetItemAsync.mockReset();
     mockSetItemAsync.mockResolvedValue();
-    usePrinterSettingsStore.setState({ printers: [], defaultPrinterId: null });
+    mockRemoteLoad.mockReset().mockResolvedValue(null);
+    mockRemoteSave.mockReset().mockRejectedValue(new Error("offline"));
+    usePrinterSettingsStore.setState({
+      printers: [],
+      defaultPrinterId: null,
+      isHydrating: false,
+      remoteSyncStatus: "pending",
+    });
     useIdentityStore.getState().setOwnProfile({
       id: "owner-1",
       displayName: "Dueño",
@@ -67,6 +87,43 @@ describe("printerSettingsStore", () => {
     expect(usePrinterSettingsStore.getState().printers).toEqual(stored);
   });
 
+  it("al hidratar reemplaza la copia synced por la configuración remota compartida", async () => {
+    const cachedPrinter = {
+      id: "local-printer",
+      name: "Copia antigua",
+      host: "192.168.1.50",
+      port: 9100,
+    };
+    const remotePrinter = {
+      id: "11111111-1111-4111-8111-111111111111",
+      name: "Mostrador",
+      host: "192.168.1.51",
+      port: 9100,
+      protocol: "tspl-bitmap" as const,
+    };
+    mockGetItemAsync.mockResolvedValue(
+      JSON.stringify({
+        version: 2,
+        printers: [cachedPrinter],
+        defaultPrinterId: cachedPrinter.id,
+        updatedAt: "2026-10-10T10:00:00.000Z",
+        remoteSyncStatus: "synced",
+      }),
+    );
+    mockRemoteLoad.mockResolvedValue({
+      printers: [remotePrinter],
+      defaultPrinterId: remotePrinter.id,
+      updatedAt: "2026-10-11T10:00:00.000Z",
+    });
+
+    await usePrinterSettingsStore.getState().hydrate();
+
+    expect(usePrinterSettingsStore.getState().printers).toEqual([
+      expect.objectContaining({ name: "Mostrador" }),
+    ]);
+    expect(usePrinterSettingsStore.getState().remoteSyncStatus).toBe("synced");
+  });
+
   it("addPrinter agrega una impresora válida, la persiste y usa el puerto por defecto", async () => {
     const printer = await usePrinterSettingsStore
       .getState()
@@ -76,6 +133,21 @@ describe("printerSettingsStore", () => {
     expect(printer.protocol).toBe("tspl-bitmap");
     expect(usePrinterSettingsStore.getState().printers).toHaveLength(1);
     expect(mockSetItemAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("guarda localmente primero y conserva la impresora si Supabase no está disponible", async () => {
+    const printer = await usePrinterSettingsStore
+      .getState()
+      .addPrinter({ name: "Taller", host: "192.168.1.60" });
+
+    expect(usePrinterSettingsStore.getState().printers).toContainEqual(printer);
+    expect(usePrinterSettingsStore.getState().remoteSyncStatus).toBe("error");
+    expect(usePrinterSettingsStore.getState().loadError).toMatch(
+      /guardada en este dispositivo/,
+    );
+    expect(JSON.parse(mockSetItemAsync.mock.calls[0]![1]).remoteSyncStatus).toBe(
+      "pending",
+    );
   });
 
   it("addPrinter rechaza datos inválidos sin persistir nada", async () => {
@@ -131,7 +203,7 @@ describe("printerSettingsStore", () => {
     expect(usePrinterSettingsStore.getState().defaultPrinterId).toBe("p1");
   });
 
-  it("permite al operario elegir predeterminada pero no administrar", async () => {
+  it("impide que el operario administre la configuración compartida", async () => {
     const printer = await usePrinterSettingsStore
       .getState()
       .addPrinter({ name: "Taller", host: "192.168.1.60" });
@@ -141,7 +213,9 @@ describe("printerSettingsStore", () => {
       role: "operario",
       isSharedDevice: false,
     });
-    await usePrinterSettingsStore.getState().setDefaultPrinter(printer.id);
+    await expect(
+      usePrinterSettingsStore.getState().setDefaultPrinter(printer.id),
+    ).rejects.toThrow(/permiso/);
     await expect(
       usePrinterSettingsStore.getState().removePrinter(printer.id),
     ).rejects.toThrow(/permiso/);
@@ -239,7 +313,7 @@ describe("printerSettingsStore", () => {
     );
   });
 
-  it("permite al operario actualizar solo la IP pero no tamaño ni protocolo", async () => {
+  it("impide al operario modificar la IP, tamaño o protocolo", async () => {
     const printer = await usePrinterSettingsStore
       .getState()
       .addPrinter({ name: "Taller", host: "192.168.1.60" });
@@ -249,9 +323,11 @@ describe("printerSettingsStore", () => {
       role: "operario",
       isSharedDevice: false,
     });
-    await usePrinterSettingsStore
-      .getState()
-      .updateConnection(printer.id, "192.168.1.77");
+    await expect(
+      usePrinterSettingsStore
+        .getState()
+        .updateConnection(printer.id, "192.168.1.77"),
+    ).rejects.toThrow(/permiso/);
     await expect(
       usePrinterSettingsStore
         .getState()
@@ -259,7 +335,6 @@ describe("printerSettingsStore", () => {
     ).rejects.toThrow(/permiso/);
     expect(usePrinterSettingsStore.getState().printers[0]).toEqual({
       ...printer,
-      host: "192.168.1.77",
     });
   });
 
