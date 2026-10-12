@@ -2,12 +2,14 @@ import TcpSocket from "react-native-tcp-socket";
 
 import type { LabelPrinterRepository } from "../../features/printing/domain/repository";
 import type { PrinterTarget } from "../../features/printing/domain/types";
+import { BoundedPrintQueue } from "./BoundedPrintQueue";
 
 /**
- * Tiempo máximo de espera para establecer la conexión TCP antes de reportar
- * error (impresora apagada/fuera de la red WiFi es el caso más común).
+ * El timeout de conexión más el límite total de envío hacen fallar rápido
+ * cuando no hay una impresora disponible en la red del taller.
  */
-const CONNECT_TIMEOUT_MS = 5000;
+const CONNECT_TIMEOUT_MS = 3500;
+const PRINT_TIMEOUT_MS = 6500;
 
 /**
  * Adaptador único donde vive todo el conocimiento específico de
@@ -18,14 +20,21 @@ const CONNECT_TIMEOUT_MS = 5000;
  * `LabelPrinterRepository` — ninguna marca/protocolo se filtra fuera de este
  * archivo.
  *
- * Sin tests unitarios a propósito (regla del plan): es I/O real de red.
- * Su comportamiento contra hardware físico está pendiente de verificación
- * manual por el usuario (no hay impresora térmica disponible en este
- * entorno de desarrollo) — el spike de protocolo (GS v 0 sobre TCP:9100)
- * está documentado en el plan aprobado.
+ * El socket requiere verificación manual con impresora física; la cola local
+ * se cubre aparte en `BoundedPrintQueue.test.ts`.
  */
 export class TcpLabelPrinterRepositoryImpl implements LabelPrinterRepository {
-  printLabelJob(target: PrinterTarget, job: Uint8Array): Promise<void> {
+  private readonly queue = new BoundedPrintQueue();
+
+  printLabelJob(
+    target: PrinterTarget,
+    job: Uint8Array,
+    jobKey?: string,
+  ): Promise<void> {
+    return this.queue.run(jobKey, () => this.sendJob(target, job));
+  }
+
+  private sendJob(target: PrinterTarget, job: Uint8Array): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       let settled = false;
 
@@ -38,42 +47,67 @@ export class TcpLabelPrinterRepositoryImpl implements LabelPrinterRepository {
         },
         () => {
           socket.write(job, undefined, (error?: Error) => {
-            if (settled) {
-              return;
-            }
-            settled = true;
-            socket.destroy();
             if (error) {
-              reject(
-                new Error(`No se pudo enviar la etiqueta a "${target.name}": ${error.message}`),
+              fail(
+                new Error(
+                  `No se pudo enviar el trabajo a "${target.name}". Revisa que la impresora admita el protocolo configurado y que su puerto de impresión esté habilitado.`,
+                ),
+                "write_failed",
               );
               return;
             }
-            resolve();
+            finish();
           });
         },
       );
 
-      socket.on("error", (error: Error) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        socket.destroy();
-        reject(
+      const timeout = setTimeout(() => {
+        fail(
           new Error(
-            `No se pudo conectar con la impresora "${target.name}" (${target.host}:${target.port}). Verifica que esté encendida y en la misma red WiFi.`,
+            `La impresora no respondió en ${PRINT_TIMEOUT_MS / 1000} segundos. Comprueba que esté encendida, en la misma red Wi-Fi del taller y que la IP y el puerto sean correctos.`,
           ),
+          "timeout",
         );
-        // El error original queda registrado para depuración, sin exponerse al usuario.
+      }, PRINT_TIMEOUT_MS);
+
+      const finish = (): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        socket.destroy();
+        resolve();
+      };
+
+      const fail = (error: Error, errorCode: string): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        socket.destroy();
+        reject(error);
         console.error(
           JSON.stringify({
             level: "error",
             service: "TcpLabelPrinterRepositoryImpl",
-            message: "Fallo de conexión con impresora térmica",
-            error: error.message,
+            message: "Falló el envío TCP de una etiqueta",
+            errorCode,
           }),
         );
+      };
+
+      socket.on("error", (error: Error) => {
+        const errorCode =
+          "code" in error && typeof error.code === "string"
+            ? error.code
+            : "connection_failed";
+        const message =
+          errorCode === "ECONNREFUSED"
+            ? `La impresora rechazó la conexión en ${target.host}:${target.port}. Verifica su IP y puerto de impresión.`
+            : errorCode === "ENETUNREACH" || errorCode === "EHOSTUNREACH"
+              ? "No se alcanza la impresora desde esta red. Conecta el dispositivo al Wi-Fi del taller y revisa la IP."
+              : errorCode === "ETIMEDOUT"
+                ? "Se agotó el tiempo de conexión. Comprueba que la impresora esté encendida y conectada al Wi-Fi del taller."
+                : `No se pudo conectar con la impresora "${target.name}". Verifica que esté encendida y en la misma red Wi-Fi del taller.`;
+        fail(new Error(message), errorCode);
       });
     });
   }

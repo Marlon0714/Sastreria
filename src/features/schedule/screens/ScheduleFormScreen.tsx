@@ -125,6 +125,8 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   const [displaySchedule, setDisplaySchedule] = useState<Schedule | null>(
     null,
   );
+  const [isNewScheduleAvailable, setIsNewScheduleAvailable] = useState(false);
+  const [printRequestId, setPrintRequestId] = useState<string | undefined>();
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   const [hasTime, setHasTime] = useState(false);
@@ -416,6 +418,26 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     const proceedSubmit = async (): Promise<void> => {
       const result = await submit(values);
       if (result) {
+        if (!scheduleId && values.category === "arreglo") {
+          setDisplaySchedule(result);
+          setIsNewScheduleAvailable(true);
+          Alert.alert(
+            "Arreglo guardado",
+            "¿Quieres imprimir ahora la etiqueta de 50 × 70 mm o hacerlo más tarde desde el detalle?",
+            [
+              {
+                text: "Imprimir ahora",
+                onPress: () => setPrintRequestId(result.id),
+              },
+              {
+                text: "Más tarde",
+                style: "cancel",
+                onPress: () => navigation.goBack(),
+              },
+            ],
+          );
+          return;
+        }
         navigation.goBack();
       }
     };
@@ -979,8 +1001,6 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             </Pressable>
           ) : null}
 
-          <PrintArregloLabelButton schedule={displaySchedule} />
-
           <Pressable
             accessibilityLabel="Corrección manual de estado"
             style={styles.correctionToggle}
@@ -1016,6 +1036,13 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
             </View>
           ) : null}
         </View>
+      ) : null}
+
+      {displaySchedule && (scheduleId || isNewScheduleAvailable) ? (
+        <PrintArregloLabelButton
+          schedule={displaySchedule}
+          requestPrint={printRequestId}
+        />
       ) : null}
 
       {scheduleId ? (

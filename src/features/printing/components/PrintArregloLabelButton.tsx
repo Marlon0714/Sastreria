@@ -1,5 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +31,8 @@ import { LabelPreviewModal } from "./LabelPreviewModal";
 
 interface PrintArregloLabelButtonProps {
   schedule: Schedule;
+  /** Solicita abrir el flujo de impresión justo después de guardar el arreglo. */
+  requestPrint?: string;
   /**
    * Cliente ya resuelto por quien renderiza el botón (ej.
    * `ScheduleDayViewScreen` ya mantiene `clientsById`). Si no viene (ya sea
@@ -48,12 +57,15 @@ interface PrintArregloLabelButtonProps {
 export function PrintArregloLabelButton({
   schedule,
   client,
+  requestPrint,
 }: PrintArregloLabelButtonProps): ReactElement | null {
   const clientRepository = useClientRepository();
   const printers = usePrinterSettingsStore((state) => state.printers);
   const defaultPrinterId = usePrinterSettingsStore(
     (state) => state.defaultPrinterId,
   );
+  const isHydrating = usePrinterSettingsStore((state) => state.isHydrating);
+  const hydratePrinters = usePrinterSettingsStore((state) => state.hydrate);
   const { viewRef, onLayout, capture } = useArregloLabelCapture();
   const { isPrinting, printLabel } = usePrintArregloLabel();
   const [resolvedClient, setResolvedClient] = useState<Client | null>(
@@ -62,6 +74,12 @@ export function PrintArregloLabelButton({
   const [pendingTarget, setPendingTarget] = useState<PrinterTarget | null>(
     null,
   );
+  const attempts = useRef(0);
+  const handledRequest = useRef<string | null>(null);
+
+  useEffect(() => {
+    void hydratePrinters();
+  }, [hydratePrinters]);
 
   useEffect(() => {
     if (client) {
@@ -109,30 +127,7 @@ export function PrintArregloLabelButton({
   const contact = resolveClientContact(schedule, clientsById);
   const label = buildArregloLabelData(schedule, contact);
 
-  const printToTarget = async (target: PrinterTarget): Promise<boolean> => {
-    try {
-      await printLabel({ capture, target });
-      return true;
-    } catch (error) {
-      Alert.alert(
-        "No se pudo imprimir",
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error inesperado. Intenta de nuevo.",
-      );
-      console.error(
-        JSON.stringify({
-          level: "error",
-          service: "PrintArregloLabelButton",
-          message: "Fallo al imprimir etiqueta de arreglo",
-          error: error instanceof Error ? error.message : String(error),
-        }),
-      );
-      return false;
-    }
-  };
-
-  const choosePrinter = (): void => {
+  const choosePrinter = useCallback((): void => {
     Alert.alert(
       "Elegir impresora",
       "¿En cuál impresora deseas imprimir esta etiqueta?",
@@ -144,9 +139,17 @@ export function PrintArregloLabelButton({
         { text: "Cancelar", style: "cancel" as const },
       ],
     );
-  };
+  }, [printers]);
 
-  const handlePrintPress = (): void => {
+  const handlePrintPress = useCallback((): void => {
+    if (isHydrating) {
+      Alert.alert(
+        "Cargando impresoras",
+        "Espera un momento mientras se actualiza la configuración compartida.",
+      );
+      return;
+    }
+    attempts.current = 0;
     if (printers.length === 0) {
       Alert.alert(
         "No hay impresoras configuradas",
@@ -164,39 +167,129 @@ export function PrintArregloLabelButton({
     }
 
     choosePrinter();
-  };
+  }, [choosePrinter, defaultPrinterId, isHydrating, printers]);
 
-  const handleConfirmPrint = async (): Promise<void> => {
+  const printToTarget = useCallback(
+    async (target: PrinterTarget): Promise<boolean> => {
+      const sendAttempt = async (): Promise<boolean> => {
+        if (attempts.current >= 3) {
+          Alert.alert(
+            "Límite de intentos alcanzado",
+            "Ya se hicieron 3 intentos en este envío. Revisa la conexión o inicia una nueva impresión desde el botón de la etiqueta.",
+            [{ text: "Cerrar", onPress: () => setPendingTarget(null) }],
+          );
+          return false;
+        }
+        const current = usePrinterSettingsStore
+          .getState()
+          .printers.find((printer) => printer.id === target.id);
+        if (!current) {
+          setPendingTarget(null);
+          Alert.alert(
+            "Impresora no disponible",
+            "La impresora ya no está configurada en este dispositivo.",
+          );
+          return false;
+        }
+        if (
+          current.host !== target.host ||
+          current.port !== target.port ||
+          current.protocol !== target.protocol ||
+          current.labelWidthMm !== target.labelWidthMm ||
+          current.labelLengthMm !== target.labelLengthMm
+        ) {
+          setPendingTarget(current);
+          Alert.alert(
+            "Configuración actualizada",
+            "Revisa la impresora y confirma de nuevo antes de enviar.",
+          );
+          return false;
+        }
+
+        attempts.current += 1;
+        const attempt = attempts.current;
+        try {
+          await printLabel({ capture, target: current, jobKey: schedule.id });
+          return true;
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Error inesperado al preparar o enviar la etiqueta.";
+          Alert.alert(
+            "No se pudo imprimir",
+            `${message}\n\nIntento ${attempt} de 3. La conexión TCP no confirma que la etiqueta haya salido.`,
+            [
+              ...(attempt < 3
+                ? [
+                    {
+                      text: "Reintentar",
+                      onPress: () => {
+                        void sendAttempt().then((succeeded) => {
+                          if (succeeded) setPendingTarget(null);
+                        });
+                      },
+                    },
+                  ]
+                : []),
+              ...(attempt < 3
+                ? [
+                    {
+                      text: "Elegir impresora",
+                      onPress: choosePrinter,
+                    },
+                  ]
+                : [
+                    {
+                      text: "Revisar conexión",
+                      onPress: () =>
+                        Alert.alert(
+                          "Revisar conexión",
+                          "Comprueba el Wi-Fi del taller, la IP y puerto 9100 de la impresora, el protocolo configurado y su alimentación. TCP no permite conocer el estado del papel.",
+                        ),
+                    },
+                  ]),
+              {
+                text: "Más tarde",
+                style: "cancel" as const,
+                onPress: () => setPendingTarget(null),
+              },
+            ],
+          );
+          console.error(
+            JSON.stringify({
+              level: "error",
+              service: "PrintArregloLabelButton",
+              message: "Fallo al enviar etiqueta de arreglo",
+              attempt,
+            }),
+          );
+          return false;
+        }
+      };
+      return sendAttempt();
+    },
+    [capture, choosePrinter, printLabel, schedule.id],
+  );
+
+  const handleConfirmPrint = useCallback(async (): Promise<void> => {
     if (!pendingTarget) {
       return;
     }
-    const current = usePrinterSettingsStore
-      .getState()
-      .printers.find((printer) => printer.id === pendingTarget.id);
-    if (!current) {
-      setPendingTarget(null);
-      Alert.alert(
-        "Impresora no disponible",
-        "La impresora ya no está configurada en este dispositivo.",
-      );
-      return;
-    }
+    if (await printToTarget(pendingTarget)) setPendingTarget(null);
+  }, [pendingTarget, printToTarget]);
+
+  useEffect(() => {
     if (
-      current.host !== pendingTarget.host ||
-      current.port !== pendingTarget.port ||
-      current.protocol !== pendingTarget.protocol ||
-      current.labelWidthMm !== pendingTarget.labelWidthMm ||
-      current.labelLengthMm !== pendingTarget.labelLengthMm
+      requestPrint &&
+      requestPrint === schedule.id &&
+      !isHydrating &&
+      handledRequest.current !== requestPrint
     ) {
-      setPendingTarget(current);
-      Alert.alert(
-        "Configuración actualizada",
-        "Revisa la impresora y confirma de nuevo antes de enviar.",
-      );
-      return;
+      handledRequest.current = requestPrint;
+      handlePrintPress();
     }
-    if (await printToTarget(current)) setPendingTarget(null);
-  };
+  }, [handlePrintPress, isHydrating, requestPrint, schedule.id]);
 
   if (schedule.category !== "arreglo") {
     return null;
@@ -210,9 +303,12 @@ export function PrintArregloLabelButton({
 
       <Pressable
         accessibilityLabel="Imprimir etiqueta"
-        style={[styles.button, isPrinting && styles.buttonDisabled]}
+        style={[
+          styles.button,
+          (isPrinting || isHydrating) && styles.buttonDisabled,
+        ]}
         onPress={handlePrintPress}
-        disabled={isPrinting}
+        disabled={isPrinting || isHydrating}
       >
         {isPrinting ? (
           <ActivityIndicator color="#ffffff" size="small" />
@@ -220,7 +316,11 @@ export function PrintArregloLabelButton({
           <Ionicons name="print-outline" size={18} color="#ffffff" />
         )}
         <Text style={styles.buttonText}>
-          {isPrinting ? "Imprimiendo…" : "Imprimir etiqueta"}
+          {isPrinting
+            ? "Imprimiendo…"
+            : isHydrating
+              ? "Cargando impresoras…"
+              : "Imprimir etiqueta"}
         </Text>
       </Pressable>
 

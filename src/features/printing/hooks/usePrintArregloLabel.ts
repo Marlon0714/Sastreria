@@ -11,6 +11,8 @@ import { usePrintingDependencies } from "./PrintingDependenciesProvider";
 interface PrintArregloLabelParams {
   capture: () => Promise<CapturedLabelBitmap>;
   target: PrinterTarget;
+  /** Permite al transporte coalescer un doble envío local del mismo arreglo. */
+  jobKey?: string;
 }
 
 /**
@@ -38,7 +40,7 @@ export function usePrintArregloLabel(): {
   const inFlight = useRef(false);
 
   const printLabel = useCallback(
-    async ({ capture, target }: PrintArregloLabelParams): Promise<void> => {
+    async ({ capture, target, jobKey }: PrintArregloLabelParams): Promise<void> => {
       if (inFlight.current)
         throw new Error("Ya hay un envío de etiqueta en curso.");
       inFlight.current = true;
@@ -51,7 +53,7 @@ export function usePrintArregloLabel(): {
           target.protocol ?? DEFAULT_PRINT_PROTOCOL,
         );
         const job = renderer.render(bitmap, target);
-        await labelPrinterRepository.printLabelJob(target, job);
+        await labelPrinterRepository.printLabelJob(target, job, jobKey);
       } finally {
         inFlight.current = false;
         setIsPrinting(false);

@@ -179,7 +179,19 @@ jest.mock("../components/ScheduleHistoryList", () => ({
 // PrintingDependenciesProvider (fuera del alcance de este test, que solo
 // verifica el formulario de turno) — se reemplaza por un stub simple.
 jest.mock("../../printing/components/PrintArregloLabelButton", () => ({
-  PrintArregloLabelButton: () => null,
+  PrintArregloLabelButton: ({
+    requestPrint,
+  }: {
+    requestPrint?: string;
+  }) => {
+    const ReactModule = jest.requireActual("react") as typeof import("react");
+    const { Text } = jest.requireActual(
+      "react-native",
+    ) as typeof import("react-native");
+    return requestPrint
+      ? ReactModule.createElement(Text, null, requestPrint)
+      : null;
+  },
 }));
 
 type ScreenProps = React.ComponentProps<typeof ScheduleFormScreen>;
@@ -302,6 +314,11 @@ describe("ScheduleFormScreen", () => {
       syncScheduleSnapshot: jest.fn(),
     });
     const goBack = jest.fn();
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find((button) => button.text === "Más tarde")?.onPress?.();
+      });
 
     const { getByPlaceholderText, getByLabelText } = render(
       <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
@@ -327,6 +344,40 @@ describe("ScheduleFormScreen", () => {
     await waitFor(() => {
       expect(goBack).toHaveBeenCalled();
     });
+    expect(Alert.alert).toHaveBeenCalledWith(
+      "Arreglo guardado",
+      expect.stringContaining("50 × 70 mm"),
+      expect.arrayContaining([
+        expect.objectContaining({ text: "Imprimir ahora" }),
+        expect.objectContaining({ text: "Más tarde" }),
+      ]),
+    );
+  });
+
+  it("solicita imprimir inmediatamente sin revertir el guardado local", async () => {
+    const submit = jest.fn(async () => Promise.resolve(schedule));
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+      syncScheduleSnapshot: jest.fn(),
+    });
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find((button) => button.text === "Imprimir ahora")?.onPress?.();
+      });
+
+    const { getByLabelText, findByText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+    fireEvent.press(getByLabelText("Guardar turno"));
+
+    expect(await findByText(schedule.id)).toBeTruthy();
+    expect(submit).toHaveBeenCalledTimes(1);
   });
 
   it("ignora los puntos al escribir/pegar un precio (ej. '15.000' no se lee como 15)", async () => {
@@ -1577,7 +1628,9 @@ describe("ScheduleFormScreen", () => {
         syncScheduleSnapshot: jest.fn(),
       });
       jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
-        const confirm = buttons?.find((b) => b.text === "Guardar de todas formas");
+        const confirm =
+          buttons?.find((b) => b.text === "Guardar de todas formas") ??
+          buttons?.find((b) => b.text === "Más tarde");
         void confirm?.onPress?.();
       });
 
@@ -1660,7 +1713,9 @@ describe("ScheduleFormScreen", () => {
       await waitFor(() => {
         expect(submit).toHaveBeenCalled();
       });
-      expect(alertSpy).not.toHaveBeenCalled();
+      expect(
+        alertSpy.mock.calls.some(([title]) => title === "Turno duplicado"),
+      ).toBe(false);
     });
 
     it("un turno sin fecha (Pendientes) nunca avisa, sin consultar turnos existentes", async () => {
@@ -1687,7 +1742,9 @@ describe("ScheduleFormScreen", () => {
         expect(submit).toHaveBeenCalled();
       });
       expect(mockGetByDate).not.toHaveBeenCalled();
-      expect(alertSpy).not.toHaveBeenCalled();
+      expect(
+        alertSpy.mock.calls.some(([title]) => title === "Turno duplicado"),
+      ).toBe(false);
     });
 
     it("detecta la coincidencia con mayúsculas/espacios distintos (mismo criterio que normalizeText)", async () => {
@@ -1809,7 +1866,9 @@ describe("ScheduleFormScreen", () => {
         syncScheduleSnapshot: jest.fn(),
       });
       jest.spyOn(Alert, "alert").mockImplementation((_title, _msg, buttons) => {
-        const confirm = buttons?.find((b) => b.text === "Continuar de todas formas");
+        const confirm =
+          buttons?.find((b) => b.text === "Continuar de todas formas") ??
+          buttons?.find((b) => b.text === "Más tarde");
         void confirm?.onPress?.();
       });
 
@@ -1888,7 +1947,9 @@ describe("ScheduleFormScreen", () => {
       await waitFor(() => {
         expect(submit).toHaveBeenCalled();
       });
-      expect(alertSpy).not.toHaveBeenCalled();
+      expect(
+        alertSpy.mock.calls.some(([title]) => title === "Turno sin terminar"),
+      ).toBe(false);
     });
 
     it("un turno nuevo sin registrar cliente (unregisteredClientName) nunca dispara este chequeo", async () => {
@@ -1915,7 +1976,9 @@ describe("ScheduleFormScreen", () => {
         expect(submit).toHaveBeenCalled();
       });
       expect(mockGetByClient).not.toHaveBeenCalled();
-      expect(alertSpy).not.toHaveBeenCalled();
+      expect(
+        alertSpy.mock.calls.some(([title]) => title === "Turno sin terminar"),
+      ).toBe(false);
     });
 
     it("editar un turno existente nunca dispara este chequeo, aunque el cliente tenga otros turnos sin terminar", async () => {
