@@ -1,4 +1,4 @@
-import { toMonochromeBitmap } from "./monochromeBitmap";
+import { invertMonochromeBitmap, toMonochromeBitmap } from "./monochromeBitmap";
 import { mmToDots } from "./paperSize";
 import { rotatePixelsClockwise90 } from "./rotatePixels";
 import { scaleRgbaPixels } from "./scalePixels";
@@ -24,6 +24,7 @@ import {
 export function prepareArregloLabelBitmap(
   decoded: DecodedLabelBitmap,
   printer: PrinterTarget,
+  invertColors = false,
 ): MonochromeBitmap {
   const widthMm = printer.labelWidthMm ?? DEFAULT_LABEL_WIDTH_MM;
   const lengthMm = printer.labelLengthMm ?? DEFAULT_LABEL_LENGTH_MM;
@@ -38,5 +39,10 @@ export function prepareArregloLabelBitmap(
 
   const rotated = rotatePixelsClockwise90(scaled.pixels, scaled.width, scaled.height);
 
-  return toMonochromeBitmap(rotated.pixels, rotated.width, rotated.height);
+  const bitmap = toMonochromeBitmap(
+    rotated.pixels,
+    rotated.width,
+    rotated.height,
+  );
+  return invertColors ? invertMonochromeBitmap(bitmap) : bitmap;
 }

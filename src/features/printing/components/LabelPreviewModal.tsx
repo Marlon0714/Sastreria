@@ -4,10 +4,12 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import type { ArregloLabelData } from "../domain/types";
 import { ArregloLabelView } from "./ArregloLabelView";
@@ -26,6 +28,8 @@ interface LabelPreviewModalProps {
   isConfirming?: boolean;
   /** Ej. "Mostrador" — solo se muestra cuando hay `onConfirm`. */
   targetName?: string;
+  inverted?: boolean;
+  onToggleInverted?: (inverted: boolean) => void;
 }
 
 /**
@@ -48,6 +52,8 @@ export function LabelPreviewModal({
   onChooseTarget,
   isConfirming = false,
   targetName,
+  inverted = false,
+  onToggleInverted,
 }: LabelPreviewModalProps): ReactElement {
   const isConfirmMode = onConfirm != null;
 
@@ -73,15 +79,33 @@ export function LabelPreviewModal({
               disabled={isConfirming}
               style={styles.changeTarget}
             >
-              <Text style={styles.cancelButtonText}>Cambiar impresora</Text>
+              <Ionicons name="print-outline" size={18} color="#1d4ed8" />
+              <Text style={styles.changeTargetText}>Cambiar impresora</Text>
             </TouchableOpacity>
           )}
+
+          {onToggleInverted ? (
+            <View style={styles.invertRow}>
+              <View style={styles.invertCopy}>
+                <Text style={styles.invertTitle}>Probar fondo negro</Text>
+                <Text style={styles.invertDescription}>
+                  Invierte el diseño solo para esta impresión.
+                </Text>
+              </View>
+              <Switch
+                accessibilityLabel="Probar fondo negro"
+                value={inverted}
+                onValueChange={onToggleInverted}
+                disabled={isConfirming}
+              />
+            </View>
+          ) : null}
 
           <ScrollView
             horizontal
             contentContainerStyle={styles.previewScrollContent}
           >
-            <ArregloLabelView label={label} />
+            <ArregloLabelView label={label} inverted={inverted} />
           </ScrollView>
 
           {isConfirmMode ? (
@@ -160,9 +184,46 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   changeTarget: {
+    alignSelf: "center",
     minHeight: 44,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#93c5fd",
+    backgroundColor: "#eff6ff",
+    paddingHorizontal: 16,
+    marginVertical: 8,
+  },
+  changeTargetText: {
+    color: "#1d4ed8",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  invertRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    borderRadius: 10,
+    backgroundColor: "#f8fafc",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  invertCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  invertTitle: {
+    color: "#1e293b",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  invertDescription: {
+    color: "#64748b",
+    fontSize: 12,
   },
   buttonRow: {
     flexDirection: "row",

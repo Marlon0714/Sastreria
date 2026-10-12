@@ -18,6 +18,7 @@ import {
 interface ArregloLabelViewProps {
   label: ArregloLabelData;
   onLayout?: (event: LayoutChangeEvent) => void;
+  inverted?: boolean;
 }
 
 /**
@@ -28,8 +29,10 @@ interface ArregloLabelViewProps {
 const BUSINESS_NAME = "Eduar Espinosa";
 const BUSINESS_SUBTITLE = "SASTRERÍA";
 
-function Divider(): React.ReactElement {
-  return <View style={styles.divider} />;
+function Divider({ inverted }: { inverted: boolean }): React.ReactElement {
+  return (
+    <View style={[styles.divider, inverted && styles.invertedDivider]} />
+  );
 }
 
 /**
@@ -44,32 +47,32 @@ function Divider(): React.ReactElement {
  * A propósito NO muestra descripción de la prenda ni ningún código/QR.
  */
 export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
-  function ArregloLabelView({ label, onLayout }, ref) {
+  function ArregloLabelView({ label, onLayout, inverted = false }, ref) {
     const hasTotalRow = label.price != null || label.abono != null;
 
     return (
       <View
         ref={ref}
-        style={styles.container}
+        style={[styles.container, inverted && styles.invertedContainer]}
         collapsable={false}
         onLayout={onLayout}
       >
         <View style={styles.header}>
           <Image
             source={require("../../../../assets/label/icono-traje.png")}
-            style={styles.headerIcon}
+            style={[styles.headerIcon, inverted && styles.invertedImage]}
             resizeMode="contain"
           />
           <View style={styles.headerTitle}>
             <Text
-              style={styles.businessName}
+              style={[styles.businessName, inverted && styles.invertedText]}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
               {BUSINESS_NAME}
             </Text>
             <Text
-              style={styles.businessSubtitle}
+              style={[styles.businessSubtitle, inverted && styles.invertedText]}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -78,16 +81,18 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
           </View>
           <Image
             source={require("../../../../assets/label/emblema-monograma.png")}
-            style={styles.headerEmblem}
+            style={[styles.headerEmblem, inverted && styles.invertedImage]}
             resizeMode="contain"
           />
         </View>
-        <Divider />
+        <Divider inverted={inverted} />
 
         <View>
-          <Text style={styles.sectionLabel}>CLIENTE</Text>
+          <Text style={[styles.sectionLabel, inverted && styles.invertedText]}>
+            CLIENTE
+          </Text>
           <Text
-            style={styles.clientName}
+            style={[styles.clientName, inverted && styles.invertedText]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.6}
@@ -95,7 +100,11 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
             {label.clientName}
           </Text>
           {label.clientPhone ? (
-            <Text style={styles.text} numberOfLines={1} adjustsFontSizeToFit>
+            <Text
+              style={[styles.text, inverted && styles.invertedText]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               Tel. {label.clientPhone}
             </Text>
           ) : null}
@@ -103,11 +112,15 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
 
         {label.date ? (
           <>
-            <Divider />
+            <Divider inverted={inverted} />
             <View style={styles.deliveryRow}>
-              <Text style={styles.deliveryLabel}>ENTREGA</Text>
               <Text
-                style={styles.deliveryValue}
+                style={[styles.deliveryLabel, inverted && styles.invertedText]}
+              >
+                ENTREGA
+              </Text>
+              <Text
+                style={[styles.deliveryValue, inverted && styles.invertedText]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
@@ -119,13 +132,17 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
 
         {hasTotalRow ? (
           <>
-            <Divider />
+            <Divider inverted={inverted} />
             <View style={styles.row}>
               {label.price != null ? (
                 <View style={styles.amountColumn}>
-                  <Text style={styles.sectionLabel}>Total</Text>
                   <Text
-                    style={styles.amountValue}
+                    style={[styles.sectionLabel, inverted && styles.invertedText]}
+                  >
+                    Total
+                  </Text>
+                  <Text
+                    style={[styles.amountValue, inverted && styles.invertedText]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
@@ -134,13 +151,22 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
                 </View>
               ) : null}
               {label.price != null && label.abono != null ? (
-                <View style={styles.verticalDivider} />
+                <View
+                  style={[
+                    styles.verticalDivider,
+                    inverted && styles.invertedDivider,
+                  ]}
+                />
               ) : null}
               {label.abono != null ? (
                 <View style={styles.amountColumn}>
-                  <Text style={styles.sectionLabel}>Abono</Text>
                   <Text
-                    style={styles.amountValue}
+                    style={[styles.sectionLabel, inverted && styles.invertedText]}
+                  >
+                    Abono
+                  </Text>
+                  <Text
+                    style={[styles.amountValue, inverted && styles.invertedText]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
@@ -153,10 +179,14 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
         ) : null}
 
         {label.saldo != null ? (
-          <View style={styles.saldoBox}>
-            <Text style={styles.saldoLabel}>SALDO</Text>
+          <View
+            style={[styles.saldoBox, inverted && styles.invertedSaldoBox]}
+          >
+            <Text style={[styles.saldoLabel, inverted && styles.invertedText]}>
+              SALDO
+            </Text>
             <Text
-              style={styles.saldoValue}
+              style={[styles.saldoValue, inverted && styles.invertedText]}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -177,6 +207,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     justifyContent: "space-between",
+  },
+  invertedContainer: {
+    backgroundColor: "#000000",
+  },
+  invertedImage: {
+    tintColor: "#ffffff",
+  },
+  invertedText: {
+    color: "#ffffff",
+  },
+  invertedDivider: {
+    backgroundColor: "#ffffff",
+  },
+  invertedSaldoBox: {
+    borderColor: "#ffffff",
   },
   header: {
     height: 116,

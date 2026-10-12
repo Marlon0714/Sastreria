@@ -1,6 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { toMonochromeBitmap } from "./monochromeBitmap";
+import {
+  invertMonochromeBitmap,
+  toMonochromeBitmap,
+} from "./monochromeBitmap";
 
 function rgba(r: number, g: number, b: number, a = 255): [number, number, number, number] {
   return [r, g, b, a];
@@ -19,6 +22,22 @@ describe("toMonochromeBitmap", () => {
     expect(bitmap.height).toBe(1);
     expect(bitmap.bytesPerRow).toBe(1);
     expect(bitmap.data).toEqual(new Uint8Array([0x00]));
+  });
+
+  describe("invertMonochromeBitmap", () => {
+    it("invierte solo los píxeles de la etiqueta y deja en blanco el padding del último byte", () => {
+      const bitmap = {
+        width: 3,
+        height: 1,
+        bytesPerRow: 1,
+        data: new Uint8Array([0b1000_0000]),
+      };
+
+      const inverted = invertMonochromeBitmap(bitmap);
+
+      expect(inverted.data).toEqual(new Uint8Array([0b0110_0000]));
+      expect(bitmap.data).toEqual(new Uint8Array([0b1000_0000]));
+    });
   });
 
   it("marca el bit MSB en 1 cuando el primer píxel de la fila es negro", () => {

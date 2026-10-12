@@ -74,6 +74,7 @@ export default function PrinterSettingsScreen(): ReactElement {
   const [advanced, setAdvanced] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [invertedPreview, setInvertedPreview] = useState(false);
   const form = useForm<PrinterFormInput, unknown, CreatePrinterConfigOutput>({
     resolver: zodResolver(printerFormSchema),
     defaultValues: EMPTY_FORM,
@@ -585,6 +586,8 @@ export default function PrinterSettingsScreen(): ReactElement {
       <LabelPreviewModal
         visible={preview}
         label={SAMPLE_LABEL}
+        inverted={invertedPreview}
+        onToggleInverted={setInvertedPreview}
         onClose={() => setPreview(false)}
       />
       <Modal

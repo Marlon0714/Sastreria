@@ -45,3 +45,22 @@ export function toMonochromeBitmap(
 
   return { width, height, bytesPerRow, data };
 }
+
+export function invertMonochromeBitmap(
+  bitmap: MonochromeBitmap,
+): MonochromeBitmap {
+  const data = new Uint8Array(bitmap.data.length);
+
+  for (let y = 0; y < bitmap.height; y += 1) {
+    for (let x = 0; x < bitmap.width; x += 1) {
+      const byteIndex = y * bitmap.bytesPerRow + Math.floor(x / 8);
+      const bitPositionFromMsb = 7 - (x % 8);
+      const mask = 1 << bitPositionFromMsb;
+      if ((bitmap.data[byteIndex]! & mask) === 0) {
+        data[byteIndex] |= mask;
+      }
+    }
+  }
+
+  return { ...bitmap, data };
+}

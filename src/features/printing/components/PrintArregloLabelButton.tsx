@@ -74,6 +74,7 @@ export function PrintArregloLabelButton({
   const [pendingTarget, setPendingTarget] = useState<PrinterTarget | null>(
     null,
   );
+  const [inverted, setInverted] = useState(false);
   const attempts = useRef(0);
   const handledRequest = useRef<string | null>(null);
 
@@ -150,6 +151,7 @@ export function PrintArregloLabelButton({
       return;
     }
     attempts.current = 0;
+    setInverted(false);
     if (printers.length === 0) {
       Alert.alert(
         "No hay impresoras configuradas",
@@ -209,7 +211,12 @@ export function PrintArregloLabelButton({
         attempts.current += 1;
         const attempt = attempts.current;
         try {
-          await printLabel({ capture, target: current, jobKey: schedule.id });
+          await printLabel({
+            capture,
+            target: current,
+            jobKey: schedule.id,
+            invertColors: inverted,
+          });
           return true;
         } catch (error) {
           const message =
@@ -269,7 +276,7 @@ export function PrintArregloLabelButton({
       };
       return sendAttempt();
     },
-    [capture, choosePrinter, printLabel, schedule.id],
+    [capture, choosePrinter, inverted, printLabel, schedule.id],
   );
 
   const handleConfirmPrint = useCallback(async (): Promise<void> => {
@@ -328,6 +335,8 @@ export function PrintArregloLabelButton({
         visible={pendingTarget !== null}
         label={label}
         targetName={pendingTarget?.name}
+        inverted={inverted}
+        onToggleInverted={setInverted}
         isConfirming={isPrinting}
         onConfirm={handleConfirmPrint}
         onChooseTarget={printers.length > 1 ? choosePrinter : undefined}

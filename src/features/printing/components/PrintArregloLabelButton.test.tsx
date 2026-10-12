@@ -170,6 +170,27 @@ describe("PrintArregloLabelButton", () => {
     );
   });
 
+  it("permite previsualizar e imprimir la etiqueta con fondo negro y texto blanco", async () => {
+    usePrinterSettingsStore.setState({ printers: [printerA] });
+    const { getByLabelText } = renderButton({
+      schedule: arregloSchedule,
+      client: null,
+    });
+
+    fireEvent.press(getByLabelText("Imprimir etiqueta"));
+    fireEvent(getByLabelText("Probar fondo negro"), "valueChange", true);
+    fireEvent.press(getByLabelText("Confirmar impresión"));
+
+    await waitFor(() => {
+      expect(mockPrintLabel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: printerA,
+          invertColors: true,
+        }),
+      );
+    });
+  });
+
   it("pregunta cuál impresora usar cuando hay más de una configurada", () => {
     usePrinterSettingsStore.setState({ printers: [printerA, printerB] });
     const { getByLabelText } = renderButton({
