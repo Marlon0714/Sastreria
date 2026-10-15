@@ -28,6 +28,7 @@ interface ArregloLabelViewProps {
  */
 const BUSINESS_NAME = "Eduar Espinosa";
 const BUSINESS_SUBTITLE = "SASTRERÍA";
+const BUSINESS_PHONE = "3103580608";
 
 function Divider({ inverted }: { inverted: boolean }): React.ReactElement {
   return (
@@ -77,6 +78,13 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
               adjustsFontSizeToFit
             >
               {BUSINESS_SUBTITLE}
+            </Text>
+            <Text
+              style={[styles.businessPhone, inverted && styles.invertedText]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              Tel. {BUSINESS_PHONE}
             </Text>
           </View>
           <Image
@@ -255,6 +263,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#000000",
     letterSpacing: 0,
+    textAlign: "center",
+  },
+  businessPhone: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "700",
+    color: "#000000",
     textAlign: "center",
   },
   divider: {
