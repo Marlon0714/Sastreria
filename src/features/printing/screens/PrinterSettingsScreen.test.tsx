@@ -275,7 +275,7 @@ describe("PrinterSettingsScreen", () => {
     expect(screen.getAllByText("PRUEBA DE IMPRESION").length).toBeGreaterThan(
       0,
     );
-    expect(screen.queryByText(/Tel\./)).toBeNull();
+    expect(screen.getAllByText("Tel. 3103580608").length).toBeGreaterThan(0);
     fireEvent.press(screen.getByLabelText("Cerrar"));
     await waitFor(() =>
       expect(screen.queryByText("Vista previa de etiqueta")).toBeNull(),
