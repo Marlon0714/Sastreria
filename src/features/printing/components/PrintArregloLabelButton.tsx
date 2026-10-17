@@ -33,6 +33,7 @@ interface PrintArregloLabelButtonProps {
   schedule: Schedule;
   /** Solicita abrir el flujo de impresión justo después de guardar el arreglo. */
   requestPrint?: string;
+  onPrintFlowEnd?: () => void;
   /**
    * Cliente ya resuelto por quien renderiza el botón (ej.
    * `ScheduleDayViewScreen` ya mantiene `clientsById`). Si no viene (ya sea
@@ -58,6 +59,7 @@ export function PrintArregloLabelButton({
   schedule,
   client,
   requestPrint,
+  onPrintFlowEnd,
 }: PrintArregloLabelButtonProps): ReactElement | null {
   const clientRepository = useClientRepository();
   const printers = usePrinterSettingsStore((state) => state.printers);
@@ -137,10 +139,14 @@ export function PrintArregloLabelButton({
           text: printer.name,
           onPress: () => setPendingTarget(printer),
         })),
-        { text: "Cancelar", style: "cancel" as const },
+        {
+          text: requestPrint ? "Volver a agenda" : "Cancelar",
+          style: "cancel" as const,
+          onPress: onPrintFlowEnd,
+        },
       ],
     );
-  }, [printers]);
+  }, [onPrintFlowEnd, printers, requestPrint]);
 
   const handlePrintPress = useCallback((): void => {
     if (isHydrating) {
@@ -156,6 +162,9 @@ export function PrintArregloLabelButton({
       Alert.alert(
         "No hay impresoras configuradas",
         "Ve a Mi cuenta > Impresoras para agregar una impresora antes de imprimir.",
+        requestPrint
+          ? [{ text: "Volver a agenda", onPress: onPrintFlowEnd }]
+          : undefined,
       );
       return;
     }
@@ -169,7 +178,14 @@ export function PrintArregloLabelButton({
     }
 
     choosePrinter();
-  }, [choosePrinter, defaultPrinterId, isHydrating, printers]);
+  }, [
+    choosePrinter,
+    defaultPrinterId,
+    isHydrating,
+    onPrintFlowEnd,
+    printers,
+    requestPrint,
+  ]);
 
   const printToTarget = useCallback(
     async (target: PrinterTarget): Promise<boolean> => {
@@ -233,7 +249,10 @@ export function PrintArregloLabelButton({
                       text: "Reintentar",
                       onPress: () => {
                         void sendAttempt().then((succeeded) => {
-                          if (succeeded) setPendingTarget(null);
+                          if (succeeded) {
+                            setPendingTarget(null);
+                            onPrintFlowEnd?.();
+                          }
                         });
                       },
                     },
@@ -253,13 +272,24 @@ export function PrintArregloLabelButton({
                         Alert.alert(
                           "Revisar conexión",
                           "Comprueba el Wi-Fi del taller, la IP y puerto 9100 de la impresora, el protocolo configurado y su alimentación. TCP no permite conocer el estado del papel.",
+                          requestPrint
+                            ? [
+                                {
+                                  text: "Volver a agenda",
+                                  onPress: onPrintFlowEnd,
+                                },
+                              ]
+                            : undefined,
                         ),
                     },
                   ]),
               {
-                text: "Más tarde",
+                text: requestPrint ? "Volver a agenda" : "Más tarde",
                 style: "cancel" as const,
-                onPress: () => setPendingTarget(null),
+                onPress: () => {
+                  setPendingTarget(null);
+                  onPrintFlowEnd?.();
+                },
               },
             ],
           );
@@ -276,15 +306,26 @@ export function PrintArregloLabelButton({
       };
       return sendAttempt();
     },
-    [capture, choosePrinter, inverted, printLabel, schedule.id],
+    [
+      capture,
+      choosePrinter,
+      inverted,
+      onPrintFlowEnd,
+      printLabel,
+      requestPrint,
+      schedule.id,
+    ],
   );
 
   const handleConfirmPrint = useCallback(async (): Promise<void> => {
     if (!pendingTarget) {
       return;
     }
-    if (await printToTarget(pendingTarget)) setPendingTarget(null);
-  }, [pendingTarget, printToTarget]);
+    if (await printToTarget(pendingTarget)) {
+      setPendingTarget(null);
+      onPrintFlowEnd?.();
+    }
+  }, [onPrintFlowEnd, pendingTarget, printToTarget]);
 
   useEffect(() => {
     if (
@@ -343,6 +384,7 @@ export function PrintArregloLabelButton({
         onClose={() => {
           if (!isPrinting) {
             setPendingTarget(null);
+            onPrintFlowEnd?.();
           }
         }}
       />

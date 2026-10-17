@@ -181,15 +181,24 @@ jest.mock("../components/ScheduleHistoryList", () => ({
 jest.mock("../../printing/components/PrintArregloLabelButton", () => ({
   PrintArregloLabelButton: ({
     requestPrint,
+    onPrintFlowEnd,
   }: {
     requestPrint?: string;
+    onPrintFlowEnd?: () => void;
   }) => {
     const ReactModule = jest.requireActual("react") as typeof import("react");
-    const { Text } = jest.requireActual(
+    const { Pressable, Text } = jest.requireActual(
       "react-native",
     ) as typeof import("react-native");
     return requestPrint
-      ? ReactModule.createElement(Text, null, requestPrint)
+      ? ReactModule.createElement(
+          Pressable,
+          {
+            accessibilityLabel: "Simular impresión completada",
+            onPress: onPrintFlowEnd,
+          },
+          ReactModule.createElement(Text, null, requestPrint),
+        )
       : null;
   },
 }));
@@ -356,6 +365,7 @@ describe("ScheduleFormScreen", () => {
 
   it("solicita imprimir inmediatamente sin revertir el guardado local", async () => {
     const submit = jest.fn(async () => Promise.resolve(schedule));
+    const goBack = jest.fn();
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
       isLoading: false,
@@ -371,13 +381,26 @@ describe("ScheduleFormScreen", () => {
       });
 
     const { getByLabelText, findByText } = render(
-      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+      <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
     );
     fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
     fireEvent.press(getByLabelText("Guardar turno"));
 
     expect(await findByText(schedule.id)).toBeTruthy();
     expect(submit).toHaveBeenCalledTimes(1);
+    expect(goBack).not.toHaveBeenCalled();
+    const savedButton = getByLabelText("Turno guardado");
+    expect(
+      savedButton.props.accessibilityState?.disabled ??
+        savedButton.props.disabled,
+    ).toBe(true);
+
+    fireEvent.press(getByLabelText("Turno guardado"));
+    expect(submit).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(getByLabelText("Simular impresión completada"));
+
+    expect(goBack).toHaveBeenCalledTimes(1);
   });
 
   it("ignora los puntos al escribir/pegar un precio (ej. '15.000' no se lee como 15)", async () => {

@@ -79,6 +79,7 @@ function renderButton(props: {
   schedule: Schedule;
   client?: Client | null;
   requestPrint?: string;
+  onPrintFlowEnd?: () => void;
 }) {
   return render(
     <ClientsDependenciesProvider dependencies={buildDependencies()}>
@@ -134,12 +135,14 @@ describe("PrintArregloLabelButton", () => {
     expect(Alert.alert).toHaveBeenCalledWith(
       "No hay impresoras configuradas",
       expect.stringContaining("Impresoras"),
+      undefined,
     );
     expect(mockPrintLabel).not.toHaveBeenCalled();
   });
 
   it("muestra la vista previa y solo imprime al confirmar cuando hay una sola impresora configurada", async () => {
     usePrinterSettingsStore.setState({ printers: [printerA] });
+    const onPrintFlowEnd = jest.fn();
     const { getByLabelText } = renderButton({
       schedule: arregloSchedule,
       client: {
@@ -153,6 +156,7 @@ describe("PrintArregloLabelButton", () => {
         updatedAt: "2026-08-01T10:00:00.000Z",
         syncStatus: "pending",
       },
+      onPrintFlowEnd,
     });
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
@@ -168,6 +172,7 @@ describe("PrintArregloLabelButton", () => {
     expect(mockPrintLabel).toHaveBeenCalledWith(
       expect.objectContaining({ target: printerA, capture: mockCapture }),
     );
+    expect(onPrintFlowEnd).toHaveBeenCalledTimes(1);
   });
 
   it("permite previsualizar e imprimir la etiqueta con fondo negro y texto blanco", async () => {
@@ -273,12 +278,14 @@ describe("PrintArregloLabelButton", () => {
 
   it("muestra un error con Alert.alert si la impresión falla", async () => {
     usePrinterSettingsStore.setState({ printers: [printerA] });
+    const onPrintFlowEnd = jest.fn();
     mockPrintLabel.mockRejectedValueOnce(
       new Error("No se pudo conectar con la impresora"),
     );
     const { getByLabelText } = renderButton({
       schedule: arregloSchedule,
       client: null,
+      onPrintFlowEnd,
     });
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
@@ -296,6 +303,52 @@ describe("PrintArregloLabelButton", () => {
     });
     expect(getByLabelText("Confirmar impresión")).toBeTruthy();
     expect(mockPrintLabel).toHaveBeenCalledTimes(1);
+    expect(onPrintFlowEnd).not.toHaveBeenCalled();
+
+    const retryButton = jest
+      .mocked(Alert.alert)
+      .mock.calls.at(-1)?.[2]
+      ?.find((button) => button.text === "Reintentar");
+    act(() => retryButton?.onPress?.());
+
+    await waitFor(() => {
+      expect(mockPrintLabel).toHaveBeenCalledTimes(2);
+      expect(onPrintFlowEnd).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("vuelve a agenda si el usuario abandona la impresión automática tras un fallo", async () => {
+    usePrinterSettingsStore.setState({ printers: [printerA] });
+    mockPrintLabel.mockRejectedValueOnce(
+      new Error("No se pudo conectar con la impresora"),
+    );
+    const onPrintFlowEnd = jest.fn();
+    const { getByLabelText } = renderButton({
+      schedule: arregloSchedule,
+      client: null,
+      requestPrint: arregloSchedule.id,
+      onPrintFlowEnd,
+    });
+
+    fireEvent.press(getByLabelText("Confirmar impresión"));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "No se pudo imprimir",
+        expect.stringContaining("No se pudo conectar con la impresora"),
+        expect.arrayContaining([
+          expect.objectContaining({ text: "Volver a agenda" }),
+        ]),
+      );
+    });
+
+    const returnButton = jest
+      .mocked(Alert.alert)
+      .mock.calls.at(-1)?.[2]
+      ?.find((button) => button.text === "Volver a agenda");
+    act(() => returnButton?.onPress?.());
+
+    expect(onPrintFlowEnd).toHaveBeenCalledTimes(1);
   });
 
   it("limita a tres intentos y ofrece reintento solo mientras haya cupo", async () => {

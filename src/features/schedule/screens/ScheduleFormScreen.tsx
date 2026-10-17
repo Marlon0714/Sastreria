@@ -147,7 +147,11 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   );
   const clientPickerRef = useRef<ClientPickerFieldHandle>(null);
   const isBusy =
-    isSubmitting || statusActions.isProcessing || isDeleting || isResolvingClient;
+    isSubmitting ||
+    statusActions.isProcessing ||
+    isDeleting ||
+    isResolvingClient;
+  const isSavedNewSchedule = isNewScheduleAvailable;
 
   const {
     control,
@@ -935,18 +939,26 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Pressable
-        accessibilityLabel="Guardar turno"
+        accessibilityLabel={
+          isSavedNewSchedule ? "Turno guardado" : "Guardar turno"
+        }
         style={({ pressed }) => [
           styles.saveButton,
-          isBusy ? styles.buttonDisabled : null,
-          pressed && !isBusy ? styles.saveButtonPressed : null,
+          (isBusy || isSavedNewSchedule) && styles.buttonDisabled,
+          pressed && !isBusy && !isSavedNewSchedule
+            ? styles.saveButtonPressed
+            : null,
         ]}
         onPress={() => void handleSavePress()}
-        disabled={isBusy}
+        disabled={isBusy || isSavedNewSchedule}
       >
         <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
         <Text style={styles.saveButtonText}>
-          {isSubmitting || isResolvingClient ? "Guardando..." : "Guardar turno"}
+          {isSubmitting || isResolvingClient
+            ? "Guardando..."
+            : isSavedNewSchedule
+              ? "Turno guardado"
+              : "Guardar turno"}
         </Text>
       </Pressable>
 
@@ -1042,6 +1054,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
         <PrintArregloLabelButton
           schedule={displaySchedule}
           requestPrint={printRequestId}
+          onPrintFlowEnd={
+            printRequestId ? () => navigation.goBack() : undefined
+          }
         />
       ) : null}
 
