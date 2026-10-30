@@ -50,6 +50,7 @@ function Divider({ inverted }: { inverted: boolean }): React.ReactElement {
 export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
   function ArregloLabelView({ label, onLayout, inverted = false }, ref) {
     const hasTotalRow = label.price != null || label.abono != null;
+    const isPaid = label.saldo === 0;
 
     return (
       <View
@@ -198,7 +199,7 @@ export const ArregloLabelView = forwardRef<View, ArregloLabelViewProps>(
               numberOfLines={1}
               adjustsFontSizeToFit
             >
-              {formatPrice(label.saldo)}
+              {isPaid ? "Pagado" : formatPrice(label.saldo)}
             </Text>
           </View>
         ) : null}

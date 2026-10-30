@@ -13,4 +13,14 @@ describe("ArregloLabelView", () => {
     expect(getByText("SASTRERÍA")).toBeTruthy();
     expect(getByText("Tel. 3103580608")).toBeTruthy();
   });
+
+  it("muestra 'Pagado' cuando el saldo queda en $0", () => {
+    const { getByText, queryByText } = render(
+      <ArregloLabelView label={{ clientName: "Ana Torres", saldo: 0 }} />,
+    );
+
+    expect(getByText("SALDO")).toBeTruthy();
+    expect(getByText("Pagado")).toBeTruthy();
+    expect(queryByText("$0")).toBeNull();
+  });
 });
