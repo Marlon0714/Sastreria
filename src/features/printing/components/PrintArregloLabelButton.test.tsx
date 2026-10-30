@@ -276,40 +276,33 @@ describe("PrintArregloLabelButton", () => {
     });
   });
 
-  it("muestra un error con Alert.alert si la impresión falla", async () => {
+  it("muestra el error de conexión en la vista previa y permite reintentar", async () => {
     usePrinterSettingsStore.setState({ printers: [printerA] });
     const onPrintFlowEnd = jest.fn();
     mockPrintLabel.mockRejectedValueOnce(
-      new Error("No se pudo conectar con la impresora"),
+      new Error(
+        "La impresora rechazó la conexión en 192.168.1.50:9100. Verifica su IP y puerto de impresión.",
+      ),
     );
-    const { getByLabelText } = renderButton({
+    const { getByLabelText, findByText } = renderButton({
       schedule: arregloSchedule,
       client: null,
       onPrintFlowEnd,
     });
+    jest.mocked(Alert.alert).mockClear();
 
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
     fireEvent.press(getByLabelText("Confirmar impresión"));
 
-    await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
-        "No se pudo imprimir",
-        expect.stringContaining("No se pudo conectar con la impresora"),
-        expect.arrayContaining([
-          expect.objectContaining({ text: "Reintentar" }),
-          expect.objectContaining({ text: "Elegir impresora" }),
-        ]),
-      );
-    });
+    expect(await findByText("No se pudo imprimir")).toBeTruthy();
+    expect(await findByText(/192\.168\.1\.50:9100/)).toBeTruthy();
+    expect(await findByText(/IP y puerto estén actualizados/)).toBeTruthy();
     expect(getByLabelText("Confirmar impresión")).toBeTruthy();
     expect(mockPrintLabel).toHaveBeenCalledTimes(1);
     expect(onPrintFlowEnd).not.toHaveBeenCalled();
+    expect(Alert.alert).not.toHaveBeenCalled();
 
-    const retryButton = jest
-      .mocked(Alert.alert)
-      .mock.calls.at(-1)?.[2]
-      ?.find((button) => button.text === "Reintentar");
-    act(() => retryButton?.onPress?.());
+    fireEvent.press(getByLabelText("Confirmar impresión"));
 
     await waitFor(() => {
       expect(mockPrintLabel).toHaveBeenCalledTimes(2);
@@ -323,7 +316,7 @@ describe("PrintArregloLabelButton", () => {
       new Error("No se pudo conectar con la impresora"),
     );
     const onPrintFlowEnd = jest.fn();
-    const { getByLabelText } = renderButton({
+    const { getByLabelText, findByText } = renderButton({
       schedule: arregloSchedule,
       client: null,
       requestPrint: arregloSchedule.id,
@@ -332,34 +325,18 @@ describe("PrintArregloLabelButton", () => {
 
     fireEvent.press(getByLabelText("Confirmar impresión"));
 
-    await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
-        "No se pudo imprimir",
-        expect.stringContaining("No se pudo conectar con la impresora"),
-        expect.arrayContaining([
-          expect.objectContaining({ text: "Volver a agenda" }),
-        ]),
-      );
-    });
-
-    const returnButton = jest
-      .mocked(Alert.alert)
-      .mock.calls.at(-1)?.[2]
-      ?.find((button) => button.text === "Volver a agenda");
-    act(() => returnButton?.onPress?.());
+    expect(
+      await findByText(/No se pudo conectar con la impresora/),
+    ).toBeTruthy();
+    fireEvent.press(getByLabelText("Cancelar"));
 
     expect(onPrintFlowEnd).toHaveBeenCalledTimes(1);
   });
 
-  it("limita a tres intentos y ofrece reintento solo mientras haya cupo", async () => {
+  it("limita a tres intentos y desactiva impresión hasta iniciar un flujo nuevo", async () => {
     usePrinterSettingsStore.setState({ printers: [printerA] });
     mockPrintLabel.mockRejectedValue(new Error("Conexión agotada"));
-    jest
-      .spyOn(Alert, "alert")
-      .mockImplementation((_title, _message, buttons) => {
-        buttons?.find((button) => button.text === "Reintentar")?.onPress?.();
-      });
-    const { getByLabelText } = renderButton({
+    const { getByLabelText, findByText } = renderButton({
       schedule: arregloSchedule,
       client: null,
     });
@@ -367,13 +344,18 @@ describe("PrintArregloLabelButton", () => {
     fireEvent.press(getByLabelText("Imprimir etiqueta"));
     fireEvent.press(getByLabelText("Confirmar impresión"));
 
-    await waitFor(() => {
-      expect(mockPrintLabel).toHaveBeenCalledTimes(3);
-    });
-    const finalAlert = jest.mocked(Alert.alert).mock.calls.at(-1);
-    expect(finalAlert?.[1]).toContain("Intento 3 de 3");
+    await findByText(/Intento 1 de 3/);
+    fireEvent.press(getByLabelText("Confirmar impresión"));
+    await findByText(/Intento 2 de 3/);
+    fireEvent.press(getByLabelText("Confirmar impresión"));
+    await findByText(/Intento 3 de 3/);
+
+    expect(mockPrintLabel).toHaveBeenCalledTimes(3);
     expect(
-      finalAlert?.[2]?.some((button) => button.text === "Reintentar"),
-    ).toBe(false);
+      getByLabelText("Confirmar impresión").props.accessibilityState.disabled,
+    ).toBe(true);
+    expect(getByLabelText("Confirmar impresión")).toHaveTextContent(
+      "Límite alcanzado",
+    );
   });
 });

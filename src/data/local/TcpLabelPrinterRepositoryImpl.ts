@@ -46,18 +46,29 @@ export class TcpLabelPrinterRepositoryImpl implements LabelPrinterRepository {
           connectTimeout: CONNECT_TIMEOUT_MS,
         },
         () => {
-          socket.write(job, undefined, (error?: Error) => {
-            if (error) {
-              fail(
-                new Error(
-                  `No se pudo enviar el trabajo a "${target.name}". Revisa que la impresora admita el protocolo configurado y que su puerto de impresión esté habilitado.`,
-                ),
-                "write_failed",
-              );
-              return;
-            }
-            finish();
-          });
+          try {
+            socket.write(job, undefined, (error?: Error) => {
+              if (error) {
+                fail(
+                  new Error(
+                    `No se pudo enviar el trabajo a "${target.name}". Revisa que la impresora admita el protocolo configurado y que su puerto de impresión esté habilitado.`,
+                  ),
+                  "write_failed",
+                );
+                return;
+              }
+              finish();
+            });
+          } catch (error) {
+            fail(
+              new Error(
+                error instanceof Error
+                  ? error.message
+                  : `No se pudo enviar el trabajo a "${target.name}".`,
+              ),
+              "write_failed",
+            );
+          }
         },
       );
 
@@ -74,16 +85,41 @@ export class TcpLabelPrinterRepositoryImpl implements LabelPrinterRepository {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
-        socket.destroy();
         resolve();
+        try {
+          socket.destroy();
+        } catch (error) {
+          console.error(
+            JSON.stringify({
+              level: "error",
+              service: "TcpLabelPrinterRepositoryImpl",
+              message: "No se pudo cerrar el socket después de imprimir",
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
+        }
       };
 
       const fail = (error: Error, errorCode: string): void => {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
-        socket.destroy();
         reject(error);
+        try {
+          socket.destroy();
+        } catch (cleanupError) {
+          console.error(
+            JSON.stringify({
+              level: "error",
+              service: "TcpLabelPrinterRepositoryImpl",
+              message: "No se pudo cerrar el socket después de un error",
+              error:
+                cleanupError instanceof Error
+                  ? cleanupError.message
+                  : String(cleanupError),
+            }),
+          );
+        }
         console.error(
           JSON.stringify({
             level: "error",
@@ -108,6 +144,17 @@ export class TcpLabelPrinterRepositoryImpl implements LabelPrinterRepository {
                 ? "Se agotó el tiempo de conexión. Comprueba que la impresora esté encendida y conectada al Wi-Fi del taller."
                 : `No se pudo conectar con la impresora "${target.name}". Verifica que esté encendida y en la misma red Wi-Fi del taller.`;
         fail(new Error(message), errorCode);
+      });
+
+      socket.on("close", () => {
+        if (!settled) {
+          fail(
+            new Error(
+              `La conexión con "${target.name}" se cerró antes de completar la impresión. Revisa su IP, puerto y conexión Wi-Fi.`,
+            ),
+            "connection_closed",
+          );
+        }
       });
     });
   }

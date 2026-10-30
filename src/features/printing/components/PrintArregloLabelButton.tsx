@@ -76,7 +76,9 @@ export function PrintArregloLabelButton({
   const [pendingTarget, setPendingTarget] = useState<PrinterTarget | null>(
     null,
   );
+  const [printError, setPrintError] = useState<string | null>(null);
   const [inverted, setInverted] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
   const attempts = useRef(0);
   const handledRequest = useRef<string | null>(null);
 
@@ -157,6 +159,8 @@ export function PrintArregloLabelButton({
       return;
     }
     attempts.current = 0;
+    setAttemptCount(0);
+    setPrintError(null);
     setInverted(false);
     if (printers.length === 0) {
       Alert.alert(
@@ -191,10 +195,8 @@ export function PrintArregloLabelButton({
     async (target: PrinterTarget): Promise<boolean> => {
       const sendAttempt = async (): Promise<boolean> => {
         if (attempts.current >= 3) {
-          Alert.alert(
-            "Límite de intentos alcanzado",
-            "Ya se hicieron 3 intentos en este envío. Revisa la conexión o inicia una nueva impresión desde el botón de la etiqueta.",
-            [{ text: "Cerrar", onPress: () => setPendingTarget(null) }],
+          setPrintError(
+            "Se alcanzó el límite de 3 intentos. Cierra esta vista y vuelve a iniciar la impresión después de revisar la conexión.",
           );
           return false;
         }
@@ -226,6 +228,8 @@ export function PrintArregloLabelButton({
 
         attempts.current += 1;
         const attempt = attempts.current;
+        setAttemptCount(attempt);
+        setPrintError(null);
         try {
           await printLabel({
             capture,
@@ -239,59 +243,10 @@ export function PrintArregloLabelButton({
             error instanceof Error
               ? error.message
               : "Error inesperado al preparar o enviar la etiqueta.";
-          Alert.alert(
-            "No se pudo imprimir",
-            `${message}\n\nIntento ${attempt} de 3. La conexión TCP no confirma que la etiqueta haya salido.`,
-            [
-              ...(attempt < 3
-                ? [
-                    {
-                      text: "Reintentar",
-                      onPress: () => {
-                        void sendAttempt().then((succeeded) => {
-                          if (succeeded) {
-                            setPendingTarget(null);
-                            onPrintFlowEnd?.();
-                          }
-                        });
-                      },
-                    },
-                  ]
-                : []),
-              ...(attempt < 3
-                ? [
-                    {
-                      text: "Elegir impresora",
-                      onPress: choosePrinter,
-                    },
-                  ]
-                : [
-                    {
-                      text: "Revisar conexión",
-                      onPress: () =>
-                        Alert.alert(
-                          "Revisar conexión",
-                          "Comprueba el Wi-Fi del taller, la IP y puerto 9100 de la impresora, el protocolo configurado y su alimentación. TCP no permite conocer el estado del papel.",
-                          requestPrint
-                            ? [
-                                {
-                                  text: "Volver a agenda",
-                                  onPress: onPrintFlowEnd,
-                                },
-                              ]
-                            : undefined,
-                        ),
-                    },
-                  ]),
-              {
-                text: requestPrint ? "Volver a agenda" : "Más tarde",
-                style: "cancel" as const,
-                onPress: () => {
-                  setPendingTarget(null);
-                  onPrintFlowEnd?.();
-                },
-              },
-            ],
+          setPrintError(
+            attempt === 3
+              ? `${message} (Intento 3 de 3. Se alcanzó el límite; cierra esta vista y vuelve a iniciar la impresión después de revisar la conexión.)`
+              : `${message} (Intento ${attempt} de 3.)`,
           );
           console.error(
             JSON.stringify({
@@ -306,24 +261,31 @@ export function PrintArregloLabelButton({
       };
       return sendAttempt();
     },
-    [
-      capture,
-      choosePrinter,
-      inverted,
-      onPrintFlowEnd,
-      printLabel,
-      requestPrint,
-      schedule.id,
-    ],
+    [capture, inverted, printLabel, schedule.id],
   );
 
   const handleConfirmPrint = useCallback(async (): Promise<void> => {
     if (!pendingTarget) {
       return;
     }
-    if (await printToTarget(pendingTarget)) {
-      setPendingTarget(null);
-      onPrintFlowEnd?.();
+    try {
+      if (await printToTarget(pendingTarget)) {
+        setPendingTarget(null);
+        onPrintFlowEnd?.();
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Error inesperado al preparar o enviar la etiqueta.";
+      setPrintError(message);
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "PrintArregloLabelButton",
+          message: "Fallo inesperado en el flujo de impresión de etiqueta",
+        }),
+      );
     }
   }, [onPrintFlowEnd, pendingTarget, printToTarget]);
 
@@ -345,7 +307,7 @@ export function PrintArregloLabelButton({
 
   return (
     <View>
-      <View style={styles.offscreen} pointerEvents="none">
+      <View style={styles.captureLayer} pointerEvents="none">
         <ArregloLabelView ref={viewRef} label={label} onLayout={onLayout} />
       </View>
 
@@ -375,14 +337,17 @@ export function PrintArregloLabelButton({
       <LabelPreviewModal
         visible={pendingTarget !== null}
         label={label}
+        errorMessage={printError}
         targetName={pendingTarget?.name}
         inverted={inverted}
+        canRetry={attemptCount < 3}
         onToggleInverted={setInverted}
         isConfirming={isPrinting}
         onConfirm={handleConfirmPrint}
         onChooseTarget={printers.length > 1 ? choosePrinter : undefined}
         onClose={() => {
           if (!isPrinting) {
+            setPrintError(null);
             setPendingTarget(null);
             onPrintFlowEnd?.();
           }
@@ -393,10 +358,11 @@ export function PrintArregloLabelButton({
 }
 
 const styles = StyleSheet.create({
-  offscreen: {
+  captureLayer: {
     position: "absolute",
-    top: -9999,
-    left: -9999,
+    top: 0,
+    left: 0,
+    opacity: 0,
   },
   button: {
     flexDirection: "row",

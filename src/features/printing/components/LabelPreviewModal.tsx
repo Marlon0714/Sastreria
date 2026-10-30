@@ -26,10 +26,12 @@ interface LabelPreviewModalProps {
   onConfirm?: () => void;
   onChooseTarget?: () => void;
   isConfirming?: boolean;
+  canRetry?: boolean;
   /** Ej. "Mostrador" — solo se muestra cuando hay `onConfirm`. */
   targetName?: string;
   inverted?: boolean;
   onToggleInverted?: (inverted: boolean) => void;
+  errorMessage?: string | null;
 }
 
 /**
@@ -51,9 +53,11 @@ export function LabelPreviewModal({
   onConfirm,
   onChooseTarget,
   isConfirming = false,
+  canRetry = true,
   targetName,
   inverted = false,
   onToggleInverted,
+  errorMessage,
 }: LabelPreviewModalProps): ReactElement {
   const isConfirmMode = onConfirm != null;
 
@@ -101,6 +105,17 @@ export function LabelPreviewModal({
             </View>
           ) : null}
 
+          {errorMessage ? (
+            <View accessibilityRole="alert" style={styles.printError}>
+              <Text style={styles.printErrorTitle}>No se pudo imprimir</Text>
+              <Text style={styles.printErrorMessage}>{errorMessage}</Text>
+              <Text style={styles.printErrorHint}>
+                Revisa que la impresora esté encendida, en la misma red Wi-Fi y
+                que su IP y puerto estén actualizados en la configuración.
+              </Text>
+            </View>
+          ) : null}
+
           <ScrollView
             horizontal
             contentContainerStyle={styles.previewScrollContent}
@@ -123,15 +138,17 @@ export function LabelPreviewModal({
                 style={[
                   styles.button,
                   styles.confirmButton,
-                  isConfirming && styles.buttonDisabled,
+                  (isConfirming || !canRetry) && styles.buttonDisabled,
                 ]}
                 onPress={onConfirm}
-                disabled={isConfirming}
+                disabled={isConfirming || !canRetry}
               >
                 {isConfirming ? (
                   <ActivityIndicator color="#ffffff" size="small" />
                 ) : (
-                  <Text style={styles.confirmButtonText}>Imprimir</Text>
+                  <Text style={styles.confirmButtonText}>
+                    {canRetry ? "Imprimir" : "Límite alcanzado"}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -223,6 +240,28 @@ const styles = StyleSheet.create({
   },
   invertDescription: {
     color: "#64748b",
+    fontSize: 12,
+  },
+  printError: {
+    gap: 6,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+  },
+  printErrorTitle: {
+    color: "#b91c1c",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  printErrorMessage: {
+    color: "#7f1d1d",
+    fontSize: 13,
+  },
+  printErrorHint: {
+    color: "#7f1d1d",
     fontSize: 12,
   },
   buttonRow: {
