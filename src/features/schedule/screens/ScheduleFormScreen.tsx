@@ -146,6 +146,8 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     null,
   );
   const clientPickerRef = useRef<ClientPickerFieldHandle>(null);
+  const isSaveFlowActiveRef = useRef(false);
+  const hasSavedNewScheduleRef = useRef(false);
   const isBusy =
     isSubmitting ||
     statusActions.isProcessing ||
@@ -422,6 +424,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
     const proceedSubmit = async (): Promise<void> => {
       const result = await submit(values);
       if (result) {
+        if (!scheduleId) {
+          hasSavedNewScheduleRef.current = true;
+        }
         if (!scheduleId && values.category === "arreglo") {
           setDisplaySchedule(result);
           setIsNewScheduleAvailable(true);
@@ -436,7 +441,7 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
               {
                 text: "Más tarde",
                 style: "cancel",
-                onPress: () => navigation.goBack(),
+                onPress: () => navigation.navigate("ScheduleDayView"),
               },
             ],
           );
@@ -526,16 +531,25 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
   });
 
   const handleSavePress = async (): Promise<void> => {
+    if (
+      isSaveFlowActiveRef.current ||
+      hasSavedNewScheduleRef.current ||
+      isSavedNewSchedule
+    ) {
+      return;
+    }
+    isSaveFlowActiveRef.current = true;
     // Si se abrió "Registrar cliente" pero nunca se presionó el botón,
     // resuelve esos datos (registra el cliente o los deja como "sin
     // registrar") ANTES de validar/guardar, para no perderlos.
     setIsResolvingClient(true);
     try {
       await clientPickerRef.current?.resolvePendingRegistration();
+      await onSubmit();
     } finally {
       setIsResolvingClient(false);
+      isSaveFlowActiveRef.current = false;
     }
-    await onSubmit();
   };
 
   const onDelete = () => {
@@ -1055,7 +1069,9 @@ export default function ScheduleFormScreen({ navigation, route }: Props) {
           schedule={displaySchedule}
           requestPrint={printRequestId}
           onPrintFlowEnd={
-            printRequestId ? () => navigation.goBack() : undefined
+            printRequestId
+              ? () => navigation.navigate("ScheduleDayView")
+              : undefined
           }
         />
       ) : null}

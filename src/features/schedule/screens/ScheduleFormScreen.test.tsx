@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import type React from "react";
 
@@ -322,7 +322,7 @@ describe("ScheduleFormScreen", () => {
       submit,
       syncScheduleSnapshot: jest.fn(),
     });
-    const goBack = jest.fn();
+    const navigate = jest.fn();
     jest
       .spyOn(Alert, "alert")
       .mockImplementation((_title, _message, buttons) => {
@@ -330,7 +330,7 @@ describe("ScheduleFormScreen", () => {
       });
 
     const { getByPlaceholderText, getByLabelText } = render(
-      <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
+      <ScheduleFormScreen {...buildProps(navigate, jest.fn())} />,
     );
 
     fireEvent.changeText(getByLabelText("Fecha"), "2026-08-10");
@@ -351,7 +351,7 @@ describe("ScheduleFormScreen", () => {
       );
     });
     await waitFor(() => {
-      expect(goBack).toHaveBeenCalled();
+      expect(navigate).toHaveBeenCalledWith("ScheduleDayView");
     });
     expect(Alert.alert).toHaveBeenCalledWith(
       "Arreglo guardado",
@@ -365,7 +365,7 @@ describe("ScheduleFormScreen", () => {
 
   it("solicita imprimir inmediatamente sin revertir el guardado local", async () => {
     const submit = jest.fn(async () => Promise.resolve(schedule));
-    const goBack = jest.fn();
+    const navigate = jest.fn();
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
       isLoading: false,
@@ -381,14 +381,14 @@ describe("ScheduleFormScreen", () => {
       });
 
     const { getByLabelText, findByText } = render(
-      <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
+      <ScheduleFormScreen {...buildProps(navigate, jest.fn())} />,
     );
     fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
     fireEvent.press(getByLabelText("Guardar turno"));
 
     expect(await findByText(schedule.id)).toBeTruthy();
     expect(submit).toHaveBeenCalledTimes(1);
-    expect(goBack).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
     const savedButton = getByLabelText("Turno guardado");
     expect(
       savedButton.props.accessibilityState?.disabled ??
@@ -400,7 +400,40 @@ describe("ScheduleFormScreen", () => {
 
     fireEvent.press(getByLabelText("Simular impresión completada"));
 
-    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith("ScheduleDayView");
+  });
+
+  it("ignora toques rápidos repetidos mientras se está guardando el turno", async () => {
+    let finishSubmit!: (result: Schedule | null) => void;
+    const submit = jest.fn(
+      () =>
+        new Promise<Schedule | null>((resolve) => {
+          finishSubmit = resolve;
+        }),
+    );
+    mockUseScheduleForm.mockReturnValue({
+      schedule: null,
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      submit,
+      syncScheduleSnapshot: jest.fn(),
+    });
+
+    const { getByLabelText } = render(
+      <ScheduleFormScreen {...buildProps(jest.fn(), jest.fn())} />,
+    );
+    fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
+
+    act(() => {
+      fireEvent.press(getByLabelText("Guardar turno"));
+      fireEvent.press(getByLabelText("Guardar turno"));
+    });
+
+    await waitFor(() => {
+      expect(submit).toHaveBeenCalledTimes(1);
+    });
+    finishSubmit(schedule);
   });
 
   it("ignora los puntos al escribir/pegar un precio (ej. '15.000' no se lee como 15)", async () => {
@@ -631,7 +664,10 @@ describe("ScheduleFormScreen", () => {
   });
 
   it("preselecciona la categoría del segmento activo y permite cambiarla antes de guardar", async () => {
-    const submit = jest.fn(async () => Promise.resolve(schedule));
+    const submit = jest
+      .fn<() => Promise<Schedule | null>>()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(schedule);
     mockUseScheduleForm.mockReturnValue({
       schedule: null,
       isLoading: false,
@@ -1641,7 +1677,7 @@ describe("ScheduleFormScreen", () => {
       mockClientNamesById[schedule.clientId as string] = "Juan Pérez";
       mockGetByDate.mockResolvedValue([existingDuplicate]);
       const submit = jest.fn(async () => Promise.resolve(schedule));
-      const goBack = jest.fn();
+      const navigate = jest.fn();
       mockUseScheduleForm.mockReturnValue({
         schedule: null,
         isLoading: false,
@@ -1658,7 +1694,7 @@ describe("ScheduleFormScreen", () => {
       });
 
       const { getByLabelText } = render(
-        <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
+        <ScheduleFormScreen {...buildProps(navigate, jest.fn())} />,
       );
 
       fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
@@ -1669,7 +1705,7 @@ describe("ScheduleFormScreen", () => {
         expect(submit).toHaveBeenCalled();
       });
       await waitFor(() => {
-        expect(goBack).toHaveBeenCalled();
+        expect(navigate).toHaveBeenCalledWith("ScheduleDayView");
       });
     });
 
@@ -1879,7 +1915,7 @@ describe("ScheduleFormScreen", () => {
     it("'Continuar de todas formas' guarda el turno nuevo de todas formas", async () => {
       mockGetByClient.mockResolvedValue([unfinishedSchedule]);
       const submit = jest.fn(async () => Promise.resolve(schedule));
-      const goBack = jest.fn();
+      const navigate = jest.fn();
       mockUseScheduleForm.mockReturnValue({
         schedule: null,
         isLoading: false,
@@ -1896,7 +1932,7 @@ describe("ScheduleFormScreen", () => {
       });
 
       const { getByLabelText } = render(
-        <ScheduleFormScreen {...buildProps(jest.fn(), goBack)} />,
+        <ScheduleFormScreen {...buildProps(navigate, jest.fn())} />,
       );
 
       fireEvent.changeText(getByLabelText("Cliente"), schedule.clientId);
@@ -1906,7 +1942,7 @@ describe("ScheduleFormScreen", () => {
         expect(submit).toHaveBeenCalled();
       });
       await waitFor(() => {
-        expect(goBack).toHaveBeenCalled();
+        expect(navigate).toHaveBeenCalledWith("ScheduleDayView");
       });
     });
 
