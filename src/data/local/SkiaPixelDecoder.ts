@@ -31,23 +31,7 @@ export function decodeCapturedLabelToRgbaPixels(
     );
   }
 
-  const surface = Skia.Surface.Make(sourceWidth, sourceHeight);
-  if (!surface) {
-    throw new Error("No se pudo preparar el lienzo para reescalar la etiqueta");
-  }
-
-  const canvas = surface.getCanvas();
-  canvas.clear(Skia.Color("white"));
-  canvas.drawImageRect(
-    image,
-    Skia.XYWHRect(0, 0, sourceWidth, sourceHeight),
-    Skia.XYWHRect(0, 0, sourceWidth, sourceHeight),
-    Skia.Paint(),
-  );
-  surface.flush();
-
-  const resized = surface.makeImageSnapshot();
-  const pixels = resized.readPixels(0, 0, {
+  const pixels = image.readPixels(0, 0, {
     width: sourceWidth,
     height: sourceHeight,
     colorType: ColorType.RGBA_8888,
@@ -60,7 +44,9 @@ export function decodeCapturedLabelToRgbaPixels(
 
   return {
     pixels:
-      pixels instanceof Uint8Array ? pixels : new Uint8Array(pixels.buffer),
+      pixels instanceof Uint8Array
+        ? pixels
+        : new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength),
     width: sourceWidth,
     height: sourceHeight,
   };
