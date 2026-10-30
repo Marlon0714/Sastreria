@@ -3,8 +3,15 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { createRef, useState } from "react";
 import { Alert } from "react-native";
 
-import type { Client, CreateClientDTO } from "../../clients/domain/types";
-import { ClientPickerField, type ClientPickerFieldHandle } from "./ClientPickerField";
+import type {
+  Client,
+  CreateClientDTO,
+  UpdateClientDTO,
+} from "../../clients/domain/types";
+import {
+  ClientPickerField,
+  type ClientPickerFieldHandle,
+} from "./ClientPickerField";
 
 function ControlledHarness({
   initialClientId,
@@ -13,12 +20,10 @@ function ControlledHarness({
   initialClientId?: string;
   onChangeUnregisteredNameSpy?: (name: string | undefined) => void;
 }) {
-  const [clientId, setClientId] = useState<string | undefined>(
-    initialClientId,
+  const [clientId, setClientId] = useState<string | undefined>(initialClientId);
+  const [unregisteredName, setUnregisteredName] = useState<string | undefined>(
+    undefined,
   );
-  const [unregisteredName, setUnregisteredName] = useState<
-    string | undefined
-  >(undefined);
   return (
     <ClientPickerField
       clientId={clientId}
@@ -34,12 +39,15 @@ function ControlledHarness({
 
 const mockFindAll = jest.fn<() => Promise<Client[]>>();
 const mockCreate = jest.fn<(dto: CreateClientDTO) => Promise<Client>>();
+const mockUpdate = jest.fn<(dto: UpdateClientDTO) => Promise<Client>>();
+const mockClientRepository = {
+  findAll: () => mockFindAll(),
+  create: (dto: CreateClientDTO) => mockCreate(dto),
+  update: (dto: UpdateClientDTO) => mockUpdate(dto),
+};
 
 jest.mock("../../clients/hooks/ClientsDependenciesProvider", () => ({
-  useClientRepository: () => ({
-    findAll: () => mockFindAll(),
-    create: (dto: CreateClientDTO) => mockCreate(dto),
-  }),
+  useClientRepository: () => mockClientRepository,
 }));
 
 const clients: Client[] = [
@@ -81,8 +89,10 @@ const newClient: Client = {
 
 describe("ClientPickerField", () => {
   beforeEach(() => {
+    jest.restoreAllMocks();
     mockFindAll.mockReset();
     mockCreate.mockReset();
+    mockUpdate.mockReset();
     mockFindAll.mockResolvedValue(clients);
   });
 
@@ -108,6 +118,7 @@ describe("ClientPickerField", () => {
 
     expect(await findByText("Ana Torres")).toBeTruthy();
     expect(queryByLabelText("Nombre del cliente")).toBeNull();
+    expect(queryByLabelText("Completar teléfono de Ana Torres")).toBeNull();
   });
 
   it("al escribir un nombre, se reporta como nombre sin registrar", async () => {
@@ -119,10 +130,7 @@ describe("ClientPickerField", () => {
       />,
     );
 
-    fireEvent.changeText(
-      await findByLabelText("Nombre del cliente"),
-      "Pedro",
-    );
+    fireEvent.changeText(await findByLabelText("Nombre del cliente"), "Pedro");
 
     expect(onChangeUnregisteredName).toHaveBeenCalledWith("Pedro");
   });
@@ -150,10 +158,7 @@ describe("ClientPickerField", () => {
       />,
     );
 
-    fireEvent.changeText(
-      await findByLabelText("Nombre del cliente"),
-      "juan",
-    );
+    fireEvent.changeText(await findByLabelText("Nombre del cliente"), "juan");
 
     expect(getByText("Juan Pérez")).toBeTruthy();
     expect(getByText("3009998877")).toBeTruthy();
@@ -170,29 +175,29 @@ describe("ClientPickerField", () => {
       />,
     );
 
-    fireEvent.changeText(
-      await findByLabelText("Nombre del cliente"),
-      "juan",
-    );
+    fireEvent.changeText(await findByLabelText("Nombre del cliente"), "juan");
     fireEvent.press(getByLabelText("Elegir a Juan Pérez (3009998877)"));
 
     expect(onChangeClientId).toHaveBeenCalledWith(clients[1]!.id);
     expect(onChangeUnregisteredName).toHaveBeenCalledWith(undefined);
   });
 
-  it("permite cambiar un cliente ya vinculado, dejando el nombre editable en vez de borrarlo", async () => {
-    const { findByLabelText, getByLabelText } = render(
+  it("aclara que cambiar el cliente solo afecta este turno y deja el nombre editable", async () => {
+    const { findByLabelText, getByLabelText, getByText } = render(
       <ControlledHarness initialClientId={clients[0]!.id} />,
     );
 
     fireEvent.press(await findByLabelText("Cambiar cliente"));
 
-    expect(getByLabelText("Nombre del cliente").props.value).toBe(
-      "Ana Torres",
-    );
+    expect(getByLabelText("Nombre del cliente").props.value).toBe("Ana Torres");
+    expect(
+      getByText(
+        "Esto solo cambia el cliente de este turno; no modifica el registro guardado.",
+      ),
+    ).toBeTruthy();
   });
 
-  it("tocar el lápiz no desvincula al cliente en silencio: solo prellena el texto, sin tocar unregisteredClientName", async () => {
+  it("tocar 'Cambiar cliente' no modifica el nombre guardado ni lo copia al turno", async () => {
     const onChangeUnregisteredNameSpy = jest.fn();
     const { findByLabelText, getByLabelText } = render(
       <ControlledHarness
@@ -204,9 +209,7 @@ describe("ClientPickerField", () => {
     fireEvent.press(await findByLabelText("Cambiar cliente"));
 
     // El texto visible ya muestra el nombre prellenado...
-    expect(getByLabelText("Nombre del cliente").props.value).toBe(
-      "Ana Torres",
-    );
+    expect(getByLabelText("Nombre del cliente").props.value).toBe("Ana Torres");
     // ...pero `unregisteredClientName` sigue sin definir: si el usuario
     // guardara el turno en este momento (sin editar nada más), la
     // validación XOR de clientId/unregisteredClientName debe fallar en vez
@@ -291,6 +294,186 @@ describe("ClientPickerField", () => {
           phone: "",
         });
       });
+    });
+
+    it("permite agregar teléfono al cliente que acaba de crear, confirmando que actualizará su ficha", async () => {
+      const createdWithoutPhone = { ...newClient, phone: "" };
+      const updatedClient = { ...createdWithoutPhone, phone: "3001112233" };
+      mockCreate.mockResolvedValueOnce(createdWithoutPhone);
+      mockUpdate.mockResolvedValueOnce(updatedClient);
+      jest
+        .spyOn(Alert, "alert")
+        .mockImplementation((_title, _message, buttons) => {
+          const confirm = buttons?.find(
+            (button) => button.text === "Actualizar ficha",
+          );
+          void confirm?.onPress?.();
+        });
+
+      const {
+        findByLabelText,
+        getByLabelText,
+        findByText,
+        getByText,
+        queryByLabelText,
+      } = render(<ControlledHarness />);
+      fireEvent.changeText(
+        await findByLabelText("Nombre del cliente"),
+        "María",
+      );
+      fireEvent.press(getByLabelText("Registrar cliente"));
+      fireEvent.changeText(
+        getByLabelText("Apellido del cliente nuevo"),
+        "Gómez",
+      );
+      fireEvent.press(getByLabelText("Crear cliente"));
+
+      await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+      expect(getByLabelText("Cambiar cliente")).toBeTruthy();
+      expect(getByText("¿Tienes el teléfono de María?")).toBeTruthy();
+      expect(getByText(/Agrégalo ahora sin salir del turno/)).toBeTruthy();
+      fireEvent.press(
+        await findByLabelText("Completar teléfono de María Gómez"),
+      );
+      fireEvent.changeText(
+        getByLabelText("Teléfono de María Gómez"),
+        "300 111 2233",
+      );
+      fireEvent.press(getByLabelText("Guardar teléfono"));
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Confirmar teléfono",
+        expect.stringContaining(
+          "Se actualizará la ficha guardada de María Gómez",
+        ),
+        expect.arrayContaining([
+          expect.objectContaining({ text: "Actualizar ficha" }),
+        ]),
+      );
+      expect(jest.mocked(Alert.alert).mock.calls.at(-1)?.[1]).toContain(
+        "en todos sus turnos",
+      );
+
+      await waitFor(() => {
+        expect(mockUpdate).toHaveBeenCalledWith({
+          id: createdWithoutPhone.id,
+          firstName: "María",
+          lastName: "Gómez",
+          phone: "3001112233",
+          phones: undefined,
+          cedula: undefined,
+          notes: undefined,
+        });
+      });
+      expect(await findByText("3001112233")).toBeTruthy();
+      expect(queryByLabelText("Completar teléfono de María Gómez")).toBeNull();
+      expect(getByText("María Gómez")).toBeTruthy();
+    });
+
+    it("no actualiza la ficha si el teléfono ya pertenece a otro cliente", async () => {
+      mockCreate.mockResolvedValueOnce({ ...newClient, phone: "" });
+      const alertSpy = jest.spyOn(Alert, "alert");
+      const { findByLabelText, getByLabelText, findByText } = render(
+        <ControlledHarness />,
+      );
+      fireEvent.changeText(
+        await findByLabelText("Nombre del cliente"),
+        "María",
+      );
+      fireEvent.press(getByLabelText("Registrar cliente"));
+      fireEvent.changeText(
+        getByLabelText("Apellido del cliente nuevo"),
+        "Gómez",
+      );
+      fireEvent.press(getByLabelText("Crear cliente"));
+
+      fireEvent.press(
+        await findByLabelText("Completar teléfono de María Gómez"),
+      );
+      fireEvent.changeText(
+        getByLabelText("Teléfono de María Gómez"),
+        clients[0]!.phone,
+      );
+      fireEvent.press(getByLabelText("Guardar teléfono"));
+
+      expect(
+        await findByText(/ya está registrado a nombre de Ana Torres/),
+      ).toBeTruthy();
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(alertSpy).not.toHaveBeenCalledWith(
+        "Confirmar teléfono",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it("quita la opción de editar el teléfono si después se cambia a otro cliente", async () => {
+      mockCreate.mockResolvedValueOnce({ ...newClient, phone: "" });
+      const { findByLabelText, getByLabelText, queryByLabelText } = render(
+        <ControlledHarness />,
+      );
+      fireEvent.changeText(
+        await findByLabelText("Nombre del cliente"),
+        "María",
+      );
+      fireEvent.press(getByLabelText("Registrar cliente"));
+      fireEvent.changeText(
+        getByLabelText("Apellido del cliente nuevo"),
+        "Gómez",
+      );
+      fireEvent.press(getByLabelText("Crear cliente"));
+      fireEvent.press(
+        await findByLabelText("Completar teléfono de María Gómez"),
+      );
+
+      fireEvent.press(getByLabelText("Cambiar cliente"));
+      fireEvent.changeText(await findByLabelText("Nombre del cliente"), "Ana");
+      fireEvent.press(getByLabelText("Elegir a Ana Torres (3001234567)"));
+
+      expect(queryByLabelText("Completar teléfono de Ana Torres")).toBeNull();
+      expect(queryByLabelText("Guardar teléfono")).toBeNull();
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it("mantiene el formulario visible y muestra error si falla la actualización", async () => {
+      mockCreate.mockResolvedValueOnce({ ...newClient, phone: "" });
+      mockUpdate.mockRejectedValueOnce(new Error("Database unavailable"));
+      jest
+        .spyOn(Alert, "alert")
+        .mockImplementation((_title, _message, buttons) => {
+          const confirm = buttons?.find(
+            (button) => button.text === "Actualizar ficha",
+          );
+          void confirm?.onPress?.();
+        });
+
+      const { findByLabelText, getByLabelText, findByText } = render(
+        <ControlledHarness />,
+      );
+      fireEvent.changeText(
+        await findByLabelText("Nombre del cliente"),
+        "María",
+      );
+      fireEvent.press(getByLabelText("Registrar cliente"));
+      fireEvent.changeText(
+        getByLabelText("Apellido del cliente nuevo"),
+        "Gómez",
+      );
+      fireEvent.press(getByLabelText("Crear cliente"));
+      fireEvent.press(
+        await findByLabelText("Completar teléfono de María Gómez"),
+      );
+      fireEvent.changeText(
+        getByLabelText("Teléfono de María Gómez"),
+        "3001112233",
+      );
+      fireEvent.press(getByLabelText("Guardar teléfono"));
+      await findByText(
+        "No se pudo actualizar la ficha del cliente. Intenta nuevamente.",
+      );
+
+      expect(getByLabelText("Teléfono de María Gómez")).toBeTruthy();
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
     });
 
     it("requiere nombre y apellido antes de crear", async () => {
@@ -778,7 +961,9 @@ describe("ClientPickerField", () => {
         expect(mockFindAll).toHaveBeenCalledTimes(1);
       });
 
-      expect(ref.current?.resolveClientFullName("id-inexistente")).toBeUndefined();
+      expect(
+        ref.current?.resolveClientFullName("id-inexistente"),
+      ).toBeUndefined();
     });
   });
 });

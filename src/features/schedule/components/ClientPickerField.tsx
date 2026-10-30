@@ -1,5 +1,4 @@
 import { colors } from "../../../shared/theme/colors";
-import { Ionicons } from "@expo/vector-icons";
 import {
   forwardRef,
   useEffect,
@@ -20,7 +19,7 @@ import {
 } from "react-native";
 
 import { useClientRepository } from "../../clients/hooks/ClientsDependenciesProvider";
-import type { Client } from "../../clients/domain/types";
+import type { Client, UpdateClientDTO } from "../../clients/domain/types";
 import {
   PERSON_NAME_PATTERN,
   PHONE_DIGITS_PATTERN,
@@ -84,6 +83,14 @@ export const ClientPickerField = forwardRef<
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [nameInput, setNameInput] = useState(unregisteredName ?? "");
+  const [isChangingClient, setIsChangingClient] = useState(false);
+  const [newlyCreatedClientId, setNewlyCreatedClientId] = useState<
+    string | null
+  >(null);
+  const [isAddingPhone, setIsAddingPhone] = useState(false);
+  const [phoneToAdd, setPhoneToAdd] = useState("");
+  const [phoneUpdateError, setPhoneUpdateError] = useState<string | null>(null);
+  const [isUpdatingPhone, setIsUpdatingPhone] = useState(false);
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [newLastName, setNewLastName] = useState("");
@@ -117,9 +124,9 @@ export const ClientPickerField = forwardRef<
   }, [clientRepository]);
 
   // Evita que el efecto de sincronización de abajo pise el texto recién
-  // prellenado al tocar el lápiz de "Cambiar cliente": ese tap suelta
+  // prellenado al tocar "Cambiar cliente": ese tap suelta
   // `clientId` (pasa a undefined) SIN tocar `unregisteredClientName` a
-  // propósito (ver Fix del lápiz más abajo), para no desvincular al cliente
+  // propósito, para no desvincular al cliente
   // real hasta que el usuario realmente edite o confirme el cambio. Sin
   // este flag, el cambio de `clientId` dispararía el efecto y volvería a
   // fijar `nameInput` a "" (porque `unregisteredName` sigue undefined),
@@ -172,10 +179,17 @@ export const ClientPickerField = forwardRef<
     setPreSplitNameInput(null);
   };
 
-  const selectClient = (client: Client): void => {
+  const selectClient = (client: Client, wasCreatedHere = false): void => {
     onChangeClientId(client.id);
     onChangeUnregisteredName(undefined);
     setNameInput(`${client.firstName} ${client.lastName}`);
+    setIsChangingClient(false);
+    setNewlyCreatedClientId(
+      wasCreatedHere && !client.phone.trim() ? client.id : null,
+    );
+    setIsAddingPhone(false);
+    setPhoneToAdd("");
+    setPhoneUpdateError(null);
     resetRegisterState();
   };
 
@@ -192,12 +206,96 @@ export const ClientPickerField = forwardRef<
         phone: newPhone.trim() ? normalizeDigitsInput(newPhone.trim()) : "",
       });
       setClients((prev) => [...prev, created]);
-      selectClient(created);
+      selectClient(created, true);
     } catch {
       setRegisterError("No se pudo crear el cliente. Intenta nuevamente.");
     } finally {
       setIsCreatingClient(false);
     }
+  };
+
+  const handleSavePhone = (): void => {
+    if (
+      !selectedClient ||
+      selectedClient.id !== newlyCreatedClientId ||
+      isUpdatingPhone
+    ) {
+      return;
+    }
+
+    const trimmedPhone = phoneToAdd.trim();
+    const normalizedPhone = normalizeDigitsInput(trimmedPhone);
+    if (!trimmedPhone || !PHONE_DIGITS_PATTERN.test(normalizedPhone)) {
+      setPhoneUpdateError("El teléfono solo puede contener números.");
+      return;
+    }
+    if (normalizedPhone.length !== PHONE_DIGITS_LENGTH) {
+      setPhoneUpdateError("El teléfono debe tener 10 dígitos.");
+      return;
+    }
+
+    const duplicatePhone = findDuplicateByPhone(
+      clients.filter((client) => client.id !== selectedClient.id),
+      normalizedPhone,
+    );
+    if (duplicatePhone) {
+      setPhoneUpdateError(
+        `Este teléfono ya está registrado a nombre de ${duplicatePhone.firstName} ${duplicatePhone.lastName}. No se modificó ninguna ficha.`,
+      );
+      return;
+    }
+
+    const updateInput: UpdateClientDTO = {
+      id: selectedClient.id,
+      firstName: selectedClient.firstName,
+      lastName: selectedClient.lastName,
+      phone: normalizedPhone,
+      phones: selectedClient.phones,
+      cedula: selectedClient.cedula,
+      notes: selectedClient.notes ?? undefined,
+    };
+
+    Alert.alert(
+      "Confirmar teléfono",
+      `Se actualizará la ficha guardada de ${selectedClient.firstName} ${selectedClient.lastName}. El teléfono quedará asociado a este cliente en todos sus turnos. ¿Confirmas que es la persona correcta?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Actualizar ficha",
+          onPress: () => {
+            setIsUpdatingPhone(true);
+            setPhoneUpdateError(null);
+            void clientRepository
+              .update(updateInput)
+              .then((updatedClient) => {
+                setClients((previous) =>
+                  previous.map((client) =>
+                    client.id === updatedClient.id ? updatedClient : client,
+                  ),
+                );
+                setNewlyCreatedClientId(null);
+                setIsAddingPhone(false);
+                setPhoneToAdd("");
+              })
+              .catch((error: unknown) => {
+                setPhoneUpdateError(
+                  "No se pudo actualizar la ficha del cliente. Intenta nuevamente.",
+                );
+                console.error(
+                  JSON.stringify({
+                    level: "error",
+                    service: "ClientPickerField",
+                    message: "No se pudo agregar el teléfono al cliente nuevo",
+                    error:
+                      error instanceof Error ? error.message : String(error),
+                  }),
+                );
+              })
+              .finally(() => setIsUpdatingPhone(false));
+          },
+        },
+      ],
+    );
   };
 
   const proceedWithPhoneCheck = (firstName: string, lastName: string): void => {
@@ -348,7 +446,11 @@ export const ClientPickerField = forwardRef<
             }
           };
 
-          const duplicateName = findDuplicateByName(clients, firstName, lastName);
+          const duplicateName = findDuplicateByName(
+            clients,
+            firstName,
+            lastName,
+          );
           const duplicatePhone = findDuplicateByPhone(clients, normalizedPhone);
           const duplicate = duplicateName ?? duplicatePhone;
 
@@ -408,12 +510,9 @@ export const ClientPickerField = forwardRef<
               <Text style={styles.optionSubtext}>{selectedClient.phone}</Text>
             ) : null}
           </View>
-          {/* Ícono chico y separado del texto a propósito — el botón de
-              texto anterior ("Cambiar") ocupaba todo el ancho justo debajo
-              del nombre y se tocaba sin querer, borrando el cliente ya
-              elegido. */}
           <Pressable
             accessibilityLabel="Cambiar cliente"
+            accessibilityRole="button"
             hitSlop={8}
             style={styles.changeClientButton}
             onPress={() => {
@@ -424,7 +523,7 @@ export const ClientPickerField = forwardRef<
               // A propósito NO se llama a `onChangeUnregisteredName` acá:
               // hacerlo escribiría de inmediato "cliente sin registrar" en
               // el estado real del formulario, y si el usuario guarda el
-              // turno justo después de tocar el lápiz (sin editar nada
+              // turno justo después de tocar el botón (sin editar nada
               // más), se perdería el vínculo con el cliente real en
               // silencio. Al dejar `clientId` y `unregisteredClientName`
               // ambos sin definir, un guardado inmediato debe fallar la
@@ -436,17 +535,105 @@ export const ClientPickerField = forwardRef<
               skipNextSyncRef.current = true;
               onChangeClientId(undefined);
               setNameInput(currentName);
+              setIsChangingClient(true);
             }}
           >
-            <Ionicons name="pencil" size={16} color={colors.textMuted} />
+            <Text style={styles.changeClientButtonText}>Cambiar cliente</Text>
           </Pressable>
         </View>
+        {newlyCreatedClientId === selectedClient.id &&
+        !selectedClient.phone.trim() ? (
+          <View style={styles.addPhoneSection}>
+            {!isAddingPhone ? (
+              <>
+                <Text style={styles.addPhoneTitle}>
+                  ¿Tienes el teléfono de {selectedClient.firstName}?
+                </Text>
+                <Text style={styles.addPhoneDescription}>
+                  Agrégalo ahora sin salir del turno. Se guardará en la ficha
+                  de este cliente.
+                </Text>
+                <Pressable
+                  accessibilityLabel={`Completar teléfono de ${selectedClient.firstName} ${selectedClient.lastName}`}
+                  accessibilityRole="button"
+                  style={styles.addPhoneButton}
+                  onPress={() => {
+                    setPhoneUpdateError(null);
+                    setIsAddingPhone(true);
+                  }}
+                >
+                  <Text style={styles.addPhoneButtonText}>
+                    Completar teléfono
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.addPhoneDescription}>
+                  Teléfono de {selectedClient.firstName}{" "}
+                  {selectedClient.lastName}. Al guardarlo, se actualizará su
+                  ficha para todos sus turnos.
+                </Text>
+                <TextInput
+                  accessibilityLabel={`Teléfono de ${selectedClient.firstName} ${selectedClient.lastName}`}
+                  placeholder="Teléfono (10 dígitos)"
+                  placeholderTextColor="#94a3b8"
+                  value={phoneToAdd}
+                  onChangeText={(value) => {
+                    setPhoneToAdd(value);
+                    setPhoneUpdateError(null);
+                  }}
+                  keyboardType="phone-pad"
+                  style={[
+                    styles.searchInput,
+                    phoneUpdateError ? styles.selectorError : null,
+                  ]}
+                  editable={!isUpdatingPhone}
+                />
+                {phoneUpdateError ? (
+                  <Text style={styles.errorText}>{phoneUpdateError}</Text>
+                ) : null}
+                <Pressable
+                  accessibilityLabel="Guardar teléfono"
+                  style={[
+                    styles.saveNewClientButton,
+                    isUpdatingPhone ? styles.disabledButton : null,
+                  ]}
+                  onPress={handleSavePhone}
+                  disabled={isUpdatingPhone}
+                >
+                  <Text style={styles.saveNewClientButtonText}>
+                    {isUpdatingPhone ? "Actualizando..." : "Guardar teléfono"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Cancelar agregar teléfono"
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setIsAddingPhone(false);
+                    setPhoneToAdd("");
+                    setPhoneUpdateError(null);
+                  }}
+                  disabled={isUpdatingPhone}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        ) : null}
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {isChangingClient ? (
+        <Text style={styles.changeClientHint}>
+          Esto solo cambia el cliente de este turno; no modifica el registro
+          guardado.
+        </Text>
+      ) : null}
       <TextInput
         accessibilityLabel="Nombre del cliente"
         placeholder="Nombre de quien agenda"
@@ -588,9 +775,19 @@ const styles = StyleSheet.create({
     color: "#0f172a",
   },
   changeClientButton: {
-    padding: 6,
-    borderRadius: 999,
-    backgroundColor: colors.background,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.primarySoft,
+  },
+  changeClientButtonText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  changeClientHint: {
+    color: colors.textMuted,
+    fontSize: 13,
   },
   errorText: {
     color: colors.danger,
@@ -637,6 +834,35 @@ const styles = StyleSheet.create({
   addClientButtonText: {
     color: colors.primary,
     fontWeight: "600",
+  },
+  addPhoneSection: {
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 10,
+    padding: 10,
+    backgroundColor: "#f8fafc",
+  },
+  addPhoneTitle: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  addPhoneDescription: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  addPhoneButton: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+  },
+  addPhoneButtonText: {
+    color: colors.primary,
+    fontWeight: "700",
   },
   registerForm: {
     gap: 6,
