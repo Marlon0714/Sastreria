@@ -10,7 +10,8 @@ const printerSchema = printerConfigSchema.extend({ id: z.string().uuid() });
 
 /**
  * El proyecto Supabase es propio de un solo negocio, por eso existe una única
- * fila compartida. RLS restringe las escrituras a perfiles con rol owner.
+ * fila compartida. RLS restringe la administración completa a dueños; la
+ * tablet compartida solo puede cambiar la IP mediante el trigger de v45.
  */
 export class SupabasePrinterSettingsRepository
   implements PrinterSettingsRepository
@@ -71,6 +72,25 @@ export class SupabasePrinterSettingsRepository
     if (error) {
       throw new Error(
         "No se pudo sincronizar la configuración de impresoras. Se conservará en este dispositivo.",
+      );
+    }
+  }
+
+  async saveConnection(settings: PrinterSettingsSnapshot): Promise<void> {
+    const { data, error } = await getSupabaseClient()
+      .from("printer_settings")
+      .update({
+        printers: settings.printers,
+        default_printer_id: settings.defaultPrinterId,
+        updated_at: settings.updatedAt,
+      })
+      .eq("id", SETTINGS_ROW_ID)
+      .select("id")
+      .maybeSingle();
+
+    if (error || !data) {
+      throw new Error(
+        "No se pudo actualizar la conexión compartida de la impresora.",
       );
     }
   }

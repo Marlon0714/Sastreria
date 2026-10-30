@@ -201,4 +201,25 @@ describe("AppHeader", () => {
 
     expect(queryByLabelText("Mi cuenta")).toBeNull();
   });
+
+  it("da acceso directo a impresoras desde la tablet compartida", () => {
+    useIdentityStore.getState().setOwnProfile({
+      id: "tablet-1",
+      displayName: "Tablet del taller",
+      role: "operario",
+      isSharedDevice: true,
+    });
+    const navigationRef = makeFakeNavigationRef({
+      canGoBack: false,
+      activeTab: "ScheduleTab",
+    });
+
+    const { getByLabelText, queryByLabelText } = renderAppHeader(navigationRef);
+
+    expect(queryByLabelText("Mi cuenta")).toBeNull();
+    fireEvent.press(getByLabelText("Impresoras"));
+    expect(navigationRef.navigate).toHaveBeenCalledWith("ScheduleTab", {
+      screen: "PrinterSettings",
+    });
+  });
 });

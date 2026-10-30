@@ -1487,8 +1487,7 @@ enviará `start_date`/`due_date` en el `upsert` y Supabase los rechazará con
 `v30_schedule_confeccion_dates` (`src/data/local/migrations.ts`).
 
 **✅ Confirmado 2026-09-25:** el usuario corrió este bloque en el SQL Editor
-de Supabase. Es la última migración documentada en este archivo — no queda
-ninguna pendiente después de esta.
+de Supabase. En ese momento era la última migración documentada.
 
 ---
 
@@ -1566,6 +1565,146 @@ del taller: la cola local permite un solo envío activo y coalesce solicitudes
 duplicadas del mismo arreglo en ese dispositivo. No existe claim global entre
 dispositivos y el protocolo TCP no informa si la etiqueta realmente salió;
 por tanto el operador debe confirmar físicamente el resultado si es necesario.
+
+---
+
+### v45_shared_tablet_printer_ip_recovery (2026-10-30)
+
+**Aplicar manualmente en Supabase Dashboard → SQL Editor antes de desplegar
+la versión que permite corregir la IP desde la tablet compartida.** La cuenta
+de tablet puede actualizar la conexión compartida existente, pero la función
+de trigger rechaza cualquier cambio al nombre, protocolo, tamaño, impresoras
+o selección predeterminada. Las demás escrituras siguen reservadas al dueño.
+
+```sql
+CREATE OR REPLACE FUNCTION public.enforce_shared_printer_ip_only()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $$
+DECLARE
+  is_shared_device BOOLEAN;
+  old_printer JSONB;
+  new_printer JSONB;
+  matching_count INTEGER;
+  old_count INTEGER;
+  distinct_old_ids INTEGER;
+  changed_hosts INTEGER := 0;
+  parsed_host INET;
+  new_host TEXT;
+BEGIN
+  SELECT profiles.is_shared_device
+  INTO is_shared_device
+  FROM public.profiles
+  WHERE profiles.id = auth.uid();
+
+  IF NOT COALESCE(is_shared_device, false) THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.id IS DISTINCT FROM OLD.id
+     OR NEW.default_printer_id IS DISTINCT FROM OLD.default_printer_id THEN
+    RAISE EXCEPTION 'La tablet solo puede cambiar la IP de una impresora';
+  END IF;
+
+  SELECT count(*), count(DISTINCT value->>'id')
+  INTO old_count, distinct_old_ids
+  FROM jsonb_array_elements(OLD.printers) AS old_items(value);
+
+  IF old_count <> distinct_old_ids
+     OR jsonb_array_length(NEW.printers) <> old_count THEN
+    RAISE EXCEPTION 'La tablet no puede agregar ni quitar impresoras';
+  END IF;
+
+  FOR old_printer IN
+    SELECT value FROM jsonb_array_elements(OLD.printers) AS old_items(value)
+  LOOP
+    SELECT count(*)
+    INTO matching_count
+    FROM jsonb_array_elements(NEW.printers) AS new_items(value)
+    WHERE new_items.value->>'id' = old_printer->>'id';
+
+    IF matching_count <> 1 THEN
+      RAISE EXCEPTION 'La tablet no puede reemplazar la configuración de impresoras';
+    END IF;
+
+    SELECT value
+    INTO new_printer
+    FROM jsonb_array_elements(NEW.printers) AS new_items(value)
+    WHERE new_items.value->>'id' = old_printer->>'id';
+
+    IF (old_printer - 'host') IS DISTINCT FROM (new_printer - 'host') THEN
+      RAISE EXCEPTION 'La tablet solo puede cambiar la IP de una impresora';
+    END IF;
+
+    IF old_printer->>'host' IS DISTINCT FROM new_printer->>'host' THEN
+      changed_hosts := changed_hosts + 1;
+      new_host := new_printer->>'host';
+      IF new_host IS NULL THEN
+        RAISE EXCEPTION 'La IP debe pertenecer a la red privada del taller';
+      END IF;
+      BEGIN
+        parsed_host := new_host::inet;
+      EXCEPTION WHEN OTHERS THEN
+        RAISE EXCEPTION 'La IP debe pertenecer a la red privada del taller';
+      END;
+
+      IF parsed_host IS NULL
+         OR family(parsed_host) <> 4
+         OR masklen(parsed_host) <> 32
+         OR host(parsed_host) <> new_host
+         OR NOT (
+           parsed_host <<= '10.0.0.0/8'::inet
+           OR parsed_host <<= '172.16.0.0/12'::inet
+           OR parsed_host <<= '192.168.0.0/16'::inet
+         ) THEN
+        RAISE EXCEPTION 'La IP debe pertenecer a la red privada del taller';
+      END IF;
+    END IF;
+  END LOOP;
+
+  IF changed_hosts > 1 THEN
+    RAISE EXCEPTION 'La tablet solo puede cambiar una IP a la vez';
+  END IF;
+
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.enforce_shared_printer_ip_only() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS shared_tablet_printer_ip_only
+  ON public.printer_settings;
+CREATE TRIGGER shared_tablet_printer_ip_only
+  BEFORE UPDATE ON public.printer_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_shared_printer_ip_only();
+
+DROP POLICY IF EXISTS "shared device update printer settings"
+  ON public.printer_settings;
+CREATE POLICY "shared device update printer settings"
+  ON public.printer_settings FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+        AND profiles.is_shared_device = true
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+        AND profiles.is_shared_device = true
+    )
+  );
+```
+
+La cuenta de la tablet debe tener `is_shared_device = true`. Esta migración no
+permite insertar ni eliminar impresoras desde ella; para esos cambios se sigue
+requiriendo la cuenta del dueño.
 
 ---
 

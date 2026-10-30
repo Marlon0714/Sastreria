@@ -54,6 +54,7 @@ export function usePrinterManagement(
     useState<RecoveryConfirmation | null>(null);
   const actor = ownProfile?.isSharedDevice ? resolvedActor : ownProfile;
   const canManage = actor?.role === "owner";
+  const canRepairConnection = canManage || ownProfile?.isSharedDevice === true;
 
   useEffect(() => {
     mounted.current = true;
@@ -189,10 +190,10 @@ export function usePrinterManagement(
         actorId: identity.profile.id,
         sessionId: useIdentityStore.getState().ownProfile?.id ?? "",
       });
-    });
+    }, ownProfile?.isSharedDevice === true);
 
   const confirmConnection = (): Promise<boolean> =>
-    execute(true, async (identity) => {
+    execute(false, async (identity) => {
       const recovery = pendingRecovery;
       const current = usePrinterSettingsStore
         .getState()
@@ -219,6 +220,7 @@ export function usePrinterManagement(
     printers,
     defaultPrinterId,
     canManage,
+    canRepairConnection,
     canAuthorizeOwner:
       ownProfile?.isSharedDevice === true && ownProfile.role === "owner",
     isBusy,
@@ -258,6 +260,7 @@ export function usePrinterManagement(
     cancelRecovery: () => {
       setPendingRecovery(null);
       setError(null);
+      if (ownProfile?.isSharedDevice) identityGate.releaseIdentity();
     },
     savePrinter,
     sendTest,

@@ -9,6 +9,7 @@ import type {
 export interface PrinterSettingsRepository {
   load(): Promise<PrinterSettingsSnapshot | null>;
   save(settings: PrinterSettingsSnapshot): Promise<void>;
+  saveConnection(settings: PrinterSettingsSnapshot): Promise<void>;
 }
 
 /**

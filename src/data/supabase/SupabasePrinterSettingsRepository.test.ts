@@ -15,9 +15,19 @@ const mockMaybeSingle =
 const mockEq = jest.fn(() => ({ maybeSingle: mockMaybeSingle }));
 const mockSelect = jest.fn(() => ({ eq: mockEq }));
 const mockUpsert = jest.fn(async () => ({ error: null }));
+const mockUpdateMaybeSingle =
+  jest.fn<
+    () => Promise<{ data: { id: string } | null; error: { message: string } | null }>
+  >();
+const mockUpdateSelect = jest.fn(() => ({
+  maybeSingle: mockUpdateMaybeSingle,
+}));
+const mockUpdateEq = jest.fn(() => ({ select: mockUpdateSelect }));
+const mockUpdate = jest.fn(() => ({ eq: mockUpdateEq }));
 const mockFrom = jest.fn(() => ({
   select: mockSelect,
   upsert: mockUpsert,
+  update: mockUpdate,
 }));
 
 jest.mock("./client", () => ({
@@ -30,6 +40,10 @@ describe("SupabasePrinterSettingsRepository", () => {
     mockEq.mockClear();
     mockSelect.mockClear();
     mockUpsert.mockReset().mockResolvedValue({ error: null });
+    mockUpdateMaybeSingle.mockReset();
+    mockUpdateEq.mockClear();
+    mockUpdateSelect.mockClear();
+    mockUpdate.mockClear();
     mockFrom.mockClear();
   });
 
@@ -110,5 +124,46 @@ describe("SupabasePrinterSettingsRepository", () => {
       },
       { onConflict: "id" },
     );
+  });
+
+  it("actualiza la configuración existente sin intentar insertar una fila", async () => {
+    const settings = {
+      printers: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          name: "Mostrador",
+          host: "192.168.1.77",
+          port: 9100,
+          protocol: "tspl-bitmap" as const,
+          labelWidthMm: 50,
+          labelLengthMm: 70,
+        },
+      ],
+      defaultPrinterId: "11111111-1111-4111-8111-111111111111",
+      updatedAt: "2026-10-30T12:00:00.000Z",
+    };
+    mockUpdateMaybeSingle.mockResolvedValue({
+      data: { id: "workshop" },
+      error: null,
+    });
+
+    await new SupabasePrinterSettingsRepository().saveConnection(settings);
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdateEq).toHaveBeenCalledWith("id", "workshop");
+    expect(mockUpdateSelect).toHaveBeenCalledWith("id");
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it("reporta error si no existe la configuración compartida que se debe actualizar", async () => {
+    mockUpdateMaybeSingle.mockResolvedValue({ data: null, error: null });
+
+    await expect(
+      new SupabasePrinterSettingsRepository().saveConnection({
+        printers: [],
+        defaultPrinterId: null,
+        updatedAt: "2026-10-30T12:00:00.000Z",
+      }),
+    ).rejects.toThrow(/actualizar la conexión compartida/);
   });
 });

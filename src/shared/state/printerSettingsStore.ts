@@ -41,6 +41,18 @@ function assertPrinterAccess(ownerOnly: boolean): void {
   }
 }
 
+function assertPrinterConnectionAccess(): void {
+  const { ownProfile, resolvedActor } = useIdentityStore.getState();
+  const actor = ownProfile?.isSharedDevice
+    ? (resolvedActor ?? ownProfile)
+    : ownProfile;
+  if (!actor || (!ownProfile?.isSharedDevice && actor.role !== "owner")) {
+    throw new PrinterSettingsValidationError(
+      "No tienes permiso para cambiar la IP de la impresora desde este dispositivo.",
+    );
+  }
+}
+
 type PrinterSettingsStore = {
   printers: PrinterTarget[];
   defaultPrinterId: string | null;
@@ -136,6 +148,7 @@ export const usePrinterSettingsStore = create<PrinterSettingsStore>(
     const persistSettings = async (
       printers: PrinterTarget[],
       defaultPrinterId: string | null,
+      connectionOnly = false,
     ): Promise<void> => {
       const settings: PrinterSettingsSnapshot = {
         printers,
@@ -154,7 +167,9 @@ export const usePrinterSettingsStore = create<PrinterSettingsStore>(
       });
 
       try {
-        await getDefaultPrinterSettingsRepository().save(settings);
+        const repository = getDefaultPrinterSettingsRepository();
+        if (connectionOnly) await repository.saveConnection(settings);
+        else await repository.save(settings);
         set({ remoteSyncStatus: "synced", loadError: null });
         try {
           await SecureStore.setItemAsync(
@@ -320,7 +335,7 @@ export const usePrinterSettingsStore = create<PrinterSettingsStore>(
           await persistSettings(nextPrinters, get().defaultPrinterId);
         },
         updateConnection: async (id, host) => {
-          assertPrinterAccess(true);
+          assertPrinterConnectionAccess();
           const result = recoveryHostSchema.safeParse(host.trim());
           if (!result.success) {
             throw new PrinterSettingsValidationError(
@@ -335,7 +350,7 @@ export const usePrinterSettingsStore = create<PrinterSettingsStore>(
           const nextPrinters = get().printers.map((printer) =>
             printer.id === id ? { ...printer, host: result.data } : printer,
           );
-          await persistSettings(nextPrinters, get().defaultPrinterId);
+          await persistSettings(nextPrinters, get().defaultPrinterId, true);
         },
         setDefaultPrinter: async (id) => {
           assertPrinterAccess(true);

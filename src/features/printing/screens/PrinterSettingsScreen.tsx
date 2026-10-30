@@ -292,7 +292,7 @@ export default function PrinterSettingsScreen(): ReactElement {
                 />
                 <Text style={styles.commandText}>Probar</Text>
               </Pressable>
-              {(management.canManage || management.canAuthorizeOwner) && (
+              {management.canRepairConnection && (
                 <Pressable
                   accessibilityLabel={`Resolver conexión de ${item.name}`}
                   style={styles.command}

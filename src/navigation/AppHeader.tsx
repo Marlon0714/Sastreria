@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LogoutButton } from "../features/auth/components/LogoutButton";
 import { ProfileButton } from "../features/auth/components/ProfileButton";
 import { colors } from "../shared/theme/colors";
+import { useIdentityStore } from "../shared/state/identityStore";
 import type { RootTabParamList } from "./types";
 
 interface AppHeaderProps {
@@ -43,6 +44,9 @@ function navigateToMyAccount(
  */
 export function AppHeader({ navigationRef }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
+  const isSharedDevice = useIdentityStore(
+    (state) => state.ownProfile?.isSharedDevice ?? false,
+  );
   const [title, setTitle] = useState<string | undefined>(undefined);
   const [canGoBack, setCanGoBack] = useState(false);
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
@@ -95,9 +99,27 @@ export function AppHeader({ navigationRef }: AppHeaderProps) {
         <View style={[styles.side, styles.sideRight]}>
           {!canGoBack ? (
             <>
-              <ProfileButton
-                onPress={() => navigateToMyAccount(navigationRef, activeTab)}
-              />
+              {isSharedDevice ? (
+                <Pressable
+                  accessibilityLabel="Impresoras"
+                  hitSlop={8}
+                  onPress={() =>
+                    navigationRef.navigate("ScheduleTab", {
+                      screen: "PrinterSettings",
+                    })
+                  }
+                >
+                  <Ionicons
+                    name="print-outline"
+                    size={24}
+                    color={colors.primary}
+                  />
+                </Pressable>
+              ) : (
+                <ProfileButton
+                  onPress={() => navigateToMyAccount(navigationRef, activeTab)}
+                />
+              )}
               <LogoutButton />
             </>
           ) : null}

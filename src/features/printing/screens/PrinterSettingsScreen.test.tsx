@@ -161,6 +161,49 @@ describe("PrinterSettingsScreen", () => {
     expect(screen.queryByLabelText("Ancho de etiqueta (mm)")).toBeNull();
   });
 
+  it("permite reparar la IP en tablet sin mostrar las demás opciones de dueño", async () => {
+    await configuredPrinter();
+    useIdentityStore.getState().setOwnProfile({
+      id: "tablet-1",
+      displayName: "Tablet del taller",
+      role: "operario",
+      isSharedDevice: true,
+    });
+    const screen = renderScreen({
+      getLocalNetworkInfo: async () => ({
+        ipAddress: "192.168.1.34",
+        subnetMask: "255.255.255.0",
+      }),
+      printerDiscoveryRepository: { scanPort: async () => ["192.168.1.77"] },
+    });
+
+    expect(
+      screen.getByLabelText("Resolver conexión de Taller"),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("Agregar impresora")).toBeNull();
+    expect(screen.queryByLabelText("Editar Taller")).toBeNull();
+    expect(screen.queryByLabelText("Eliminar Taller")).toBeNull();
+    expect(screen.queryByLabelText("Predeterminada Taller")).toBeNull();
+
+    fireEvent.press(screen.getByLabelText("Resolver conexión de Taller"));
+    fireEvent.press(screen.getByLabelText("Buscar impresoras en la red"));
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Usar impresora encontrada en 192.168.1.77"),
+      ).toBeTruthy(),
+    );
+    fireEvent.press(
+      screen.getByLabelText("Usar impresora encontrada en 192.168.1.77"),
+    );
+
+    expect(screen.getByLabelText("Nueva IP de la impresora").props.value).toBe(
+      "192.168.1.77",
+    );
+    expect(usePrinterSettingsStore.getState().printers[0]?.host).toBe(
+      "192.168.1.60",
+    );
+  });
+
   it("no guarda la IP nueva hasta enviar y confirmar la prueba", async () => {
     await configuredPrinter();
     const printLabelJob = jest.fn<

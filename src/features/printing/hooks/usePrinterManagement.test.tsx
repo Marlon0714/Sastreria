@@ -274,7 +274,7 @@ describe("usePrinterManagement", () => {
     expect(result.current.isBusy).toBe(false);
   });
 
-  it("no permite que un operario de tablet compartida cambie la IP compartida", async () => {
+  it("permite que la tablet cambie la IP sin habilitar la administración", async () => {
     const printer = await usePrinterSettingsStore
       .getState()
       .addPrinter({ name: "Taller", host: "192.168.1.60" });
@@ -288,14 +288,27 @@ describe("usePrinterManagement", () => {
         true,
       );
     });
+    expect(mockReleaseIdentity).not.toHaveBeenCalled();
     await act(async () => {
-      expect(await result.current.confirmConnection()).toBe(false);
+      expect(await result.current.confirmConnection()).toBe(true);
     });
-    expect(usePrinterSettingsStore.getState().printers[0]?.host).toBe(printer.host);
+    expect(usePrinterSettingsStore.getState().printers[0]).toEqual({
+      ...printer,
+      host: "192.168.1.77",
+    });
     expect(result.current.canManage).toBe(false);
+    expect(result.current.canRepairConnection).toBe(true);
+    expect(mockReleaseIdentity).toHaveBeenCalledTimes(1);
     await act(async () => {
       expect(await result.current.authorizeAdministration()).toBe(false);
     });
+  });
+
+  it("no ofrece reparar conexión desde un teléfono personal de operario", () => {
+    useIdentityStore.getState().setOwnProfile(WORKER);
+    const { result } = renderHook(() => usePrinterManagement(capture));
+
+    expect(result.current.canRepairConnection).toBe(false);
   });
 
   it("solicita contraseña para administrar en tablet con sesión del dueño y libera el permiso al guardar", async () => {

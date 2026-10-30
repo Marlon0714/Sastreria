@@ -21,6 +21,10 @@ const mockRemoteSave =
   jest.fn<
     (settings: unknown) => Promise<void>
   >();
+const mockRemoteSaveConnection =
+  jest.fn<
+    (settings: unknown) => Promise<void>
+  >();
 
 jest.mock("expo-secure-store", () => ({
   getItemAsync: (key: string): Promise<string | null> => mockGetItemAsync(key),
@@ -31,6 +35,8 @@ jest.mock("../../data/supabase/printerSettingsDependencies", () => ({
   getDefaultPrinterSettingsRepository: () => ({
     load: () => mockRemoteLoad(),
     save: (settings: unknown) => mockRemoteSave(settings),
+    saveConnection: (settings: unknown) =>
+      mockRemoteSaveConnection(settings),
   }),
 }));
 
@@ -42,6 +48,7 @@ describe("printerSettingsStore", () => {
     mockSetItemAsync.mockResolvedValue();
     mockRemoteLoad.mockReset().mockResolvedValue(null);
     mockRemoteSave.mockReset().mockRejectedValue(new Error("offline"));
+    mockRemoteSaveConnection.mockReset().mockResolvedValue();
     usePrinterSettingsStore.setState({
       printers: [],
       defaultPrinterId: null,
@@ -336,6 +343,41 @@ describe("printerSettingsStore", () => {
     expect(usePrinterSettingsStore.getState().printers[0]).toEqual({
       ...printer,
     });
+  });
+
+  it("permite a la tablet compartida cambiar solo la IP", async () => {
+    const printer = await usePrinterSettingsStore
+      .getState()
+      .addPrinter({ name: "Taller", host: "192.168.1.60" });
+    mockRemoteSave.mockReset().mockResolvedValue();
+    useIdentityStore.getState().setOwnProfile({
+      id: "tablet-1",
+      displayName: "Tablet",
+      role: "operario",
+      isSharedDevice: true,
+    });
+
+    await usePrinterSettingsStore
+      .getState()
+      .updateConnection(printer.id, "192.168.1.77");
+
+    expect(usePrinterSettingsStore.getState().printers[0]).toEqual({
+      ...printer,
+      host: "192.168.1.77",
+    });
+    expect(mockRemoteSaveConnection).toHaveBeenLastCalledWith({
+      printers: [{ ...printer, host: "192.168.1.77" }],
+      defaultPrinterId: printer.id,
+      updatedAt: expect.any(String),
+    });
+    await expect(
+      usePrinterSettingsStore
+        .getState()
+        .updatePrinter(printer.id, { ...printer, host: "192.168.1.77" }),
+    ).rejects.toThrow(/permiso/);
+    await expect(
+      usePrinterSettingsStore.getState().setDefaultPrinter("missing"),
+    ).rejects.toThrow(/permiso/);
   });
 
   it("rechaza la IP externa y una predeterminada inexistente", async () => {
